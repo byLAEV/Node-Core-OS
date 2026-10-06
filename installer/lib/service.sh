@@ -56,8 +56,7 @@ EOF
 
 enable_kubo_service() {
   if [[ "$(service_backend)" != "systemd-user" ]]; then
-    printf 'No usable user service supervisor detected; starting Kubo manually.\n'
-    start_kubo
+    printf 'No user service supervisor detected; manual Kubo lifecycle retained.\n'
     return 0
   fi
 
@@ -72,25 +71,17 @@ enable_kubo_service() {
 
   if ! systemctl --user daemon-reload >/dev/null 2>&1 \
     || ! systemctl --user cat node-core-kubo.service >/dev/null 2>&1; then
-    printf 'User systemd cannot load the Node Core Kubo unit; falling back to manual lifecycle.\n' >&2
+    printf 'User systemd cannot load the Node Core Kubo unit; manual lifecycle retained.\n' >&2
     rm -f "$unit_path"
     systemctl --user daemon-reload >/dev/null 2>&1 || true
-    start_kubo
     return 0
   fi
 
-  if systemctl --user is-active node-core-kubo.service >/dev/null 2>&1; then
-    systemctl --user enable node-core-kubo.service >/dev/null 2>&1 || true
+  if systemctl --user enable node-core-kubo.service >/dev/null 2>&1; then
+    printf 'Kubo lifecycle: manual process now, user service enabled for future sessions.\n'
     return 0
   fi
-
-  if systemctl --user enable --now node-core-kubo.service >/dev/null 2>&1; then
-    return 0
-  fi
-
-  printf 'User systemd could not start Kubo; falling back to manual lifecycle.\n' >&2
-  systemctl --user disable node-core-kubo.service >/dev/null 2>&1 || true
+  printf 'User systemd could not enable the unit; manual Kubo lifecycle retained.\n' >&2
   rm -f "$unit_path"
   systemctl --user daemon-reload >/dev/null 2>&1 || true
-  start_kubo
 }
