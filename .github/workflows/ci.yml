@@ -1,4 +1,4 @@
-name: Node Core OS — Linux Terminal CI
+name: Node Core OS — GNU/Linux Terminal CI
 
 on:
   push:
@@ -20,23 +20,28 @@ jobs:
         shell: bash
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
-      - name: Verify GNU/Linux terminal environment
+      - name: Verify supported platform
         run: |
           set -euo pipefail
           test "$(uname -s)" = "Linux"
           test -n "${BASH_VERSION}"
-          python --version
-          uname -a
+          test "$(python -c 'import sys; print(sys.version_info.major)')" = "3"
+          test "$(python -c 'import sys; print(sys.version_info.minor)')" = "12"
+
+      - name: Validate Python sources
+        run: |
+          set -euo pipefail
+          python -m compileall -q main.py node_core tests
 
       - name: Run terminal test suite
         run: |
           set -euo pipefail
-          python -m unittest discover -v
+          python -m unittest discover -s tests -v
