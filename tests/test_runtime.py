@@ -1,27 +1,123 @@
+import json
+import unittest
+
+from node_core.config import NodeConfig
 from node_core.content import ContentManager
 from node_core.ipfs import AddedContent, KuboManager
 from node_core.storage import StorageManager
 
+
 class FakeKubo:
-    def add_file(self,path,pin=False): return AddedContent("bafytestcid",path.name,path.stat().st_size)
-    def cat(self,cid):
-        if cid!="bafytestcid": raise ValueError("bad cid")
+    def __init__(self):
+        self.pinned = set()
+
+    def add_file(self, path, pin=False):
+        if pin:
+            self.pinned.add("bafytestcid")
+        return AddedContent("bafytestcid", path.name, path.stat().st_size)
+
+    def cat(self, cid):
+        if cid != "bafytestcid":
+            raise ValueError("bad cid")
         return b"node-core"
-    def pin_add(self,cid): pass
-    def pin_remove(self,cid): pass
-    def pin_list(self): return {"bafytestcid":{"Name":"test.txt","Type":"recursive"}}
 
-def test_content_registry_persists(tmp_path):
-    source=tmp_path/"source.txt"; source.write_bytes(b"node-core")
-    manager=ContentManager(FakeKubo(),StorageManager(tmp_path/"storage"))
-    result=manager.add(source)
-    assert result.cid=="bafytestcid" and result.pinned is False
-    assert manager.get(result.cid).source_path==str(source.resolve())
-    assert manager.get(result.cid).provenance=={}
-    manager.pin(result.cid); assert manager.get(result.cid).pinned is True
-    manager.unpin(result.cid); assert manager.get(result.cid).pinned is False
+    def pin_add(self, cid):
+        if cid != "bafytestcid":
+            raise ValueError("bad cid")
+        self.pinned.add(cid)
 
-def test_unknown_pin_does_not_create_record(tmp_path):
-    manager=ContentManager(FakeKubo(),StorageManager(tmp_path/"storage"))
-    manager.pin("bafytestcid")
-    assert manager.get("bafytestcid") is None
+    def pin_remove(self, cid):
+        if cid != "bafytestcid":
+            raise ValueError("bad cid")
+        self.pinned.discard(cid)
+
+    def pin_list(self):
+        return {
+            cid: {"Name": "test.txt", "Type": "recursive"}
+            for cid in self.pinned
+        }
+
+
+class RuntimeTests(unittest.TestCase):
+    def test_storage_stays_inside_root(self):
+        with self.subTest():
+            from tempfile import TemporaryDirectory
+            with TemporaryDirectory() as directory:
+                storage = StorageManager(__import__("pathlib").Path(directory))
+                storage.initialize()
+                self.assertEqual(
+                    storage.path("example.txt").parent,
+                    __import__("pathlib").Path(directory),
+                )
+
+    def test_config_persists_kubo_settings(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = NodeConfig(
+                data_dir=root,
+                local_storage_path=root / "storage",
+                ipfs_repo_path=root / "ipfs",
+            )
+            config.save()
+            loaded = NodeConfig.load()
+            self.assertEqual(loaded.ipfs_repo_path, root / "ipfs")
+            stored = json.loads(config.config_path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["ipfs_profile"], "unixfs-v1-2025")
+
+    def test_kubo_status_without_binary(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as directory:
+            manager = KuboManager(
+                executable="definitely-not-installed-node-core-kubo",
+                repo_path=Path(directory) / "ipfs",
+                api="http://127.0.0.1:5001",
+            )
+            status = manager.status()
+            self.assertFalse(status.installed)
+            self.assertFalse(status.running)
+
+    def test_content_end_to_end_with_fake_kubo(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source.txt"
+            source.write_bytes(b"node-core")
+            manager = ContentManager(
+                FakeKubo(),
+                StorageManager(root / "storage"),
+                gateway="http://127.0.0.1:8080",
+            )
+
+            result = manager.add(source)
+            self.assertEqual(result.cid, "bafytestcid")
+            self.assertFalse(result.pinned)
+            self.assertEqual(result.source_path, str(source.resolve()))
+
+            destination = root / "out.txt"
+            manager.retrieve(result.cid, destination)
+            self.assertEqual(destination.read_bytes(), b"node-core")
+
+            published = manager.publish(result.cid)
+            self.assertTrue(published.pinned)
+            self.assertIsNotNone(published.published_at)
+            self.assertEqual(published.publication_mode, "cid")
+
+            reference = manager.share(result.cid)
+            self.assertEqual(reference.ipfs_uri, "ipfs://bafytestcid")
+            self.assertEqual(
+                reference.gateway_url,
+                "http://127.0.0.1:8080/ipfs/bafytestcid",
+            )
+
+            manager.unpin(result.cid)
+            self.assertFalse(manager.get(result.cid).pinned)
+            manager.unpublish(result.cid)
+            self.assertIsNone(manager.get(result.cid).published_at)
+
+
+if __name__ == "__main__":
+    unittest.main()
