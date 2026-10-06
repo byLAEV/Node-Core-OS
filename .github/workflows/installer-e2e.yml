@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   installer-linux:
-    name: Clean GNU/Linux installer
+    name: Clean GNU/Linux installer (real install/uninstall)
     runs-on: ubuntu-24.04
     defaults:
       run:
