@@ -6,7 +6,7 @@ The installer provides the first Linux installation path for Node Core OS.
 
 - Linux
 - Python 3.10+
-- pip available through `python3 -m pip)
+- Python's standard `venv` module.
 
 ## Install
 
@@ -18,13 +18,14 @@ From the repository root:
 
 The installer:
 
-1. validates Python;
-2. installs the Node Core Python package for the current user;
-3. creates `~/.node-core`;
-4. initializes the Node Core runtime;
-5. verifies the `node-core` launcher.
+1. validates that the host is Linux;
+2. validates Python 3.10+;
+3. creates an isolated Python environment at `~/.node-core/venv`;
+4. installs the Node Core package into that environment;
+5. creates the `node-core` launcher at `~/.local/bin/node-core`;
+6. initializes and verifies the Node Core runtime.
 
-The installation is intentionally user-local and does not require root privileges.
+The installation is user-local and does not require root privileges.
 
 ## Start
 
@@ -40,12 +41,12 @@ If the command is not found, ensure `~/.local/bin` is in `PATH`.
 ./installer/uninstall.sh
 ```
 
-Uninstall removes the package and launcher but preserves `~/.node-core` so node data is not destroyed accidentally.
+Uninstall removes the Node Core Python environment and launcher but preserves `~/.node-core` data.
 
 ## Kubo
 
-Kubo remains an external Node infrastructure dependency. The installer currently prepares the Node Core environment but does not silently download or replace a Kubo installation. Kubo lifecycle and configuration remain controlled by Node Core BIOS.
+Kubo remains an external Node infrastructure dependency. Installer v1 does not silently download, replace, or manage a Kubo installation. Kubo lifecycle and configuration remain controlled by Node Core BIOS.
 
 ## Scope
 
-This is Installer v1. Identity, reputation, protocols, services, applications, system-wide services, and automatic Kubo distribution are future installer/runtime work.
+Installer v1 establishes the Linux installation boundary. Identity, reputation, protocols, services, applications, system-wide services, and automatic Kubo distribution remain later stages.
