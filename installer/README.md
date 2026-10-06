@@ -1,5 +1,7 @@
 # Node Core OS Installer
 
+> **Supported platform: GNU/Linux terminals only.** Android, Termux, Windows, macOS, and other environments are outside the scope of Installer v1.
+
 The installer provides the first Linux installation path for Node Core OS.
 
 ## Requirements
