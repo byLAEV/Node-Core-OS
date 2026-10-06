@@ -39,7 +39,7 @@ There is no Android, Termux, Windows, macOS, GUI, or web installer path.
 ## Installation phases
 
 1. Platform check
-2. Dependency check / host package installation
+2. Dependency check (no host package installation)
 3. Prepare user-owned filesystem
 4. Install/copy Node Core application
 5. Install Kubo and verify checksum
@@ -205,7 +205,7 @@ The installer intentionally avoids:
 
 ## Host package resolution
 
-Before installing Node Core, the installer checks for the terminal utilities it actually uses. When one is missing, it can install the corresponding Linux host packages through apt, dnf, yum, pacman, or zypper. This is an installer dependency layer, not a Node Core runtime package dependency.
+The installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths.
 
 ## Third-party installation boundary
 
@@ -224,7 +224,7 @@ GNU/Linux
 └── Kubo
 ```
 
-The installer may obtain the host utilities through the distribution package manager when necessary.
+The user may install missing host utilities through the package mechanism available in their Linux environment before rerunning the installer.
 
 ## Persistent Kubo lifecycle
 
