@@ -4,7 +4,7 @@ set -euo pipefail
 wait_for_kubo_api() {
   local attempt
   for attempt in {1..20}; do
-    if curl --fail --silent --show-error --max-time 3 -X POST "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
+    if http_post "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
       return 0
     fi
     sleep 0.5

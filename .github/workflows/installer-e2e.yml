@@ -14,7 +14,11 @@ permissions:
 
 jobs:
   installer-linux:
-    name: Clean GNU/Linux installer (real install/uninstall)
+    name: Clean GNU/Linux installer (real install/uninstall, ${{ matrix.service_mode }})
+    strategy:
+      fail-fast: false
+      matrix:
+        service_mode: [user-systemd, no-user-systemd]
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -35,6 +39,7 @@ jobs:
           test "$(uname -s)" = "Linux"
           test -n "${BASH_VERSION:-}"
           test "$(uname -m)" = "x86_64"
+          test "$(id -u)" -ne 0
 
       - name: Make installer executable
         run: chmod +x installer/install.sh installer/uninstall.sh installer/lib/*.sh
@@ -46,15 +51,23 @@ jobs:
             bash -n "$script"
           done
 
-      - name: Assert installer is unprivileged
+      - name: Assert installer is unprivileged and non-root
         run: |
           set -euo pipefail
+          test "$(id -u)" -ne 0
           ! grep -R -nE '(^|[[:space:]])(sudo|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' installer/lib installer/install.sh installer/uninstall.sh
 
-      - name: Assert installer is unprivileged
+      - name: Disable user service supervisor for restricted-terminal validation
+        if: matrix.service_mode == 'no-user-systemd'
         run: |
           set -euo pipefail
-          ! grep -R -nE '(^|[[:space:]])(sudo|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' installer/install.sh installer/uninstall.sh installer/lib
+          mkdir -p "$RUNNER_TEMP/no-systemd"
+          cat > "$RUNNER_TEMP/no-systemd/systemctl" <<'EOF'
+          #!/usr/bin/env bash
+          exit 127
+          EOF
+          chmod +x "$RUNNER_TEMP/no-systemd/systemctl"
+          echo "$RUNNER_TEMP/no-systemd" >> "$GITHUB_PATH"
 
       - name: Run clean installation
         env:

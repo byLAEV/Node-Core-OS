@@ -2,9 +2,27 @@
 set -euo pipefail
 INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$INSTALLER_DIR/config/defaults"
+
+validate_uninstall_target() {
+  local target="$NODE_CORE_DATA_DIR" parent
+  [[ "$target" = /* ]] || { printf 'Unsafe uninstall path: must be absolute.\n' >&2; return 1; }
+  [[ "$target" != "/" && "$target" != "$HOME" && "$target" != "." && "$target" != ".." ]] || { printf 'Unsafe uninstall path: refusing to remove a filesystem root or HOME.\n' >&2; return 1; }
+  [[ "$target" != "$HOME/" ]] || { printf 'Unsafe uninstall path: refusing HOME.\n' >&2; return 1; }
+  if [[ -e "$target" || -L "$target" ]]; then
+    [[ ! -L "$target" ]] || { printf 'Unsafe uninstall path: target is a symbolic link.\n' >&2; return 1; }
+    [[ -d "$target" ]] || { printf 'Unsafe uninstall path: target is not a directory.\n' >&2; return 1; }
+    [[ "$(stat -c '%u' "$target")" = "$(id -u)" ]] || { printf 'Unsafe uninstall path: target is not owned by the current user.\n' >&2; return 1; }
+  else
+    parent="$(dirname -- "$target")"
+    [[ -d "$parent" ]] || { printf 'Unsafe uninstall path: parent directory does not exist.\n' >&2; return 1; }
+    [[ ! -L "$parent" ]] || { printf 'Unsafe uninstall path: parent directory is a symbolic link.\n' >&2; return 1; }
+    [[ "$(stat -c '%u' "$parent")" = "$(id -u)" ]] || { printf 'Unsafe uninstall path: parent is not owned by the current user.\n' >&2; return 1; }
+  fi
+}
 printf 'Node Core OS uninstall\n'
 printf 'This removes: %s\n' "$NODE_CORE_DATA_DIR"
 printf 'It also removes the local Kubo repository and Node Core data stored there.\n'
+validate_uninstall_target
 printf 'Type REMOVE to continue: '
 read -r confirmation
 if [[ "$confirmation" != "REMOVE" ]]; then
