@@ -1,55 +1,34 @@
 # Node Core OS — Implementation Architecture
 
-Infrastructure -> Runtime -> BIOS/Core -> Protocols/Identity/Content -> Applications.
+Infrastructure -> Runtime -> BIOS/Core -> Content Registry -> Identity/Protocols -> Applications.
 
-## Node Core BIOS
+## Content Registry
 
-BIOS is the administrative boundary of the Node.
+Node Core maintains a durable local index at `~/.node-core/storage/registry/content.json`.
+It is an index, not a replacement for IPFS or the content source of truth.
 
-### Storage
+Each record contains:
+- CID
+- name and size
+- creation timestamp
+- pin state
+- original local source path
+- optional owner identity
+- provenance metadata placeholder
 
-Storage owns the local Node storage root and safe filesystem access. Its state is
-independent from the Kubo repository.
+The registry uses atomic replacement when persisting its JSON file. Pin/unpin updates
+the local record only after the corresponding Kubo operation succeeds.
 
-### IPFS / Kubo
+## Identity-ready boundary
 
-BIOS owns Kubo infrastructure:
+Identity is intentionally not implemented inside Storage or Kubo. The registry already
+has owner/provenance fields so a later identity layer can attach signed actor/action
+metadata without changing the storage abstraction.
 
-Detect -> Initialize -> Configure -> Start -> Status -> Stop
+## Flow
 
-Kubo is treated as an external node service. Node Core does not reimplement Kubo
-or start arbitrary processes outside this boundary.
-
-## Node Core Content
-
-Node Core now exposes the first end-to-end content capabilities:
-
-Add -> CID -> Retrieve
-          |
-          +-> Pin
-          |
-          +-> Unpin
-
-ContentManager is the Node Core abstraction. It accepts local files, sends them
-to Kubo RPC /api/v0/add, returns a CID reference, retrieves content through
-/api/v0/cat, and controls local pins through /api/v0/pin/add and
-/api/v0/pin/rm.
-
-For explicit separation of Add from persistence policy, Node Core sends pin=false
-unless the caller requests immediate pinning.
-
-The Kubo RPC remains local/admin-only and is never exposed as the application
-interface.
-
-## Storage layout
-
-~/.node-core/
-  config.json
-  storage/       Node local storage
-  ipfs/          Kubo repository
-
-## Next architectural layer
-
-After content is stable, the next layer is identity-aware content and action
-records. Content should gain provenance without making the storage implementation
-itself depend on identity.
+Add -> Kubo -> CID -> Registry
+                         |
+                    Pin / Unpin
+                         |
+                      Retrieve
