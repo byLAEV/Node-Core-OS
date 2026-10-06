@@ -13,7 +13,7 @@ LAUNCHER="${BIN_DIR}/node-core"
 info() { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-[ "$(uname -s)" = "Linux" ] || fail "Node Core OS Installer v1 supports Linux."
+[ "$(uname -s)" = "Linux" ] || fail "Node Core OS Installer v1 supports GNU/Linux terminals only."
 command -v python3 >/dev/null 2>&1 || fail "Python 3 is required."
 
 python3 - <<'PY'
