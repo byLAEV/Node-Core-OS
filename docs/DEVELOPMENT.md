@@ -1,5 +1,17 @@
 # Development
 
+## Supported development environment
+
+Node Core OS is developed and tested **exclusively for GNU/Linux terminal environments**.
+
+Development commands are terminal commands executed on GNU/Linux:
+
+```bash
+python3 main.py
+```
+
+The repository does not target graphical desktop environments, Windows, macOS, Android, or mobile application runtimes.
+
 ## Run
 
 Python 3.10+ is recommended.
@@ -13,6 +25,8 @@ python3 main.py
 ```bash
 python3 -m unittest discover -s tests
 ```
+
+The official GitHub Actions workflow uses a fixed GNU/Linux runner and validates the same terminal-oriented Python test suite.
 
 ## Milestones
 
