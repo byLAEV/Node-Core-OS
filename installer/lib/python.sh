@@ -11,6 +11,7 @@ create_launcher() {
   cat > "$NODE_CORE_DATA_DIR/bin/node-core" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
+export NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json"
 exec python3 "$NODE_CORE_DATA_DIR/app/main.py" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core"
