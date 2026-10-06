@@ -1,0 +1,15 @@
+name: Installer v1 verification
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run installer checks
+        run: ./installer/test.sh
