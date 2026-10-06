@@ -10,6 +10,7 @@ validate_uninstall_target() {
   canonical_home="$(realpath -m -- "$HOME")"
   [[ "$canonical_target" != "/" ]] || { printf 'Unsafe uninstall path: refusing to remove a filesystem root.\n' >&2; return 1; }
   [[ "$canonical_target" != "$canonical_home" ]] || { printf 'Unsafe uninstall path: refusing to remove HOME.\n' >&2; return 1; }
+  [[ "$canonical_home" != "$canonical_target"/* ]] || { printf 'Unsafe uninstall path: refusing to remove a parent of HOME.\n' >&2; return 1; }
   if [[ -e "$target" || -L "$target" ]]; then
     [[ ! -L "$target" ]] || { printf 'Unsafe uninstall path: target is a symbolic link.\n' >&2; return 1; }
     [[ -d "$target" ]] || { printf 'Unsafe uninstall path: target is not a directory.\n' >&2; return 1; }
