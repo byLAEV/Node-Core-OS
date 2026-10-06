@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 
 from node_core.config import NodeConfig
@@ -61,7 +62,15 @@ class RuntimeTests(unittest.TestCase):
                 ipfs_repo_path=root / "ipfs",
             )
             config.save()
-            loaded = NodeConfig.load()
+            previous = os.environ.get("NODE_CORE_CONFIG")
+            os.environ["NODE_CORE_CONFIG"] = str(config.config_path)
+            try:
+                loaded = NodeConfig.load()
+            finally:
+                if previous is None:
+                    os.environ.pop("NODE_CORE_CONFIG", None)
+                else:
+                    os.environ["NODE_CORE_CONFIG"] = previous
             self.assertEqual(loaded.ipfs_repo_path, root / "ipfs")
             stored = json.loads(config.config_path.read_text(encoding="utf-8"))
             self.assertEqual(stored["ipfs_profile"], "unixfs-v1-2025")
