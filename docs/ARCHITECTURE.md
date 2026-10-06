@@ -4,36 +4,52 @@ Infrastructure -> Runtime -> BIOS/Core -> Protocols/Identity/Content -> Applicat
 
 ## Node Core BIOS
 
-BIOS is the administrative boundary of the Node. The first implementation
-provides two real infrastructure domains:
+BIOS is the administrative boundary of the Node.
 
-- Storage: owns the local Node storage root and safe filesystem access.
-- IPFS / Kubo: owns Kubo repository initialization, configuration profile,
-  daemon startup, status, and graceful shutdown.
+### Storage
 
-BIOS does not implement content operations. Those belong to Node Core.
+Storage owns the local Node storage root and safe filesystem access. Its state is
+independent from the Kubo repository.
 
-## Kubo boundary
+### IPFS / Kubo
 
-Kubo is treated as an external infrastructure service. Node Core does not
-reimplement Kubo and does not assume that the Kubo process is the application.
+BIOS owns Kubo infrastructure:
 
-Lifecycle:
+Detect -> Initialize -> Configure -> Start -> Status -> Stop
 
-Detect executable -> Initialize repository -> Apply import profile ->
-Start daemon -> RPC health / PeerID / Version -> Running -> Shutdown
+Kubo is treated as an external node service. Node Core does not reimplement Kubo
+or start arbitrary processes outside this boundary.
 
-The Kubo repository is independent from Node local content:
+## Node Core Content
+
+Node Core now exposes the first end-to-end content capabilities:
+
+Add -> CID -> Retrieve
+          |
+          +-> Pin
+          |
+          +-> Unpin
+
+ContentManager is the Node Core abstraction. It accepts local files, sends them
+to Kubo RPC /api/v0/add, returns a CID reference, retrieves content through
+/api/v0/cat, and controls local pins through /api/v0/pin/add and
+/api/v0/pin/rm.
+
+For explicit separation of Add from persistence policy, Node Core sends pin=false
+unless the caller requests immediate pinning.
+
+The Kubo RPC remains local/admin-only and is never exposed as the application
+interface.
+
+## Storage layout
 
 ~/.node-core/
   config.json
   storage/       Node local storage
   ipfs/          Kubo repository
 
-This separation prevents local content management from implicitly destroying
-the Kubo repository.
+## Next architectural layer
 
-## First functional path
-
-Boot -> initialize local storage -> BIOS -> initialize Kubo -> start Kubo ->
-health check -> Node Core -> content/CID operations.
+After content is stable, the next layer is identity-aware content and action
+records. Content should gain provenance without making the storage implementation
+itself depend on identity.

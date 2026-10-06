@@ -1,9 +1,11 @@
 """Runtime orchestration for Node Core OS."""
 
 from node_core.config import NodeConfig
+from node_core.content import ContentManager
 from node_core.ipfs import KuboManager
 from node_core.storage import StorageManager
 from node_core.ui import MainMenu
+
 
 class NodeRuntime:
     """Owns shared infrastructure and coordinates BIOS/Core interfaces."""
@@ -17,6 +19,7 @@ class NodeRuntime:
             api=self.config.ipfs_api,
             profile=self.config.ipfs_profile,
         )
+        self.content = ContentManager(self.kubo, self.storage)
         self._booted = False
 
     @property

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from node_core.runtime import NodeRuntime
 
+
 class MainMenu:
     def __init__(self, runtime: "NodeRuntime") -> None:
         self.runtime = runtime
@@ -98,14 +99,77 @@ class MainMenu:
                 input("\n> ")
 
     def core(self) -> None:
-        print("\nNode Core\nbyLAEV\n")
-        for item in (
-            "0. Back", "1. Storage", "2. IPFS", "3. Files", "4. CID",
-            "5. Publish", "6. Retrieve", "7. Pin", "8. Unpin", "9. Share",
-            "10. Identity", "11. Reputation", "12. Protocols", "13. Services",
-            "14. Utilities",
-        ):
-            print(item)
+        while True:
+            print("\nNode Core\nbyLAEV\n")
+            print("0. Back")
+            print("1. Storage")
+            print("2. IPFS")
+            print("3. Files")
+            print("4. CID")
+            print("5. Publish")
+            print("6. Retrieve")
+            print("7. Pin")
+            print("8. Unpin")
+            print("9. Share")
+            print("10. Identity")
+            print("11. Reputation")
+            print("12. Protocols")
+            print("13. Services")
+            print("14. Utilities")
+            choice = input("\n> ").strip()
+            try:
+                if choice == "0":
+                    return
+                if choice == "2":
+                    status = self.runtime.kubo.status()
+                    print(f"Kubo: {'Online' if status.running else 'Offline'}")
+                    input("\n> ")
+                elif choice == "4":
+                    print("A CID is produced by Add; use Retrieve to consume it.")
+                    input("\n> ")
+                elif choice == "5":
+                    self.add_content()
+                elif choice == "6":
+                    self.retrieve_content()
+                elif choice == "7":
+                    self.pin_content()
+                elif choice == "8":
+                    self.unpin_content()
+                elif choice == "9":
+                    print("Share is reserved for the publishing/sharing layer.")
+                    input("\n> ")
+            except Exception as exc:
+                print(f"Core error: {exc}")
+                input("\n> ")
+
+    def add_content(self) -> None:
+        print("\nAdd content")
+        source = input("Local file path: ").strip()
+        pin_answer = input("Pin immediately? [y/N]: ").strip().lower()
+        result = self.runtime.content.add(source, pin=pin_answer == "y")
+        print(f"Name: {result.name}")
+        print(f"Size: {result.size} bytes")
+        print(f"CID: {result.cid}")
+        input("\n> ")
+
+    def retrieve_content(self) -> None:
+        print("\nRetrieve content")
+        cid = input("CID: ").strip()
+        destination = input("Destination file: ").strip()
+        target = self.runtime.content.retrieve(cid, destination)
+        print(f"Retrieved: {target}")
+        input("\n> ")
+
+    def pin_content(self) -> None:
+        cid = input("\nCID to pin: ").strip()
+        self.runtime.content.pin(cid)
+        print(f"Pinned: {cid}")
+        input("\n> ")
+
+    def unpin_content(self) -> None:
+        cid = input("\nCID to unpin: ").strip()
+        self.runtime.content.unpin(cid)
+        print(f"Unpinned: {cid}")
         input("\n> ")
 
     def applications(self) -> None:
