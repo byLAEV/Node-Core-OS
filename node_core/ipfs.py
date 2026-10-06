@@ -296,8 +296,11 @@ class KuboManager:
         value = cid.strip()
         if not value or "/" in value or " " in value:
             raise ValueError("Expected a CID without a local path.")
-        if not (value.startswith("bafy") or value.startswith("Qm")):
-            raise ValueError(f"Unsupported CID format: {cid}")
+        if value.startswith("Qm"):
+            return
+        if value.startswith("b") and all(char in "abcdefghijklmnopqrstuvwxyz234567" for char in value):
+            return
+        raise ValueError(f"Unsupported CID format: {cid}")
 
     def _clear_pid(self) -> None:
         try:
