@@ -39,10 +39,10 @@ There is no Android, Termux, Windows, macOS, GUI, or web installer path.
 ## Installation phases
 
 1. Platform check
-2. Dependency check
+2. Dependency check / host package installation
 3. Prepare user-owned filesystem
 4. Install/copy Node Core application
-5. Install Kubo
+5. Install Kubo and verify checksum
 6. Initialize Kubo repository
 7. Persist Node Core configuration
 8. Prepare launcher
@@ -201,3 +201,31 @@ The installer intentionally avoids:
 - graphical installers
 - platform-specific branches for Termux/Android
 - unversioned Kubo downloads
+
+
+## Host package resolution
+
+Before installing Node Core, the installer checks for the terminal utilities it actually uses. When one is missing, it can install the corresponding Linux host packages through apt, dnf, yum, pacman, or zypper. This is an installer dependency layer, not a Node Core runtime package dependency.
+
+## Third-party installation boundary
+
+The installer installs Kubo as external infrastructure. Python third-party packages are intentionally not required by the current runtime.
+
+The resulting dependency model is:
+
+```
+GNU/Linux
+├── Bash
+├── Python 3.10+
+├── tar
+├── coreutils / sha512sum
+├── awk
+├── curl or wget
+└── Kubo
+```
+
+The installer may obtain the host utilities through the distribution package manager when necessary.
+
+## Persistent Kubo lifecycle
+
+If a usable `systemd --user` environment is detected, the installer creates and enables a user service for Kubo. Otherwise Kubo remains in the Node Core-managed manual lifecycle. This keeps systemd optional while still providing persistent service integration where the Linux environment supports it.

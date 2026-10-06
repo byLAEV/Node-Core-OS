@@ -18,8 +18,8 @@ download_file() {
 install_kubo() {
   local version="$NODE_CORE_KUBO_VERSION" asset archive base_url work_dir installed_version
   asset="$(kubo_asset)"
-  archive="kubo_${version}_${asset}.tar.gz"
-  base_url="https://dist.ipfs.tech/kubo/v${version}"
+  archive="kubo_$version_$asset.tar.gz"
+  base_url="https://dist.ipfs.tech/kubo/v$version"
   work_dir="$(mktemp -d)"
   trap 'rm -rf "$work_dir"' RETURN
   printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
@@ -39,6 +39,8 @@ install_kubo() {
     "$NODE_CORE_DATA_DIR/bin/ipfs" init
     "$NODE_CORE_DATA_DIR/bin/ipfs" config profile apply unixfs-v1-2025
   fi
+  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API"
+  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY"
 }
 
 start_kubo() {
