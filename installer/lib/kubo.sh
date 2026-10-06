@@ -58,8 +58,8 @@ install_kubo() {
     "$NODE_CORE_DATA_DIR/bin/ipfs" init
     "$NODE_CORE_DATA_DIR/bin/ipfs" config profile apply unixfs-v1-2025
   fi
-  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API"
-  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY"
+  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API_MULTIADDR"
+  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY_MULTIADDR"
 }
 
 start_kubo() {
