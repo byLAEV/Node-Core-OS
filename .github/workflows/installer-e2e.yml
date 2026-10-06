@@ -46,6 +46,11 @@ jobs:
             bash -n "$script"
           done
 
+      - name: Assert installer is unprivileged
+        run: |
+          set -euo pipefail
+          ! grep -R -nE '(^|[[:space:]])(sudo|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' installer/lib installer/install.sh installer/uninstall.sh
+
       - name: Run clean installation
         env:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
