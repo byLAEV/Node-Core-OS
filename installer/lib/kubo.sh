@@ -63,7 +63,7 @@ install_kubo() {
 
 start_kubo() {
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
-  if curl --fail --silent --show-error --max-time 2 -X POST "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
+  if http_post "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
     return 0
   fi
 
@@ -73,7 +73,7 @@ start_kubo() {
 
   local attempt
   for attempt in {1..40}; do
-    if curl --fail --silent --show-error --max-time 2 -X POST "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
+    if http_post "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
       return 0
     fi
     if ! kill -0 "$pid" >/dev/null 2>&1; then
