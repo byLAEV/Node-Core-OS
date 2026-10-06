@@ -1,4 +1,4 @@
-name: Node Core OS — Installer E2E
+name: Node Core OS — Installer E2E (unprivileged)
 
 on:
   push:
@@ -50,6 +50,11 @@ jobs:
         run: |
           set -euo pipefail
           ! grep -R -nE '(^|[[:space:]])(sudo|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' installer/lib installer/install.sh installer/uninstall.sh
+
+      - name: Assert installer is unprivileged
+        run: |
+          set -euo pipefail
+          ! grep -R -nE '(^|[[:space:]])(sudo|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' installer/install.sh installer/uninstall.sh installer/lib
 
       - name: Run clean installation
         env:
