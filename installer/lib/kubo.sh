@@ -18,8 +18,8 @@ download_file() {
 install_kubo() {
   local version="$NODE_CORE_KUBO_VERSION" asset archive base_url work_dir installed_version
   asset="$(kubo_asset)"
-  archive="kubo_${version}_${asset}.tar.gz"
-  base_url="https://dist.ipfs.tech/kubo/v${version}"
+  archive="kubo_$version_$asset.tar.gz"
+  base_url="https://dist.ipfs.tech/kubo/v$version"
   work_dir="$(mktemp -d)"
   trap 'rm -rf "$work_dir"' RETURN
   printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
