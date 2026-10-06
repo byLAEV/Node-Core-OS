@@ -46,7 +46,6 @@ PY
 
 info "[6/6] Verifying installation ..........."
 [ -x "$LAUNCHER" ] || fail "node-core launcher was not created."
-"$LAUNCHER" --help >/dev/null 2>&1 || true
 "$VENV_DIR/bin/python" -c "import node_core; print('Node Core package: OK')"
 
 info
