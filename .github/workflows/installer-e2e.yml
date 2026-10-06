@@ -130,6 +130,7 @@ jobs:
             printf '0\n'
             printf '0\n'
           } | "$NODE_CORE_DATA_DIR/bin/node-core" > "$output"
+          cat "$output"
           grep -q "Node Core OS" "$output"
           grep -q "CID:" "$output"
           cid="$(sed -n "s/^CID: //p" "$output" | tail -n 1)"
@@ -137,6 +138,10 @@ jobs:
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           recovered="$RUNNER_TEMP/node-core-recovered.txt"
           "$NODE_CORE_DATA_DIR/bin/ipfs" cat "$cid" > "$recovered"
+          printf "Original:\n"
+          sha256sum "$test_content"
+          printf "Recovered:\n"
+          sha256sum "$recovered"
           cmp -s "$test_content" "$recovered"
           printf "Node Core E2E CID: %s\n" "$cid"
 
