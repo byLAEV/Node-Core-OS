@@ -1,0 +1,87 @@
+name: Node Core OS — Installer E2E
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  installer-linux:
+    name: Clean GNU/Linux installer
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Linux terminal contract
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = "Linux"
+          test -n "${BASH_VERSION:-}"
+          test "$(uname -m)" = "x86_64"
+
+      - name: Make installer executable
+        run: chmod +x installer/install.sh installer/uninstall.sh installer/lib/*.sh
+
+      - name: Syntax-check installer
+        run: |
+          set -euo pipefail
+          for script in installer/*.sh installer/lib/*.sh; do
+            bash -n "$script"
+          done
+
+      - name: Run clean installation
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+        run: |
+          set -euo pipefail
+          export HOME="${RUNNER_TEMP}/node-core-home"
+          mkdir -p "$HOME"
+          ./installer/install.sh
+
+      - name: Verify installed filesystem
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+        run: |
+          set -euo pipefail
+          test -x "$NODE_CORE_DATA_DIR/bin/node-core"
+          test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
+          test -f "$NODE_CORE_DATA_DIR/config.json"
+          test -f "$NODE_CORE_DATA_DIR/ipfs/config"
+          test -d "$NODE_CORE_DATA_DIR/storage"
+
+      - name: Verify Kubo API and Node Core launcher
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+        run: |
+          set -euo pipefail
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          "$NODE_CORE_DATA_DIR/bin/ipfs" version
+          curl --fail --silent --show-error --max-time 5 \
+            -X POST http://127.0.0.1:5001/api/v0/id >/dev/null
+          NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" \
+            python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
+
+      - name: Test uninstall
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+        run: |
+          set -euo pipefail
+          printf 'REMOVE\n' | ./installer/uninstall.sh
+          test ! -e "$NODE_CORE_DATA_DIR"
