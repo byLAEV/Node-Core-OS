@@ -40,3 +40,29 @@ install_kubo() {
     "$NODE_CORE_DATA_DIR/bin/ipfs" config profile apply unixfs-v1-2025
   fi
 }
+
+start_kubo() {
+  export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+  if curl --fail --silent --show-error --max-time 2 -X POST "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  nohup "$NODE_CORE_DATA_DIR/bin/ipfs" daemon >"$NODE_CORE_DATA_DIR/logs/kubo.log" 2>&1 &
+  local pid="$!"
+  printf '%s\n' "$pid" > "$NODE_CORE_DATA_DIR/runtime/kubo.pid"
+
+  local attempt
+  for attempt in {1..40}; do
+    if curl --fail --silent --show-error --max-time 2 -X POST "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
+      return 0
+    fi
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      printf 'Kubo daemon exited during startup. See %s.\n' "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
+      return 1
+    fi
+    sleep 0.25
+  done
+
+  printf 'Kubo API did not become ready. See %s.\n' "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
+  return 1
+}
