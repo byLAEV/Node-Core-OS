@@ -1,0 +1,42 @@
+name: Node Core OS — Linux Terminal CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  linux-terminal:
+    name: GNU/Linux terminal
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Verify GNU/Linux terminal environment
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = "Linux"
+          test -n "${BASH_VERSION}"
+          python --version
+          uname -a
+
+      - name: Run terminal test suite
+        run: |
+          set -euo pipefail
+          python -m unittest discover -v
