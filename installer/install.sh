@@ -20,6 +20,7 @@ main() {
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   install_kubo
+  start_kubo
   write_config
   create_launcher
   if ! verify_installation; then
