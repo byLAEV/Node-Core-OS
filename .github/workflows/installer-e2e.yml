@@ -53,7 +53,15 @@ jobs:
           set -euo pipefail
           export HOME="${RUNNER_TEMP}/node-core-home"
           mkdir -p "$HOME"
-          ./installer/install.sh
+          if ! ./installer/install.sh; then
+            printf '\n--- Kubo startup log ---\n' >&2
+            if [[ -f "$NODE_CORE_DATA_DIR/logs/kubo.log" ]]; then
+              cat "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
+            else
+              printf 'Kubo log was not created.\n' >&2
+            fi
+            exit 1
+          fi
 
       - name: Verify installed filesystem
         env:
