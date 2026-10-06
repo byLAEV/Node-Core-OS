@@ -790,14 +790,14 @@ Portability experiments on other environments, if performed, are external valida
 
 # Installation
 
-Node Core OS is initially designed as a Node infrastructure layer installed on top of an existing operating system.
+Node Core OS is designed to be installed and operated on a supported GNU/Linux system from the terminal.
 
-The long-term project may evolve toward a dedicated distribution or image, but the architecture does not require that decision at the beginning.
+The repository does not define a graphical installer or desktop interface. Installation and administration are terminal operations.
 
 The intended installation flow is:
 
 ```text
-Install Node Core OS
+Install Node Core OS from the GNU/Linux terminal
         │
         ▼
 Initialize Node
@@ -814,8 +814,6 @@ Initialize Node Core Runtime
         ▼
 Node Core OS
 ```
-
----
 
 # First Boot
 
