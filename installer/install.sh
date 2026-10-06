@@ -20,14 +20,13 @@ main() {
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   install_kubo
-  start_kubo
   write_config
   create_launcher
+  enable_kubo_service
   if ! verify_installation; then
     printf '\nInstallation verification failed.\n' >&2
     exit 1
   fi
-  enable_kubo_service
   printf '\nNode Core OS installation complete.\n'
   printf 'Launcher: %s\n' "$NODE_CORE_DATA_DIR/bin/node-core"
   printf 'Optional PATH command for the current shell:\n'
