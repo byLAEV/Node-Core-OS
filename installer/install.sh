@@ -12,27 +12,12 @@ source "$INSTALLER_DIR/lib/service.sh"
 source "$INSTALLER_DIR/lib/verify.sh"
 main() {
   printf '%s\n' 'Node Core OS installer'
-  printf '%s\n' 'GNU/Linux terminal only'
+  printf '%s\n' 'GNU/Linux terminal — user-owned / unprivileged'
   printf '%s\n\n' 'byLAEV'
-  require_bash
-  require_linux
-  ensure_dependencies
-  prepare_filesystem
-  install_application "$PROJECT_ROOT"
-  install_kubo
-  start_kubo
-  write_config
-  create_launcher
-  if ! verify_installation; then
-    printf '\nInstallation verification failed.\n' >&2
-    exit 1
-  fi
-  enable_kubo_service
+  require_bash; require_linux; ensure_dependencies; prepare_filesystem
+  install_application "$PROJECT_ROOT"; install_kubo; write_config; create_launcher
+  start_kubo; verify_installation; enable_kubo_service
   printf '\nNode Core OS installation complete.\n'
   printf 'Launcher: %s\n' "$NODE_CORE_DATA_DIR/bin/node-core"
-  printf 'Optional PATH command for the current shell:\n'
-  printf '  export PATH="%s:$PATH"\n' "$NODE_CORE_DATA_DIR/bin"
-  printf '\nFirst boot:\n'
-  printf '  %s\n' "$NODE_CORE_DATA_DIR/bin/node-core"
 }
 main "$@"
