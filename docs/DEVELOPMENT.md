@@ -14,7 +14,7 @@ The repository does not target graphical desktop environments, Windows, macOS, A
 
 ## Run
 
-Python 3.10+ is recommended.
+Python 3.10+ is the supported runtime baseline. CI currently validates Python 3.12.
 
 ```bash
 python3 main.py
@@ -27,6 +27,12 @@ python3 -m unittest discover -s tests
 ```
 
 The official GitHub Actions workflow uses a fixed GNU/Linux runner and validates the same terminal-oriented Python test suite.
+
+## Installer development
+
+The official installer is GNU/Linux terminal-only. Use `bash installer/install.sh` during development; do not add platform branches for Windows, macOS, Android, or Termux.
+
+The installer dependency contract is defined in `docs/DEPENDENCIES.md` and the technical flow in `docs/INSTALLER.md`.
 
 ## Milestones
 

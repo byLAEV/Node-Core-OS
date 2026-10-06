@@ -733,10 +733,10 @@ Node Core
 byLAEV
 
 0. Back
-1. Storage
+1. Subir archivo
 2. IPFS
 3. Files
-4. CID
+4. CID Registry
 5. Publish
 6. Retrieve
 7. Pin
@@ -1199,3 +1199,18 @@ The goal is to establish a coherent **Node infrastructure layer** over which dec
 byLAEV
 
 Repository: https://github.com/byLAEV/Node-Core-OS/
+
+
+---
+
+# Installer and dependency contract
+
+Node Core OS is installed and operated strictly from a GNU/Linux terminal.
+
+The repository includes a terminal installer under installer/. It rejects non-Linux platforms, requires Python 3.10 or newer, uses the Python standard library for the current runtime, installs into the user-owned ~/.node-core/ tree, installs and verifies a pinned Kubo release, initializes the Kubo repository, creates the node-core launcher, and verifies the installation.
+
+The installer does not require root, sudo, systemd, a graphical environment, or a system-wide /usr/local installation.
+
+See docs/DEPENDENCIES.md, docs/INSTALLER.md, and installer/install.sh.
+
+Termux is not an official target. Its known restrictions are considered only as design constraints when avoiding unnecessary assumptions about privileges, service managers, filesystem locations, and process lifecycle.
