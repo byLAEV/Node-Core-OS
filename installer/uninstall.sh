@@ -9,7 +9,9 @@ printf '%s\n' "byLAEV"
 printf '%s\n' ""
 
 rm -f "$BIN_DIR/node-core"
-rm -rf "$DATA_DIR/venv" "$DATA_DIR/app" "$DATA_DIR/bin"
+rm -rf "$DATA_DIR/venv" "$DATA_DIR/app"
+rm -f "$DATA_DIR/bin/ipfs"
+rmdir "$DATA_DIR/bin" 2>/dev/null || true
 
 printf '%s\n' "Node Core runtime and launcher removed."
 printf '%s\n' "Node data was preserved at:"
