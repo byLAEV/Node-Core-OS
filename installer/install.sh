@@ -20,9 +20,16 @@ main() {
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   install_kubo
-  start_kubo
   write_config
   create_launcher
+  if ! start_kubo; then
+    printf '\nKubo startup failed during installation.\n' >&2
+    if [[ -f "$NODE_CORE_DATA_DIR/logs/kubo.log" ]]; then
+      printf '%s\n' '--- Kubo startup log ---' >&2
+      cat "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
+    fi
+    exit 1
+  fi
   if ! verify_installation; then
     printf '\nInstallation verification failed.\n' >&2
     exit 1

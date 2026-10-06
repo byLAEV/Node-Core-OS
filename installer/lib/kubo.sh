@@ -10,26 +10,44 @@ kubo_asset() {
 download_file() {
   local url="$1" destination="$2"
   if command -v curl >/dev/null 2>&1; then
-    curl --fail --location --silent --show-error --retry 3 --output "$destination" "$url"
+    curl --fail --location --silent --show-error --connect-timeout 15 --max-time 120 --retry 3 --retry-delay 2 --retry-all-errors --output "$destination" "$url"
   else
-    wget --quiet --tries=3 --output-document="$destination" "$url"
+    wget --quiet --timeout=15 --tries=4 --waitretry=2 --output-document="$destination" "$url"
   fi
 }
+download_kubo_release() {
+  local version="$1" archive="$2" destination="$3" checksum="$4"
+  local primary="https://dist.ipfs.tech/kubo/v${version}"
+  local fallback="https://github.com/ipfs/kubo/releases/download/v${version}"
+  local source
+  for source in "$primary" "$fallback"; do
+    rm -f "$destination" "$checksum"
+    printf 'Trying Kubo source: %s\n' "$source"
+    if download_file "$source/$archive" "$destination" && download_file "$source/$archive.sha512" "$checksum"; then
+      if (cd "$(dirname "$destination")" && sha512sum --check "$(basename "$checksum")"); then
+        printf 'Kubo download verified from %s\n' "$source"
+        return 0
+      fi
+      printf 'Checksum verification failed for %s\n' "$source" >&2
+    else
+      printf 'Kubo download failed from %s\n' "$source" >&2
+    fi
+  done
+  printf 'Unable to download and verify Kubo %s from any configured source.\n' "$version" >&2
+  return 1
+}
 install_kubo() {
-  local version="$NODE_CORE_KUBO_VERSION" asset archive base_url work_dir installed_version
+  local version="$NODE_CORE_KUBO_VERSION" asset archive work_dir installed_version
   asset="$(kubo_asset)"
-  archive="kubo_$version_$asset.tar.gz"
-  base_url="https://dist.ipfs.tech/kubo/v$version"
+  archive="kubo_v${version}_${asset}.tar.gz"
   work_dir="$(mktemp -d)"
-  trap 'rm -rf "$work_dir"' RETURN
   printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
-  download_file "$base_url/$archive" "$work_dir/$archive"
-  download_file "$base_url/$archive.sha512" "$work_dir/$archive.sha512"
-  ( cd "$work_dir"; sha512sum --check "$archive.sha512" )
+  download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
   tar -xzf "$work_dir/$archive" -C "$work_dir"
   cp "$work_dir/kubo/ipfs" "$NODE_CORE_DATA_DIR/bin/ipfs"
   chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
   installed_version="$("$NODE_CORE_DATA_DIR/bin/ipfs" version | awk '{print $3}')"
+  rm -rf "$work_dir"
   if [[ "$installed_version" != "$version" ]]; then
     printf 'Kubo version verification failed: expected %s, got %s\n' "$version" "$installed_version" >&2
     return 1
@@ -39,8 +57,8 @@ install_kubo() {
     "$NODE_CORE_DATA_DIR/bin/ipfs" init
     "$NODE_CORE_DATA_DIR/bin/ipfs" config profile apply unixfs-v1-2025
   fi
-  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API"
-  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY"
+  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API_MULTIADDR"
+  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY_MULTIADDR"
 }
 
 start_kubo() {

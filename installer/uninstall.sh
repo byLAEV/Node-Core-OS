@@ -11,14 +11,23 @@ if [[ "$confirmation" != "REMOVE" ]]; then
   printf 'Uninstall cancelled.\n'
   exit 0
 fi
-if command -v systemctl >/dev/null 2>&1 && systemctl --user is-enabled node-core-kubo.service >/dev/null 2>&1; then
+
+unit_path="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/node-core-kubo.service"
+if command -v systemctl >/dev/null 2>&1 \
+  && systemctl --user show-environment >/dev/null 2>&1 \
+  && [[ -f "$unit_path" ]]; then
   systemctl --user disable --now node-core-kubo.service >/dev/null 2>&1 || true
-  rm -f "$HOME/.config/systemd/user/node-core-kubo.service"
+  rm -f "$unit_path"
   systemctl --user daemon-reload >/dev/null 2>&1 || true
 fi
+
 if [[ -x "$NODE_CORE_DATA_DIR/bin/ipfs" ]]; then
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   "$NODE_CORE_DATA_DIR/bin/ipfs" shutdown >/dev/null 2>&1 || true
+fi
+if [[ -f "$NODE_CORE_DATA_DIR/runtime/kubo.pid" ]]; then
+  pid="$(cat "$NODE_CORE_DATA_DIR/runtime/kubo.pid" 2>/dev/null || true)"
+  if [[ "$pid" =~ ^[0-9]+$ ]]; then kill "$pid" >/dev/null 2>&1 || true; fi
 fi
 rm -rf "$NODE_CORE_DATA_DIR"
 printf 'Node Core OS installation removed.\n'
