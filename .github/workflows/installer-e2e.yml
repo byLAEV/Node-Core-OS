@@ -1,4 +1,4 @@
-name: Node Core OS — Installer E2E (unprivileged)
+name: Node Core OS — Installer E2E (Ubuntu 24.04 x86_64)
 
 on:
   push:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   installer-linux:
-    name: Clean GNU/Linux installer (real install/uninstall, ${{ matrix.service_mode }})
+    name: Ubuntu 24.04 x86_64 installer (real install/uninstall, ${{ matrix.service_mode }})
     strategy:
       fail-fast: false
       matrix:
@@ -33,9 +33,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify Linux terminal contract
+      - name: Verify Ubuntu 24.04 x86_64 terminal contract
         run: |
           set -euo pipefail
+          . /etc/os-release
+          test "$ID" = "ubuntu"
+          test "$VERSION_ID" = "24.04"
           test "$(uname -s)" = "Linux"
           test -n "${BASH_VERSION:-}"
           test "$(uname -m)" = "x86_64"
@@ -109,6 +112,57 @@ jobs:
           NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" \
             python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
 
+      - name: Run Node Core menu and publish test content
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+        run: |
+          set -euo pipefail
+          export HOME="${RUNNER_TEMP}/node-core-home"
+          test_content="$RUNNER_TEMP/node-core-e2e-content.txt"
+          printf 'Node Core OS E2E content — deterministic integration test.\n' > "$test_content"
+          output="$RUNNER_TEMP/node-core-menu.log"
+          {
+            printf '2\n'
+            printf '1\n'
+            printf "%s\n" "$test_content"
+            printf 'y\n'
+            printf '\n'
+            printf '0\n'
+            printf '0\n'
+          } | "$NODE_CORE_DATA_DIR/bin/node-core" > "$output"
+          cat "$output"
+          grep -q "Node Core OS" "$output"
+          grep -q "CID:" "$output"
+          cid="$(sed -n "s/^CID: //p" "$output" | tail -n 1)"
+          [[ "$cid" =~ ^(Qm[A-Za-z1-9]+|b[a-z2-7]+)$ ]]
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          recovered="$RUNNER_TEMP/node-core-recovered.txt"
+          "$NODE_CORE_DATA_DIR/bin/ipfs" cat "$cid" > "$recovered"
+          printf "Original:\n"
+          sha256sum "$test_content"
+          printf "Recovered:\n"
+          sha256sum "$recovered"
+          cmp -s "$test_content" "$recovered"
+          printf "Node Core E2E CID: %s\n" "$cid"
+
+      - name: Test uninstall rejects dangerous normalized paths
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+        run: |
+          set -euo pipefail
+          export HOME="${RUNNER_TEMP}/node-core-home"
+          marker="$HOME/node-core-uninstall-safety-marker"
+          printf 'must survive uninstall safety tests\n' > "$marker"
+          for dangerous in "$HOME" "$HOME/" "$HOME/." "$HOME/./" "$HOME/.." "$HOME/../"; do
+            set +e
+            output="$(printf "REMOVE\n" | NODE_CORE_DATA_DIR="$dangerous" ./installer/uninstall.sh 2>&1)"
+            status=$?
+            set -e
+            test "$status" -ne 0
+            grep -q "Unsafe uninstall path" <<<"$output"
+            test -f "$marker"
+          done
+          test -d "$NODE_CORE_DATA_DIR"
       - name: Test uninstall
         env:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
