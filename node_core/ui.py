@@ -102,7 +102,7 @@ class MainMenu:
         while True:
             print("\nNode Core\nbyLAEV\n")
             print("0. Back")
-            print("1. Storage")
+            print("1. Subir archivo")
             print("2. IPFS")
             print("3. Files")
             print("4. CID Registry")
@@ -120,7 +120,9 @@ class MainMenu:
             try:
                 if choice == "0":
                     return
-                if choice == "2":
+                if choice == "1":
+                    self.add_content()
+                elif choice == "2":
                     status = self.runtime.kubo.status()
                     print(f"Kubo: {'Online' if status.running else 'Offline'}")
                     input("\n> ")
@@ -139,6 +141,21 @@ class MainMenu:
             except Exception as exc:
                 print(f"Core error: {exc}")
                 input("\n> ")
+
+    def add_content(self) -> None:
+        print("\nSubir archivo")
+        source = input("Archivo: ").strip()
+        result = self.runtime.content.add(source)
+        print("\n✓ Archivo agregado")
+        print("✓ CID generado")
+        print("✓ Contenido registrado")
+        print(f"\nCID: {result.cid}")
+        publish = input("\n¿Desea publicar? [Y/n] ").strip().lower()
+        if publish in ("", "y", "yes"):
+            published = self.runtime.content.publish(result.cid)
+            print("✓ Contenido publicado")
+            print(f"✓ Pin: {'Yes' if published.pinned else 'No'}")
+        input("\n> ")
 
     def registry(self) -> None:
         print("\nCID Registry")
