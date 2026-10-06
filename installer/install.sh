@@ -22,7 +22,7 @@ main() {
   install_kubo
   write_config
   create_launcher
-  if ! enable_kubo_service; then
+  if ! start_kubo; then
     printf '\nKubo startup failed during installation.\n' >&2
     if [[ -f "$NODE_CORE_DATA_DIR/logs/kubo.log" ]]; then
       printf '%s\n' '--- Kubo startup log ---' >&2
@@ -34,6 +34,7 @@ main() {
     printf '\nInstallation verification failed.\n' >&2
     exit 1
   fi
+  enable_kubo_service
   printf '\nNode Core OS installation complete.\n'
   printf 'Launcher: %s\n' "$NODE_CORE_DATA_DIR/bin/node-core"
   printf 'Optional PATH command for the current shell:\n'
