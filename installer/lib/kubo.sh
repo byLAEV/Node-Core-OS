@@ -37,18 +37,17 @@ download_kubo_release() {
   return 1
 }
 install_kubo() {
-  local version="$NODE_CORE_KUBO_VERSION" asset archive base_url work_dir installed_version
+  local version="$NODE_CORE_KUBO_VERSION" asset archive work_dir installed_version
   asset="$(kubo_asset)"
   archive="kubo_v${version}_${asset}.tar.gz"
-  base_url="https://dist.ipfs.tech/kubo/v$version"
   work_dir="$(mktemp -d)"
-  trap 'rm -rf "$work_dir"' RETURN
   printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
   download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
   tar -xzf "$work_dir/$archive" -C "$work_dir"
   cp "$work_dir/kubo/ipfs" "$NODE_CORE_DATA_DIR/bin/ipfs"
   chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
   installed_version="$("$NODE_CORE_DATA_DIR/bin/ipfs" version | awk '{print $3}')"
+  rm -rf "$work_dir"
   if [[ "$installed_version" != "$version" ]]; then
     printf 'Kubo version verification failed: expected %s, got %s\n' "$version" "$installed_version" >&2
     return 1
