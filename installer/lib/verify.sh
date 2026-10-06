@@ -8,5 +8,9 @@ verify_installation() {
   [[ -x "$NODE_CORE_DATA_DIR/bin/ipfs" ]] || failures=1
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   [[ -f "$IPFS_PATH/config" ]] || failures=1
+  if ! curl --fail --silent --show-error --max-time 3 -X POST "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
+    printf "Verification failed: Kubo API is not reachable.\\n" >&2
+    failures=1
+  fi
   return "$failures"
 }
