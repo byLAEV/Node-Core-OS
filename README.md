@@ -766,6 +766,28 @@ The menu is an interface to the architecture, not the architecture itself. Inter
 
 ---
 
+# Platform Scope
+
+**Node Core OS is strictly a GNU/Linux terminal project.**
+
+The repository, runtime, user interface, installation model, documentation, and official CI target GNU/Linux systems operated from a terminal.
+
+The official scope is:
+
+```text
+GNU/Linux
+   │
+   └── Terminal
+        │
+        └── Node Core OS
+```
+
+The project does not define a graphical desktop application, web application, mobile application, Windows target, or macOS target.
+
+Portability experiments on other environments, if performed, are external validation work and do not change the official platform contract of this repository.
+
+---
+
 # Installation
 
 Node Core OS is initially designed as a Node infrastructure layer installed on top of an existing operating system.
