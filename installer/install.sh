@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SCRIPT_DIR/lib/kubo.sh"
+
 NODE_CORE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATA_DIR="${HOME}/.node-core"
 VENV_DIR="${DATA_DIR}/venv"
@@ -34,6 +37,13 @@ python3 -m venv "$VENV_DIR" || fail "Unable to create the Node Core Python envir
 "$VENV_DIR/bin/python" -m pip install --upgrade "$NODE_CORE_ROOT"
 
 info "[4/6] Preparing launcher ................"
+if KUBO_EXECUTABLE="$(detect_kubo)"; then
+    info "       Kubo detected: $KUBO_EXECUTABLE"
+    KUBO_VERSION="$(kubo_version "$KUBO_EXECUTABLE" || true)"
+    [ -n "$KUBO_VERSION" ] && info "       Kubo version: $KUBO_VERSION"
+else
+    info "       Kubo not detected; Node Core will remain in Kubo-unavailable state."
+fi
 ln -sfn "$VENV_DIR/bin/node-core" "$LAUNCHER"
 chmod +x "$LAUNCHER"
 
