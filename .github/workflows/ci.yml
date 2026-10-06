@@ -41,6 +41,11 @@ jobs:
           set -euo pipefail
           python -m compileall -q main.py node_core tests
 
+      - name: Validate installer shell syntax
+        run: |
+          set -euo pipefail
+          bash installer/tests/syntax.sh
+
       - name: Run terminal test suite
         run: |
           set -euo pipefail
