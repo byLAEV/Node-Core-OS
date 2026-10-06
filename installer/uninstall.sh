@@ -25,5 +25,9 @@ if [[ -x "$NODE_CORE_DATA_DIR/bin/ipfs" ]]; then
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   "$NODE_CORE_DATA_DIR/bin/ipfs" shutdown >/dev/null 2>&1 || true
 fi
+if [[ -f "$NODE_CORE_DATA_DIR/runtime/kubo.pid" ]]; then
+  pid="$(cat "$NODE_CORE_DATA_DIR/runtime/kubo.pid" 2>/dev/null || true)"
+  if [[ "$pid" =~ ^[0-9]+$ ]]; then kill "$pid" >/dev/null 2>&1 || true; fi
+fi
 rm -rf "$NODE_CORE_DATA_DIR"
 printf 'Node Core OS installation removed.\n'
