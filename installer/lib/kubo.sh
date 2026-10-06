@@ -39,7 +39,7 @@ download_kubo_release() {
 install_kubo() {
   local version="$NODE_CORE_KUBO_VERSION" asset archive base_url work_dir installed_version
   asset="$(kubo_asset)"
-  archive="kubo_${version}_${asset}.tar.gz"
+  archive="kubo_v${version}_${asset}.tar.gz"
   base_url="https://dist.ipfs.tech/kubo/v$version"
   work_dir="$(mktemp -d)"
   trap 'rm -rf "$work_dir"' RETURN
