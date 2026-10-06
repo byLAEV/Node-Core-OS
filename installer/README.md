@@ -45,7 +45,7 @@ Uninstall removes the Node Core Python environment and launcher but preserves `~
 
 ## Kubo
 
-Kubo remains an external Node infrastructure dependency. Installer v1 does not silently download, replace, or manage a Kubo installation. Kubo lifecycle and configuration remain controlled by Node Core BIOS.
+Kubo remains an external Node infrastructure dependency. Installer v1 detects an existing `ipfs` executable and reports its version, but does not silently download or replace Kubo. This is intentional: the official Kubo distribution currently lists v0.43.1 as the September 15, 2026 release, and the Kubo project notes that Shipyard maintenance ended September 30, 2026. Node Core therefore keeps Kubo provider/version policy explicit instead of hard-coding a download source into the first installer. Kubo lifecycle and configuration remain controlled by Node Core BIOS.
 
 ## Scope
 
