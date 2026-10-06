@@ -41,10 +41,6 @@ install_kubo() {
   fi
   "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API"
   "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY"
-  if [[ "$(uname -m)" == "x86_64" || "$(uname -m)" == "amd64" ]]; then
-    "$NODE_CORE_DATA_DIR/bin/ipfs" config --json Swarm.DisableNatPortMap false >/dev/null 2>&1 || true
-  fi
-  fi
 }
 
 start_kubo() {
