@@ -53,7 +53,7 @@ fi
 
 info "[6/8] Initializing Node Core ..........."
 export NODE_CORE_CONFIG="$DATA_DIR/config.json"
-"$VENV_DIR/bin/python" - "$KUBO_EXECUTABLE" "$DATA_DIR" <<'PY'
+PYTHONPATH="$APP_DIR" "$VENV_DIR/bin/python" - "$KUBO_EXECUTABLE" "$DATA_DIR" <<'PY'
 import json, sys
 from pathlib import Path
 from node_core.config import NodeConfig
@@ -75,7 +75,7 @@ manager = KuboManager(
     api=config.ipfs_api,
     profile=config.ipfs_profile,
 )
-if not manager.initialized():
+if not manager.is_initialized():
     manager.initialize()
 print("Runtime initialized.")
 PY
