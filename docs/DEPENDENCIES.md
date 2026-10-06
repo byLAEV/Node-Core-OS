@@ -100,23 +100,11 @@ A Linux service supervisor may require its own platform-specific permissions, bu
 6. CI must validate the same dependency assumptions used by the installer.
 
 
-## Linux package installation
+## Host package installation
 
-The installer may install missing host packages when a supported package manager is available:
+The Node Core installer **never installs host packages**.
 
-| Linux family | Package manager | Packages used by installer |
-|---|---|---|
-| Debian/Ubuntu | apt | python3, tar, coreutils, gawk, curl |
-| Fedora/RHEL-family | dnf/yum | python3, tar, coreutils, gawk, curl |
-| Arch | pacman | python3, tar, coreutils, gawk, curl |
-| openSUSE | zypper | python3, tar, coreutils, gawk, curl |
+It does not invoke apt, dnf, yum, pacman, zypper, sudo, or any other privileged package-management path. If a required terminal utility is missing, installation stops and reports the dependency so the user can install it through whatever mechanism their Linux environment provides.
 
-Package installation is only for missing host utilities. It does not make any of these distributions an exclusive Node Core target.
+This is part of the user-owned, unprivileged installer contract and allows the same installer architecture to operate in restricted Linux-terminal environments.
 
-If no supported package manager is available, the installer stops and reports the dependencies that must be installed manually.
-
-## Third-party runtime software
-
-The only mandatory third-party runtime infrastructure installed by Node Core's installer is **Kubo**.
-
-Node Core does not vendor or reimplement Kubo. The installer downloads the pinned Kubo release from the official distribution service, verifies its SHA-512 checksum, initializes its repository, configures the API/gateway addresses, starts the daemon, and verifies the API.
