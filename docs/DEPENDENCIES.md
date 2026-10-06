@@ -17,13 +17,13 @@ Termux is not an official target. Restrictions observed in Linux-like terminal e
 | Python 3.10+ | Runtime | Yes | Node Core | `python3 --version` |
 | Python standard library | Runtime | Yes | Node Core | Python import/compile tests |
 | Kubo | Infrastructure | Yes for IPFS features | `KuboManager` | `ipfs version` + API health |
-| curl or wget | Installer utility | Yes, one of them | Kubo acquisition | command detection |
+| curl or wget | Installer utility | Yes, one of them | Kubo acquisition and API verification | command detection |
 | tar | Installer utility | Yes | Kubo archive extraction | command detection |
 | sha512sum | Installer verification | Yes | Kubo archive verification | command detection |
 | core POSIX utilities | Installer/runtime | Yes | filesystem/process operations | individual command checks |
 | Git | Development | No for installed runtime | contributors/CI workflows | development environment |
 | unittest | Development/runtime tests | Yes for repository tests | `tests/` | Python standard library |
-| systemd --user or another service supervisor | Service integration | Optional | future managed services | supervisor-specific detection |
+| systemd --user | Service integration | Optional | persistent Kubo lifecycle when available | `systemctl --user` detection |
 
 ## Python dependencies
 
@@ -98,3 +98,25 @@ A Linux service supervisor may require its own platform-specific permissions, bu
 4. Platform-specific dependencies must not become hidden official platform targets.
 5. The installer must fail clearly when a mandatory dependency is missing.
 6. CI must validate the same dependency assumptions used by the installer.
+
+
+## Linux package installation
+
+The installer may install missing host packages when a supported package manager is available:
+
+| Linux family | Package manager | Packages used by installer |
+|---|---|---|
+| Debian/Ubuntu | apt | python3, tar, coreutils, gawk, curl |
+| Fedora/RHEL-family | dnf/yum | python3, tar, coreutils, gawk, curl |
+| Arch | pacman | python3, tar, coreutils, gawk, curl |
+| openSUSE | zypper | python3, tar, coreutils, gawk, curl |
+
+Package installation is only for missing host utilities. It does not make any of these distributions an exclusive Node Core target.
+
+If no supported package manager is available, the installer stops and reports the dependencies that must be installed manually.
+
+## Third-party runtime software
+
+The only mandatory third-party runtime infrastructure installed by Node Core's installer is **Kubo**.
+
+Node Core does not vendor or reimplement Kubo. The installer downloads the pinned Kubo release from the official distribution service, verifies its SHA-512 checksum, initializes its repository, configures the API/gateway addresses, starts the daemon, and verifies the API.
