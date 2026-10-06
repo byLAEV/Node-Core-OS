@@ -1,12 +1,23 @@
 # Node Core OS
 
-Node Core OS is an infrastructure for running protocols and programs in a distributed and decentralized manner.
+**Node Core OS** is a node infrastructure designed to manage local and decentralized storage as a unified environment for running protocols, services, and applications in a distributed and decentralized manner.
 
-It provides a unified management and abstraction layer between local storage and decentralized storage based on Kubo/IPFS.
+The project is built around a simple architectural principle:
+
+> **The Node is the infrastructure. Node Core is the interface to that infrastructure. Applications are built on top of it.**
+
+Node Core OS is designed to operate across two complementary storage environments:
+
+- **Local Storage** — resources stored directly on the Node.
+- **Kubo / IPFS** — decentralized, content-addressed storage and retrieval.
+
+The objective is not to make these two environments compete with each other, but to provide a common Node-level abstraction through which both can be configured, operated, and used.
+
+---
 
 ## Architecture
 
-Node Core OS is organized into three levels:
+Node Core OS is organized into three visible levels:
 
 ```text
 Node Core OS
@@ -16,34 +27,78 @@ Node Core OS
 └── Applications
 ```
 
-The first two levels are active in the initial implementation. Applications remain an extension point for future development.
+These levels have different responsibilities.
+
+```text
+                    Node Core OS
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+          ▼              ▼              ▼
+       BIOS         Node Core     Applications
+          │              │              │
+   administration    operation       programs
+          │              │              │
+          └──────────────┼──────────────┘
+                         │
+                  Node Core Runtime
+                         │
+              ┌──────────┴──────────┐
+              ▼                     ▼
+        Local Storage           Kubo / IPFS
+```
 
 ### Node Core BIOS
 
-BIOS is the administrative layer of the Node.
+**Node Core BIOS is the administrative layer of the Node.**
 
-It defines how the Node exists and how its underlying infrastructure is configured and operated.
+It is inspired by the role of a BIOS: it is the place where the fundamental configuration and operational state of the Node are managed before higher-level use.
 
-Initial BIOS modules:
+BIOS does not represent the everyday use of the Node's resources. It manages the infrastructure that makes those resources available.
+
+The complete BIOS architecture is intended to include:
 
 ```text
 Node Core BIOS
 │
 ├── Storage
-└── IPFS / Kubo
+├── IPFS / Kubo
+├── Network
+├── Services
+├── Configuration
+├── Security
+├── Diagnostics
+├── Updates
+└── Lifecycle
 ```
 
-BIOS is responsible for tasks such as configuring local storage and installing, configuring, starting, stopping, and inspecting Kubo/IPFS.
+The initial implementation begins with Storage and IPFS / Kubo. The remaining modules define the intended administrative scope of the Node as the project evolves.
 
-> BIOS configures the Node.
+BIOS responsibilities include, depending on the module:
 
-### Node Core
+- configuring Node storage
+- managing storage locations and state
+- installing and configuring Kubo
+- starting and stopping Kubo
+- inspecting IPFS status
+- managing Node services
+- managing network configuration
+- maintaining Node configuration
+- diagnostics and health checks
+- security configuration
+- updates and lifecycle operations
 
-Node Core is the operational layer.
+> **BIOS configures the Node.**
 
-It exposes the capabilities provided by the Node for everyday use.
+---
 
-Initial capabilities:
+## Node Core
+
+**Node Core is the operational layer of the Node.**
+
+Where BIOS manages how the Node exists and operates, Node Core exposes the capabilities of that Node for everyday use.
+
+The intended operational surface is:
 
 ```text
 Node Core
@@ -52,15 +107,41 @@ Node Core
 ├── IPFS
 ├── Files
 ├── CID
+├── Publish
+├── Retrieve
 ├── Pin
-└── Retrieve
+├── Unpin
+├── Share
+└── Utilities
 ```
 
-> Node Core uses the Node.
+The initial implementation concentrates on the fundamental storage and IPFS operations.
 
-### Applications
+The broader Node Core layer is intended to provide a stable abstraction over the underlying Node resources so that higher-level protocols and programs do not need to directly manage every infrastructure detail themselves.
 
-Applications are intentionally empty in the initial version.
+> **BIOS configures the Node.  
+> Node Core uses the Node.**
+
+---
+
+## Applications
+
+Applications are the third architectural level.
+
+They are intentionally separated from the Node Core itself.
+
+```text
+Applications
+│
+├── App 001
+├── App 002
+├── App 003
+└── ...
+```
+
+A new installation does not require applications to exist.
+
+The initial state is:
 
 ```text
 Applications
@@ -70,11 +151,21 @@ No applications installed.
 [Future]
 ```
 
-Applications will be able to consume the infrastructure and capabilities exposed by Node Core.
+This separation establishes an important boundary:
 
-## Runtime Architecture
+- **BIOS** manages infrastructure.
+- **Node Core** provides infrastructure capabilities.
+- **Applications** consume those capabilities.
 
-BIOS and Node Core are interfaces over a common Node Core Runtime.
+Applications can therefore be developed independently from the fundamental Node infrastructure.
+
+---
+
+# Runtime Architecture
+
+BIOS and Node Core are not intended to become two independent systems.
+
+They operate over a common **Node Core Runtime**.
 
 ```text
                     Node Core OS
@@ -94,64 +185,146 @@ BIOS and Node Core are interfaces over a common Node Core Runtime.
                          │
                  ┌───────┴───────┐
                  ▼               ▼
-           Local Storage      Kubo/IPFS
+           Local Storage      Kubo / IPFS
 ```
 
-The Runtime provides the common foundation used by BIOS and Node Core.
+The Runtime is the common technical foundation responsible for connecting the user-facing architecture with the resources of the Node.
 
-## Version 0.1
+This separation prevents BIOS and Node Core from duplicating infrastructure logic.
 
-The first implementation focuses on establishing a functional Node rather than implementing the complete future operating environment.
+---
 
-The initial milestone is:
+# Storage Architecture
+
+Storage is one of the fundamental concepts of Node Core OS.
+
+The Node is designed to operate with two complementary storage environments:
+
+```text
+                 Node Core
+                     │
+              Storage Abstraction
+                     │
+             ┌───────┴───────┐
+             │               │
+             ▼               ▼
+        Local Storage      IPFS
+```
+
+## Local Storage
+
+Local Storage represents resources physically or logically stored on the Node.
+
+It provides the Node with direct access to local files and data.
+
+Its responsibilities can include:
+
+- storage paths
+- file management
+- local capacity
+- local state
+- local persistence
+- local retrieval
+
+## Kubo / IPFS
+
+Kubo provides the IPFS implementation used by Node Core OS.
+
+IPFS introduces content-addressed storage and decentralized retrieval into the Node.
+
+Node Core OS therefore treats Kubo as an infrastructure component rather than as the entire Node Core architecture.
+
+```text
+Node Core BIOS
+      │
+      ▼
+Kubo / IPFS
+      │
+      ▼
+Node Core
+      │
+      ├── Files
+      ├── CID
+      ├── Pin
+      ├── Retrieve
+      └── Publish
+```
+
+---
+
+# Content Model
+
+One of the central operational flows of Node Core OS is:
+
+```text
+File
+ │
+ ▼
+Add
+ │
+ ▼
+IPFS
+ │
+ ▼
+CID
+ │
+ ├── Pin
+ │
+ ├── Publish
+ │
+ └── Retrieve
+```
+
+A file can therefore move from a local representation into a content-addressed representation.
+
+The CID becomes a stable reference to the content rather than a reference based only on its local filesystem path.
+
+This creates the foundation for future decentralized protocols and applications that can reference and exchange content independently from a single local filesystem.
+
+---
+
+# Node Lifecycle
+
+The Node is intended to have a lifecycle that can eventually be managed from BIOS.
 
 ```text
 Install
-  │
-  ▼
+   │
+   ▼
+Initialize
+   │
+   ▼
 Boot
-  │
-  ▼
-Node Core OS
-  │
-  ├──────────────┐
-  ▼              ▼
-BIOS            Core
-  │
-  ▼
-Storage
-  │
-  ▼
-Kubo / IPFS
-  │
-  ├── Install
-  ├── Configure
-  ├── Start
-  └── Status
-             │
-             ▼
-            Core
-             │
-             ├── Add
-             ├── CID
-             ├── Pin
-             └── Retrieve
+   │
+   ▼
+Node Core Runtime
+   │
+   ├── Initialize Storage
+   │
+   ├── Initialize Services
+   │
+   └── Initialize Kubo / IPFS
+   │
+   ▼
+Node Ready
+   │
+   ├── BIOS
+   ├── Node Core
+   └── Applications
+   │
+   ▼
+Shutdown / Maintenance / Update
 ```
 
-A Node Core OS v0.1 installation is considered functional when it can:
+The first implementation does not need to implement every lifecycle state immediately. The architecture reserves the space for them so that the Node can evolve without changing its fundamental model.
 
-1. Boot into the Node Core OS interface.
-2. Manage local storage.
-3. Install and configure Kubo/IPFS.
-4. Start and inspect the Kubo/IPFS service.
-5. Add a file to IPFS.
-6. Obtain its CID.
-7. Pin the content.
-8. Retrieve the content through Node Core.
+---
 
-## Initial Interface
+# User Interface
 
-### Main Menu
+The initial interface is intentionally simple and menu-driven.
+
+## Main Menu
 
 ```text
 Node Core OS
@@ -161,9 +334,13 @@ byLAEV
 1. Node Core BIOS
 2. Node Core
 3. Applications
+
+>
 ```
 
-### Node Core BIOS
+## Node Core BIOS
+
+The initial BIOS interface:
 
 ```text
 Node Core BIOS
@@ -172,9 +349,32 @@ byLAEV
 0. Back
 1. Storage
 2. IPFS / Kubo
+
+>
 ```
 
-### Node Core
+The intended complete administrative interface can grow toward:
+
+```text
+Node Core BIOS
+byLAEV
+
+0. Back
+1. Storage
+2. IPFS / Kubo
+3. Network
+4. Services
+5. Configuration
+6. Security
+7. Diagnostics
+8. Updates
+
+>
+```
+
+## Node Core
+
+The initial operational interface:
 
 ```text
 Node Core
@@ -187,61 +387,343 @@ byLAEV
 4. CID
 5. Pin
 6. Retrieve
+
+>
 ```
 
-### Applications
+The broader operational interface can evolve toward:
 
 ```text
-Applications
+Node Core
 byLAEV
 
-No applications installed.
+0. Back
+1. Storage
+2. IPFS
+3. Files
+4. CID
+5. Publish
+6. Retrieve
+7. Pin
+8. Unpin
+9. Share
+10. Utilities
 
-[Future]
+>
 ```
 
-## Storage Model
+The menu is an interface to the architecture, not the architecture itself. Internal modules should remain independent of the presentation layer.
 
-Node Core OS is designed around two complementary storage environments:
+---
+
+# Installation and First Boot
+
+Node Core OS is initially designed as a Node infrastructure layer installed on top of an existing operating system.
+
+The first installation flow is intended to be:
 
 ```text
-                 Node Core
-                     │
-              Storage Abstraction
-                     │
-             ┌───────┴───────┐
-             │               │
-        Local Storage      IPFS
+Install Node Core OS
+        │
+        ▼
+Initialize Node
+        │
+        ▼
+Configure local storage
+        │
+        ▼
+Install / configure Kubo
+        │
+        ▼
+Start Node Core Runtime
+        │
+        ▼
+Node Core OS
 ```
 
-Local storage provides direct storage on the Node.
+After installation, the user should be able to enter BIOS and inspect the Node before using its operational capabilities.
 
-Kubo/IPFS provides decentralized content-addressed storage and retrieval.
-
-Node Core provides the interface through which both environments can be used.
-
-## Project Direction
-
-Node Core OS is intended to become a foundation for running protocols and programs over a Node that can manage both local and decentralized resources.
-
-The initial implementation deliberately avoids introducing higher-level concepts such as identity, reputation, or applications before the underlying Node infrastructure is functional.
-
-The development sequence therefore begins with:
+The intended first-use sequence is:
 
 ```text
 Node Core OS
-    │
-    ├── Boot
-    ├── Storage
-    ├── Kubo / IPFS
-    ├── Node Core
-    └── Applications
+      │
+      ▼
+Node Core BIOS
+      │
+      ├── Storage
+      │
+      └── IPFS / Kubo
+              │
+              ├── Install
+              ├── Configure
+              ├── Start
+              ├── Stop
+              └── Status
+                      │
+                      ▼
+                  Node Core
+                      │
+                      ├── Add
+                      ├── CID
+                      ├── Pin
+                      ├── Publish
+                      └── Retrieve
 ```
 
-Higher-level systems can be built on top of this foundation later.
+---
 
-## Status
+# Design Boundaries
 
-Early development.
+Node Core OS deliberately separates several concerns.
 
-The repository currently contains the project definition and is being developed toward the first functional Node Core OS implementation.
+## BIOS is not Node Core
+
+BIOS is concerned with infrastructure administration.
+
+Node Core is concerned with using the capabilities provided by that infrastructure.
+
+```text
+BIOS
+  │
+  └── How does the Node exist and operate?
+
+Node Core
+  │
+  └── What can I do with the Node?
+```
+
+## Node Core is not Applications
+
+Node Core provides common capabilities.
+
+Applications use those capabilities to implement higher-level behavior.
+
+```text
+Node Core
+     │
+     ├── Storage
+     ├── Files
+     ├── IPFS
+     ├── CID
+     └── Retrieval
+            │
+            ▼
+      Applications
+```
+
+This prevents application-specific requirements from becoming part of the fundamental Node infrastructure.
+
+---
+
+# Long-Term Architecture
+
+The long-term scope of Node Core OS extends beyond file storage.
+
+The intended direction is a general-purpose infrastructure for running protocols and programs over a Node that can coordinate local and decentralized resources.
+
+```text
+                         Node Core OS
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+         BIOS              Node Core         Applications
+          │                   │                   │
+          │                   │                   ├── Protocols
+          │                   │                   ├── Services
+          │                   │                   └── Programs
+          │                   │
+          └──────────┬────────┘
+                     │
+               Node Runtime
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+     Storage       Network      Services
+        │
+   ┌────┴────┐
+   │         │
+ Local     IPFS
+Storage   / Kubo
+```
+
+This foundation can later support additional systems without changing the fundamental three-level architecture.
+
+Potential future layers include:
+
+- identity
+- permissions
+- trust and reputation
+- decentralized services
+- protocol execution
+- application installation
+- application lifecycle
+- inter-node communication
+- distributed coordination
+- additional storage backends
+- resource management
+- data publishing and discovery
+
+These are future capabilities, not prerequisites for the first functional Node.
+
+---
+
+# Identity and Higher-Level Systems
+
+Identity, reputation, and other higher-level systems are intentionally not part of the initial Node infrastructure.
+
+They can be introduced after the underlying Node has a stable way to:
+
+1. exist
+2. store data
+3. communicate with IPFS
+4. address content
+5. retrieve content
+6. run services
+7. expose capabilities to applications
+
+This establishes a bottom-up architecture:
+
+```text
+Infrastructure
+      │
+      ▼
+Node
+      │
+      ▼
+Storage + Network + Services
+      │
+      ▼
+Node Core
+      │
+      ▼
+Protocols
+      │
+      ▼
+Applications
+      │
+      ▼
+Higher-level systems
+```
+
+---
+
+# Development Strategy
+
+The project should be developed from the infrastructure upward.
+
+## Foundation
+
+```text
+1. Boot
+2. Runtime
+3. Configuration
+4. Local Storage
+5. Kubo / IPFS
+6. Service lifecycle
+```
+
+## Node Core
+
+```text
+7. Storage abstraction
+8. Files
+9. CID
+10. Add
+11. Retrieve
+12. Pin / Unpin
+13. Publish
+14. Share
+```
+
+## Applications
+
+```text
+15. Application model
+16. Application installation
+17. Application lifecycle
+18. Application permissions
+19. Application services
+```
+
+## Higher-level systems
+
+```text
+20. Identity
+21. Trust / Reputation
+22. Protocols
+23. Distributed services
+24. Inter-node systems
+```
+
+The sequence can evolve as implementation experience reveals better boundaries, but the dependency direction should remain:
+
+```text
+Infrastructure
+      ↓
+Node Runtime
+      ↓
+BIOS / Node Core
+      ↓
+Applications
+      ↓
+Protocols and higher-level systems
+```
+
+---
+
+# Project Philosophy
+
+Node Core OS is intended to make a Node understandable and composable.
+
+The project does not begin by defining every application that could run on it. It begins by defining the infrastructure that applications can rely on.
+
+The fundamental abstraction is:
+
+```text
+                 NODE
+                  │
+        ┌─────────┴─────────┐
+        │                   │
+     Local              Decentralized
+    Resources             Resources
+        │                   │
+        └─────────┬─────────┘
+                  │
+             Node Core
+                  │
+        ┌─────────┼─────────┐
+        │         │         │
+     Protocols  Services  Applications
+```
+
+The Node should therefore be useful before any application is installed.
+
+Applications are optional.
+
+The Node infrastructure is fundamental.
+
+---
+
+# Current Scope
+
+The repository is in early development.
+
+The architecture described in this document represents the intended design and implementation direction. The project should distinguish clearly between:
+
+- **implemented functionality**
+- **planned architecture**
+- **future extensions**
+
+The initial implementation is centered on establishing a functional Node with local storage and Kubo/IPFS integration.
+
+The long-term goal is a general Node infrastructure capable of supporting distributed and decentralized protocols and programs through a common, extensible architecture.
+
+---
+
+# Project
+
+**Node Core OS**  
+byLAEV
+
+Repository: https://github.com/byLAEV/Node-Core-OS/
