@@ -75,6 +75,25 @@ class BackupManager:
         self._record_history(target, identity.peer_id)
         return target
 
+    def verify_backup(self, path: Path, passphrase: str) -> dict[str, object]:
+        path = Path(path)
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        with tempfile.TemporaryDirectory(prefix="node-core-verify-") as work:
+            archive = Path(work) / "payload.tar"
+            self.encryption.decrypt_with_passphrase(path, archive, passphrase)
+            with tarfile.open(archive, "r:") as tar:
+                members = tar.getnames()
+                manifest_member = tar.getmember("manifest.json")
+                manifest = json.loads(tar.extractfile(manifest_member).read().decode("utf-8"))
+                key_members = [name for name in members if name.startswith("keys/") and name.endswith(".key")]
+        return {
+            "valid": "node-core-backup" == manifest.get("format") and manifest.get("version") == 1,
+            "manifest": manifest,
+            "key_count": len(key_members),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+
     def upload_to_pinata(self, path: Path) -> dict[str, object]:
         result = self.pinata.upload_file(Path(path))
         history = []
