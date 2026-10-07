@@ -39,7 +39,7 @@ class PinataClient:
         boundary = "----NodeCore" + secrets.token_hex(16)
         body = bytearray()
         body.extend(f"--{boundary}\r\n".encode())
-        body.extend(b'Content-Disposition: form-data; name="network"\r\n\r\npublic\r\n')
+        body.extend(b'Content-Disposition: form-data; name="network"\r\n\r\nprivate\r\n')
         body.extend(f"--{boundary}\r\n".encode())
         body.extend(
             f'Content-Disposition: form-data; name="file"; filename="{path.name}"\r\n'.encode()
