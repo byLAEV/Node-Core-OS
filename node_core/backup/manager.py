@@ -99,7 +99,10 @@ class BackupManager:
         }
 
     def upload_to_pinata(self, path: Path) -> dict[str, object]:
-        result = self.pinata.upload_file(Path(path))
+        path = Path(path)
+        if path.suffix.lower() != ".ncb":
+            raise ValueError("Only encrypted .ncb backups may be uploaded to Pinata.")
+        result = self.pinata.upload_file(path)
         history = []
         if self.config.backup_history_path.exists():
             history = json.loads(self.config.backup_history_path.read_text(encoding="utf-8"))
