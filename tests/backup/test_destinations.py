@@ -3,9 +3,20 @@ import tempfile
 import unittest
 
 from node_core.backup.destinations import FileDestination
+from node_core.backup.pinata import PinataClient
 
 
 class FileDestinationTests(unittest.TestCase):
+    def test_pinata_rejects_non_ncb_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            credential = root / "pinata.jwt"
+            credential.write_text("test-jwt\n", encoding="utf-8")
+            source = root / "plaintext.tar"
+            source.write_bytes(b"plaintext")
+            with self.assertRaises(ValueError):
+                PinataClient(credential).upload_file(source)
+
     def test_file_destination_sets_private_permissions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
