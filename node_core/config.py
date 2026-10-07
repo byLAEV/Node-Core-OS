@@ -7,6 +7,7 @@ from pathlib import Path
 
 DEFAULT_DATA_DIR = Path.home() / ".node-core"
 
+
 @dataclass
 class NodeConfig:
     data_dir: Path = DEFAULT_DATA_DIR
@@ -16,10 +17,23 @@ class NodeConfig:
     ipfs_gateway: str = "http://127.0.0.1:8080"
     ipfs_executable: str = "ipfs"
     ipfs_profile: str = "unixfs-v1-2025"
+    age_executable: str = "age"
 
     @property
     def config_path(self) -> Path:
         return self.data_dir / "config.json"
+
+    @property
+    def backup_path(self) -> Path:
+        return self.data_dir / "backups"
+
+    @property
+    def secrets_path(self) -> Path:
+        return self.data_dir / "secrets"
+
+    @property
+    def backup_history_path(self) -> Path:
+        return self.backup_path / "history.json"
 
     @classmethod
     def load(cls) -> "NodeConfig":
@@ -36,14 +50,20 @@ class NodeConfig:
             ipfs_gateway=data.get("ipfs_gateway", defaults.ipfs_gateway),
             ipfs_executable=data.get("ipfs_executable", defaults.ipfs_executable),
             ipfs_profile=data.get("ipfs_profile", defaults.ipfs_profile),
+            age_executable=data.get("age_executable", defaults.age_executable),
         )
 
     def ensure_directories(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.local_storage_path.mkdir(parents=True, exist_ok=True)
         self.ipfs_repo_path.parent.mkdir(parents=True, exist_ok=True)
+        self.backup_path.mkdir(parents=True, exist_ok=True)
+        self.secrets_path.mkdir(parents=True, exist_ok=True)
+        self.backup_path.chmod(0o700)
+        self.secrets_path.chmod(0o700)
 
     def save(self) -> None:
         self.ensure_directories()
         payload = {key: str(value) for key, value in asdict(self).items()}
         self.config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        self.config_path.chmod(0o600)
