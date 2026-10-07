@@ -1,5 +1,6 @@
 """Runtime orchestration for Node Core OS."""
 
+from node_core.backup.manager import BackupManager
 from node_core.config import NodeConfig
 from node_core.content import ContentManager
 from node_core.ipfs import KuboManager
@@ -24,6 +25,7 @@ class NodeRuntime:
             self.storage,
             gateway=self.config.ipfs_gateway,
         )
+        self.backup = BackupManager(self.config)
         self._booted = False
 
     @property
