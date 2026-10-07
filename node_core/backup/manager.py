@@ -52,8 +52,11 @@ class BackupManager:
             root = Path(work) / "payload"
             keys_dir = root / "keys"
             keys_dir.mkdir(parents=True, mode=0o700)
+            identity_dir = root / "identity"
+            identity_dir.mkdir(parents=True, mode=0o700)
             identity = self.kubo.identity()
             keys = self.kubo.list_keys()
+            self.kubo.export_identity(identity_dir / "kubo-identity.json")
             for name in keys:
                 self.kubo.export_key(name, keys_dir / f"{name}.key")
             (root / "manifest.json").write_bytes(
@@ -91,6 +94,7 @@ class BackupManager:
             "valid": "node-core-backup" == manifest.get("format") and manifest.get("version") == 1,
             "manifest": manifest,
             "key_count": len(key_members),
+            "identity_present": "identity/kubo-identity.json" in members,
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         }
 
