@@ -19,7 +19,7 @@ class AgeEncryption:
         destination.parent.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
             [self.executable, "--passphrase", "--output", str(destination), str(source)],
-            input=passphrase + "\n", text=True, capture_output=True, check=False,
+            input=f"{passphrase}\n{passphrase}\n", text=True, capture_output=True, check=False,
         )
         if result.returncode != 0:
             raise RuntimeError(result.stderr.strip() or "age encryption failed")
