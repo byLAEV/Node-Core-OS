@@ -31,7 +31,7 @@ verify_python_application() {
 
 verify_age() {
   [[ -x "$NODE_CORE_DATA_DIR/bin/age" ]] &&
-    [[ "$("$NODE_CORE_DATA_DIR/bin/age" --version)" == "v\${NODE_CORE_AGE_VERSION}" ]]
+    [[ "$("$NODE_CORE_DATA_DIR/bin/age" --version)" == "v${NODE_CORE_AGE_VERSION}" ]]
 }
 
 verify_kubo_api() {
