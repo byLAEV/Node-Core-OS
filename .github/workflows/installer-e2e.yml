@@ -72,6 +72,16 @@ jobs:
           chmod +x "$RUNNER_TEMP/no-systemd/systemctl"
           echo "$RUNNER_TEMP/no-systemd" >> "$GITHUB_PATH"
 
+      - name: Verify service supervisor test mode
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.service_mode }}" == "no-user-systemd" ]]; then
+            ! systemctl --user is-system-running >/dev/null 2>&1
+          else
+            command -v systemctl >/dev/null
+            systemctl --user --version >/dev/null
+          fi
+
       - name: Run clean installation
         env:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
