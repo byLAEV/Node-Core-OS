@@ -76,7 +76,22 @@ class BackupManager:
         return target
 
     def upload_to_pinata(self, path: Path) -> dict[str, object]:
-        return self.pinata.upload_file(Path(path))
+        result = self.pinata.upload_file(Path(path))
+        history = []
+        if self.config.backup_history_path.exists():
+            history = json.loads(self.config.backup_history_path.read_text(encoding="utf-8"))
+        history.append({
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "path": str(path),
+            "cid": result["cid"],
+            "provider": "pinata",
+            "encrypted": True,
+        })
+        self.config.backup_history_path.write_text(
+            json.dumps(history, indent=2) + "\n", encoding="utf-8"
+        )
+        self.config.backup_history_path.chmod(0o600)
+        return result
 
     def _record_history(self, path: Path, peer_id: str | None) -> None:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
