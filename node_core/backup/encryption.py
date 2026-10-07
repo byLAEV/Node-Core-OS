@@ -53,7 +53,7 @@ class AgeEncryption:
                     os.write(master_fd, (passphrase + "\n").encode())
                     prompts_sent = 1
                     transcript.clear()
-                elif prompts_sent == 1 and b"repeat passphrase" in lower:
+                elif prompts_sent == 1 and b"confirm passphrase" in lower:
                     os.write(master_fd, (passphrase + "\n").encode())
                     prompts_sent = 2
                     transcript.clear()
