@@ -146,6 +146,10 @@ class BackupManager:
                     name for name in names if name.startswith("keys/") and name.endswith(".key")
                 }
                 expected_files = {"identity/kubo-identity.json", *expected_key_names}
+                allowed_names = {"manifest.json", *expected_files}
+                archive_files = {member.name for member in members if member.isfile()}
+                if archive_files != allowed_names:
+                    raise ValueError("Backup archive contains unexpected files.")
                 if set(file_hashes) != expected_files:
                     raise ValueError("Backup manifest file set does not match the archive.")
                 if actual_key_names != expected_key_names:
