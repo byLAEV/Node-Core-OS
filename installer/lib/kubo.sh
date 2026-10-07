@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 kubo_asset() {
   case "$(uname -m)" in
     x86_64|amd64) printf 'linux-amd64\n' ;;
@@ -7,32 +8,24 @@ kubo_asset() {
     *) printf 'Unsupported Linux architecture: %s\n' "$(uname -m)" >&2; return 1 ;;
   esac
 }
-download_file() {
-  local url="$1" destination="$2"
-  if command -v curl >/dev/null 2>&1; then
-    # Do not impose a transfer-time limit: slow but healthy connections are valid.
-    # Resume partial downloads so an interrupted transfer does not restart from zero.
-    curl --fail --location --silent --show-error \
-      --connect-timeout 15 \
-      --retry 3 --retry-delay 2 --retry-all-errors \
-      --continue-at - --output "$destination" "$url"
-  else
-    # Only bound connection establishment; do not time out a slow transfer.
-    wget --quiet --connect-timeout=15 --tries=4 --waitretry=2 \
-      --continue --output-document="$destination" "$url"
-  fi
-}
+
 download_kubo_release() {
   local version="$1" archive="$2" destination="$3" checksum="$4"
-  local primary="https://dist.ipfs.tech/kubo/v${version}"
-  local fallback="https://github.com/ipfs/kubo/releases/download/v${version}"
-  local source
+  local primary="https://dist.ipfs.tech/kubo/v\${version}"
+  local fallback="https://github.com/ipfs/kubo/releases/download/v\${version}"
+  local source source_dir
+
   for source in "$primary" "$fallback"; do
-    rm -f "$checksum"
+    source_dir="$(mktemp -d "\${destination}.source.XXXXXX")"
     printf 'Trying Kubo source: %s\n' "$source"
-    printf 'Transfer timeout: none (slow connections allowed); partial downloads are resumed.\n'
-    if download_file "$source/$archive" "$destination" && download_file "$source/$archive.sha512" "$checksum"; then
-      if (cd "$(dirname "$destination")" && sha512sum --check "$(basename "$checksum")"); then
+    printf 'Transfer timeout: none (slow connections allowed).\n'
+
+    if download_file "$source/$archive" "$source_dir/$archive" &&
+       download_file "$source/$archive.sha512" "$source_dir/$archive.sha512"; then
+      if (cd "$source_dir" && sha512sum --check "$archive.sha512"); then
+        cp "$source_dir/$archive" "$destination"
+        cp "$source_dir/$archive.sha512" "$checksum"
+        rm -rf "$source_dir"
         printf 'Kubo download verified from %s\n' "$source"
         return 0
       fi
@@ -40,26 +33,38 @@ download_kubo_release() {
     else
       printf 'Kubo download failed from %s\n' "$source" >&2
     fi
+
+    rm -rf "$source_dir"
   done
+
   printf 'Unable to download and verify Kubo %s from any configured source.\n' "$version" >&2
   return 1
 }
+
 install_kubo() {
   local version="$NODE_CORE_KUBO_VERSION" asset archive work_dir installed_version
   asset="$(kubo_asset)"
-  archive="kubo_v${version}_${asset}.tar.gz"
+  archive="kubo_v\${version}_\${asset}.tar.gz"
   work_dir="$(mktemp -d)"
   printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
-  download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
+
+  if ! download_kubo_release "$version" "$archive" \
+      "$work_dir/$archive" "$work_dir/$archive.sha512"; then
+    rm -rf "$work_dir"
+    return 1
+  fi
+
   tar -xzf "$work_dir/$archive" -C "$work_dir"
   cp "$work_dir/kubo/ipfs" "$NODE_CORE_DATA_DIR/bin/ipfs"
   chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
   installed_version="$("$NODE_CORE_DATA_DIR/bin/ipfs" version | awk '{print $3}')"
   rm -rf "$work_dir"
+
   if [[ "$installed_version" != "$version" ]]; then
     printf 'Kubo version verification failed: expected %s, got %s\n' "$version" "$installed_version" >&2
     return 1
   fi
+
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   if [[ ! -f "$IPFS_PATH/config" ]]; then
     "$NODE_CORE_DATA_DIR/bin/ipfs" init
