@@ -36,6 +36,8 @@ class PinataClient:
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(path)
+        if path.suffix.lower() != ".ncb":
+            raise ValueError("Only encrypted .ncb backups may be uploaded to Pinata.")
         boundary = "----NodeCore" + secrets.token_hex(16)
         body = bytearray()
         body.extend(f"--{boundary}\r\n".encode())
