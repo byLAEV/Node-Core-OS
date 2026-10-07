@@ -18,10 +18,17 @@ class KuboBackupSource:
         self.executable = executable
         self.repo_path = repo_path
 
+    def _env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        if self.repo_path is not None:
+            env["IPFS_PATH"] = str(self.repo_path.resolve())
+        return env
+
     def identity(self) -> KuboIdentity:
-        result = subprocess.run([self.executable, "id"], check=True, capture_output=True, text=True)
+        env = self._env()
+        result = subprocess.run([self.executable, "id"], check=True, capture_output=True, text=True, env=env)
         payload = json.loads(result.stdout)
-        version_result = subprocess.run([self.executable, "version"], check=True, capture_output=True, text=True)
+        version_result = subprocess.run([self.executable, "version"], check=True, capture_output=True, text=True, env=env)
         fields = version_result.stdout.strip().split()
         return KuboIdentity(payload.get("ID"), fields[-1] if fields else None)
 
@@ -42,7 +49,13 @@ class KuboBackupSource:
         return destination
 
     def list_keys(self) -> list[str]:
-        result = subprocess.run([self.executable, "key", "ls"], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            [self.executable, "key", "ls"],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=self._env(),
+        )
         return [line.split()[0] for line in result.stdout.splitlines() if line.split()]
 
     def export_key(self, name: str, destination: Path) -> Path:
@@ -52,6 +65,7 @@ class KuboBackupSource:
             check=True,
             capture_output=True,
             text=True,
+            env=self._env(),
         )
         destination.chmod(0o600)
         return destination
