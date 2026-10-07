@@ -143,11 +143,11 @@ class MainMenu:
                 try:
                     backup_path = Path(input("Encrypted .ncb file: ").strip()).expanduser()
                     result = self.runtime.backup.upload_to_pinata(backup_path)
-                    print(f"\\n✓ Pinata upload complete")
+                    print(f"\n✓ Pinata upload complete")
                     print(f"CID: {result.get('cid')}")
                 except Exception as exc:
                     print(f"Pinata error: {exc}")
-                input("\\n> ")
+                input("\n> ")
             elif choice == "5":
                 try:
                     backup_path = Path(input("Encrypted .ncb file: ").strip()).expanduser()
