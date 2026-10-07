@@ -14,8 +14,9 @@ class KuboIdentity:
 
 
 class KuboBackupSource:
-    def __init__(self, executable: str = "ipfs") -> None:
+    def __init__(self, executable: str = "ipfs", repo_path: Path | None = None) -> None:
         self.executable = executable
+        self.repo_path = repo_path
 
     def identity(self) -> KuboIdentity:
         result = subprocess.run([self.executable, "id"], check=True, capture_output=True, text=True)
@@ -25,9 +26,9 @@ class KuboBackupSource:
         return KuboIdentity(payload.get("ID"), fields[-1] if fields else None)
 
     def export_identity(self, destination: Path) -> Path:
-        config_path = Path.home() / ".ipfs" / "config"
+        config_path = (self.repo_path / "config") if self.repo_path else Path.home() / ".ipfs" / "config"
         env_repo = os.environ.get("IPFS_PATH")
-        if env_repo:
+        if env_repo and self.repo_path is None:
             config_path = Path(env_repo) / "config"
         if not config_path.is_file():
             raise FileNotFoundError(f"Kubo config not found: {config_path}")
