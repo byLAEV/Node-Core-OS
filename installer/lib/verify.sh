@@ -56,6 +56,7 @@ verify_installation() {
   verify_check 'Node Core launcher' test -x "$NODE_CORE_DATA_DIR/bin/node-core" || failures=1
   verify_check 'Kubo binary' test -x "$NODE_CORE_DATA_DIR/bin/ipfs" || failures=1
   verify_check 'age binary and version' verify_age || failures=1
+  verify_check 'age configured in Node Core config' grep -F '"age_executable": "${NODE_CORE_DATA_DIR}/bin/age"' "$NODE_CORE_DATA_DIR/config.json" || failures=1
   verify_check 'IPFS repository' test -f "$IPFS_PATH/config" || failures=1
   verify_check 'Backups directory' test -d "$NODE_CORE_DATA_DIR/backups" || failures=1
   verify_check 'Secrets directory' test -d "$NODE_CORE_DATA_DIR/secrets" || failures=1
