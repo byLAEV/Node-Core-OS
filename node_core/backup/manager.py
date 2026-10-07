@@ -10,6 +10,7 @@ import tempfile
 from node_core.backup.encryption import AgeEncryption
 from node_core.backup.kubo import KuboBackupSource
 from node_core.backup.manifest import create_manifest, serialize_manifest
+from node_core.backup.pinata import PinataClient
 from node_core.config import NodeConfig
 
 
@@ -18,6 +19,7 @@ class BackupManager:
         self.config = config
         self.kubo = KuboBackupSource(config.ipfs_executable)
         self.encryption = AgeEncryption(config.age_executable)
+        self.pinata = PinataClient(config.secrets_path / "pinata.jwt")
 
     def status(self) -> dict[str, object]:
         identity = self.kubo.identity()
@@ -72,6 +74,9 @@ class BackupManager:
         target.chmod(0o600)
         self._record_history(target, identity.peer_id)
         return target
+
+    def upload_to_pinata(self, path: Path) -> dict[str, object]:
+        return self.pinata.upload_file(Path(path))
 
     def _record_history(self, path: Path, peer_id: str | None) -> None:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
