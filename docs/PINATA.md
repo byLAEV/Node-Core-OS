@@ -2,6 +2,8 @@
 
 Node Core OS does not log into Pinata with Google or GitHub.
 
+V1 uses Pinata Files API V3 over HTTPS. Encrypted `.ncb` backups are uploaded to Pinata private storage by default; the backup remains encrypted before it leaves the node.
+
 The user logs into the Pinata web console, creates a restricted API credential, and provides that credential to Node Core OS. Node Core OS then uses HTTPS API authentication with a Bearer credential.
 
 The credential is a provider secret and must not be placed in config.json, Git history, or a Node Core backup.
