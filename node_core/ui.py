@@ -1,5 +1,7 @@
 """Terminal interface for Node Core OS."""
 
+from getpass import getpass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -114,9 +116,40 @@ class MainMenu:
                 except Exception as exc:
                     print(f"Backup error: {exc}")
                 input("\n> ")
-            elif choice in {"2", "3", "4", "5"}:
-                print("\n[V1 foundation] Operation will be enabled in the next implementation phase.")
-                input("\n> ")
+            elif choice == "2":
+                try:
+                    passphrase = getpass("Backup passphrase: ")
+                    confirm = getpass("Confirm passphrase: ")
+                    if passphrase != confirm:
+                        raise ValueError("Passphrases do not match.")
+                    target = self.runtime.backup.create_backup(passphrase)
+                    print(f"\\n✓ Encrypted backup created: {target}")
+                except Exception as exc:
+                    print(f"Backup error: {exc}")
+                input("\\n> ")
+            elif choice == "3":
+                try:
+                    destination = Path(input("Destination .ncb file: ").strip()).expanduser()
+                    passphrase = getpass("Backup passphrase: ")
+                    confirm = getpass("Confirm passphrase: ")
+                    if passphrase != confirm:
+                        raise ValueError("Passphrases do not match.")
+                    target = self.runtime.backup.create_backup(passphrase, destination)
+                    print(f"\\n✓ Encrypted backup exported: {target}")
+                except Exception as exc:
+                    print(f"Backup error: {exc}")
+                input("\\n> ")
+            elif choice == "4":
+                print("\\nPinata upload will be enabled after the provider client is added.")
+                input("\\n> ")
+            elif choice == "5":
+                history = self.runtime.config.backup_history_path
+                print(f"\\nHistory: {history}")
+                if history.exists():
+                    print(history.read_text(encoding="utf-8"))
+                else:
+                    print("No backups recorded.")
+                input("\\n> ")
 
     def providers_bios(self) -> None:
         print("\nProviders")
