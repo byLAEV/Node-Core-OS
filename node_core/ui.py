@@ -138,7 +138,7 @@ class MainMenu:
                     print(f"\n✓ Encrypted backup exported: {target}")
                 except Exception as exc:
                     print(f"Backup error: {exc}")
-                input("\\n> ")
+                input("\n> ")
             elif choice == "4":
                 try:
                     backup_path = Path(input("Encrypted .ncb file: ").strip()).expanduser()
