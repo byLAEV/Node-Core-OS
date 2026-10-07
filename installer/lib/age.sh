@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-NODE_CORE_AGE_VERSION="\${NODE_CORE_AGE_VERSION:-1.3.2}"
+NODE_CORE_AGE_VERSION="${NODE_CORE_AGE_VERSION:-1.3.2}"
 
 age_asset() {
   case "$(uname -m)" in
@@ -40,13 +40,13 @@ install_age() {
   local version="$NODE_CORE_AGE_VERSION" asset archive work_dir expected actual age_binary
   local source url source_dir
   asset="$(age_asset)"
-  archive="age-v\${version}-\${asset}.tar.gz"
+  archive="age-v${version}-${asset}.tar.gz"
   work_dir="$(mktemp -d)"
   expected="$(age_sha256 "$asset")"
   printf 'Downloading age %s (%s)...\n' "$version" "$asset"
 
   for source in filippo github; do
-    source_dir="$(mktemp -d "\${work_dir}/source.XXXXXX")"
+    source_dir="$(mktemp -d "${work_dir}/source.XXXXXX")"
     url="$(age_download_url "$source" "$version" "$asset" "$archive")"
     printf 'Trying age source: %s\n' "$url"
     printf 'Transfer timeout: none (slow connections allowed).\n'
@@ -59,7 +59,7 @@ install_age() {
         if [[ -n "$age_binary" ]]; then
           cp "$age_binary" "$NODE_CORE_DATA_DIR/bin/age"
           chmod +x "$NODE_CORE_DATA_DIR/bin/age"
-          if [[ "$("$NODE_CORE_DATA_DIR/bin/age" --version)" == "v\${version}" ]]; then
+          if [[ "$("$NODE_CORE_DATA_DIR/bin/age" --version)" == "v${version}" ]]; then
             rm -rf "$work_dir"
             printf 'age download verified from %s\n' "$source"
             return 0
