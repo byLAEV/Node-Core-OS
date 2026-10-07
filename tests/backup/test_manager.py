@@ -50,6 +50,7 @@ class BackupPackagingTests(unittest.TestCase):
 
             target = manager.create_backup("test-passphrase")
 
+            self.assertEqual(list(config.backup_path.glob("node-core-backup-*")), [])
             with tarfile.open(target, "r:") as archive:
                 members = archive.getnames()
                 self.assertIn("manifest.json", members)
