@@ -11,12 +11,12 @@ kubo_asset() {
 
 download_kubo_release() {
   local version="$1" archive="$2" destination="$3" checksum="$4"
-  local primary="https://dist.ipfs.tech/kubo/v\${version}"
-  local fallback="https://github.com/ipfs/kubo/releases/download/v\${version}"
+  local primary="https://dist.ipfs.tech/kubo/v${version}"
+  local fallback="https://github.com/ipfs/kubo/releases/download/v${version}"
   local source source_dir
 
   for source in "$primary" "$fallback"; do
-    source_dir="$(mktemp -d "\${destination}.source.XXXXXX")"
+    source_dir="$(mktemp -d "${destination}.source.XXXXXX")"
     printf 'Trying Kubo source: %s\n' "$source"
     printf 'Transfer timeout: none (slow connections allowed).\n'
 
@@ -44,7 +44,7 @@ download_kubo_release() {
 install_kubo() {
   local version="$NODE_CORE_KUBO_VERSION" asset archive work_dir installed_version
   asset="$(kubo_asset)"
-  archive="kubo_v\${version}_\${asset}.tar.gz"
+  archive="kubo_v${version}_${asset}.tar.gz"
   work_dir="$(mktemp -d)"
   printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
 
