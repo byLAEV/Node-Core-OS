@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import tarfile
 import tempfile
 import unittest
@@ -40,7 +41,7 @@ class FakeEncryption:
 
 
 class BackupPackagingTests(unittest.TestCase):
-    def test_create_backup_packages_identity_and_keys_before_encryption(self):
+    def test_create_backup_packages_identity_keys_and_integrity_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = NodeConfig(data_dir=root / "node")
@@ -50,12 +51,33 @@ class BackupPackagingTests(unittest.TestCase):
 
             target = manager.create_backup("test-passphrase")
 
-            self.assertEqual(list(config.backup_path.glob("node-core-backup-*")), [])
-            with tarfile.open(target, "r:") as archive:
+            self.assertEqual(len(list(config.backup_path.glob("NodeCore-Backup-*.ncb"))), 1)
+            with tarfile.open(target, "r") as archive:
                 members = archive.getnames()
                 self.assertIn("manifest.json", members)
                 self.assertIn("identity/kubo-identity.json", members)
                 self.assertIn("keys/self.key", members)
+                manifest = json.load(archive.extractfile("manifest.json"))
+                self.assertEqual(
+                    set(manifest["files"]),
+                    {"identity/kubo-identity.json", "keys/self.key"},
+                )
+
+    def test_create_backup_refuses_existing_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = NodeConfig(data_dir=root / "node")
+            manager = BackupManager(config)
+            manager.kubo = FakeKubo()
+            manager.encryption = FakeEncryption()
+            target = config.backup_path / "existing.ncb"
+            config.ensure_directories()
+            target.write_bytes(b"do-not-overwrite")
+
+            with self.assertRaises(FileExistsError):
+                manager.create_backup("test-passphrase", target)
+
+            self.assertEqual(target.read_bytes(), b"do-not-overwrite")
 
 
 if __name__ == "__main__":
