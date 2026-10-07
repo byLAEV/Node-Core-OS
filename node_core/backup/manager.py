@@ -17,7 +17,7 @@ from node_core.config import NodeConfig
 class BackupManager:
     def __init__(self, config: NodeConfig) -> None:
         self.config = config
-        self.kubo = KuboBackupSource(config.ipfs_executable)
+        self.kubo = KuboBackupSource(config.ipfs_executable, config.ipfs_repo_path)
         self.encryption = AgeEncryption(config.age_executable)
         self.pinata = PinataClient(config.secrets_path / "pinata.jwt")
 
