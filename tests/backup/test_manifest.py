@@ -11,6 +11,7 @@ class ManifestTests(unittest.TestCase):
         self.assertIn(b"node-core-backup", payload)
         self.assertIn(b"12D3KooW-test", payload)
         self.assertNotIn(b"private_key", payload)
+        self.assertNotIn(b"PrivKey", payload)
         self.assertNotIn(b"pinata", payload.lower())
 
 
