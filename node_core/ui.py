@@ -152,12 +152,32 @@ class MainMenu:
                 input("\\n> ")
 
     def providers_bios(self) -> None:
-        print("\nProviders")
-        print("0. Back")
-        print("1. Pinata [V1]")
-        print("\nAuthentication uses a Pinata API credential.")
-        print("Google/GitHub login remains in the Pinata web console.")
-        input("\n> ")
+        while True:
+            print("\nProviders")
+            print("0. Back")
+            print("1. Pinata")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                print("\nPinata")
+                print("0. Back")
+                print("1. Configure JWT")
+                print("2. Test credential status")
+                print("3. Remove credential")
+                action = input("\n> ").strip()
+                if action == "1":
+                    token = getpass("Pinata JWT: ")
+                    self.runtime.backup.pinata.save_credential(token)
+                    print("✓ Pinata credential saved.")
+                    input("\n> ")
+                elif action == "2":
+                    print("Configured." if self.runtime.backup.pinata.has_credential() else "Not configured.")
+                    input("\n> ")
+                elif action == "3":
+                    self.runtime.backup.pinata.remove_credential()
+                    print("✓ Pinata credential removed.")
+                    input("\n> ")
 
     def storage_bios(self) -> None:
         print("\nStorage")
