@@ -10,14 +10,14 @@ kubo_asset() {
 download_file() {
   local url="$1" destination="$2"
   if command -v curl >/dev/null 2>&1; then
-    # Limit connection establishment, not the transfer itself.
-    # Slow but healthy connections are valid installer environments.
+    # Do not impose a transfer-time limit: slow but healthy connections are valid.
+    # Resume partial downloads so an interrupted transfer does not restart from zero.
     curl --fail --location --silent --show-error \
       --connect-timeout 15 \
       --retry 3 --retry-delay 2 --retry-all-errors \
       --continue-at - --output "$destination" "$url"
   else
-    # Limit connection establishment, not the transfer itself.
+    # Only bound connection establishment; do not time out a slow transfer.
     wget --quiet --connect-timeout=15 --tries=4 --waitretry=2 \
       --continue --output-document="$destination" "$url"
   fi
