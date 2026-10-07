@@ -104,7 +104,8 @@ class MainMenu:
             print("2. Create encrypted backup [V1]")
             print("3. Export to file [V1]")
             print("4. Upload to Pinata [V1]")
-            print("5. Backup History")
+            print("5. Verify encrypted backup")
+            print("6. Backup History")
             choice = input("\n> ").strip()
             if choice == "0":
                 return
@@ -140,9 +141,26 @@ class MainMenu:
                     print(f"Backup error: {exc}")
                 input("\\n> ")
             elif choice == "4":
-                print("\\nPinata upload will be enabled after the provider client is added.")
+                try:
+                    backup_path = Path(input("Encrypted .ncb file: ").strip()).expanduser()
+                    result = self.runtime.backup.upload_to_pinata(backup_path)
+                    print(f"\\n✓ Pinata upload complete")
+                    print(f"CID: {result.get('cid')}")
+                except Exception as exc:
+                    print(f"Pinata error: {exc}")
                 input("\\n> ")
             elif choice == "5":
+                try:
+                    backup_path = Path(input("Encrypted .ncb file: ").strip()).expanduser()
+                    passphrase = getpass("Backup passphrase: ")
+                    result = self.runtime.backup.verify_backup(backup_path, passphrase)
+                    print(f"\nValid: {'YES' if result['valid'] else 'NO'}")
+                    print(f"Keys: {result['key_count']}")
+                    print(f"SHA-256: {result['sha256']}")
+                except Exception as exc:
+                    print(f"Verification error: {exc}")
+                input("\n> ")
+            elif choice == "6":
                 history = self.runtime.config.backup_history_path
                 print(f"\\nHistory: {history}")
                 if history.exists():
