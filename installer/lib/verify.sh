@@ -18,8 +18,14 @@ verify_installation() {
   python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core" || failures=1
   [[ -x "$NODE_CORE_DATA_DIR/bin/node-core" ]] || failures=1
   [[ -x "$NODE_CORE_DATA_DIR/bin/ipfs" ]] || failures=1
+  [[ -x "$NODE_CORE_DATA_DIR/bin/age" ]] || failures=1
+  if [[ -x "$NODE_CORE_DATA_DIR/bin/age" ]]; then "$NODE_CORE_DATA_DIR/bin/age" --version >/dev/null 2>&1 || failures=1; fi
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   [[ -f "$IPFS_PATH/config" ]] || failures=1
+  [[ -d "$NODE_CORE_DATA_DIR/backups" ]] || failures=1
+  [[ -d "$NODE_CORE_DATA_DIR/secrets" ]] || failures=1
+  [[ ! -d "$NODE_CORE_DATA_DIR/backups" || "$(stat -c "%a" "$NODE_CORE_DATA_DIR/backups" 2>/dev/null || true)" == "700" ]] || failures=1
+  [[ ! -d "$NODE_CORE_DATA_DIR/secrets" || "$(stat -c "%a" "$NODE_CORE_DATA_DIR/secrets" 2>/dev/null || true)" == "700" ]] || failures=1
   if ! wait_for_kubo_api; then
     printf 'Verification failed: Kubo API is not reachable after startup retries.\n' >&2
     if [[ -f "$NODE_CORE_DATA_DIR/logs/kubo.log" ]]; then
