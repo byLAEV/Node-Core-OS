@@ -25,6 +25,7 @@ write_config() {
   "ipfs_api": "$NODE_CORE_KUBO_API",
   "ipfs_gateway": "$NODE_CORE_KUBO_GATEWAY",
   "ipfs_executable": "$NODE_CORE_DATA_DIR/bin/ipfs",
+  "age_executable": "$NODE_CORE_DATA_DIR/bin/age",
   "ipfs_profile": "unixfs-v1-2025"
 }
 EOF
