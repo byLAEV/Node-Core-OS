@@ -13,10 +13,25 @@ class BackupManifest:
     kubo_version: str | None
     peer_id: str | None
     keys: tuple[str, ...]
+    files: dict[str, str]
 
 
-def create_manifest(*, kubo_version: str | None, peer_id: str | None, keys: list[str]) -> BackupManifest:
-    return BackupManifest("node-core-backup", 1, datetime.now(timezone.utc).isoformat(), kubo_version, peer_id, tuple(keys))
+def create_manifest(
+    *,
+    kubo_version: str | None,
+    peer_id: str | None,
+    keys: list[str],
+    files: dict[str, str] | None = None,
+) -> BackupManifest:
+    return BackupManifest(
+        "node-core-backup",
+        1,
+        datetime.now(timezone.utc).isoformat(),
+        kubo_version,
+        peer_id,
+        tuple(keys),
+        dict(files or {}),
+    )
 
 
 def serialize_manifest(manifest: BackupManifest) -> bytes:
