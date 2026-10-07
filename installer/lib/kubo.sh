@@ -10,9 +10,16 @@ kubo_asset() {
 download_file() {
   local url="$1" destination="$2"
   if command -v curl >/dev/null 2>&1; then
-    curl --fail --location --silent --show-error --connect-timeout 15 --max-time 120 --retry 3 --retry-delay 2 --retry-all-errors --output "$destination" "$url"
+    # Do not impose a transfer-time limit: slow but healthy connections are valid.
+    # Resume partial downloads so an interrupted transfer does not restart from zero.
+    curl --fail --location --silent --show-error \
+      --connect-timeout 15 \
+      --retry 3 --retry-delay 2 --retry-all-errors \
+      --continue-at - --output "$destination" "$url"
   else
-    wget --quiet --timeout=15 --tries=4 --waitretry=2 --output-document="$destination" "$url"
+    # Only bound connection establishment; do not time out a slow transfer.
+    wget --quiet --connect-timeout=15 --tries=4 --waitretry=2 \
+      --continue --output-document="$destination" "$url"
   fi
 }
 download_kubo_release() {
@@ -21,8 +28,9 @@ download_kubo_release() {
   local fallback="https://github.com/ipfs/kubo/releases/download/v${version}"
   local source
   for source in "$primary" "$fallback"; do
-    rm -f "$destination" "$checksum"
+    rm -f "$checksum"
     printf 'Trying Kubo source: %s\n' "$source"
+    printf 'Transfer timeout: none (slow connections allowed); partial downloads are resumed.\n'
     if download_file "$source/$archive" "$destination" && download_file "$source/$archive.sha512" "$checksum"; then
       if (cd "$(dirname "$destination")" && sha512sum --check "$(basename "$checksum")"); then
         printf 'Kubo download verified from %s\n' "$source"
