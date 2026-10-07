@@ -11,3 +11,21 @@ http_post() {
     return 127
   fi
 }
+
+download_file() {
+  local url="$1" destination="$2"
+  if command -v curl >/dev/null 2>&1; then
+    # Downloads have no artificial connection or transfer deadline.
+    # Retries handle transport errors while slow healthy transfers remain valid.
+    curl --fail --location --silent --show-error \
+      --retry 3 --retry-delay 2 --retry-all-errors \
+      --continue-at - --output "$destination" "$url"
+  elif command -v wget >/dev/null 2>&1; then
+    # Do not impose a download timeout. Resume only against the same source.
+    wget --quiet --tries=4 --waitretry=2 \
+      --continue --output-document="$destination" "$url"
+  else
+    printf 'No supported download client found (curl or wget required).\n' >&2
+    return 127
+  fi
+}
