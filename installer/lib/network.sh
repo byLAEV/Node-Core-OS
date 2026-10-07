@@ -18,11 +18,12 @@ download_file() {
     # Downloads have no artificial connection or transfer deadline.
     # Retries handle transport errors while slow healthy transfers remain valid.
     curl --fail --location --silent --show-error \
+      --connect-timeout 10 \
       --retry 3 --retry-delay 2 --retry-all-errors \
       --continue-at - --output "$destination" "$url"
   elif command -v wget >/dev/null 2>&1; then
     # Do not impose a download timeout. Resume only against the same source.
-    wget --quiet --tries=4 --waitretry=2 \
+    wget --quiet --tries=4 --waitretry=2 --connect-timeout=10 \
       --continue --output-document="$destination" "$url"
   else
     printf 'No supported download client found (curl or wget required).\n' >&2
