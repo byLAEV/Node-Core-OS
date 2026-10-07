@@ -9,6 +9,7 @@ source "$INSTALLER_DIR/lib/network.sh"
 source "$INSTALLER_DIR/lib/filesystem.sh"
 source "$INSTALLER_DIR/lib/python.sh"
 source "$INSTALLER_DIR/lib/kubo.sh"
+source "$INSTALLER_DIR/lib/age.sh"
 source "$INSTALLER_DIR/lib/service.sh"
 source "$INSTALLER_DIR/lib/verify.sh"
 main() {
@@ -21,6 +22,7 @@ main() {
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   install_kubo
+  install_age
   write_config
   create_launcher
   if ! start_kubo; then
