@@ -1,188 +1,188 @@
 # Node Core OS
 
-**Node Core OS** es una infraestructura personal para que una persona pueda disponer de un núcleo propio desde el cual conservar, administrar, verificar, corroborar y utilizar sus recursos digitales, su identidad, sus registros, su evidencia y, progresivamente, su reputación.
+**Node Core OS** is a personal infrastructure designed to give a person or entity its own digital core from which to preserve, manage, verify, corroborate, and use digital resources, identity, records, evidence, and, progressively, reputation.
 
-El proyecto parte de una idea fundamental:
+The project starts from a fundamental premise:
 
-> **La persona debe disponer de una infraestructura propia antes de depender de aplicaciones, servicios o sistemas externos para representar quién es, qué ha hecho, qué hace o qué quiere hacer.**
+> **A person should have access to their own infrastructure before depending on external applications, services, or systems to represent who they are, what they have done, what they do, or what they intend to do.**
 
-Node Core OS administra dos tipos fundamentales de almacenamiento:
+Node Core OS manages two fundamental storage domains:
 
-- **Almacenamiento local** — recursos conservados directamente en el Node.
-- **Almacenamiento descentralizado** — recursos gestionados mediante tecnologías como Kubo/IPFS.
+- **Local storage** — resources preserved directly on the Node.
+- **Decentralized storage** — resources managed through technologies such as Kubo/IPFS.
 
-Sobre esta base pueden operar posteriormente protocolos, servicios y aplicaciones distribuidas o descentralizadas.
+Distributed and decentralized protocols, services, and applications can progressively operate on top of these storage foundations.
 
-Pero el objetivo de Node Core OS no es únicamente almacenar archivos.
+Node Core OS is therefore not merely a file-storage system.
 
-Su objetivo final es construir una **infraestructura personal de evidencia, identidad, reputación y participación**, en la que la persona conserve la capacidad de decidir qué registrar, para qué registrarlo, qué corroborar, qué compartir y cuándo utilizarlo.
+Its long-term objective is to provide a **personal infrastructure for records, evidence, identity, corroboration, reputation, protocols, and participation**, while preserving the person's ability to decide what to record, why it should be recorded, what should be corroborated, what may be shared, and when information should be used.
 
 ---
 
-# 1. Idea fundamental
+# 1. Fundamental Idea
 
-Node Core OS no se concibe primero como una aplicación.
+Node Core OS is not conceived primarily as an application.
 
-Se concibe como un **núcleo de infraestructura personal**.
+It is conceived as a **personal infrastructure and digital core**.
 
-La relación fundamental es:
+The fundamental relationship is:
 
 ```text
-PERSONA
-   │
-   ▼
+PERSON
+  │
+  ▼
 NODE CORE OS
-   │
-   ├── Almacenamiento local
-   ├── Almacenamiento descentralizado
-   ├── Registros
-   ├── Evidencia
-   ├── Identidad
-   ├── Corroboración
-   ├── Reputación
-   ├── Protocolos
-   └── Aplicaciones
+  │
+  ├── Local Storage
+  ├── Decentralized Storage
+  ├── Records
+  ├── Evidence
+  ├── Identity
+  ├── Corroboration
+  ├── Reputation
+  ├── Protocols
+  └── Applications
 ```
 
-La infraestructura debe existir antes de que las aplicaciones determinen cómo utilizarla.
+The infrastructure should exist before applications determine how it is used.
 
-Por eso:
+Therefore:
 
-> **Node Core OS no pretende definir de antemano qué debe hacer una persona. Pretende darle un lugar propio desde el cual pueda decidir qué hacer.**
-
----
-
-# 2. La persona como núcleo
-
-El Node existe para servir a una persona o entidad que decide utilizarlo.
-
-La infraestructura debe permitir conservar una continuidad digital de aquello que la persona considere importante:
-
-- quién es;
-- qué identificadores utiliza;
-- qué registros ha generado;
-- qué hechos puede demostrar;
-- qué actividades ha realizado;
-- qué relaciones ha establecido;
-- qué conocimientos o capacidades puede acreditar;
-- qué reputación se ha construido en determinados contextos;
-- qué quiere hacer en el futuro.
-
-Esto no significa que Node Core OS deba publicar toda esa información.
-
-Al contrario:
-
-> **Conservar no significa publicar. Registrar no significa compartir. Poseer evidencia no significa estar obligado a presentarla.**
-
-La persona debe conservar el control sobre el uso de sus registros.
+> **Node Core OS does not intend to define in advance what a person must do. It intends to provide a place from which the person can decide what to do.**
 
 ---
 
-# 3. Sistema de solicitudes
+# 2. The Person as the Core
 
-Uno de los principios fundamentales de Node Core OS es:
+The Node exists to serve the person or entity that chooses to use it.
 
-> **Nada debe ocurrir por decisión autónoma del sistema cuando implique representar, propagar, evaluar o utilizar información personal. Debe existir una solicitud o una autorización definida por la persona.**
+The infrastructure should provide continuity for information that the person considers important, including:
 
-La solicitud es una unidad fundamental del sistema.
+- who they are;
+- which identifiers they use;
+- which records they have created;
+- which facts they can substantiate;
+- which activities they have performed;
+- which relationships they have established;
+- which knowledge or capabilities they can demonstrate;
+- what reputation they have built in particular contexts;
+- what they intend to do in the future.
 
-Una interacción conceptual puede ser:
+This does not mean that Node Core OS should publish all of this information.
+
+On the contrary:
+
+> **Preservation does not mean publication. Recording does not mean sharing. Possessing evidence does not mean being obligated to disclose it.**
+
+The person should retain control over how records are used.
+
+---
+
+# 3. Request-Driven Operation
+
+One of the fundamental principles of Node Core OS is:
+
+> **The system should not autonomously decide to represent, propagate, evaluate, or use personal information when doing so affects the person's agency. Such operations should originate from an explicit request or a defined authorization.**
+
+A request is therefore a fundamental unit of the system.
+
+A conceptual interaction may look like:
 
 ```text
-PERSONA
-   │
-   │ "Necesito registrar una evidencia"
-   ▼
-SOLICITUD
-   │
-   ▼
+PERSON
+  │
+  │ "I need to create an evidence record"
+  ▼
+REQUEST
+  │
+  ▼
 NODE CORE OS
-   │
-   ├── determina qué información es necesaria
-   ├── registra los datos solicitados
-   ├── conserva la evidencia
-   ├── solicita corroboraciones cuando corresponda
-   └── prepara el resultado
-   │
-   ▼
-RESULTADO
-   │
-   ▼
-PERSONA
-   │
-   └── decide si lo utiliza, comparte o conserva
+  │
+  ├── determines what information is required
+  ├── records the requested data
+  ├── preserves the evidence
+  ├── requests corroboration when appropriate
+  └── prepares the result
+  │
+  ▼
+RESULT
+  │
+  ▼
+PERSON
+  │
+  └── decides whether to use, share, or preserve it
 ```
 
-Una solicitud puede expresar:
+A request may define:
 
 - actor;
-- intención;
-- propósito;
-- contexto;
-- alcance;
-- duración;
-- información requerida;
-- evidencia requerida;
-- corroboraciones requeridas;
-- política de almacenamiento;
-- postura de privacidad;
-- resultado esperado.
+- intention;
+- purpose;
+- context;
+- scope;
+- duration;
+- required information;
+- required evidence;
+- required corroboration;
+- storage policy;
+- privacy posture;
+- expected result.
 
-La solicitud expresa **qué quiere conseguir la persona**.
+The request expresses **what the person wants to accomplish**.
 
-Las aplicaciones pueden generar solicitudes, pero no deben recibir por ello acceso ilimitado al Node.
+Applications may generate requests, but they should not thereby receive unrestricted access to the Node.
 
 ---
 
-# 4. Registros
+# 4. Records
 
-Los registros son una pieza fundamental de la continuidad de una persona.
+Records are a fundamental component of a person's digital continuity.
 
-Un registro no debería ser tratado simplemente como un archivo.
+A record should not be treated merely as a file.
 
-Conceptualmente puede contener:
+Conceptually, a record may contain:
 
 ```text
 RECORD
-├── Identidad asociada
-├── Intención
-├── Propósito
-├── Contexto
-├── Importancia
-├── Tiempo
-├── Duración
-├── Proveniencia
-├── Integridad
-├── Relaciones
-├── Evidencia
-├── Corroboraciones
-└── Política de almacenamiento
+├── Associated Identity
+├── Intention
+├── Purpose
+├── Context
+├── Importance
+├── Time
+├── Duration
+├── Provenance
+├── Integrity
+├── Relationships
+├── Evidence
+├── Corroborations
+└── Storage Policy
 ```
 
-No todos los registros necesitan tener la misma duración.
+Not every record needs the same lifetime.
 
-Un registro puede ser:
+A record may be:
 
-- temporal;
-- efímero;
-- persistente;
-- histórico;
-- archivado;
-- canónico;
-- derivado.
+- temporary;
+- ephemeral;
+- persistent;
+- historical;
+- archived;
+- canonical;
+- derived.
 
-La arquitectura debe permitir que la persona determine qué registros deben permanecer y cuáles no.
+The architecture should allow the person to determine which records should remain and which should not.
 
 ---
 
-# 5. Almacenamiento local y descentralizado
+# 5. Local and Decentralized Storage
 
-El almacenamiento es la primera infraestructura de Node Core OS.
+Storage is the first infrastructure layer of Node Core OS.
 
 ```text
                     NODE CORE OS
                          │
-                  Storage Layer
+                    Storage Layer
                          │
                 ┌────────┴────────┐
                 ▼                 ▼
@@ -191,354 +191,362 @@ El almacenamiento es la primera infraestructura de Node Core OS.
 
 ## Local Storage
 
-Permite conservar directamente en el Node:
+Local storage can preserve:
 
-- archivos;
-- configuraciones;
-- claves;
-- registros;
-- bases de datos;
-- estados;
-- datos temporales;
-- información privada.
+- files;
+- configurations;
+- keys;
+- records;
+- databases;
+- states;
+- temporary data;
+- private information.
 
 ## Kubo / IPFS
 
-Kubo proporciona la implementación IPFS utilizada por Node Core OS.
+Kubo provides the IPFS implementation used by Node Core OS.
 
-Permite trabajar con:
+It enables operations involving:
 
-- contenido direccionado por CID;
-- almacenamiento distribuido;
-- recuperación de contenido;
+- content-addressed data and CIDs;
+- distributed storage;
+- content retrieval;
 - pinning;
-- publicación;
-- intercambio entre Nodes.
+- publishing;
+- exchange between Nodes.
 
-Kubo es una infraestructura utilizada por Node Core OS, no la definición completa del sistema.
+Kubo is an infrastructure component used by Node Core OS. It is **not the complete definition of Node Core OS**.
 
 ---
 
-# 6. Contenido y evidencia
+# 6. Content and Evidence
 
-Un archivo puede convertirse en una referencia de contenido independiente de su ubicación local:
+A file can become a content reference independent of its original local path:
 
 ```text
-Archivo
-  │
-  ▼
+File
+ │
+ ▼
 Add
-  │
-  ▼
+ │
+ ▼
 IPFS
-  │
-  ▼
+ │
+ ▼
 CID
+ │
+ ├── Pin
+ ├── Retrieve
+ ├── Publish
+ └── Share
+```
+
+This allows evidence to be referenced through content-addressed integrity mechanisms without depending exclusively on a local filesystem path.
+
+Evidence may subsequently be associated with:
+
+- an identity;
+- a request;
+- an event;
+- an action;
+- a protocol;
+- a context;
+- a corroboration.
+
+---
+
+# 7. Identity
+
+Identity in Node Core OS should not be reduced to a username.
+
+Identity should be capable of representing continuity across identifiers, records, credentials, and evidence associated with a person or entity.
+
+Conceptually:
+
+```text
+INDIVIDUAL
   │
-  ├── Pin
-  ├── Retrieve
-  ├── Publish
-  └── Share
+  ├── Individual Identity
+  │
+  ├── Personal Identity
+  │
+  └── Professional Identity
+         │
+         ├── Public Posture
+         └── Private Posture
 ```
 
-Esto permite que la evidencia pueda ser referenciada mediante mecanismos de integridad y contenido sin depender exclusivamente de una ruta del sistema de archivos.
+These identities do not necessarily represent different people.
 
-Una evidencia puede posteriormente asociarse con:
+They may represent different legitimate expressions of the same individual within different contexts.
 
-- una identidad;
-- una solicitud;
-- un evento;
-- una acción;
-- un protocolo;
-- un contexto;
-- una corroboración.
+The architecture should support relationships between:
+
+```text
+Identity
+  │
+  ├── Identifiers
+  ├── Keys
+  ├── Credentials
+  ├── Records
+  ├── Evidence
+  └── Relationships
+```
+
+Cryptography can demonstrate control over an identifier or key.
+
+However, cryptographic control alone does not prove that one unique physical person exists behind all identifiers.
+
+For that reason, Node Core OS considers an additional layer of **corroboration and consistency**.
 
 ---
 
-# 7. Identidad
+# 8. Individuality and Consistency
 
-La identidad de Node Core OS no debe reducirse a un nombre de usuario.
+A central idea of the proposal is that the same identity should not be able to receive mutually incompatible attributions as though they all belonged to one coherent individual continuity.
 
-La identidad debe poder representar una continuidad de identificadores, registros, credenciales y evidencias asociadas con una misma persona o entidad.
+Identity-related information can therefore be examined against constraints involving:
 
-Conceptualmente:
+- time;
+- space;
+- physical feasibility;
+- mathematics;
+- causality;
+- logic;
+- context.
 
-```text
-INDIVIDUO
-   │
-   ├── Identidad individual
-   │
-   ├── Identidad personal
-   │
-   └── Identidad profesional
-          │
-          ├── Postura pública
-          └── Postura privada
-```
-
-Estas identidades no necesariamente significan personas diferentes.
-
-Pueden representar distintas formas legítimas de la misma individualidad dentro de distintos contextos.
-
-La arquitectura debe permitir establecer relaciones entre:
+For example, if the same identity is recorded performing an activity that is physically incompatible with another activity attributed to that identity during the same time interval, the system should identify a contradiction that requires investigation.
 
 ```text
-Identidad
-   │
-   ├── Identificadores
-   ├── Claves
-   ├── Credenciales
-   ├── Registros
-   ├── Evidencias
-   └── Relaciones
+IDENTITY
+  │
+  ├── Event A
+  │     │
+  │     └── location / time
+  │
+  └── Event B
+        │
+        └── location / time
+               │
+               ▼
+           CONSISTENCY
+               │
+        ┌──────┴──────┐
+        ▼             ▼
+    Compatible    Contradiction
 ```
 
-La criptografía puede demostrar control sobre un identificador o una clave.
+This does not mean that physical laws or mathematics, by themselves, prove who a person is.
 
-Pero el control criptográfico, por sí solo, no demuestra que exista una única persona física detrás de todos los identificadores.
+They can instead provide a **contradiction-detection and corroboration layer**.
 
-Por ello Node Core OS contempla una capa adicional de **corroboración y consistencia**.
+The purpose is to prevent the system from treating an identity history as coherent when the attributed events contain impossible or mutually incompatible conditions, subject to the assumptions and trustworthiness of the underlying evidence.
 
 ---
 
-# 8. Individualidad y consistencia
+# 9. Evidence
 
-Una de las ideas centrales de la propuesta es que una misma identidad no debería poder recibir atribuciones mutuamente incompatibles como si todas pertenecieran a una única continuidad individual.
+Evidence is the relationship between a claim and the records that can support it.
 
-La identidad debe poder ser examinada mediante restricciones:
-
-- temporales;
-- espaciales;
-- físicas;
-- matemáticas;
-- causales;
-- lógicas;
-- contextuales.
-
-Ejemplo conceptual:
-
-Si una misma identidad aparece realizando una actividad físicamente incompatible con otra actividad atribuida a esa misma identidad en el mismo intervalo temporal, existe una contradicción que debe ser investigada.
+A conceptual chain is:
 
 ```text
-IDENTIDAD
-   │
-   ├── Evento A
-   │      │
-   │      └── ubicación / tiempo
-   │
-   └── Evento B
-          │
-          └── ubicación / tiempo
-                 │
-                 ▼
-             CONSISTENCIA
-                 │
-          ┌──────┴──────┐
-          ▼             ▼
-      Compatible    Contradicción
+IDENTITY
+   ↓
+RECORD
+   ↓
+EVIDENCE
+   ↓
+CORROBORATION
+   ↓
+CONSISTENCY
+   ↓
+HISTORY
+   ↓
+REPUTATION
 ```
 
-Esto no significa que las leyes físicas por sí solas demuestren quién es una persona.
+The architecture should be able to answer questions such as:
 
-Significa que pueden funcionar como una **capa de detección de contradicciones y corroboración**.
+- What is being claimed?
+- Who recorded it?
+- When was it recorded?
+- What is its origin?
+- What evidence exists?
+- Which identity is associated with it?
+- Who corroborated it?
+- In what context?
+- Are there contradictions?
+- Is it still valid?
 
-La finalidad es impedir que el sistema acepte como coherente una historia de identidad que contiene hechos imposibles o incompatibles.
+Reputation should not appear magically as a number.
+
+It should be derivable from a history of evidence.
 
 ---
 
-# 9. Evidencia
+# 10. Reputation
 
-La evidencia es la relación entre una afirmación y los registros que permiten sostenerla.
-
-Una cadena conceptual puede ser:
+Node Core OS distinguishes:
 
 ```text
-IDENTIDAD
-   ↓
-REGISTRO
-   ↓
-EVIDENCIA
-   ↓
-CORROBORACIÓN
-   ↓
-CONSISTENCIA
-   ↓
-HISTORIA
-   ↓
-REPUTACIÓN
+IDENTITY
+  │
+  └── Who?
+
+EVIDENCE
+  │
+  └── What can be substantiated?
+
+REPUTATION
+  │
+  └── What can be inferred about a history within a context?
 ```
 
-La arquitectura debe poder responder preguntas como:
+Reputation does not need to be a universal score.
 
-- ¿Qué se afirma?
-- ¿Quién lo registró?
-- ¿Cuándo se registró?
-- ¿Cuál es su origen?
-- ¿Qué evidencia existe?
-- ¿Qué identidad está asociada?
-- ¿Quién lo corroboró?
-- ¿En qué contexto?
-- ¿Existen contradicciones?
-- ¿Sigue siendo válido?
-
-La reputación no debería aparecer mágicamente como un número.
-
-Debe poder derivarse de una historia de evidencia.
-
----
-
-# 10. Reputación
-
-Node Core OS distingue:
-
-```text
-IDENTIDAD
-    │
-    └── ¿Quién?
-
-EVIDENCIA
-    │
-    └── ¿Qué puede demostrarse?
-
-REPUTACIÓN
-    │
-    └── ¿Qué puede inferirse sobre el historial en un contexto?
-```
-
-La reputación no debe ser necesariamente una puntuación universal.
-
-Puede existir una reputación contextual:
+It can be contextual, such as:
 
 - personal;
-- profesional;
+- professional;
 - contractual;
-- de servicio;
-- de participación;
-- de confiabilidad;
-- de cumplimiento;
-- de actividad en un protocolo.
+- service-related;
+- participation-based;
+- reliability-related;
+- compliance-related;
+- protocol-specific.
 
-Por tanto:
+Therefore:
 
-> **La reputación pertenece al contexto y debe poder ser explicada mediante evidencia.**
+> **Reputation belongs to context and should be explainable through evidence.**
 
-Una reputación puede ser aceptada por un sistema y no necesariamente por otro.
+A reputation may be accepted by one system and not necessarily by another.
 
-Node Core OS no pretende convertirse en un juez universal de reputación.
+Node Core OS does not intend to become a universal judge of reputation.
 
 ---
 
-# 11. Corroboración distribuida
+# 11. Distributed Corroboration
 
-La red de Node Core OS puede utilizar otros Nodes para corroborar información.
+A Node Core OS network may use other Nodes to corroborate information.
 
-La idea no es:
+The intention is not:
 
-> "La red decide quién eres."
+> "The network decides who you are."
 
-La idea es:
+The intention is:
 
-> **"La red permite comprobar qué evidencia existe sobre una identidad y qué otros Nodes pueden corroborarla."**
+> **"The network helps establish what evidence exists regarding an identity and which other Nodes can corroborate it."**
 
-Conceptualmente:
+Conceptually:
 
 ```text
-IDENTIDAD
-   │
-   ▼
-Solicitud de corroboración
-   │
-   ▼
-Red de Nodes
-   │
-   ├── Evidencias
-   ├── Manifiestos
-   ├── Firmas
-   ├── CIDs
-   ├── Versiones
-   ├── Atestaciones
-   └── Inconsistencias conocidas
-   │
-   ▼
-Resultado de corroboración
-   │
-   ▼
-Persona
+IDENTITY
+  │
+  ▼
+Corroboration Request
+  │
+  ▼
+Node Network
+  │
+  ├── Evidence
+  ├── Manifests
+  ├── Signatures
+  ├── CIDs
+  ├── Versions
+  ├── Attestations
+  └── Known inconsistencies
+  │
+  ▼
+Corroboration Result
+  │
+  ▼
+PERSON
 ```
 
-La propagación tampoco debe confundirse con publicación.
+Propagation should also not be confused with publication.
 
-Puede propagarse:
+The network may propagate:
 
-- un CID;
-- un hash;
-- una firma;
-- un manifiesto;
-- una atestación;
-- una referencia;
-- una prueba;
-- metadatos mínimos.
+- a CID;
+- a hash;
+- a signature;
+- a manifest;
+- an attestation;
+- a reference;
+- a proof;
+- minimal metadata.
 
-Mientras que el contenido original puede permanecer local o protegido.
+The original content may remain local or protected.
+
+A future Node Core OS network is therefore intended to support distributed identity and reputation manifests that allow Nodes to ask, in effect:
+
+> **"How do we know this reputation is corroborated?"**
+
+Other Nodes may respond with independently held evidence, attestations, references, or records showing why a claim can or cannot be corroborated.
+
+This is distributed corroboration, not necessarily centralized identity governance.
 
 ---
 
-# 12. Privacidad
+# 12. Privacy
 
-La descentralización no significa que todo deba hacerse público.
+Decentralization does not mean that everything should be public.
 
-Node Core OS debe permitir separar:
+Node Core OS must preserve a distinction between:
 
 ```text
-CONSERVAR
+PRESERVE
    ≠
-PROPAGAR
+PROPAGATE
    ≠
-PUBLICAR
+PUBLISH
    ≠
-AUTORIZAR
+AUTHORIZE
    ≠
-UTILIZAR
+USE
 ```
 
-La persona puede conservar una evidencia localmente y, cuando sea necesario, presentar solamente una prueba o referencia suficiente para un propósito concreto.
+A person may preserve evidence locally and, when necessary, present only a sufficient proof, reference, or attestation for a specific purpose.
 
-Este principio permite construir sistemas donde la infraestructura distribuida pueda corroborar sin requerir necesariamente la exposición completa de los datos personales.
+This makes it possible to design distributed systems that can corroborate claims without requiring the complete exposure of personal information.
 
----
-
-# 13. Decisión individual
-
-El objetivo no es obligar a una persona a construir una reputación ni obligarla a participar en sistemas externos.
-
-El objetivo es permitir que tenga la infraestructura preparada.
-
-Una persona puede necesitar en algún momento:
-
-- demostrar quién es;
-- demostrar que realizó una actividad;
-- demostrar experiencia;
-- demostrar una relación contractual;
-- demostrar una trayectoria;
-- cumplir requisitos para un servicio;
-- participar en un protocolo;
-- solicitar una oportunidad;
-- establecer confianza con otra persona;
-- demostrar continuidad histórica.
-
-Node Core OS busca que esa persona no tenga que empezar desde cero cada vez.
-
-Debe existir un lugar propio donde pueda conservar:
-
-> **quién soy, qué he hecho, qué hago y qué quiero hacer.**
-
-Después, la decisión de utilizar esa información pertenece a la persona.
+Privacy is therefore treated as an architectural property rather than merely an application setting.
 
 ---
 
-# 14. Arquitectura
+# 13. Individual Decision
 
-La arquitectura general mantiene tres niveles visibles:
+The goal is not to force a person to build a reputation or participate in external systems.
+
+The goal is to allow the infrastructure to be ready when participation becomes necessary or desirable.
+
+A person may eventually need to:
+
+- prove who they are;
+- prove that they performed an activity;
+- demonstrate experience;
+- demonstrate a contractual relationship;
+- demonstrate a history;
+- satisfy requirements for a service;
+- participate in a protocol;
+- request an opportunity;
+- establish trust with another person;
+- demonstrate historical continuity.
+
+Node Core OS seeks to prevent that person from having to start from zero every time.
+
+There should be a personal place where they can preserve:
+
+> **who I am, what I have done, what I do, and what I intend to do.**
+
+The decision to use that information remains with the person.
+
+---
+
+# 14. Architecture
+
+The architecture is organized around three visible levels:
 
 ```text
 Node Core OS
@@ -550,7 +558,7 @@ Node Core OS
 
 ## Node Core BIOS
 
-BIOS administra la infraestructura:
+BIOS manages the infrastructure:
 
 - Storage;
 - Kubo/IPFS;
@@ -562,11 +570,11 @@ BIOS administra la infraestructura:
 - Updates;
 - Lifecycle.
 
-> **BIOS configura el Node.**
+> **BIOS configures the Node.**
 
 ## Node Core
 
-Node Core proporciona las capacidades operativas:
+Node Core provides operational capabilities:
 
 - Storage;
 - Files;
@@ -584,11 +592,11 @@ Node Core proporciona las capacidades operativas:
 - Services;
 - Utilities.
 
-> **Node Core utiliza el Node.**
+> **Node Core operates the Node.**
 
 ## Applications
 
-Las aplicaciones consumen las capacidades del Node.
+Applications consume Node Core capabilities.
 
 ```text
 Applications
@@ -608,15 +616,15 @@ Node Core Runtime
       └── Services
 ```
 
-Una instalación puede existir sin aplicaciones.
+A Node installation should be able to exist without applications.
 
 ---
 
-# 15. Sistema de aplicaciones y protocolos
+# 15. Protocol and Application Layer
 
-Node Core OS pretende ser una infraestructura sobre la cual otros proyectos puedan construir.
+Node Core OS is intended to provide infrastructure on which other projects can build.
 
-Una aplicación puede solicitar capacidades del Node sin administrar directamente todos sus detalles internos.
+An application may request Node capabilities without directly managing every internal implementation detail.
 
 ```text
 Node Core OS
@@ -632,82 +640,82 @@ Node Core
       └── Services
               │
               ▼
-          Protocolos
+          Protocols
               │
               ▼
-         Aplicaciones
+         Applications
 ```
 
-Esto permite que distintos protocolos y aplicaciones compartan una infraestructura común.
+This allows different protocols and applications to share a common personal infrastructure.
 
-El objetivo final es que **otros sistemas puedan incorporar Node Core OS allí donde lo necesiten**, en lugar de exigir que una persona migre toda su infraestructura personal hacia cada aplicación.
+The long-term goal is for **other systems to be able to integrate Node Core OS wherever they need it**, rather than requiring a person to migrate their entire personal infrastructure into every application.
 
-En otras palabras:
+In other words:
 
-> **Si la montaña no va a Mahoma, la montaña viene a Mahoma.**
+> **If the mountain will not go to Muhammad, the mountain comes to Muhammad.**
 
-Node Core OS busca que la infraestructura personal pueda llegar al sistema que la necesita y que el sistema pueda utilizar las capacidades del Node sin apropiarse del núcleo personal.
-
----
-
-# 16. Principios de arquitectura
-
-## 1. La persona es el centro
-
-La infraestructura existe para preservar la capacidad de decisión de la persona.
-
-## 2. El Node es infraestructura
-
-El Node debe ser útil antes de instalar aplicaciones.
-
-## 3. Las solicitudes son fundamentales
-
-Las operaciones que representan la voluntad de la persona deben partir de solicitudes explícitas o autorizaciones definidas.
-
-## 4. Local y descentralizado son complementarios
-
-El almacenamiento local y Kubo/IPFS cumplen funciones diferentes y pueden coexistir.
-
-## 5. Registrar no significa publicar
-
-La evidencia puede conservarse sin ser automáticamente propagada.
-
-## 6. Identidad no es reputación
-
-La identidad representa continuidad e identificación; la reputación deriva de evidencia contextual.
-
-## 7. Reputación debe ser explicable
-
-Toda reputación significativa debe poder relacionarse con evidencia y corroboraciones.
-
-## 8. La consistencia importa
-
-Las contradicciones temporales, espaciales, físicas, matemáticas o lógicas pueden utilizarse para detectar atribuciones incompatibles.
-
-## 9. La red corrobora, no gobierna la identidad
-
-La red puede aportar evidencia y corroboración sin convertirse en una autoridad universal sobre la persona.
-
-## 10. Las aplicaciones son una capa superior
-
-Las aplicaciones deben utilizar Node Core y no reemplazarlo.
-
-## 11. La privacidad es una propiedad arquitectónica
-
-Debe existir una diferencia entre conservar, compartir, propagar, publicar y autorizar.
-
-## 12. La infraestructura debe ser reutilizable
-
-Node Core OS debe poder convertirse en una base que otros proyectos puedan integrar o implementar.
+Node Core OS aims to make personal infrastructure portable enough to reach the systems that need it, while allowing those systems to use Node capabilities without taking ownership of the personal core.
 
 ---
 
-# 17. Modelo completo
+# 16. Architecture Principles
 
-La visión completa puede expresarse así:
+## 1. The person is the center
+
+The infrastructure exists to preserve the person's agency and decision-making capacity.
+
+## 2. The Node is infrastructure
+
+The Node should be useful before applications are installed.
+
+## 3. Requests are fundamental
+
+Operations that represent the person's intent should originate from explicit requests or defined authorizations.
+
+## 4. Local and decentralized storage are complementary
+
+Local storage and Kubo/IPFS serve different purposes and can coexist.
+
+## 5. Recording does not mean publishing
+
+Evidence can be preserved without being automatically propagated.
+
+## 6. Identity is not reputation
+
+Identity represents continuity and identification; reputation is derived from contextual evidence and history.
+
+## 7. Reputation should be explainable
+
+Meaningful reputation should be traceable to evidence and corroboration.
+
+## 8. Consistency matters
+
+Temporal, spatial, physical, mathematical, causal, or logical contradictions can help detect incompatible attributions.
+
+## 9. The network corroborates; it does not govern identity
+
+The network can contribute evidence and corroboration without becoming a universal authority over the person.
+
+## 10. Applications are a higher layer
+
+Applications should use Node Core rather than replace it.
+
+## 11. Privacy is architectural
+
+There must be a meaningful distinction between preservation, sharing, propagation, publication, authorization, and use.
+
+## 12. Infrastructure should be reusable
+
+Node Core OS should be capable of becoming a foundation that other projects can integrate or implement.
+
+---
+
+# 17. Complete Model
+
+The complete conceptual model can be expressed as:
 
 ```text
-                              PERSONA
+                              PERSON
                                  │
                                  ▼
                          ┌───────────────┐
@@ -717,7 +725,7 @@ La visión completa puede expresarse así:
                     ┌────────────┴────────────┐
                     │                         │
                     ▼                         ▼
-             SOLICITUDES                 INFRAESTRUCTURA
+               REQUESTS                INFRASTRUCTURE
                     │                         │
                     │              ┌──────────┼──────────┐
                     │              ▼          ▼          ▼
@@ -727,74 +735,73 @@ La visión completa puede expresarse así:
                     └──────────────┴──────────┘
                                  │
                                  ▼
-                              REGISTROS
+                              RECORDS
                                  │
                                  ▼
-                              EVIDENCIA
+                              EVIDENCE
                                  │
                                  ▼
-                           CORROBORACIÓN
+                           CORROBORATION
                                  │
                                  ▼
-                              IDENTIDAD
+                              IDENTITY
                                  │
                                  ▼
-                             HISTORIA
+                              HISTORY
                                  │
                                  ▼
-                             REPUTACIÓN
+                             REPUTATION
                                  │
                                  ▼
-                              PROTOCOLOS
+                              PROTOCOLS
                                  │
                                  ▼
-                            APLICACIONES
+                            APPLICATIONS
                                  │
                                  ▼
-                         USO DECIDIDO POR
-                             LA PERSONA
+                         PERSON'S DECISION
 ```
 
 ---
 
-# 18. Meta final de Node Core OS
+# 18. Final Goal of Node Core OS
 
-La meta final de Node Core OS es construir una infraestructura que permita a una persona disponer de un **núcleo digital propio**, basado en almacenamiento local y descentralizado, desde el cual pueda conservar y administrar sus registros, identidad, evidencia y reputación.
+The final goal of Node Core OS is to build infrastructure that gives a person a **personal digital core**, based on local and decentralized storage, from which they can preserve and manage their records, identity, evidence, history, and reputation.
 
-Ese núcleo debe permitir que la persona:
+That core should allow the person to:
 
-- construya su continuidad digital;
-- conserve evidencia de su propia historia;
-- pueda corroborar información cuando sea necesario;
-- pueda demostrar determinados hechos sin exponer necesariamente toda su información;
-- pueda mantener distintas identidades contextuales sin perder la relación con su individualidad;
-- pueda detectar contradicciones en la historia atribuida a una identidad;
-- pueda participar en redes distribuidas sin entregar automáticamente el control de su información;
-- pueda decidir cuándo utilizar su identidad o reputación;
-- pueda responder a requisitos de otras personas, organizaciones, servicios, territorios o protocolos;
-- pueda mantener su infraestructura aun cuando cambien las aplicaciones que utiliza.
+- build digital continuity;
+- preserve evidence of their own history;
+- corroborate information when necessary;
+- demonstrate specific facts without necessarily exposing all personal information;
+- maintain contextual identities without losing the relationship to their individual continuity;
+- detect contradictions in information attributed to an identity;
+- participate in distributed networks without automatically surrendering control of personal information;
+- decide when to use identity or reputation;
+- respond to requirements from people, organizations, services, territories, or protocols;
+- maintain personal infrastructure even as the applications they use change.
 
-La meta no es crear una identidad obligatoria.
+The goal is not to create a mandatory identity.
 
-La meta no es crear una reputación universal.
+The goal is not to create a universal reputation.
 
-La meta no es crear una red que juzgue a las personas.
+The goal is not to create a network that judges people.
 
-La meta es crear **la infraestructura que permita a una persona decidir si quiere participar en aquello que el mundo le exige o le ofrece, teniendo consigo la información y la evidencia necesarias para hacerlo**.
+The goal is to create **the infrastructure that allows a person to decide whether to participate in what the world requires or offers, while carrying the information and evidence necessary to do so.**
 
 ---
 
-# 19. Meta de exportación e interoperabilidad
+# 19. Export and Interoperability Goal
 
-Una vez consolidado el núcleo, Node Core OS debe poder convertirse en un estándar o arquitectura reutilizable para otros proyectos.
+Once the core infrastructure is consolidated, Node Core OS should be capable of becoming a reusable architecture or standard for other projects.
 
-El objetivo es que:
+The intended direction is:
 
 ```text
-OTRO PROYECTO
+OTHER PROJECT
       │
       ▼
-Integra / implementa
+Integrates / Implements
       │
       ▼
 NODE CORE OS
@@ -807,20 +814,25 @@ NODE CORE OS
       └── Services
       │
       ▼
-APLICACIÓN / PROTOCOLO
+APPLICATION / PROTOCOL
 ```
 
-Esto permitiría que Node Core OS no sea un sistema aislado.
+This would prevent Node Core OS from becoming an isolated system.
 
-Podría convertirse en una **capa de infraestructura personal exportable**, capaz de ser implementada donde sea necesaria y de incorporar aplicaciones o protocolos donde el usuario los necesite.
+The long-term objective is a **portable personal infrastructure layer** that can be implemented where it is needed and can host or integrate applications and protocols where the person needs them.
+
+The desired relationship is therefore bidirectional:
+
+- external projects can implement or integrate Node Core OS;
+- Node Core OS can provide the infrastructure required by external applications and protocols.
 
 ---
 
-# 20. Plataforma oficial
+# 20. Official Platform
 
-**Node Core OS es estrictamente un proyecto GNU/Linux orientado al terminal.**
+**Node Core OS is a GNU/Linux, terminal-first project.**
 
-El alcance oficial del repositorio comprende:
+The official target is:
 
 ```text
 GNU/Linux
@@ -832,55 +844,57 @@ Terminal
 Node Core OS
 ```
 
-El proyecto no define como objetivo oficial una aplicación gráfica de escritorio, una aplicación móvil, una aplicación web, Windows o macOS.
+The project does not currently define a graphical desktop application, mobile application, web application, Windows implementation, or macOS implementation as its official target.
 
-La operación debe ser posible sin root y sin depender de una instalación global del sistema.
+The system is designed to operate without root privileges and without requiring a global system installation.
 
----
-
-# 21. Instalación y contrato de dependencias
-
-Node Core OS se instala y opera desde un terminal GNU/Linux.
-
-El instalador del repositorio está diseñado para:
-
-- no requerir root;
-- no requerir sudo;
-- no requerir systemd;
-- utilizar rutas pertenecientes al usuario;
-- instalar dentro de `~/.node-core/`;
-- instalar y verificar una versión fijada de Kubo;
-- inicializar el repositorio de Kubo;
-- crear el lanzador de Node Core OS;
-- verificar la instalación.
-
-La descarga de dependencias debe priorizar fuentes oficiales y mecanismos de recuperación adecuados, sin imponer límites arbitrarios al tiempo total de transferencia de archivos grandes.
-
-La documentación técnica relacionada se encuentra en:
-
-- `docs/DEPENDENCIES.md`
-- `docs/INSTALLER.md`
-- `installer/install.sh`
-
-Termux no es un objetivo oficial del proyecto. Las restricciones conocidas de entornos como Termux se consideran únicamente como referencia para evitar asumir privilegios, gestores de servicios o ubicaciones del sistema que no son necesarios.
+This constraint is intentional: the Node should belong to and operate within the user's own environment.
 
 ---
 
-# 22. Estado del proyecto
+# 21. Installation and Dependency Contract
 
-El repositorio se encuentra en desarrollo.
+Node Core OS is installed and operated from a GNU/Linux terminal.
 
-Este README distingue deliberadamente entre:
+The installer is designed around the following principles:
 
-- **Implementado** — funcionalidad disponible actualmente.
-- **En desarrollo** — funcionalidad que está siendo implementada.
-- **Objetivo arquitectónico** — parte del diseño que todavía debe materializarse.
-- **Futuro** — extensiones que dependen de capas anteriores.
+- no root required;
+- no sudo required;
+- no systemd dependency;
+- user-owned paths;
+- user-space installation;
+- isolated Kubo/IPFS configuration;
+- dependency verification;
+- explicit installation validation;
+- no unnecessary modification of the host operating system.
 
-El núcleo inicial continúa siendo:
+The project should prefer official dependency sources and resilient fallback mechanisms. Large downloads should not be constrained by arbitrary total-transfer time limits.
+
+Technical installation and dependency documentation is maintained in:
+
+- `docs/DEPENDENCIES.md`;
+- `docs/INSTALLER.md`;
+- `installer/install.sh`.
+
+Termux is **not an official target platform**. Constraints observed in environments such as Termux are considered only as engineering references to avoid assuming root privileges, system service managers, or protected system paths.
+
+---
+
+# 22. Project Status
+
+Node Core OS is under active development.
+
+This README deliberately distinguishes between:
+
+- **Implemented** — functionality currently available;
+- **In development** — functionality currently being implemented;
+- **Architectural goal** — a designed capability that has not yet been fully materialized;
+- **Future** — an extension that depends on previous architectural layers.
+
+The initial foundation is:
 
 ```text
-Instalación
+Installation
    ↓
 Boot
    ↓
@@ -897,178 +911,178 @@ Node Core
 Add → CID → Pin → Retrieve
 ```
 
-Sobre este fundamento se desarrollarán progresivamente:
+The architecture is then intended to progress toward:
 
 ```text
-Registros
+Records
    ↓
-Identidad
+Identity
    ↓
-Evidencia
+Evidence
    ↓
-Corroboración
+Corroboration
    ↓
-Reputación
+Reputation
    ↓
-Protocolos
+Protocols
    ↓
-Aplicaciones
+Applications
    ↓
-Interoperabilidad
+Interoperability
 ```
 
-La arquitectura descrita en este documento representa la **dirección final de diseño** y no implica que todos sus componentes estén implementados actualmente.
+The architecture described in this document represents the **long-term design direction** and does not imply that every described component is currently implemented.
 
 ---
 
-# 23. Roadmap conceptual
+# 23. Conceptual Roadmap
 
-## Fase 1 — Infraestructura del Node
+## Phase 1 — Node Infrastructure
 
-- instalación rootless;
+- rootless installation;
 - runtime;
-- configuración;
-- almacenamiento local;
+- configuration;
+- local storage;
 - Kubo/IPFS;
-- ciclo de vida de servicios;
-- red;
-- diagnósticos.
+- service lifecycle;
+- networking;
+- diagnostics.
 
-## Fase 2 — Node Core
+## Phase 2 — Node Core
 
-- abstracción de almacenamiento;
-- archivos;
+- storage abstraction;
+- files;
 - CID;
 - Add;
 - Retrieve;
 - Pin / Unpin;
 - Publish;
 - Share;
-- utilidades.
+- utilities.
 
-## Fase 3 — Sistema de solicitudes y registros
+## Phase 3 — Requests and Records
 
-- modelo de Request;
-- registros;
-- intención;
-- propósito;
-- contexto;
-- duración;
-- políticas de almacenamiento;
-- control de acceso.
+- Request model;
+- records;
+- intention;
+- purpose;
+- context;
+- duration;
+- storage policies;
+- access control.
 
-## Fase 4 — Identidad
+## Phase 4 — Identity
 
-- identidad del Node;
-- identidad individual;
-- identidad personal;
-- identidad profesional;
-- posturas públicas y privadas;
-- identificadores;
-- claves;
-- credenciales;
-- registros vinculados.
+- Node identity;
+- individual identity;
+- personal identity;
+- professional identity;
+- public and private postures;
+- identifiers;
+- keys;
+- credentials;
+- linked records.
 
-## Fase 5 — Evidencia y corroboración
+## Phase 5 — Evidence and Corroboration
 
-- modelo de evidencia;
-- proveniencia;
-- atestaciones;
-- corroboraciones;
-- consistencia temporal;
-- consistencia espacial;
-- consistencia causal;
-- consistencia lógica y matemática;
-- detección de contradicciones.
+- evidence model;
+- provenance;
+- attestations;
+- corroboration;
+- temporal consistency;
+- spatial consistency;
+- causal consistency;
+- logical and mathematical consistency;
+- contradiction detection.
 
-## Fase 6 — Reputación
+## Phase 6 — Reputation
 
-- historial;
-- reputación contextual;
-- relaciones de confianza;
-- derivación desde evidencia;
-- verificación;
-- explicación de reputación.
+- history;
+- contextual reputation;
+- trust relationships;
+- evidence-derived reputation;
+- verification;
+- reputation explanations.
 
-## Fase 7 — Red de Nodes
+## Phase 7 — Node Network
 
-- propagación;
-- descubrimiento;
-- corroboración entre Nodes;
-- manifiestos;
-- referencias;
-- pruebas;
-- sincronización;
-- mecanismos de confianza distribuida.
+- propagation;
+- discovery;
+- Node-to-Node corroboration;
+- manifests;
+- references;
+- proofs;
+- synchronization;
+- distributed trust mechanisms.
 
-## Fase 8 — Protocolos
+## Phase 8 — Protocols
 
-- modelo de protocolo;
-- ciclo de vida;
-- servicios;
-- comunicación entre Nodes;
-- coordinación distribuida;
-- identidad y reputación específicas del protocolo.
+- protocol model;
+- lifecycle;
+- services;
+- Node-to-Node communication;
+- distributed coordination;
+- protocol-specific identity and reputation.
 
-## Fase 9 — Aplicaciones
+## Phase 9 — Applications
 
-- instalación;
-- permisos;
-- almacenamiento;
-- identidad;
-- solicitudes;
-- servicios;
+- installation;
+- permissions;
+- storage;
+- identity;
+- requests;
+- services;
 - networking;
-- ciclo de vida.
+- lifecycle.
 
-## Fase 10 — Estándar e interoperabilidad
+## Phase 10 — Standardization and Interoperability
 
-- API;
-- esquemas;
-- formatos de exportación;
-- mecanismos de integración;
-- implementación de Node Core OS dentro de otros proyectos;
-- implementación de aplicaciones y protocolos sobre Node Core OS.
+- APIs;
+- schemas;
+- export formats;
+- integration mechanisms;
+- embedding Node Core OS into other projects;
+- implementing applications and protocols on top of Node Core OS.
 
 ---
 
-# 24. Principio final
+# 24. Final Principle
 
-Node Core OS puede resumirse en una sola dirección:
+Node Core OS can be summarized as:
 
 ```text
-PERSONA
+PERSON
    ↓
-SOLICITUD
+REQUEST
    ↓
 NODE CORE OS
    ↓
-REGISTRO
+RECORD
    ↓
-EVIDENCIA
+EVIDENCE
    ↓
-CORROBORACIÓN
+CORROBORATION
    ↓
-IDENTIDAD / HISTORIA / REPUTACIÓN
+IDENTITY / HISTORY / REPUTATION
    ↓
-PROTOCOLO
+PROTOCOL
    ↓
-APLICACIÓN
+APPLICATION
    ↓
-DECISIÓN DE LA PERSONA
+PERSON'S DECISION
 ```
 
-El Node no decide quién debe ser una persona.
+The Node does not decide who a person must be.
 
-No decide qué reputación debe tener.
+It does not decide what reputation a person must have.
 
-No decide qué debe publicar.
+It does not decide what a person must publish.
 
-No decide en qué debe participar.
+It does not decide what a person must participate in.
 
-**Proporciona la infraestructura para que la persona pueda decidirlo con información, evidencia, continuidad y capacidad de corroboración.**
+**It provides the infrastructure through which a person can make those decisions with information, evidence, continuity, and the ability to seek corroboration.**
 
-Ese es el objetivo final de **Node Core OS**.
+That is the long-term purpose of **Node Core OS**.
 
 ---
 
