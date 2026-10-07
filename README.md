@@ -1,23 +1,544 @@
 # Node Core OS
 
-**Node Core OS** is a node infrastructure designed to manage local and decentralized resources as a unified environment for running protocols, services, and applications in a distributed and decentralized manner.
+**Node Core OS** es una infraestructura personal para que una persona pueda disponer de un núcleo propio desde el cual conservar, administrar, verificar, corroborar y utilizar sus recursos digitales, su identidad, sus registros, su evidencia y, progresivamente, su reputación.
 
-The project is built around a simple architectural principle:
+El proyecto parte de una idea fundamental:
 
-> **The Node is the infrastructure. Node Core is the interface to that infrastructure. Applications are built on top of it.**
+> **La persona debe disponer de una infraestructura propia antes de depender de aplicaciones, servicios o sistemas externos para representar quién es, qué ha hecho, qué hace o qué quiere hacer.**
 
-Node Core OS is designed around two complementary storage environments:
+Node Core OS administra dos tipos fundamentales de almacenamiento:
 
-- **Local Storage** — resources stored directly on the Node.
-- **Kubo / IPFS** — decentralized, content-addressed storage and retrieval.
+- **Almacenamiento local** — recursos conservados directamente en el Node.
+- **Almacenamiento descentralizado** — recursos gestionados mediante tecnologías como Kubo/IPFS.
 
-The purpose of Node Core OS is not to make these environments compete. It is to provide a common Node-level architecture through which storage, networking, services, identity, reputation, protocols, and applications can progressively operate over the same Node.
+Sobre esta base pueden operar posteriormente protocolos, servicios y aplicaciones distribuidas o descentralizadas.
+
+Pero el objetivo de Node Core OS no es únicamente almacenar archivos.
+
+Su objetivo final es construir una **infraestructura personal de evidencia, identidad, reputación y participación**, en la que la persona conserve la capacidad de decidir qué registrar, para qué registrarlo, qué corroborar, qué compartir y cuándo utilizarlo.
 
 ---
 
-# Architecture
+# 1. Idea fundamental
 
-Node Core OS has three visible architectural levels:
+Node Core OS no se concibe primero como una aplicación.
+
+Se concibe como un **núcleo de infraestructura personal**.
+
+La relación fundamental es:
+
+```text
+PERSONA
+   │
+   ▼
+NODE CORE OS
+   │
+   ├── Almacenamiento local
+   ├── Almacenamiento descentralizado
+   ├── Registros
+   ├── Evidencia
+   ├── Identidad
+   ├── Corroboración
+   ├── Reputación
+   ├── Protocolos
+   └── Aplicaciones
+```
+
+La infraestructura debe existir antes de que las aplicaciones determinen cómo utilizarla.
+
+Por eso:
+
+> **Node Core OS no pretende definir de antemano qué debe hacer una persona. Pretende darle un lugar propio desde el cual pueda decidir qué hacer.**
+
+---
+
+# 2. La persona como núcleo
+
+El Node existe para servir a una persona o entidad que decide utilizarlo.
+
+La infraestructura debe permitir conservar una continuidad digital de aquello que la persona considere importante:
+
+- quién es;
+- qué identificadores utiliza;
+- qué registros ha generado;
+- qué hechos puede demostrar;
+- qué actividades ha realizado;
+- qué relaciones ha establecido;
+- qué conocimientos o capacidades puede acreditar;
+- qué reputación se ha construido en determinados contextos;
+- qué quiere hacer en el futuro.
+
+Esto no significa que Node Core OS deba publicar toda esa información.
+
+Al contrario:
+
+> **Conservar no significa publicar. Registrar no significa compartir. Poseer evidencia no significa estar obligado a presentarla.**
+
+La persona debe conservar el control sobre el uso de sus registros.
+
+---
+
+# 3. Sistema de solicitudes
+
+Uno de los principios fundamentales de Node Core OS es:
+
+> **Nada debe ocurrir por decisión autónoma del sistema cuando implique representar, propagar, evaluar o utilizar información personal. Debe existir una solicitud o una autorización definida por la persona.**
+
+La solicitud es una unidad fundamental del sistema.
+
+Una interacción conceptual puede ser:
+
+```text
+PERSONA
+   │
+   │ "Necesito registrar una evidencia"
+   ▼
+SOLICITUD
+   │
+   ▼
+NODE CORE OS
+   │
+   ├── determina qué información es necesaria
+   ├── registra los datos solicitados
+   ├── conserva la evidencia
+   ├── solicita corroboraciones cuando corresponda
+   └── prepara el resultado
+   │
+   ▼
+RESULTADO
+   │
+   ▼
+PERSONA
+   │
+   └── decide si lo utiliza, comparte o conserva
+```
+
+Una solicitud puede expresar:
+
+- actor;
+- intención;
+- propósito;
+- contexto;
+- alcance;
+- duración;
+- información requerida;
+- evidencia requerida;
+- corroboraciones requeridas;
+- política de almacenamiento;
+- postura de privacidad;
+- resultado esperado.
+
+La solicitud expresa **qué quiere conseguir la persona**.
+
+Las aplicaciones pueden generar solicitudes, pero no deben recibir por ello acceso ilimitado al Node.
+
+---
+
+# 4. Registros
+
+Los registros son una pieza fundamental de la continuidad de una persona.
+
+Un registro no debería ser tratado simplemente como un archivo.
+
+Conceptualmente puede contener:
+
+```text
+RECORD
+├── Identidad asociada
+├── Intención
+├── Propósito
+├── Contexto
+├── Importancia
+├── Tiempo
+├── Duración
+├── Proveniencia
+├── Integridad
+├── Relaciones
+├── Evidencia
+├── Corroboraciones
+└── Política de almacenamiento
+```
+
+No todos los registros necesitan tener la misma duración.
+
+Un registro puede ser:
+
+- temporal;
+- efímero;
+- persistente;
+- histórico;
+- archivado;
+- canónico;
+- derivado.
+
+La arquitectura debe permitir que la persona determine qué registros deben permanecer y cuáles no.
+
+---
+
+# 5. Almacenamiento local y descentralizado
+
+El almacenamiento es la primera infraestructura de Node Core OS.
+
+```text
+                    NODE CORE OS
+                         │
+                  Storage Layer
+                         │
+                ┌────────┴────────┐
+                ▼                 ▼
+          Local Storage       Kubo / IPFS
+```
+
+## Local Storage
+
+Permite conservar directamente en el Node:
+
+- archivos;
+- configuraciones;
+- claves;
+- registros;
+- bases de datos;
+- estados;
+- datos temporales;
+- información privada.
+
+## Kubo / IPFS
+
+Kubo proporciona la implementación IPFS utilizada por Node Core OS.
+
+Permite trabajar con:
+
+- contenido direccionado por CID;
+- almacenamiento distribuido;
+- recuperación de contenido;
+- pinning;
+- publicación;
+- intercambio entre Nodes.
+
+Kubo es una infraestructura utilizada por Node Core OS, no la definición completa del sistema.
+
+---
+
+# 6. Contenido y evidencia
+
+Un archivo puede convertirse en una referencia de contenido independiente de su ubicación local:
+
+```text
+Archivo
+  │
+  ▼
+Add
+  │
+  ▼
+IPFS
+  │
+  ▼
+CID
+  │
+  ├── Pin
+  ├── Retrieve
+  ├── Publish
+  └── Share
+```
+
+Esto permite que la evidencia pueda ser referenciada mediante mecanismos de integridad y contenido sin depender exclusivamente de una ruta del sistema de archivos.
+
+Una evidencia puede posteriormente asociarse con:
+
+- una identidad;
+- una solicitud;
+- un evento;
+- una acción;
+- un protocolo;
+- un contexto;
+- una corroboración.
+
+---
+
+# 7. Identidad
+
+La identidad de Node Core OS no debe reducirse a un nombre de usuario.
+
+La identidad debe poder representar una continuidad de identificadores, registros, credenciales y evidencias asociadas con una misma persona o entidad.
+
+Conceptualmente:
+
+```text
+INDIVIDUO
+   │
+   ├── Identidad individual
+   │
+   ├── Identidad personal
+   │
+   └── Identidad profesional
+          │
+          ├── Postura pública
+          └── Postura privada
+```
+
+Estas identidades no necesariamente significan personas diferentes.
+
+Pueden representar distintas formas legítimas de la misma individualidad dentro de distintos contextos.
+
+La arquitectura debe permitir establecer relaciones entre:
+
+```text
+Identidad
+   │
+   ├── Identificadores
+   ├── Claves
+   ├── Credenciales
+   ├── Registros
+   ├── Evidencias
+   └── Relaciones
+```
+
+La criptografía puede demostrar control sobre un identificador o una clave.
+
+Pero el control criptográfico, por sí solo, no demuestra que exista una única persona física detrás de todos los identificadores.
+
+Por ello Node Core OS contempla una capa adicional de **corroboración y consistencia**.
+
+---
+
+# 8. Individualidad y consistencia
+
+Una de las ideas centrales de la propuesta es que una misma identidad no debería poder recibir atribuciones mutuamente incompatibles como si todas pertenecieran a una única continuidad individual.
+
+La identidad debe poder ser examinada mediante restricciones:
+
+- temporales;
+- espaciales;
+- físicas;
+- matemáticas;
+- causales;
+- lógicas;
+- contextuales.
+
+Ejemplo conceptual:
+
+Si una misma identidad aparece realizando una actividad físicamente incompatible con otra actividad atribuida a esa misma identidad en el mismo intervalo temporal, existe una contradicción que debe ser investigada.
+
+```text
+IDENTIDAD
+   │
+   ├── Evento A
+   │      │
+   │      └── ubicación / tiempo
+   │
+   └── Evento B
+          │
+          └── ubicación / tiempo
+                 │
+                 ▼
+             CONSISTENCIA
+                 │
+          ┌──────┴──────┐
+          ▼             ▼
+      Compatible    Contradicción
+```
+
+Esto no significa que las leyes físicas por sí solas demuestren quién es una persona.
+
+Significa que pueden funcionar como una **capa de detección de contradicciones y corroboración**.
+
+La finalidad es impedir que el sistema acepte como coherente una historia de identidad que contiene hechos imposibles o incompatibles.
+
+---
+
+# 9. Evidencia
+
+La evidencia es la relación entre una afirmación y los registros que permiten sostenerla.
+
+Una cadena conceptual puede ser:
+
+```text
+IDENTIDAD
+   ↓
+REGISTRO
+   ↓
+EVIDENCIA
+   ↓
+CORROBORACIÓN
+   ↓
+CONSISTENCIA
+   ↓
+HISTORIA
+   ↓
+REPUTACIÓN
+```
+
+La arquitectura debe poder responder preguntas como:
+
+- ¿Qué se afirma?
+- ¿Quién lo registró?
+- ¿Cuándo se registró?
+- ¿Cuál es su origen?
+- ¿Qué evidencia existe?
+- ¿Qué identidad está asociada?
+- ¿Quién lo corroboró?
+- ¿En qué contexto?
+- ¿Existen contradicciones?
+- ¿Sigue siendo válido?
+
+La reputación no debería aparecer mágicamente como un número.
+
+Debe poder derivarse de una historia de evidencia.
+
+---
+
+# 10. Reputación
+
+Node Core OS distingue:
+
+```text
+IDENTIDAD
+    │
+    └── ¿Quién?
+
+EVIDENCIA
+    │
+    └── ¿Qué puede demostrarse?
+
+REPUTACIÓN
+    │
+    └── ¿Qué puede inferirse sobre el historial en un contexto?
+```
+
+La reputación no debe ser necesariamente una puntuación universal.
+
+Puede existir una reputación contextual:
+
+- personal;
+- profesional;
+- contractual;
+- de servicio;
+- de participación;
+- de confiabilidad;
+- de cumplimiento;
+- de actividad en un protocolo.
+
+Por tanto:
+
+> **La reputación pertenece al contexto y debe poder ser explicada mediante evidencia.**
+
+Una reputación puede ser aceptada por un sistema y no necesariamente por otro.
+
+Node Core OS no pretende convertirse en un juez universal de reputación.
+
+---
+
+# 11. Corroboración distribuida
+
+La red de Node Core OS puede utilizar otros Nodes para corroborar información.
+
+La idea no es:
+
+> "La red decide quién eres."
+
+La idea es:
+
+> **"La red permite comprobar qué evidencia existe sobre una identidad y qué otros Nodes pueden corroborarla."**
+
+Conceptualmente:
+
+```text
+IDENTIDAD
+   │
+   ▼
+Solicitud de corroboración
+   │
+   ▼
+Red de Nodes
+   │
+   ├── Evidencias
+   ├── Manifiestos
+   ├── Firmas
+   ├── CIDs
+   ├── Versiones
+   ├── Atestaciones
+   └── Inconsistencias conocidas
+   │
+   ▼
+Resultado de corroboración
+   │
+   ▼
+Persona
+```
+
+La propagación tampoco debe confundirse con publicación.
+
+Puede propagarse:
+
+- un CID;
+- un hash;
+- una firma;
+- un manifiesto;
+- una atestación;
+- una referencia;
+- una prueba;
+- metadatos mínimos.
+
+Mientras que el contenido original puede permanecer local o protegido.
+
+---
+
+# 12. Privacidad
+
+La descentralización no significa que todo deba hacerse público.
+
+Node Core OS debe permitir separar:
+
+```text
+CONSERVAR
+   ≠
+PROPAGAR
+   ≠
+PUBLICAR
+   ≠
+AUTORIZAR
+   ≠
+UTILIZAR
+```
+
+La persona puede conservar una evidencia localmente y, cuando sea necesario, presentar solamente una prueba o referencia suficiente para un propósito concreto.
+
+Este principio permite construir sistemas donde la infraestructura distribuida pueda corroborar sin requerir necesariamente la exposición completa de los datos personales.
+
+---
+
+# 13. Decisión individual
+
+El objetivo no es obligar a una persona a construir una reputación ni obligarla a participar en sistemas externos.
+
+El objetivo es permitir que tenga la infraestructura preparada.
+
+Una persona puede necesitar en algún momento:
+
+- demostrar quién es;
+- demostrar que realizó una actividad;
+- demostrar experiencia;
+- demostrar una relación contractual;
+- demostrar una trayectoria;
+- cumplir requisitos para un servicio;
+- participar en un protocolo;
+- solicitar una oportunidad;
+- establecer confianza con otra persona;
+- demostrar continuidad histórica.
+
+Node Core OS busca que esa persona no tenga que empezar desde cero cada vez.
+
+Debe existir un lugar propio donde pueda conservar:
+
+> **quién soy, qué he hecho, qué hago y qué quiero hacer.**
+
+Después, la decisión de utilizar esa información pertenece a la persona.
+
+---
+
+# 14. Arquitectura
+
+La arquitectura general mantiene tres niveles visibles:
 
 ```text
 Node Core OS
@@ -27,1169 +548,527 @@ Node Core OS
 └── Applications
 ```
 
-These levels have distinct responsibilities.
+## Node Core BIOS
 
-```text
-                         Node Core OS
-                              │
-             ┌────────────────┼────────────────┐
-             │                │                │
-             ▼                ▼                ▼
-          BIOS            Node Core       Applications
-             │                │                │
-      administration      operation         programs
-             │                │                │
-             └────────────────┼────────────────┘
-                              │
-                       Node Core Runtime
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-           Storage          Network         Services
-              │
-        ┌─────┴─────┐
-        ▼           ▼
-      Local       Kubo/IPFS
-     Storage
-```
+BIOS administra la infraestructura:
 
-The three visible levels are deliberately separated from the underlying runtime.
+- Storage;
+- Kubo/IPFS;
+- Network;
+- Services;
+- Configuration;
+- Security;
+- Diagnostics;
+- Updates;
+- Lifecycle.
 
----
+> **BIOS configura el Node.**
 
-# Node Core BIOS
+## Node Core
 
-**Node Core BIOS is the administrative layer of the Node.**
+Node Core proporciona las capacidades operativas:
 
-It is inspired by the role of a BIOS: it is the place where the fundamental configuration, state, services, and lifecycle of the Node are managed before higher-level use.
+- Storage;
+- Files;
+- IPFS;
+- CID;
+- Publish;
+- Retrieve;
+- Pin;
+- Unpin;
+- Share;
+- Identity;
+- Evidence;
+- Reputation;
+- Protocols;
+- Services;
+- Utilities.
 
-BIOS answers:
+> **Node Core utiliza el Node.**
 
-> **How does this Node exist and operate?**
+## Applications
 
-The intended administrative architecture is:
-
-```text
-Node Core BIOS
-│
-├── Storage
-├── IPFS / Kubo
-├── Network
-├── Services
-├── Configuration
-├── Security
-├── Diagnostics
-├── Updates
-└── Lifecycle
-```
-
-BIOS responsibilities can include:
-
-- configuring local storage
-- managing storage locations and state
-- installing and configuring Kubo
-- starting and stopping Kubo
-- inspecting IPFS status
-- managing Node services
-- managing network configuration
-- maintaining Node configuration
-- diagnostics and health checks
-- security configuration
-- updates
-- Node lifecycle operations
-
-> **BIOS configures the Node.**
-
-The initial implementation can begin with Storage and IPFS / Kubo while preserving the complete administrative boundary for future development.
-
----
-
-# Node Core
-
-**Node Core is the operational layer of the Node.**
-
-Node Core answers:
-
-> **What can I do with this Node?**
-
-The intended operational surface includes:
-
-```text
-Node Core
-│
-├── Storage
-├── IPFS
-├── Files
-├── CID
-├── Publish
-├── Retrieve
-├── Pin
-├── Unpin
-├── Share
-└── Utilities
-```
-
-Node Core provides abstractions over the infrastructure so that protocols and applications do not need to directly manage every low-level detail of local storage, Kubo, services, or other Node resources.
-
-> **BIOS configures the Node.**  
-> **Node Core uses the Node.**
-
----
-
-# Applications
-
-Applications are the third architectural level.
-
-They are intentionally separated from Node Core.
+Las aplicaciones consumen las capacidades del Node.
 
 ```text
 Applications
-│
-├── App 001
-├── App 002
-├── App 003
-└── ...
-```
-
-A new installation does not require applications.
-
-The initial state can therefore be:
-
-```text
-Applications
-
-No applications installed.
-
-[Future]
-```
-
-This establishes a clear boundary:
-
-- **BIOS** manages infrastructure.
-- **Node Core** provides infrastructure capabilities.
-- **Applications** consume those capabilities.
-
-Applications can therefore evolve independently from the fundamental Node infrastructure.
-
----
-
-# Node Core Runtime
-
-BIOS and Node Core are not two independent systems.
-
-They operate over a common **Node Core Runtime**.
-
-```text
-                    Node Core OS
-                         │
-                        boot
-                         │
-                         ▼
-                  Node Core Runtime
-                         │
-              ┌──────────┴──────────┐
-              │                     │
-             BIOS                  Core
-              │                     │
-              └──────────┬──────────┘
-                         │
-                    Node Resources
-                         │
-          ┌──────────────┼──────────────┐
-          ▼              ▼              ▼
-       Storage         Network        Services
-          │
-     ┌────┴────┐
-     ▼         ▼
-   Local     Kubo
-  Storage    / IPFS
-```
-
-The Runtime is the common technical foundation that connects the user-facing architecture with the resources of the Node.
-
-This prevents BIOS and Node Core from duplicating infrastructure logic and allows additional resources to be introduced later without changing the fundamental three-level model.
-
----
-
-# Storage Architecture
-
-Storage is a fundamental abstraction of Node Core OS.
-
-```text
-                 Node Core
-                     │
-              Storage Abstraction
-                     │
-             ┌───────┴───────┐
-             │               │
-             ▼               ▼
-        Local Storage      IPFS
-```
-
-## Local Storage
-
-Local Storage represents resources stored directly on the Node.
-
-It can provide:
-
-- filesystem access
-- storage paths
-- file management
-- local capacity
-- local persistence
-- local state
-- local retrieval
-
-## Kubo / IPFS
-
-Kubo provides the IPFS implementation used by Node Core OS.
-
-IPFS introduces content-addressed storage and decentralized retrieval into the Node.
-
-Kubo is therefore an infrastructure component of the Node rather than the definition of Node Core itself.
-
-```text
-Node Core BIOS
       │
       ▼
-Kubo / IPFS
+Protocols
       │
       ▼
 Node Core
       │
-      ├── Files
-      ├── CID
-      ├── Pin
-      ├── Retrieve
-      └── Publish
+      ▼
+Node Core Runtime
+      │
+      ├── Local Storage
+      ├── Kubo / IPFS
+      ├── Network
+      └── Services
 ```
+
+Una instalación puede existir sin aplicaciones.
 
 ---
 
-# Content Model
+# 15. Sistema de aplicaciones y protocolos
 
-A central Node Core flow is:
+Node Core OS pretende ser una infraestructura sobre la cual otros proyectos puedan construir.
 
-```text
-File
- │
- ▼
-Add
- │
- ▼
-IPFS
- │
- ▼
-CID
- │
- ├── Pin
- ├── Publish
- └── Retrieve
-```
-
-A file can move from a local representation into a content-addressed representation.
-
-The CID identifies the content independently from its local filesystem path.
-
-This creates a foundation for protocols and applications that can reference and exchange content without depending exclusively on one local filesystem.
-
----
-
-# Identity
-
-Identity is a higher-level Node system built on top of the infrastructure.
-
-The Node must eventually be able to distinguish:
-
-- the Node itself
-- identities associated with the Node
-- applications operating on the Node
-- protocols operating through the Node
-- resources and content associated with an identity
-- relationships between identities and Nodes
-
-Identity should not be treated as merely a username.
-
-The intended architecture is closer to:
-
-```text
-Node
- │
- ├── Node Identity
- │
- ├── Identity Records
- │
- ├── Public Keys
- │
- ├── Credentials
- │
- ├── Capabilities
- │
- └── Identity-linked Resources
-```
-
-A future identity layer can provide cryptographic references that allow other Nodes and applications to determine which identity is associated with an operation without making identity itself dependent on a centralized database.
-
-The underlying storage and content systems remain independent from the identity layer.
-
----
-
-# Reputation
-
-Reputation is distinct from identity.
-
-> **Identity answers who is associated with an action. Reputation describes what can be learned about the history and reliability of that identity, Node, service, or resource.**
-
-The intended model is therefore:
-
-```text
-Identity
-   │
-   ▼
-Activity / Evidence
-   │
-   ▼
-Claims / Attestations
-   │
-   ▼
-Reputation
-```
-
-Reputation should not be treated as a single universal score controlled by Node Core OS.
-
-Instead, the architecture can support multiple sources and contexts of reputation:
-
-```text
-                 Reputation
-                     │
-       ┌─────────────┼─────────────┐
-       ▼             ▼             ▼
-   Identity       Node          Service
-   reputation   reputation     reputation
-       │             │             │
-       └─────────────┼─────────────┘
-                     ▼
-                  Evidence
-```
-
-Potential reputation inputs include:
-
-- signed attestations
-- completed interactions
-- service history
-- content provenance
-- protocol participation
-- reliability observations
-- application-specific evaluations
-- relationships with other identities
-- historical evidence
-
-This allows reputation systems to remain contextual rather than forcing every application into one centralized ranking.
-
----
-
-# Identity, Reputation and Content
-
-One of the long-term goals is to connect identity and reputation with content and actions without coupling them to the underlying storage implementation.
-
-A possible conceptual flow is:
-
-```text
-Identity
-   │
-   ▼
-Action
-   │
-   ├── Content
-   │     │
-   │     ▼
-   │    CID
-   │
-   ├── Node
-   │
-   └── Protocol
-          │
-          ▼
-       Evidence
-          │
-          ▼
-      Reputation
-```
-
-For example, a published resource could eventually contain or reference:
-
-```text
-Content
-│
-├── CID
-├── Publisher Identity
-├── Timestamp / metadata
-├── Provenance
-├── Protocol context
-└── Attestations
-```
-
-The important architectural principle is that **content, identity, and reputation remain separate primitives that can be composed**.
-
----
-
-# Trust and Reputation Are Not the Same as Identity
-
-Node Core OS should preserve this distinction:
-
-```text
-Identity
-   │
-   └── Who?
-
-Trust
-   │
-   └── What relationship or confidence exists?
-
-Reputation
-   │
-   └── What evidence exists about previous behavior?
-```
-
-An identity can therefore exist without a reputation.
-
-A Node can have a reputation without every application accepting that reputation.
-
-An application can establish its own trust rules without modifying the fundamental Node identity system.
-
-This is important for decentralized systems because different protocols may legitimately evaluate the same identity differently.
-
----
-
-# Protocol Layer
-
-Node Core OS is intended to become infrastructure for protocols, not only file operations.
-
-The long-term relationship is:
+Una aplicación puede solicitar capacidades del Node sin administrar directamente todos sus detalles internos.
 
 ```text
 Node Core OS
-      │
-      ▼
-Node Runtime
       │
       ▼
 Node Core
       │
       ├── Storage
-      ├── Network
-      ├── Services
       ├── Identity
-      ├── Content
-      └── Capabilities
+      ├── Evidence
+      ├── Reputation
+      ├── Network
+      └── Services
               │
               ▼
-          Protocols
+          Protocolos
               │
-       ┌──────┼──────┐
-       ▼      ▼      ▼
-    Protocol Protocol Protocol
-       │      │      │
-       └──────┼──────┘
               ▼
-        Applications
+         Aplicaciones
 ```
 
-A protocol should be able to consume Node Core capabilities without needing to know every implementation detail of the underlying Node.
+Esto permite que distintos protocolos y aplicaciones compartan una infraestructura común.
 
-This creates a separation between:
+El objetivo final es que **otros sistemas puedan incorporar Node Core OS allí donde lo necesiten**, en lugar de exigir que una persona migre toda su infraestructura personal hacia cada aplicación.
 
-- infrastructure
-- protocol logic
-- application logic
+En otras palabras:
+
+> **Si la montaña no va a Mahoma, la montaña viene a Mahoma.**
+
+Node Core OS busca que la infraestructura personal pueda llegar al sistema que la necesita y que el sistema pueda utilizar las capacidades del Node sin apropiarse del núcleo personal.
 
 ---
 
-# Services
+# 16. Principios de arquitectura
 
-Services are persistent or managed processes that operate on the Node.
+## 1. La persona es el centro
 
-They belong conceptually to the infrastructure layer and are therefore managed by BIOS and exposed through Node Core when appropriate.
+La infraestructura existe para preservar la capacidad de decisión de la persona.
 
-Examples may eventually include:
+## 2. El Node es infraestructura
 
-- Kubo
-- network services
-- indexing services
-- identity services
-- protocol services
-- application services
-- synchronization services
-- discovery services
+El Node debe ser útil antes de instalar aplicaciones.
 
-The service lifecycle is intended to follow:
+## 3. Las solicitudes son fundamentales
+
+Las operaciones que representan la voluntad de la persona deben partir de solicitudes explícitas o autorizaciones definidas.
+
+## 4. Local y descentralizado son complementarios
+
+El almacenamiento local y Kubo/IPFS cumplen funciones diferentes y pueden coexistir.
+
+## 5. Registrar no significa publicar
+
+La evidencia puede conservarse sin ser automáticamente propagada.
+
+## 6. Identidad no es reputación
+
+La identidad representa continuidad e identificación; la reputación deriva de evidencia contextual.
+
+## 7. Reputación debe ser explicable
+
+Toda reputación significativa debe poder relacionarse con evidencia y corroboraciones.
+
+## 8. La consistencia importa
+
+Las contradicciones temporales, espaciales, físicas, matemáticas o lógicas pueden utilizarse para detectar atribuciones incompatibles.
+
+## 9. La red corrobora, no gobierna la identidad
+
+La red puede aportar evidencia y corroboración sin convertirse en una autoridad universal sobre la persona.
+
+## 10. Las aplicaciones son una capa superior
+
+Las aplicaciones deben utilizar Node Core y no reemplazarlo.
+
+## 11. La privacidad es una propiedad arquitectónica
+
+Debe existir una diferencia entre conservar, compartir, propagar, publicar y autorizar.
+
+## 12. La infraestructura debe ser reutilizable
+
+Node Core OS debe poder convertirse en una base que otros proyectos puedan integrar o implementar.
+
+---
+
+# 17. Modelo completo
+
+La visión completa puede expresarse así:
 
 ```text
-Install
-   │
-   ▼
-Configure
-   │
-   ▼
-Enable
-   │
-   ▼
-Start
-   │
-   ▼
-Running
-   │
-   ├── Status
-   ├── Diagnostics
-   ├── Restart
-   └── Stop
+                              PERSONA
+                                 │
+                                 ▼
+                         ┌───────────────┐
+                         │ NODE CORE OS  │
+                         └───────┬───────┘
+                                 │
+                    ┌────────────┴────────────┐
+                    │                         │
+                    ▼                         ▼
+             SOLICITUDES                 INFRAESTRUCTURA
+                    │                         │
+                    │              ┌──────────┼──────────┐
+                    │              ▼          ▼          ▼
+                    │           LOCAL       KUBO       NETWORK
+                    │          STORAGE      / IPFS
+                    │              │          │
+                    └──────────────┴──────────┘
+                                 │
+                                 ▼
+                              REGISTROS
+                                 │
+                                 ▼
+                              EVIDENCIA
+                                 │
+                                 ▼
+                           CORROBORACIÓN
+                                 │
+                                 ▼
+                              IDENTIDAD
+                                 │
+                                 ▼
+                             HISTORIA
+                                 │
+                                 ▼
+                             REPUTACIÓN
+                                 │
+                                 ▼
+                              PROTOCOLOS
+                                 │
+                                 ▼
+                            APLICACIONES
+                                 │
+                                 ▼
+                         USO DECIDIDO POR
+                             LA PERSONA
 ```
 
 ---
 
-# Network Architecture
+# 18. Meta final de Node Core OS
 
-Network management belongs to BIOS because the network is part of the Node infrastructure.
+La meta final de Node Core OS es construir una infraestructura que permita a una persona disponer de un **núcleo digital propio**, basado en almacenamiento local y descentralizado, desde el cual pueda conservar y administrar sus registros, identidad, evidencia y reputación.
 
-Node Core can then expose higher-level network capabilities to protocols and applications.
+Ese núcleo debe permitir que la persona:
 
-```text
-BIOS
- │
- └── Network configuration
-          │
-          ▼
-     Node Runtime
-          │
-          ▼
-      Node Core
-          │
-     ┌────┴────┐
-     ▼         ▼
- Protocols  Applications
-```
+- construya su continuidad digital;
+- conserve evidencia de su propia historia;
+- pueda corroborar información cuando sea necesario;
+- pueda demostrar determinados hechos sin exponer necesariamente toda su información;
+- pueda mantener distintas identidades contextuales sin perder la relación con su individualidad;
+- pueda detectar contradicciones en la historia atribuida a una identidad;
+- pueda participar en redes distribuidas sin entregar automáticamente el control de su información;
+- pueda decidir cuándo utilizar su identidad o reputación;
+- pueda responder a requisitos de otras personas, organizaciones, servicios, territorios o protocolos;
+- pueda mantener su infraestructura aun cuando cambien las aplicaciones que utiliza.
 
-The architecture is intended to support both local and decentralized communication without requiring every application to implement its own Node management.
+La meta no es crear una identidad obligatoria.
 
----
+La meta no es crear una reputación universal.
 
-# Security
+La meta no es crear una red que juzgue a las personas.
 
-Security is an infrastructure concern.
-
-The intended security architecture can eventually cover:
-
-- Node configuration
-- local permissions
-- service permissions
-- application permissions
-- identity keys
-- credential storage
-- resource access
-- protocol authorization
-- capability management
-- secure lifecycle operations
-
-Security should remain layered rather than being reduced to one authentication mechanism.
-
-```text
-Node Security
-│
-├── Node
-├── Services
-├── Identity
-├── Applications
-├── Protocols
-└── Resources
-```
+La meta es crear **la infraestructura que permita a una persona decidir si quiere participar en aquello que el mundo le exige o le ofrece, teniendo consigo la información y la evidencia necesarias para hacerlo**.
 
 ---
 
-# Applications and Permissions
+# 19. Meta de exportación e interoperabilidad
 
-Applications are consumers of Node Core capabilities.
+Una vez consolidado el núcleo, Node Core OS debe poder convertirse en un estándar o arquitectura reutilizable para otros proyectos.
 
-A future application model can define:
+El objetivo es que:
 
 ```text
-Application
-│
-├── Identity
-├── Permissions
-├── Services
-├── Storage
-├── Protocols
-└── Lifecycle
+OTRO PROYECTO
+      │
+      ▼
+Integra / implementa
+      │
+      ▼
+NODE CORE OS
+      │
+      ├── Storage
+      ├── Identity
+      ├── Evidence
+      ├── Reputation
+      ├── Protocols
+      └── Services
+      │
+      ▼
+APLICACIÓN / PROTOCOLO
 ```
 
-Applications should not automatically receive unrestricted access to the Node.
+Esto permitiría que Node Core OS no sea un sistema aislado.
 
-A permission/capability system can eventually determine whether an application can:
-
-- read local files
-- write local files
-- access IPFS
-- publish content
-- retrieve content
-- use network resources
-- access identity capabilities
-- run services
-- communicate with other applications
-
-This creates an explicit boundary between the Node and software running on it.
+Podría convertirse en una **capa de infraestructura personal exportable**, capaz de ser implementada donde sea necesaria y de incorporar aplicaciones o protocolos donde el usuario los necesite.
 
 ---
 
-# Node Lifecycle
+# 20. Plataforma oficial
 
-The complete Node lifecycle is intended to be manageable through the architecture:
+**Node Core OS es estrictamente un proyecto GNU/Linux orientado al terminal.**
 
-```text
-Install
-   │
-   ▼
-Initialize
-   │
-   ▼
-Configure
-   │
-   ▼
-Boot
-   │
-   ▼
-Node Core Runtime
-   │
-   ├── Storage
-   ├── Network
-   ├── Services
-   └── Kubo / IPFS
-   │
-   ▼
-Node Ready
-   │
-   ├── BIOS
-   ├── Node Core
-   └── Applications
-   │
-   ▼
-Operate
-   │
-   ├── Maintain
-   ├── Update
-   ├── Backup
-   └── Shutdown
-```
-
-The lifecycle is deliberately separated from application lifecycle.
-
----
-
-# User Interface
-
-The initial interface is intentionally simple and menu-driven.
-
-## Main Menu
-
-```text
-Node Core OS
-byLAEV
-
-0. Exit
-1. Node Core BIOS
-2. Node Core
-3. Applications
-
->
-```
-
-## Node Core BIOS
-
-The complete intended administrative surface is:
-
-```text
-Node Core BIOS
-byLAEV
-
-0. Back
-1. Storage
-2. IPFS / Kubo
-3. Network
-4. Services
-5. Configuration
-6. Security
-7. Diagnostics
-8. Updates
-9. Lifecycle
-
->
-```
-
-## Node Core
-
-The complete intended operational surface is:
-
-```text
-Node Core
-byLAEV
-
-0. Back
-1. Subir archivo
-2. IPFS
-3. Files
-4. CID Registry
-5. Publish
-6. Retrieve
-7. Pin
-8. Unpin
-9. Share
-10. Identity
-11. Reputation
-12. Protocols
-13. Services
-14. Utilities
-
->
-```
-
-## Applications
-
-```text
-Applications
-byLAEV
-
-No applications installed.
-
-[Future]
-```
-
-The menu is an interface to the architecture, not the architecture itself. Internal modules should remain independent from the presentation layer.
-
----
-
-# Platform Scope
-
-**Node Core OS is strictly a GNU/Linux terminal project.**
-
-The repository, runtime, user interface, installation model, documentation, and official CI target GNU/Linux systems operated from a terminal.
-
-The official scope is:
+El alcance oficial del repositorio comprende:
 
 ```text
 GNU/Linux
    │
-   └── Terminal
-        │
-        └── Node Core OS
-```
-
-The project does not define a graphical desktop application, web application, mobile application, Windows target, or macOS target.
-
-Portability experiments on other environments, if performed, are external validation work and do not change the official platform contract of this repository.
-
----
-
-# Installation
-
-Node Core OS is designed to be installed and operated on a supported GNU/Linux system from the terminal.
-
-The repository does not define a graphical installer or desktop interface. Installation and administration are terminal operations.
-
-The intended installation flow is:
-
-```text
-Install Node Core OS from the GNU/Linux terminal
-        │
-        ▼
-Initialize Node
-        │
-        ▼
-Configure local storage
-        │
-        ▼
-Install / configure Kubo
-        │
-        ▼
-Initialize Node Core Runtime
-        │
-        ▼
+   ▼
+Terminal
+   │
+   ▼
 Node Core OS
 ```
 
-# First Boot
+El proyecto no define como objetivo oficial una aplicación gráfica de escritorio, una aplicación móvil, una aplicación web, Windows o macOS.
 
-After installation, the Node should enter the main interface:
-
-```text
-Node Core OS
-byLAEV
-
-0. Exit
-1. Node Core BIOS
-2. Node Core
-3. Applications
-
->
-```
-
-The first administrative path is:
-
-```text
-Node Core BIOS
-      │
-      ├── Storage
-      │
-      └── IPFS / Kubo
-              │
-              ├── Install
-              ├── Configure
-              ├── Start
-              ├── Stop
-              └── Status
-```
-
-Once the infrastructure is operational:
-
-```text
-Node Core
-      │
-      ├── Add
-      ├── CID
-      ├── Pin
-      ├── Publish
-      └── Retrieve
-```
-
-The Node therefore becomes useful before any application is installed.
+La operación debe ser posible sin root y sin depender de una instalación global del sistema.
 
 ---
 
-# Complete System Model
+# 21. Instalación y contrato de dependencias
 
-The intended long-term architecture can be represented as:
+Node Core OS se instala y opera desde un terminal GNU/Linux.
 
-```text
-                              NODE CORE OS
-                                   │
-                    ┌──────────────┼──────────────┐
-                    │              │              │
-                    ▼              ▼              ▼
-                  BIOS         NODE CORE     APPLICATIONS
-                    │              │              │
-                    │              │              ├── Programs
-                    │              │              ├── Services
-                    │              │              └── Protocols
-                    │              │
-                    │              ├── Storage
-                    │              ├── Content
-                    │              ├── Network
-                    │              ├── Identity
-                    │              ├── Reputation
-                    │              ├── Protocols
-                    │              └── Services
-                    │
-                    └──────────────┬───────────────
-                                   │
-                            NODE RUNTIME
-                                   │
-             ┌─────────────────────┼─────────────────────┐
-             │                     │                     │
-          STORAGE                NETWORK              SERVICES
-             │
-        ┌────┴────┐
-        ▼         ▼
-      LOCAL     KUBO/IPFS
-     STORAGE
-```
+El instalador del repositorio está diseñado para:
 
-A more complete conceptual stack is:
+- no requerir root;
+- no requerir sudo;
+- no requerir systemd;
+- utilizar rutas pertenecientes al usuario;
+- instalar dentro de `~/.node-core/`;
+- instalar y verificar una versión fijada de Kubo;
+- inicializar el repositorio de Kubo;
+- crear el lanzador de Node Core OS;
+- verificar la instalación.
 
-```text
-Applications
-     │
-     ▼
-Protocols
-     │
-     ▼
-Identity / Reputation / Trust
-     │
-     ▼
-Node Core
-     │
-     ├── Content
-     ├── Storage
-     ├── Network
-     ├── Services
-     └── Capabilities
-     │
-     ▼
-Node Core Runtime
-     │
-     ▼
-Node Infrastructure
-     │
-     ├── Local Storage
-     ├── Kubo / IPFS
-     ├── Network
-     └── Operating System
-```
+La descarga de dependencias debe priorizar fuentes oficiales y mecanismos de recuperación adecuados, sin imponer límites arbitrarios al tiempo total de transferencia de archivos grandes.
 
-This is the intended direction of the project, while individual modules can mature independently.
+La documentación técnica relacionada se encuentra en:
+
+- `docs/DEPENDENCIES.md`
+- `docs/INSTALLER.md`
+- `installer/install.sh`
+
+Termux no es un objetivo oficial del proyecto. Las restricciones conocidas de entornos como Termux se consideran únicamente como referencia para evitar asumir privilegios, gestores de servicios o ubicaciones del sistema que no son necesarios.
 
 ---
 
-# Decentralized Architecture Principles
+# 22. Estado del proyecto
 
-Node Core OS is designed around several principles.
+El repositorio se encuentra en desarrollo.
 
-## 1. The Node is infrastructure
+Este README distingue deliberadamente entre:
 
-The Node should remain useful independently from applications.
+- **Implementado** — funcionalidad disponible actualmente.
+- **En desarrollo** — funcionalidad que está siendo implementada.
+- **Objetivo arquitectónico** — parte del diseño que todavía debe materializarse.
+- **Futuro** — extensiones que dependen de capas anteriores.
 
-## 2. Local and decentralized resources coexist
-
-Local storage and IPFS are complementary resources.
-
-## 3. Content is independently addressable
-
-CIDs allow content to be referenced independently from a local path.
-
-## 4. Identity is separate from reputation
-
-An identity can exist without a reputation, and different systems can evaluate reputation differently.
-
-## 5. Reputation is evidence-oriented
-
-Reputation should be capable of being derived from attestations, interactions, history, and other evidence rather than requiring one universal score.
-
-## 6. Applications are optional
-
-The infrastructure should work before applications are installed.
-
-## 7. Protocols are first-class consumers
-
-The architecture is intended to support distributed and decentralized protocols, not only file management.
-
-## 8. Infrastructure should be composable
-
-Storage, identity, network, services, and content should be exposed as reusable Node capabilities.
-
-## 9. Administrative and operational concerns remain separate
-
-BIOS configures the Node; Node Core operates it.
-
-## 10. Higher-level systems should not redefine the infrastructure
-
-Identity, reputation, protocols, and applications should build on Node Core rather than becoming entangled with its low-level implementation.
-
----
-
-# Development Scope
-
-The project has a broad architectural target but should be implemented incrementally.
-
-## Foundation
+El núcleo inicial continúa siendo:
 
 ```text
-1. Boot
-2. Runtime
-3. Configuration
-4. Local Storage
-5. Kubo / IPFS
-6. Service lifecycle
-7. Network foundation
-8. Diagnostics
-```
-
-## Node Core
-
-```text
-9. Storage abstraction
-10. Files
-11. CID
-12. Add
-13. Retrieve
-14. Pin / Unpin
-15. Publish
-16. Share
-17. Utilities
-```
-
-## Identity
-
-```text
-18. Node identity
-19. Key management
-20. Identity records
-21. Credentials
-22. Identity-linked resources
-23. Identity-aware operations
-```
-
-## Reputation and Trust
-
-```text
-24. Evidence model
-25. Attestations
-26. Trust relationships
-27. Reputation records
-28. Context-specific reputation
-29. Reputation discovery and verification
-```
-
-## Protocols
-
-```text
-30. Protocol model
-31. Protocol lifecycle
-32. Protocol services
-33. Inter-node communication
-34. Distributed coordination
-35. Protocol-specific identity and reputation
-```
-
-## Applications
-
-```text
-36. Application model
-37. Installation
-38. Permissions
-39. Application lifecycle
-40. Application services
-41. Application storage
-42. Application networking
-```
-
-## Advanced Node Systems
-
-```text
-43. Resource management
-44. Discovery
-45. Synchronization
-46. Distributed services
-47. Content discovery
-48. Provenance
-49. Inter-node trust
-50. Node-to-node systems
-```
-
-The implementation order may change as the project develops. The architectural dependency direction should remain:
-
-```text
-Infrastructure
-      ↓
-Node Runtime
-      ↓
-BIOS / Node Core
-      ↓
-Identity / Content / Services
-      ↓
-Protocols
-      ↓
-Applications
-      ↓
-Application-specific systems
-```
-
----
-
-# Project Boundaries
-
-Node Core OS is not intended to make every decentralized application part of the operating system.
-
-Instead, it provides the common infrastructure those systems can rely on.
-
-```text
-                    Node Core OS
-                         │
-                Common Node Layer
-                         │
-       ┌─────────────────┼─────────────────┐
-       ▼                 ▼                 ▼
-   Protocol A        Protocol B        Protocol C
-       │                 │                 │
-       ▼                 ▼                 ▼
- Application A     Application B     Application C
-```
-
-This allows multiple protocols and applications to coexist on the same Node without requiring each one to reinvent storage, identity, networking, service management, or content addressing.
-
----
-
-# Current Implementation State
-
-The repository is in early development.
-
-The architecture described here represents the **full intended design direction**, not a claim that every component is already implemented.
-
-The project should distinguish clearly between:
-
-- **Implemented** — functionality currently available in the repository.
-- **In development** — functionality actively being implemented.
-- **Architectural target** — components defined by the design but not yet implemented.
-- **Future** — extensions that depend on mature lower layers.
-
-The first functional milestone is to establish the Node foundation:
-
-```text
-Install
-  ↓
+Instalación
+   ↓
 Boot
-  ↓
+   ↓
 Node Core OS
-  ↓
+   ↓
 BIOS
-  ↓
+   ↓
 Local Storage
-  ↓
+   ↓
 Kubo / IPFS
-  ↓
+   ↓
 Node Core
-  ↓
+   ↓
 Add → CID → Pin → Retrieve
 ```
 
-Identity, reputation, protocols, and applications are higher-level systems that can then be built on the stable Node foundation.
+Sobre este fundamento se desarrollarán progresivamente:
+
+```text
+Registros
+   ↓
+Identidad
+   ↓
+Evidencia
+   ↓
+Corroboración
+   ↓
+Reputación
+   ↓
+Protocolos
+   ↓
+Aplicaciones
+   ↓
+Interoperabilidad
+```
+
+La arquitectura descrita en este documento representa la **dirección final de diseño** y no implica que todos sus componentes estén implementados actualmente.
 
 ---
 
-# Long-Term Vision
+# 23. Roadmap conceptual
 
-Node Core OS is intended to provide a general-purpose infrastructure for Nodes that can operate with both local and decentralized resources.
+## Fase 1 — Infraestructura del Node
 
-The long-term model is:
+- instalación rootless;
+- runtime;
+- configuración;
+- almacenamiento local;
+- Kubo/IPFS;
+- ciclo de vida de servicios;
+- red;
+- diagnósticos.
+
+## Fase 2 — Node Core
+
+- abstracción de almacenamiento;
+- archivos;
+- CID;
+- Add;
+- Retrieve;
+- Pin / Unpin;
+- Publish;
+- Share;
+- utilidades.
+
+## Fase 3 — Sistema de solicitudes y registros
+
+- modelo de Request;
+- registros;
+- intención;
+- propósito;
+- contexto;
+- duración;
+- políticas de almacenamiento;
+- control de acceso.
+
+## Fase 4 — Identidad
+
+- identidad del Node;
+- identidad individual;
+- identidad personal;
+- identidad profesional;
+- posturas públicas y privadas;
+- identificadores;
+- claves;
+- credenciales;
+- registros vinculados.
+
+## Fase 5 — Evidencia y corroboración
+
+- modelo de evidencia;
+- proveniencia;
+- atestaciones;
+- corroboraciones;
+- consistencia temporal;
+- consistencia espacial;
+- consistencia causal;
+- consistencia lógica y matemática;
+- detección de contradicciones.
+
+## Fase 6 — Reputación
+
+- historial;
+- reputación contextual;
+- relaciones de confianza;
+- derivación desde evidencia;
+- verificación;
+- explicación de reputación.
+
+## Fase 7 — Red de Nodes
+
+- propagación;
+- descubrimiento;
+- corroboración entre Nodes;
+- manifiestos;
+- referencias;
+- pruebas;
+- sincronización;
+- mecanismos de confianza distribuida.
+
+## Fase 8 — Protocolos
+
+- modelo de protocolo;
+- ciclo de vida;
+- servicios;
+- comunicación entre Nodes;
+- coordinación distribuida;
+- identidad y reputación específicas del protocolo.
+
+## Fase 9 — Aplicaciones
+
+- instalación;
+- permisos;
+- almacenamiento;
+- identidad;
+- solicitudes;
+- servicios;
+- networking;
+- ciclo de vida.
+
+## Fase 10 — Estándar e interoperabilidad
+
+- API;
+- esquemas;
+- formatos de exportación;
+- mecanismos de integración;
+- implementación de Node Core OS dentro de otros proyectos;
+- implementación de aplicaciones y protocolos sobre Node Core OS.
+
+---
+
+# 24. Principio final
+
+Node Core OS puede resumirse en una sola dirección:
 
 ```text
-                         NODE
-                          │
-             ┌────────────┴────────────┐
-             │                         │
-       Local Resources          Decentralized Resources
-             │                         │
-             └────────────┬────────────┘
-                          │
-                     Node Core
-                          │
-          ┌───────────────┼────────────────┐
-          │               │                │
-       Content         Identity         Services
-          │               │                │
-          │          Reputation            │
-          │               │                │
-          └───────────────┼────────────────┘
-                          │
-                       Protocols
-                          │
-                    Applications
+PERSONA
+   ↓
+SOLICITUD
+   ↓
+NODE CORE OS
+   ↓
+REGISTRO
+   ↓
+EVIDENCIA
+   ↓
+CORROBORACIÓN
+   ↓
+IDENTIDAD / HISTORIA / REPUTACIÓN
+   ↓
+PROTOCOLO
+   ↓
+APLICACIÓN
+   ↓
+DECISIÓN DE LA PERSONA
 ```
 
-The goal is not simply to create another file manager or IPFS wrapper.
+El Node no decide quién debe ser una persona.
 
-The goal is to establish a coherent **Node infrastructure layer** over which decentralized protocols, services, identities, reputations, and applications can operate.
+No decide qué reputación debe tener.
 
-> **Node Core OS provides the Node.  
-> Node Core provides the capabilities.  
-> Protocols define distributed behavior.  
-> Applications create higher-level experiences.**
+No decide qué debe publicar.
+
+No decide en qué debe participar.
+
+**Proporciona la infraestructura para que la persona pueda decidirlo con información, evidencia, continuidad y capacidad de corroboración.**
+
+Ese es el objetivo final de **Node Core OS**.
 
 ---
 
@@ -1199,18 +1078,3 @@ The goal is to establish a coherent **Node infrastructure layer** over which dec
 byLAEV
 
 Repository: https://github.com/byLAEV/Node-Core-OS/
-
-
----
-
-# Installer and dependency contract
-
-Node Core OS is installed and operated strictly from a GNU/Linux terminal.
-
-The repository includes a terminal installer under installer/. It rejects non-Linux platforms, requires Python 3.10 or newer, uses the Python standard library for the current runtime, installs into the user-owned ~/.node-core/ tree, installs and verifies a pinned Kubo release, initializes the Kubo repository, creates the node-core launcher, and verifies the installation.
-
-The installer does not require root, sudo, systemd, a graphical environment, or a system-wide /usr/local installation.
-
-See docs/DEPENDENCIES.md, docs/INSTALLER.md, and installer/install.sh.
-
-Termux is not an official target. Its known restrictions are considered only as design constraints when avoiding unnecessary assumptions about privileges, service managers, filesystem locations, and process lifecycle.
