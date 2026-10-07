@@ -60,7 +60,6 @@ class MainMenu:
             print("2. Keys")
             print("3. Backup")
             print("4. Providers")
-            print("5. Verify Backup")
             choice = input("\n> ").strip()
             if choice == "0":
                 return
@@ -124,10 +123,10 @@ class MainMenu:
                     if passphrase != confirm:
                         raise ValueError("Passphrases do not match.")
                     target = self.runtime.backup.create_backup(passphrase)
-                    print(f"\\n✓ Encrypted backup created: {target}")
+                    print(f"\n✓ Encrypted backup created: {target}")
                 except Exception as exc:
                     print(f"Backup error: {exc}")
-                input("\\n> ")
+                input("\n> ")
             elif choice == "3":
                 try:
                     destination = Path(input("Destination .ncb file: ").strip()).expanduser()
@@ -136,7 +135,7 @@ class MainMenu:
                     if passphrase != confirm:
                         raise ValueError("Passphrases do not match.")
                     target = self.runtime.backup.create_backup(passphrase, destination)
-                    print(f"\\n✓ Encrypted backup exported: {target}")
+                    print(f"\n✓ Encrypted backup exported: {target}")
                 except Exception as exc:
                     print(f"Backup error: {exc}")
                 input("\\n> ")
@@ -162,7 +161,7 @@ class MainMenu:
                 input("\n> ")
             elif choice == "6":
                 history = self.runtime.config.backup_history_path
-                print(f"\\nHistory: {history}")
+                print(f"\nHistory: {history}")
                 if history.exists():
                     print(history.read_text(encoding="utf-8"))
                 else:
