@@ -47,6 +47,84 @@ class MainMenu:
                 self.storage_bios()
             elif choice == "2":
                 self.kubo_bios()
+            elif choice == "6":
+                self.security_bios()
+
+    def security_bios(self) -> None:
+        while True:
+            print("\nSecurity\nbyLAEV\n")
+            print("0. Back")
+            print("1. Node Identity")
+            print("2. Keys")
+            print("3. Backup")
+            print("4. Providers")
+            print("5. Verify Backup")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self.node_identity()
+            elif choice == "2":
+                self.key_status()
+            elif choice == "3":
+                self.backup_bios()
+            elif choice == "4":
+                self.providers_bios()
+
+    def node_identity(self) -> None:
+        try:
+            status = self.runtime.backup.status()
+            print("\nNode Identity")
+            print(f"Peer ID: {status['peer_id'] or '-'}")
+            print(f"Kubo: {status['kubo_version'] or '-'}")
+            print(f"age: {'Available' if status['age_available'] else 'Missing'}")
+        except Exception as exc:
+            print(f"Security error: {exc}")
+        input("\n> ")
+
+    def key_status(self) -> None:
+        try:
+            keys = self.runtime.backup.kubo.list_keys()
+            print("\nKeys")
+            if not keys:
+                print("No Kubo-managed keys found.")
+            for key in keys:
+                print(f"- {key}")
+        except Exception as exc:
+            print(f"Security error: {exc}")
+        input("\n> ")
+
+    def backup_bios(self) -> None:
+        while True:
+            print("\nBackup")
+            print("0. Back")
+            print("1. Inspect backup metadata")
+            print("2. Create encrypted backup [V1]")
+            print("3. Export to file [V1]")
+            print("4. Upload to Pinata [V1]")
+            print("5. Backup History")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                try:
+                    result = self.runtime.backup.inspect()
+                    print(result["manifest"])
+                    print(f"Keys: {', '.join(result['keys']) or '-'}")
+                except Exception as exc:
+                    print(f"Backup error: {exc}")
+                input("\n> ")
+            elif choice in {"2", "3", "4", "5"}:
+                print("\n[V1 foundation] Operation will be enabled in the next implementation phase.")
+                input("\n> ")
+
+    def providers_bios(self) -> None:
+        print("\nProviders")
+        print("0. Back")
+        print("1. Pinata [V1]")
+        print("\nAuthentication uses a Pinata API credential.")
+        print("Google/GitHub login remains in the Pinata web console.")
+        input("\n> ")
 
     def storage_bios(self) -> None:
         print("\nStorage")
