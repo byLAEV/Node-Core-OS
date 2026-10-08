@@ -2,6 +2,8 @@ import json
 import os
 import unittest
 
+from node_core.evidence import EvidenceManager
+
 from node_core.config import NodeConfig
 from node_core.content import ContentManager
 from node_core.ipfs import AddedContent, KuboManager
@@ -87,6 +89,46 @@ class RuntimeTests(unittest.TestCase):
             status = manager.status()
             self.assertFalse(status.installed)
             self.assertFalse(status.running)
+
+    def test_create_text_evidence_stores_local_and_ipfs(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            storage = StorageManager(root / "storage")
+            storage.initialize()
+            manager = ContentManager(
+                FakeKubo(),
+                storage,
+                gateway="http://127.0.0.1:8080",
+            )
+
+            result = EvidenceManager(manager).create_text("My first evidence.")
+
+            local_path = Path(result.path)
+            self.assertTrue(local_path.is_file())
+            self.assertEqual(local_path.suffix, ".txt")
+            self.assertEqual(
+                local_path.read_text(encoding="utf-8"),
+                "My first evidence.",
+            )
+            self.assertEqual(result.content.cid, "bafytestcid")
+            self.assertTrue(result.content.pinned)
+            self.assertEqual(result.content.source_path, str(local_path.resolve()))
+
+    def test_create_text_evidence_rejects_empty_text(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            storage = StorageManager(root / "storage")
+            storage.initialize()
+            manager = ContentManager(FakeKubo(), storage)
+
+            with self.assertRaises(ValueError):
+                EvidenceManager(manager).create_text("   ")
 
     def test_content_end_to_end_with_fake_kubo(self):
         from tempfile import TemporaryDirectory
