@@ -2,6 +2,7 @@
 
 from node_core.config import NodeConfig
 from node_core.content import ContentManager
+from node_core.evidence import EvidenceManager
 from node_core.ipfs import KuboManager
 from node_core.storage import StorageManager
 from node_core.ui import MainMenu
@@ -24,6 +25,7 @@ class NodeRuntime:
             self.storage,
             gateway=self.config.ipfs_gateway,
         )
+        self.evidence = EvidenceManager(self.content)
         self._booted = False
 
     @property
