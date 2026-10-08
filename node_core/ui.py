@@ -102,45 +102,59 @@ class MainMenu:
         while True:
             print("\nNode Core\nbyLAEV\n")
             print("0. Back")
-            print("1. Subir archivo")
-            print("2. IPFS")
-            print("3. Files")
-            print("4. CID Registry")
-            print("5. Publish")
-            print("6. Retrieve")
-            print("7. Pin")
-            print("8. Unpin")
-            print("9. Share")
-            print("10. Identity")
-            print("11. Reputation")
-            print("12. Protocols")
-            print("13. Services")
-            print("14. Utilities")
+            print("1. Add Evidence")
+            print("2. Subir archivo")
+            print("3. IPFS")
+            print("4. Files")
+            print("5. CID Registry")
+            print("6. Publish")
+            print("7. Retrieve")
+            print("8. Pin")
+            print("9. Unpin")
+            print("10. Share")
+            print("11. Identity")
+            print("12. Reputation")
+            print("13. Protocols")
+            print("14. Services")
+            print("15. Utilities")
             choice = input("\n> ").strip()
             try:
                 if choice == "0":
                     return
                 if choice == "1":
-                    self.add_content()
+                    self.add_evidence()
                 elif choice == "2":
+                    self.add_content()
+                elif choice == "3":
                     status = self.runtime.kubo.status()
                     print(f"Kubo: {'Online' if status.running else 'Offline'}")
                     input("\n> ")
-                elif choice == "4":
-                    self.registry()
                 elif choice == "5":
-                    self.publish_content()
+                    self.registry()
                 elif choice == "6":
-                    self.retrieve_content()
+                    self.publish_content()
                 elif choice == "7":
-                    self.pin_content()
+                    self.retrieve_content()
                 elif choice == "8":
-                    self.unpin_content()
+                    self.pin_content()
                 elif choice == "9":
+                    self.unpin_content()
+                elif choice == "10":
                     self.share_content()
             except Exception as exc:
                 print(f"Core error: {exc}")
                 input("\n> ")
+
+    def add_evidence(self) -> None:
+        print("\nAdd Evidence")
+        text = input("Evidence: ")
+        result = self.runtime.evidence.create_text(text)
+
+        print("\n✓ Evidence created")
+        print(f"✓ Local: {result.path}")
+        print(f"✓ IPFS CID: {result.content.cid}")
+        print("✓ IPFS pin: Yes")
+        input("\n> ")
 
     def add_content(self) -> None:
         print("\nSubir archivo")
