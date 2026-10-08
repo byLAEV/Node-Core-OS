@@ -7,6 +7,16 @@ kubo_asset() {
     *) printf 'Unsupported Linux architecture: %s\n' "$(uname -m)" >&2; return 1 ;;
   esac
 }
+is_termux() {
+  [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -x "$PREFIX/bin/ipfs" ]]
+}
+resolve_kubo_executable() {
+  if is_termux; then
+    printf '%s\n' "$PREFIX/bin/ipfs"
+    return 0
+  fi
+  printf '%s\n' "$NODE_CORE_DATA_DIR/bin/ipfs"
+}
 download_file() {
   local url="$1" destination="$2"
   if command -v curl >/dev/null 2>&1; then
@@ -45,37 +55,47 @@ download_kubo_release() {
   return 1
 }
 install_kubo() {
-  local version="$NODE_CORE_KUBO_VERSION" asset archive work_dir installed_version
-  asset="$(kubo_asset)"
-  archive="kubo_v${version}_${asset}.tar.gz"
-  work_dir="$(mktemp -d)"
-  printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
-  download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
-  tar -xzf "$work_dir/$archive" -C "$work_dir"
-  cp "$work_dir/kubo/ipfs" "$NODE_CORE_DATA_DIR/bin/ipfs"
-  chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
-  installed_version="$("$NODE_CORE_DATA_DIR/bin/ipfs" version | awk '{print $3}')"
-  rm -rf "$work_dir"
-  if [[ "$installed_version" != "$version" ]]; then
-    printf 'Kubo version verification failed: expected %s, got %s\n' "$version" "$installed_version" >&2
-    return 1
+  local version="$NODE_CORE_KUBO_VERSION" asset archive work_dir installed_version executable
+  if is_termux; then
+    executable="$PREFIX/bin/ipfs"
+    installed_version="$("$executable" version | awk '{print $3}')"
+    printf 'Termux Kubo detected: %s\n' "$executable"
+    printf 'Using existing Android-compatible Kubo %s; Node Core OS will not replace it.\n' "$installed_version"
+    export NODE_CORE_KUBO_EXECUTABLE="$executable"
+  else
+    asset="$(kubo_asset)"
+    archive="kubo_v${version}_${asset}.tar.gz"
+    work_dir="$(mktemp -d)"
+    printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
+    download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
+    tar -xzf "$work_dir/$archive" -C "$work_dir"
+    cp "$work_dir/kubo/ipfs" "$NODE_CORE_DATA_DIR/bin/ipfs"
+    chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
+    executable="$NODE_CORE_DATA_DIR/bin/ipfs"
+    installed_version="$("$executable" version | awk '{print $3}')"
+    rm -rf "$work_dir"
+    if [[ "$installed_version" != "$version" ]]; then
+      printf 'Kubo version verification failed: expected %s, got %s\n' "$version" "$installed_version" >&2
+      return 1
+    fi
+    export NODE_CORE_KUBO_EXECUTABLE="$executable"
   fi
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   if [[ ! -f "$IPFS_PATH/config" ]]; then
-    "$NODE_CORE_DATA_DIR/bin/ipfs" init
-    "$NODE_CORE_DATA_DIR/bin/ipfs" config profile apply unixfs-v1-2025
+    "$executable" init
+    "$executable" config profile apply unixfs-v1-2025
   fi
-  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.API "$NODE_CORE_KUBO_API_MULTIADDR"
-  "$NODE_CORE_DATA_DIR/bin/ipfs" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY_MULTIADDR"
+  "$executable" config Addresses.API "$NODE_CORE_KUBO_API_MULTIADDR"
+  "$executable" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY_MULTIADDR"
 }
-
 start_kubo() {
+  local executable="${NODE_CORE_KUBO_EXECUTABLE:-$(resolve_kubo_executable)}"
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   if http_post "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
     return 0
   fi
 
-  nohup "$NODE_CORE_DATA_DIR/bin/ipfs" daemon >"$NODE_CORE_DATA_DIR/logs/kubo.log" 2>&1 &
+  nohup "$executable" daemon >"$NODE_CORE_DATA_DIR/logs/kubo.log" 2>&1 &
   local pid="$!"
   printf '%s\n' "$pid" > "$NODE_CORE_DATA_DIR/runtime/kubo.pid"
 
