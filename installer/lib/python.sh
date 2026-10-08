@@ -15,6 +15,13 @@ export NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json"
 exec python3 "$NODE_CORE_DATA_DIR/app/main.py" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core"
+
+  cat > "$NODE_CORE_DATA_DIR/bin/node-core-update" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
+EOF
+  chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 }
 write_config() {
   cat > "$NODE_CORE_DATA_DIR/config.json" <<EOF
