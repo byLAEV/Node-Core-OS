@@ -24,6 +24,14 @@ EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 }
 write_config() {
+  local ipfs_executable
+  if [[ -n "${NODE_CORE_KUBO_EXECUTABLE:-}" ]]; then
+    ipfs_executable="$NODE_CORE_KUBO_EXECUTABLE"
+  elif [[ -n "${TERMUX_VERSION:-}" && -x "${PREFIX:-}/bin/ipfs" ]]; then
+    ipfs_executable="$PREFIX/bin/ipfs"
+  else
+    ipfs_executable="$NODE_CORE_DATA_DIR/bin/ipfs"
+  fi
   cat > "$NODE_CORE_DATA_DIR/config.json" <<EOF
 {
   "data_dir": "$NODE_CORE_DATA_DIR",
@@ -31,7 +39,7 @@ write_config() {
   "ipfs_repo_path": "$NODE_CORE_DATA_DIR/ipfs",
   "ipfs_api": "$NODE_CORE_KUBO_API",
   "ipfs_gateway": "$NODE_CORE_KUBO_GATEWAY",
-  "ipfs_executable": "$NODE_CORE_DATA_DIR/bin/ipfs",
+  "ipfs_executable": "$ipfs_executable",
   "ipfs_profile": "unixfs-v1-2025"
 }
 EOF
