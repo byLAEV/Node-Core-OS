@@ -134,7 +134,391 @@ Applications may generate requests, but they should not thereby receive unrestri
 
 ---
 
-# 4. Records
+# 4. Forget / Remember Context Model
+
+Node Core OS distinguishes between **preserving historical information** and **actively using that information as context**.
+
+> **To forget is to stop considering historical context by default. To remember is to selectively apply historical context when a present requirement requires it.**
+
+A Node may retain records, evidence, identity information, credentials, reputation history, and other historical data while entering a state in which that history is **not actively applied to the current context**.
+
+Conceptually:
+
+```text
+                     NODE
+                       │
+                       ▼
+                  PRESENT STATE
+                       │
+                       ▼
+                   FORGOTTEN
+                       │
+          historical context is
+          not applied by default
+                       │
+                       ▼
+              CURRENT REQUIREMENT
+                       │
+                       │ requires historical evidence?
+                       ▼
+                    REMEMBER
+                       │
+                       ▼
+             RELEVANT MEMORY ONLY
+                       │
+                       ▼
+               CURRENT DECISION
+```
+
+## 4.1 Forgotten Does Not Mean Deleted
+
+The `FORGOTTEN` state does not imply that information has been destroyed.
+
+It means that historical information is not automatically incorporated into the active context of the Node.
+
+Therefore:
+
+```text
+FORGOTTEN
+    ≠
+DELETED
+```
+
+and:
+
+```text
+PRESERVED
+    ≠
+ACTIVELY USED
+```
+
+This distinction is fundamental to Node Core OS.
+
+A Node may preserve information for continuity, evidence, integrity, auditability, or future requirements while not using that information to define the Node's current state.
+
+## 4.2 The Present Is the Default Context
+
+Node Core OS should evaluate the current state of a Node from its **present context** by default.
+
+Historical information should not automatically become a permanent representation of the current state.
+
+```text
+CURRENT STATE
+    =
+CURRENT EVIDENCE
+    +
+CURRENT CONDITIONS
+```
+
+rather than:
+
+```text
+CURRENT STATE
+    =
+CURRENT CONDITIONS
+    +
+ENTIRE HISTORICAL RECORD
+```
+
+The past remains available, but it is not presumed to be relevant to every present operation.
+
+> **The Node is considered according to what is relevant now. Its history becomes relevant when a current requirement makes it relevant.**
+
+## 4.3 Remember Is Requirement-Driven
+
+`REMEMBER` is not intended to mean:
+
+> "Load everything this Node has ever been."
+
+Instead, `REMEMBER` means:
+
+> **"Apply the historical context necessary to evaluate a specific present requirement."**
+
+A request may therefore cause a selective memory operation:
+
+```text
+REQUEST
+   │
+   ▼
+REQUIREMENT
+   │
+   ▼
+Does the requirement require historical context?
+   │
+   ├── NO ──► Continue using present context
+   │
+   └── YES
+          │
+          ▼
+       REMEMBER
+          │
+          ▼
+   Relevant historical evidence
+          │
+          ▼
+    Requirement evaluation
+```
+
+The requirement determines the scope of the memory that needs to be considered.
+
+For example:
+
+```text
+Requirement:
+"Does this Node possess credential X?"
+```
+
+does not necessarily require:
+
+```text
+All identity history
+All reputation history
+All records
+All previous activities
+```
+
+It may require only:
+
+```text
+Credential X
++
+Proof of validity
++
+Proof of association
+```
+
+This makes memory **requirement-driven rather than globally active**.
+
+## 4.4 Selective Memory
+
+Node Core OS should prefer the smallest historical context necessary to satisfy a requirement.
+
+```text
+ENTIRE HISTORY
+      │
+      │ requirement
+      ▼
+RELEVANT HISTORY
+      │
+      ▼
+REQUIRED EVIDENCE
+      │
+      ▼
+CURRENT DECISION
+```
+
+This creates an architectural distinction between:
+
+```text
+Memory Available
+```
+
+and:
+
+```text
+Memory Applied
+```
+
+The existence of historical information does not by itself authorize its use.
+
+## 4.5 Memory, Identity, and Reputation
+
+This model also separates three concepts that should not be treated as equivalent:
+
+```text
+IDENTITY
+   │
+   └── Who or what is being represented?
+
+HISTORY
+   │
+   └── What has been recorded about that identity?
+
+REPUTATION
+   │
+   └── What can be inferred from relevant evidence
+       within a particular context?
+```
+
+A Node does not automatically receive its entire historical reputation whenever it enters the system.
+
+Instead:
+
+```text
+NODE
+  │
+  ▼
+PRESENT
+  │
+  ▼
+FORGOTTEN
+  │
+  ▼
+CURRENT REQUIREMENT
+  │
+  ▼
+REMEMBER
+  │
+  ▼
+RELEVANT HISTORY
+  │
+  ▼
+CONTEXTUAL REPUTATION
+```
+
+Reputation can therefore remain historical evidence without becoming a permanent and universal label.
+
+## 4.6 Forgetting as Context Control
+
+The `FORGOTTEN` state should be understood as a **context-control mechanism**, not as a data-destruction mechanism.
+
+It allows Node Core OS to distinguish:
+
+```text
+STORE
+   ≠
+REMEMBER
+   ≠
+USE
+   ≠
+SHARE
+   ≠
+PUBLISH
+   ≠
+AUTHORIZE
+```
+
+These operations may have different requirements, permissions, scopes, and lifetimes.
+
+A record may remain stored while being:
+
+- forgotten from the active context;
+- unavailable to a particular application;
+- restricted to a particular requirement;
+- selectively recalled;
+- used only to generate a proof;
+- or, when required by a specific policy, actually deleted or anonymized.
+
+Therefore, Node Core OS should not treat "forgetting" and "deletion" as synonymous operations.
+
+## 4.7 The Right to Forget Without Necessarily Erasing
+
+This architecture provides a technical interpretation of an important distinction related to the concept of a **right to forget**:
+
+> **Forgetting can mean ceasing to actively use historical information, rather than necessarily destroying every underlying record.**
+
+This is an architectural principle, not a universal legal definition of a right to erasure or right to be forgotten.
+
+Where a legal, contractual, security, or policy requirement requires actual deletion, anonymization, restriction, or retention, Node Core OS must be capable of applying that separate policy.
+
+The architectural distinction is therefore:
+
+```text
+FORGET
+    │
+    └── stop applying historical context
+
+RESTRICT
+    │
+    └── prevent specified uses of historical context
+
+PURGE
+    │
+    └── delete or irreversibly remove information
+```
+
+These are different operations.
+
+## 4.8 Present-First Principle
+
+Node Core OS adopts the following conceptual principle:
+
+> **The present is the default context. The past is available as evidence, but it is not automatically applied. A current requirement determines whether historical context should be remembered.**
+
+Formally:
+
+```text
+Present
+   │
+   ▼
+Default Context
+   │
+   ▼
+Requirement
+   │
+   ├── historical context unnecessary
+   │        │
+   │        ▼
+   │     continue
+   │
+   └── historical context necessary
+            │
+            ▼
+         REMEMBER
+            │
+            ▼
+     Relevant Evidence
+            │
+            ▼
+      Current Evaluation
+```
+
+This principle allows Node Core OS to preserve continuity without making historical information an unavoidable permanent context.
+
+## 4.9 Requirement-Driven Memory
+
+The resulting model can be summarized as:
+
+```text
+REQUIREMENT
+     │
+     ▼
+MEMORY REQUIREMENT
+     │
+     ▼
+SELECTIVE RECALL
+     │
+     ▼
+RELEVANT EVIDENCE
+     │
+     ▼
+CURRENT DECISION
+```
+
+Not:
+
+```text
+HISTORY
+   │
+   ▼
+PERMANENT IDENTITY
+   │
+   ▼
+AUTOMATIC TRUST
+```
+
+This distinction is particularly important for systems involving identity, reputation, authorization, governance, distributed participation, credentials, and privacy.
+
+## 4.10 Core Principle
+
+> **Node Core OS does not need to erase the past in order to forget it. It can preserve historical memory while choosing not to apply that memory to the present until a current requirement explicitly makes the relevant history necessary.**
+
+Or, more concisely:
+
+```text
+FORGET
+=
+Do not apply the past by default.
+
+REMEMBER
+=
+Apply only the relevant past when the present requires it.
+```
+
+This establishes **requirement-driven memory** as a fundamental architectural capability of Node Core OS.
+
+---
+# 6. Records
 
 Records are a fundamental component of a person's digital continuity.
 
@@ -175,7 +559,7 @@ The architecture should allow the person to determine which records should remai
 
 ---
 
-# 5. Local and Decentralized Storage
+# 6. Local and Decentralized Storage
 
 Storage is the first infrastructure layer of Node Core OS.
 
@@ -219,7 +603,7 @@ Kubo is an infrastructure component used by Node Core OS. It is **not the comple
 
 ---
 
-# 6. Content and Evidence
+# 7. Content and Evidence
 
 A file can become a content reference independent of its original local path:
 
@@ -255,7 +639,7 @@ Evidence may subsequently be associated with:
 
 ---
 
-# 7. Identity
+# 8. Identity
 
 Identity in Node Core OS should not be reduced to a username.
 
@@ -301,7 +685,7 @@ For that reason, Node Core OS considers an additional layer of **corroboration a
 
 ---
 
-# 8. Individuality and Consistency
+# 9. Individuality and Consistency
 
 A central idea of the proposal is that the same identity should not be able to receive mutually incompatible attributions as though they all belonged to one coherent individual continuity.
 
@@ -344,7 +728,7 @@ The purpose is to prevent the system from treating an identity history as cohere
 
 ---
 
-# 9. Evidence
+# 10. Evidence
 
 Evidence is the relationship between a claim and the records that can support it.
 
@@ -385,7 +769,7 @@ It should be derivable from a history of evidence.
 
 ---
 
-# 10. Reputation
+# 11. Reputation
 
 Node Core OS distinguishes:
 
@@ -426,7 +810,7 @@ Node Core OS does not intend to become a universal judge of reputation.
 
 ---
 
-# 11. Distributed Corroboration
+# 12. Distributed Corroboration
 
 A Node Core OS network may use other Nodes to corroborate information.
 
@@ -489,7 +873,7 @@ This is distributed corroboration, not necessarily centralized identity governan
 
 ---
 
-# 12. Privacy
+# 13. Privacy
 
 Decentralization does not mean that everything should be public.
 
@@ -515,7 +899,7 @@ Privacy is therefore treated as an architectural property rather than merely an 
 
 ---
 
-# 13. Individual Decision
+# 14. Individual Decision
 
 The goal is not to force a person to build a reputation or participate in external systems.
 
@@ -544,7 +928,7 @@ The decision to use that information remains with the person.
 
 ---
 
-# 14. Architecture
+# 15. Architecture
 
 The architecture is organized around three visible levels:
 
@@ -620,7 +1004,7 @@ A Node installation should be able to exist without applications.
 
 ---
 
-# 15. Protocol and Application Layer
+# 16. Protocol and Application Layer
 
 Node Core OS is intended to provide infrastructure on which other projects can build.
 
@@ -658,7 +1042,7 @@ Node Core OS aims to make personal infrastructure portable enough to reach the s
 
 ---
 
-# 16. Architecture Principles
+# 17. Architecture Principles
 
 ## 1. The person is the center
 
@@ -708,9 +1092,21 @@ There must be a meaningful distinction between preservation, sharing, propagatio
 
 Node Core OS should be capable of becoming a foundation that other projects can integrate or implement.
 
+## 13. The present is the default context
+
+Historical information should not automatically define the current state of a Node.
+
+## 14. Forgetting is not deletion
+
+A Node may stop applying historical information without necessarily destroying the underlying record.
+
+## 15. Memory is requirement-driven
+
+Historical context should be recalled selectively when a current requirement requires it.
+
 ---
 
-# 17. Complete Model
+# 18. Complete Model
 
 The complete conceptual model can be expressed as:
 
@@ -744,13 +1140,19 @@ The complete conceptual model can be expressed as:
                            CORROBORATION
                                  │
                                  ▼
-                              IDENTITY
+                              PRESENT
                                  │
                                  ▼
-                              HISTORY
+                           REQUIREMENT
                                  │
                                  ▼
-                             REPUTATION
+                             REMEMBER
+                                 │
+                                 ▼
+                         RELEVANT HISTORY
+                                 │
+                                 ▼
+                            REPUTATION
                                  │
                                  ▼
                               PROTOCOLS
@@ -764,7 +1166,7 @@ The complete conceptual model can be expressed as:
 
 ---
 
-# 18. Final Goal of Node Core OS
+# 19. Final Goal of Node Core OS
 
 The final goal of Node Core OS is to build infrastructure that gives a person a **personal digital core**, based on local and decentralized storage, from which they can preserve and manage their records, identity, evidence, history, and reputation.
 
@@ -791,7 +1193,7 @@ The goal is to create **the infrastructure that allows a person to decide whethe
 
 ---
 
-# 19. Export and Interoperability Goal
+# 20. Export and Interoperability Goal
 
 Once the core infrastructure is consolidated, Node Core OS should be capable of becoming a reusable architecture or standard for other projects.
 
@@ -828,7 +1230,7 @@ The desired relationship is therefore bidirectional:
 
 ---
 
-# 20. Official Platform
+# 21. Official Platform
 
 **Node Core OS is a GNU/Linux, terminal-first project.**
 
@@ -852,7 +1254,7 @@ This constraint is intentional: the Node should belong to and operate within the
 
 ---
 
-# 21. Installation and Dependency Contract
+# 22. Installation and Dependency Contract
 
 Node Core OS is installed and operated from a GNU/Linux terminal.
 
@@ -880,7 +1282,7 @@ Termux is **not an official target platform**. Constraints observed in environme
 
 ---
 
-# 22. Project Status
+# 23. Project Status
 
 Node Core OS is under active development.
 
@@ -935,7 +1337,7 @@ The architecture described in this document represents the **long-term design di
 
 ---
 
-# 23. Conceptual Roadmap
+# 24. Conceptual Roadmap
 
 ## Phase 1 — Node Infrastructure
 
@@ -1046,7 +1448,7 @@ The architecture described in this document represents the **long-term design di
 
 ---
 
-# 24. Final Principle
+# 25. Final Principle
 
 Node Core OS can be summarized as:
 
