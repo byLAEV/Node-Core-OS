@@ -1282,6 +1282,53 @@ Termux is **not an official target platform**. Constraints observed in environme
 
 ---
 
+# 23. Applications and Use Cases
+
+Node Core OS is designed as a horizontal infrastructure. Its core capabilities and trust protocols can be composed into domain-specific applications across enterprise, government, finance, education, health, logistics, industry, AI, decentralized networks, and other sectors.
+
+The architecture is intentionally separated into three levels:
+
+CORE INFRASTRUCTURE
+        ↓
+TRUST / EVIDENCE PROTOCOLS
+        ↓
+NC-* APPLICATIONS
+
+Examples include:
+- Enterprise: NC-SUPPLIER, NC-CONTRACT, NC-PROCUREMENT
+- Finance: NC-BANK-KYC, NC-CREDIT, NC-LENDING
+- Government: NC-GOV, NC-BENEFIT, NC-TAX, NC-LICENSE
+- Civic: NC-ELECTOR-ID, NC-VOTING-PARTICIPATION
+- Education: NC-CREDENTIAL, NC-UNIVERSITY, NC-TRAINING
+- Health: NC-HEALTH, NC-MEDICAL-CREDENTIAL
+- Logistics: NC-SUPPLY-CHAIN, NC-LOGISTICS, NC-CARGO
+- Pharmaceutical / Food: NC-PHARMA, NC-FOOD, NC-COLD-CHAIN
+- Agriculture: NC-AGRI
+- Energy / Utilities: NC-ENERGY, NC-WATER, NC-GRID
+- Industrial / IoT: NC-MANUFACTURING, NC-IOT, NC-ROBOTICS, NC-DIGITAL-TWIN
+- Software / Provenance: NC-SOFTWARE-SUPPLY-CHAIN, NC-DOCUMENT, NC-CONTENT-PROVENANCE
+- AI: NC-AI, NC-AI-AGENT, NC-MODEL-PROVENANCE
+- Legal / Compliance: NC-LEGAL, NC-COMPLIANCE, NC-AUDIT
+- Decentralized systems: NC-P2P, NC-CONSORTIUM, NC-DAO
+- Research / Creative: NC-RESEARCH, NC-DATA-PROVENANCE, NC-CREATOR, NC-IP
+
+These names describe proposed reference applications unless a separate document identifies a higher implementation status.
+
+### Common application model
+
+REQUEST → REQUIREMENT → POLICY → CURRENT CONTEXT → REMEMBER only if required → MINIMUM NECESSARY EVIDENCE → CORROBORATION / SOURCE DIVERSITY → TEMPORAL CHECKS → PROOF → DECISION → MINIMUM CONTEXT RELEASE → FORGOTTEN
+
+The central memory principle is:
+
+> **The present is the default context. The past remains available as evidence, but it is not automatically applied. A current requirement determines whether relevant historical context should be remembered.**
+
+FORGOTTEN ≠ DELETED
+PRESERVED ≠ ACTIVELY USED
+STORE ≠ REMEMBER ≠ USE ≠ SHARE ≠ PUBLISH
+
+The complete cross-sector catalog, protocol composition model, application template, architectural limits, and implementation-status model are maintained in docs/USE-CASES.md.
+
+---
 # 23. Project Status
 
 Node Core OS is under active development.
