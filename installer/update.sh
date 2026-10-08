@@ -20,13 +20,24 @@ download_file() {
   fi
 }
 
+resolve_kubo_executable() {
+  if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -x "$PREFIX/bin/ipfs" ]]; then
+    printf '%s\n' "$PREFIX/bin/ipfs"
+    return 0
+  fi
+  printf '%s\n' "$NODE_CORE_DATA_DIR/bin/ipfs"
+}
+
 require_installation() {
   [[ -d "$NODE_CORE_APP_DIR" ]] || {
     printf 'Node Core OS installation not found: %s\n' "$NODE_CORE_DATA_DIR" >&2
     exit 1
   }
-  [[ -x "$NODE_CORE_DATA_DIR/bin/ipfs" ]] || {
-    printf 'Kubo/IPFS installation not found. Aborting update to protect the installation.\n' >&2
+  local executable
+  executable="$(resolve_kubo_executable)"
+  [[ -x "$executable" ]] || {
+    printf 'Kubo/IPFS executable not found: %s\n' "$executable" >&2
+    printf 'Aborting update to protect the installation.\n' >&2
     exit 1
   }
   [[ -d "$NODE_CORE_DATA_DIR/ipfs" ]] || {
@@ -37,6 +48,31 @@ require_installation() {
     printf 'Local storage not found. Aborting update to protect the installation.\n' >&2
     exit 1
   }
+}
+
+migrate_termux_config() {
+  local config="$NODE_CORE_DATA_DIR/config.json"
+  local executable
+  executable="$(resolve_kubo_executable)"
+  [[ -n "${TERMUX_VERSION:-}" && -x "$executable" && -f "$config" ]] || return 0
+
+  if ! "$executable" version >/dev/null 2>&1; then
+    printf 'Termux Kubo executable failed verification: %s\n' "$executable" >&2
+    return 1
+  fi
+
+  python3 - "$config" "$executable" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+executable = sys.argv[2]
+data = json.loads(path.read_text(encoding="utf-8"))
+if data.get("ipfs_executable") != executable:
+    data["ipfs_executable"] = executable
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+PY
 }
 
 latest_commit() {
@@ -106,6 +142,7 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_installation
+  migrate_termux_config
 
   local remote_commit local_commit
   remote_commit="$(latest_commit)"
@@ -127,7 +164,8 @@ main() {
 
   printf '%s\n' 'An application update is available.'
   printf '%s\n' 'The updater will modify only the Node Core application.'
-  printf '%s\n' 'Kubo/IPFS binary, IPFS repository, local storage, and config.json will not be replaced.'
+  printf '%s\n' 'Kubo/IPFS binary, IPFS repository, and local storage will not be replaced.'
+  printf '%s\n' 'On Termux, config.json may be migrated only to point Node Core to the existing Android-compatible Kubo executable.'
   printf '\n'
   read -r -p 'Update Node Core OS? [Y/n] ' answer
   case "${answer:-y}" in
