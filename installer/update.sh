@@ -50,6 +50,25 @@ require_installation() {
   }
 }
 
+ensure_launchers() {
+  mkdir -p "$NODE_CORE_DATA_DIR/bin"
+
+  cat > "$NODE_CORE_DATA_DIR/bin/node-core" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+export NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json"
+exec python3 "$NODE_CORE_DATA_DIR/app/main.py" "$@"
+EOF
+  chmod +x "$NODE_CORE_DATA_DIR/bin/node-core"
+
+  cat > "$NODE_CORE_DATA_DIR/bin/node-core-update" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
+EOF
+  chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+}
+
 migrate_termux_config() {
   local config="$NODE_CORE_DATA_DIR/config.json"
   local executable
@@ -143,6 +162,7 @@ main() {
   printf '\n'
   require_installation
   migrate_termux_config
+  ensure_launchers
 
   local remote_commit local_commit
   remote_commit="$(latest_commit)"
@@ -181,7 +201,7 @@ main() {
     printf '✓ Kubo/IPFS binary preserved.\n'
     printf '✓ Kubo repository preserved.\n'
     printf '✓ Local storage preserved.\n'
-    printf '✓ Configuration preserved.\n'
+    printf '✓ Configuration preserved unless Termux executable path migration was required.\n'
     cleanup_update_files
   else
     printf '\nUpdate verification failed. Rolling back Node Core application...\n' >&2
