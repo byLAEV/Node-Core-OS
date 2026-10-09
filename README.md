@@ -1535,6 +1535,21 @@ That is the long-term purpose of **Node Core OS**.
 
 ---
 
+
+---
+
+# License
+
+Node Core OS is open-source software licensed under the **Apache License 2.0**.
+
+You may use, reproduce, modify, and distribute the project under the terms of that license. Apache-2.0 also includes an express patent license from contributors, subject to its terms.
+
+See the [LICENSE](LICENSE) file for the complete license text.
+
+Unless a file or directory states otherwise, the project’s original source code and documentation are intended to be distributed under Apache-2.0. Third-party components, dependencies, trademarks, and assets remain subject to their own applicable licenses and terms. This license does not grant permission to use the Node Core OS name or branding as a trademark.
+
+Contributions submitted for inclusion are covered by Apache-2.0 unless the contributor explicitly states otherwise or a separate agreement applies.
+
 # Project
 
 **Node Core OS**  
