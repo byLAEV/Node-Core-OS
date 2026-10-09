@@ -23,11 +23,11 @@ validate_uninstall_target() {
     [[ "$(stat -c '%u' "$parent")" = "$(id -u)" ]] || { printf 'Unsafe uninstall path: parent is not owned by the current user.\n' >&2; return 1; }
   fi
 }
-require_user_installation
 printf 'Node Core OS uninstall\n'
 printf 'This removes: %s\n' "$NODE_CORE_DATA_DIR"
 printf 'It also removes the local Kubo repository and Node Core data stored there.\n'
 validate_uninstall_target
+require_user_installation
 printf 'Type REMOVE to continue: '
 read -r confirmation
 if [[ "$confirmation" != "REMOVE" ]]; then
