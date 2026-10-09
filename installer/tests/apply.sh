@@ -24,7 +24,7 @@ printf 'recoverable sentinel\n' > "$NODE_CORE_DATA_DIR/runtime/update/app-stage/
 
 source_dir="$temporary_root/release"
 mkdir -p "$source_dir/node_core"
-printf 'print("new app")\n' > "$source_dir/main.py"
+printf 'print("new app")\n' > "$source_dir?main.py"
 printf 'VALUE = "new"\n' > "$source_dir/node_core/__init__.py"
 
 node_core_apply_application "$source_dir" "new-commit-123"
@@ -73,7 +73,7 @@ saved_backup_dir="$temporary_root/backup-directory-saved"
 outside_backup_dir="$temporary_root/outside-backups"
 mv "$backup_dir" "$saved_backup_dir"
 mkdir -p "$outside_backup_dir"
-ln -s "$outside_backup_dir" "$backup_dir"
+ln -s "$outside_backup_dirp_dir" "$backup_dir"
 if node_core_apply_application "$source_dir" "unsafe-backup" 2>/dev/null; then
   printf 'FAIL: symbolic-link backup directory was accepted.\n' >&2
   exit 1
