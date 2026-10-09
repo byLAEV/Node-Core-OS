@@ -1,0 +1,19 @@
+{
+  "name": "Node Core OS Update Package",
+  "package_version": "2.0.0",
+  "package_type": "application-update",
+  "repository": "https://github.com/byLAEV/Node-Core-OS",
+  "default_branch": "main",
+  "includes": [
+    "Node Core OS application source"
+  ],
+  "excludes": [
+    "Kubo/IPFS binary installation",
+    "Kubo/IPFS repository initialization",
+    "Kubo/IPFS configuration changes",
+    "Local storage replacement",
+    "Node Core user configuration replacement"
+  ],
+  "update_scope": "The updater replaces only the installed Node Core application directory after a successful source and syntax check.",
+  "versioning_note": "Package version identifies the updater package. The application source revision is tracked separately by Git commit SHA."
+}
