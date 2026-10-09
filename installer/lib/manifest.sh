@@ -61,7 +61,7 @@ node_core_manifest_write() {
     return 1
   }
 
-  python3 - "$data_dir" "$manifest_path" "$manifest_json" <<'PY'
+  python3 - "$data_dir" "$manifest_path" "$manifest_json" <<'PY' || return 1
 import json
 import os
 import pathlib
