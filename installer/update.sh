@@ -141,6 +141,13 @@ update_application() {
   rm -rf "$NODE_CORE_APP_DIR/.git"
 
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core"
+  PYTHONPATH="$NODE_CORE_APP_DIR${PYTHONPATH:+:$PYTHONPATH}" python3 -c '
+from node_core.evidence import EvidenceManager
+from node_core.runtime import NodeRuntime
+from node_core.ui import MainMenu
+assert hasattr(MainMenu, "add_evidence")
+assert hasattr(MainMenu, "updates_bios")
+'
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE"
 }
 
@@ -154,6 +161,26 @@ rollback_application() {
 cleanup_update_files() {
   rm -rf "$NODE_CORE_UPDATE_DIR/source" "$NODE_CORE_UPDATE_DIR/app-backup"
   rm -f "$NODE_CORE_UPDATE_DIR/source.tar.gz" "$NODE_CORE_UPDATE_DIR/latest-commit.json"
+}
+
+# Return success when the installed application is missing required current features.
+# This repairs an incomplete app even when its commit marker already matches main.
+application_needs_repair() {
+  local ui="$NODE_CORE_APP_DIR/node_core/ui.py"
+  local runtime="$NODE_CORE_APP_DIR/node_core/runtime.py"
+  local evidence="$NODE_CORE_APP_DIR/node_core/evidence.py"
+
+  [[ -f "$ui" && -f "$runtime" && -f "$evidence" ]] || return 0
+  grep -Fq 'elif choice == "8":' "$ui" || return 0
+  grep -Fq 'self.updates_bios()' "$ui" || return 0
+  grep -Fq 'def updates_bios(self)' "$ui" || return 0
+  grep -Fq 'print("1. Add Evidence")' "$ui" || return 0
+  grep -Fq 'self.add_evidence()' "$ui" || return 0
+  grep -Fq 'from node_core.evidence import EvidenceManager' "$runtime" || return 0
+  grep -Fq 'self.evidence = EvidenceManager(self.content)' "$runtime" || return 0
+  grep -Fq 'class EvidenceManager:' "$evidence" || return 0
+
+  return 1
 }
 
 main() {
@@ -177,12 +204,15 @@ main() {
   printf '\n'
 
   if [[ -n "$local_commit" && "$local_commit" == "$remote_commit" ]]; then
-    printf 'Node Core OS is already up to date.\n'
-    cleanup_update_files
-    return 0
+    if ! application_needs_repair; then
+      printf 'Node Core OS is already up to date.\n'
+      cleanup_update_files
+      return 0
+    fi
+    printf '%s\n' 'The installed application is incomplete; a repair is required.'
+  else
+    printf '%s\n' 'An application update is available.'
   fi
-
-  printf '%s\n' 'An application update is available.'
   printf '%s\n' 'The updater will modify only the Node Core application.'
   printf '%s\n' 'Kubo/IPFS binary, IPFS repository, and local storage will not be replaced.'
   printf '%s\n' 'On Termux, config.json may be migrated only to point Node Core to the existing Android-compatible Kubo executable.'
