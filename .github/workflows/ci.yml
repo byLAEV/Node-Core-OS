@@ -49,6 +49,7 @@ jobs:
           bash installer/tests/detect-installation.sh
           bash installer/tests/manifest.sh
           bash installer/tests/plan.sh
+          bash installer/tests/apply.sh
 
       - name: Run terminal test suite
         run: |
