@@ -66,7 +66,15 @@ Este documento describe el diseño y el orden de implementación. Una capacidad 
 - [x] Planificador inicial de solo lectura que propone acciones a partir del estado real.
 - [x] Pruebas para detector, manifiesto y planificador añadidas a CI.
 - [ ] Integrar el motor compartido con los puntos de entrada install/update.
-- [ ] Aplicación transaccional con respaldo y recuperación probada.
+- [x] Primitiva transaccional inicial para desplegar la aplicación, con compilación previa y respaldo conservado (pruebas CI pendientes para el último commit).
+- [ ] Recuperación transaccional completa ante fallos de activación y del registro de versión.
 - [ ] Inventario verificado de versiones y dependencias por componente.
 
 El planificador actual es deliberadamente consultivo: no ejecuta las acciones que enumera. Un componente que falta Kubo o el repositorio IPFS se marca para revisión, no para reemplazo o inicialización automática. La integración con el instalador principal queda pendiente hasta que el plan y el manifiesto estén cubiertos por pruebas adicionales.
+
+
+### Primitiva transaccional inicial
+
+`installer/lib/apply.sh` introduce un paso separado de aplicación: prepara una copia de la versión objetivo, compila el código Python antes de sustituir la aplicación, conserva una copia de respaldo bajo `runtime/backups/` y registra el commit después de activar el código. El mecanismo se limita a `app/` y al marcador de commit; no modifica `config.json`, `storage/`, el ejecutable Kubo ni el repositorio IPFS.
+
+Esta primitiva todavía no está conectada a `install.sh` ni a `update.sh`. No debe considerarse todavía una actualización completa en producción: primero deben aprobarse sus pruebas automatizadas y después se añadirá la recuperación integral y la integración con el flujo de descarga/verificación de la versión remota.
