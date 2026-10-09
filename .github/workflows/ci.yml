@@ -46,6 +46,7 @@ jobs:
           set -euo pipefail
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
+          bash installer/tests/detect-installation.sh
 
       - name: Run terminal test suite
         run: |
