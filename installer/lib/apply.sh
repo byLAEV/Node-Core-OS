@@ -113,14 +113,14 @@ node_core_apply_application() (
     [[ -d "$directory" && ! -L "$directory" ]] || {
       printf 'Unsafe application update directory: %s\n' "$directory" >&2
       return 1
-    fi
+    }
     [[ "$(stat -c '%u' "$directory")" == "$uid" ]] || {
       printf 'Application update directory is not owned by the current user: %s\n' "$directory" >&2
       return 1
-    fi
+    }
   done
 
-# Never delete or reuse a fixed staging path: interrupted runs may contain
+  # Never delete or reuse a fixed staging path: interrupted runs may contain
   # the only recoverable copy of the previous application.
   if ! transaction_dir="$(mktemp -d -- "$update_dir/transaction.XXXXXXXX")"; then
     printf 'Unable to create a unique application transaction directory.\n' >&2
