@@ -47,6 +47,7 @@ jobs:
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
           bash installer/tests/detect-installation.sh
+          bash installer/tests/manifest.sh
 
       - name: Run terminal test suite
         run: |
