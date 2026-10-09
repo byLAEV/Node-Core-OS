@@ -47,6 +47,29 @@ class MainMenu:
                 self.storage_bios()
             elif choice == "2":
                 self.kubo_bios()
+            elif choice == "8":
+                self.updates_bios()
+
+    def updates_bios(self) -> None:
+        from pathlib import Path
+        import os
+        import subprocess
+
+        launcher = Path.home() / ".node-core" / "bin" / "node-core-update"
+        print("\nNode Core OS Updates\n")
+
+        if not launcher.is_file() or not os.access(launcher, os.X_OK):
+            print("ERROR: no se encuentra el actualizador ejecutable.")
+            input("\nPulsa Enter para volver al BIOS...")
+            return
+
+        try:
+            result = subprocess.run([str(launcher)], check=False)
+            print(f"\nEl actualizador terminó con código: {result.returncode}")
+        except OSError as exc:
+            print(f"ERROR al ejecutar el actualizador: {exc}")
+
+        input("\nPulsa Enter para volver al BIOS...")
 
     def storage_bios(self) -> None:
         print("\nStorage")
