@@ -1549,6 +1549,15 @@ Node Core OS uses the Apache License 2.0. The license permits use, modification,
 
 External projects should integrate through documented APIs and SDKs where available. Proposed interfaces must not be presented as implemented until they exist and are tested.
 
+
+## API and SDK integration
+
+Node Core OS is intended to be reusable by external projects through documented, versioned APIs and SDKs. The public API and SDK work is being defined incrementally; proposed interfaces must not be mistaken for implemented features.
+
+- [API Contract](docs/API-CONTRACT.md) — proposed capability boundary, authorization, versioning, and criteria for declaring an API stable.
+- [SDK Integration Guide](docs/SDK-INTEGRATION.md) — requirements and workflow for official SDKs and external integrations.
+- [Contributing](CONTRIBUTING.md) — how to propose, test, review, and contribute improvements.
+
 # Project
 
 **Node Core OS**  
