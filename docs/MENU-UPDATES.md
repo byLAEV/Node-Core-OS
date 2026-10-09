@@ -11,6 +11,6 @@ The updater downloads the latest source from the configured branch, verifies Pyt
 
 ## Versioning rule
 
-Whenever a release changes the menu or application, increase the root `VERSION` file before publishing to `main`. The version file is the public contract used by the menu checker. The initial version is `1.0.0`.
+Whenever a release changes the menu or application, increase the root `VERSION` file before publishing to `main`. The version file is the public contract used by the menu checker. The version introduced with the menu update checker is `1.1.0`.
 
 The endpoint can be overridden for tests using `NODE_CORE_VERSION_URL`; normal installations use the official repository's `main/VERSION` file.
