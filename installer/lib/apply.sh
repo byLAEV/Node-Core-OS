@@ -60,11 +60,13 @@ node_core_apply_application() {
     return 1
   }
 
+  for directory in "$runtime_dir" "$update_dir" "$backup_dir"; do
+    [[ ! -L "$directory" ]] || {
+      printf 'Refusing to use a symbolic-link runtime/update/backup directory: %s\n' "$directory" >&2
+      return 1
+    }
+  done
   mkdir -p "$runtime_dir" "$update_dir" "$backup_dir"
-  [[ ! -L "$runtime_dir" && ! -L "$update_dir" && ! -L "$backup_dir" ]] || {
-    printf 'Refusing to use symbolic-link runtime/update/backup directories.\n' >&2
-    return 1
-  }
   rm -rf -- "$stage_dir"
   mkdir -m 700 "$stage_dir"
   if ! cp -R "$source_real"/. "$stage_dir"/; then
