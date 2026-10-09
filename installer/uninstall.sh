@@ -2,6 +2,7 @@
 set -euo pipefail
 INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 source "$INSTALLER_DIR/config/defaults"
+source "$INSTALLER_DIR/lib/platform.sh"
 
 validate_uninstall_target() {
   local target="$NODE_CORE_DATA_DIR" canonical_target canonical_home parent
