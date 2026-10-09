@@ -119,31 +119,32 @@ jobs:
           set -euo pipefail
           export HOME="${RUNNER_TEMP}/node-core-home"
           test_content="$RUNNER_TEMP/node-core-e2e-content.txt"
-          printf 'Node Core OS E2E content — deterministic integration test.\n' > "$test_content"
+          printf 'Node Core OS E2E content — deterministic integration test.\\n' > "$test_content"
           output="$RUNNER_TEMP/node-core-menu.log"
           {
-            printf '2\n'
-            printf '1\n'
-            printf "%s\n" "$test_content"
-            printf 'y\n'
-            printf '\n'
-            printf '0\n'
-            printf '0\n'
+            printf '2\\n'
+            printf '2\\n'
+            printf "%s\\n" "$test_content"
+            printf 'y\\n'
+            printf '\\n'
+            printf '0\\n'
+            printf '0\\n'
           } | "$NODE_CORE_DATA_DIR/bin/node-core" > "$output"
           cat "$output"
           grep -q "Node Core OS" "$output"
+          grep -q "Archivo agregado" "$output"
           grep -q "CID:" "$output"
-          cid="$(sed -n "s/^.*IPFS CID: //p" "$output" | tail -n 1)"
+          cid="$(sed -n "s/^CID: //p" "$output" | tail -n 1)"
           [[ "$cid" =~ ^(Qm[A-Za-z1-9]+|b[a-z2-7]+)$ ]]
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           recovered="$RUNNER_TEMP/node-core-recovered.txt"
           "$NODE_CORE_DATA_DIR/bin/ipfs" cat "$cid" > "$recovered"
-          printf "Original:\n"
+          printf "Original:\\n"
           sha256sum "$test_content"
-          printf "Recovered:\n"
+          printf "Recovered:\\n"
           sha256sum "$recovered"
           cmp -s "$test_content" "$recovered"
-          printf "Node Core E2E CID: %s\n" "$cid"
+          printf "Node Core E2E CID: %s\\n" "$cid"
 
       - name: Test uninstall rejects dangerous normalized paths
         env:
