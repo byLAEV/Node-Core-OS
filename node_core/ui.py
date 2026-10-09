@@ -1,6 +1,9 @@
 """Terminal interface for Node Core OS."""
 
 from typing import TYPE_CHECKING
+import subprocess
+
+from node_core.updates import UpdateStatus, check_for_updates
 
 if TYPE_CHECKING:
     from node_core.runtime import NodeRuntime
@@ -11,13 +14,41 @@ class MainMenu:
         self.runtime = runtime
 
     def run(self) -> None:
+        update_status = check_for_updates()
         while True:
             print("\nNode Core OS\nbyLAEV\n")
+            self._print_update_status(update_status)
             print("0. Exit")
             print("1. Node Core BIOS")
             print("2. Node Core")
             print("3. Applications")
+            print("Type Update to install an available Node Core OS update.")
             choice = input("\n> ").strip()
+            if choice.lower() == "update":
+                if not update_status.available:
+                    print("No confirmed update is available. Check the network and try again.")
+                    input("\n> ")
+                    update_status = check_for_updates()
+                    continue
+
+                updater = self.runtime.config.data_dir / "bin" / "node-core-update"
+                if not updater.is_file():
+                    print("Update command not found. Reinstall the Node Core launcher first.")
+                    input("\n> ")
+                    continue
+
+                result = subprocess.run([str(updater)], check=False)
+                update_status = check_for_updates()
+                if result.returncode != 0:
+                    print(f"Update failed with exit code {result.returncode}.")
+                elif update_status.checked and not update_status.available:
+                    print("\nNode Core OS is updated. Reopen the menu to load the new code.")
+                    return
+                else:
+                    print("The update could not be confirmed. Review the updater output.")
+                input("\n> ")
+                continue
+
             if choice == "0":
                 return
             if choice == "1":
@@ -26,6 +57,15 @@ class MainMenu:
                 self.core()
             elif choice == "3":
                 self.applications()
+
+    def _print_update_status(self, status: UpdateStatus) -> None:
+        if status.available:
+            print(f"\033[93mUPDATE AVAILABLE: {status.local_version} -> {status.remote_version}\033[0m")
+            print("\033[93mType Update to update Node Core OS.\033[0m\n")
+        elif status.checked:
+            print(f"\033[92mUPDATED: Node Core OS {status.local_version}\033[0m\n")
+        else:
+            print(f"\033[90mUpdate status unavailable: {status.message}\033[0m\n")
 
     def bios(self) -> None:
         while True:
