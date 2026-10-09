@@ -58,3 +58,15 @@ Este documento describe el diseño y el orden de implementación. Una capacidad 
 - Una actualización fallida intenta restaurar el código anterior sin tocar los datos persistentes.
 - Las pruebas se ejecutan como usuario no root en CI.
 - No se usan gestores de paquetes del sistema ni privilegios globales.
+
+## Estado de implementación
+
+- [x] Detector inicial de instalación de solo lectura.
+- [x] Validación y escritura atómica del manifiesto de esquema 1.
+- [x] Planificador inicial de solo lectura que propone acciones a partir del estado real.
+- [x] Pruebas para detector, manifiesto y planificador añadidas a CI.
+- [ ] Integrar el motor compartido con los puntos de entrada install/update.
+- [ ] Aplicación transaccional con respaldo y recuperación probada.
+- [ ] Inventario verificado de versiones y dependencias por componente.
+
+El planificador actual es deliberadamente consultivo: no ejecuta las acciones que enumera. Un componente que falta Kubo o el repositorio IPFS se marca para revisión, no para reemplazo o inicialización automática. La integración con el instalador principal queda pendiente hasta que el plan y el manifiesto estén cubiertos por pruebas adicionales.
