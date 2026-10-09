@@ -74,7 +74,7 @@ jobs:
 
       - name: Run clean installation
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           export HOME="${RUNNER_TEMP}/node-core-home"
@@ -91,7 +91,7 @@ jobs:
 
       - name: Verify installed filesystem
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
@@ -102,7 +102,7 @@ jobs:
 
       - name: Verify Kubo API and Node Core launcher
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
@@ -114,21 +114,21 @@ jobs:
 
       - name: Run Node Core menu and publish test content
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           export HOME="${RUNNER_TEMP}/node-core-home"
           test_content="$RUNNER_TEMP/node-core-e2e-content.txt"
-          printf 'Node Core OS E2E content — deterministic integration test.\\n' > "$test_content"
+          printf 'Node Core OS E2E content — deterministic integration test.\n' > "$test_content"
           output="$RUNNER_TEMP/node-core-menu.log"
           {
-            printf '2\\n'
-            printf '2\\n'
-            printf "%s\\n" "$test_content"
-            printf 'y\\n'
-            printf '\\n'
-            printf '0\\n'
-            printf '0\\n'
+            printf '2\n'
+            printf '2\n'
+            printf "%s\n" "$test_content"
+            printf 'y\n'
+            printf '\n'
+            printf '0\n'
+            printf '0\n'
           } | "$NODE_CORE_DATA_DIR/bin/node-core" > "$output"
           cat "$output"
           grep -q "Node Core OS" "$output"
@@ -139,16 +139,16 @@ jobs:
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           recovered="$RUNNER_TEMP/node-core-recovered.txt"
           "$NODE_CORE_DATA_DIR/bin/ipfs" cat "$cid" > "$recovered"
-          printf "Original:\\n"
+          printf "Original:\n"
           sha256sum "$test_content"
-          printf "Recovered:\\n"
+          printf "Recovered:\n"
           sha256sum "$recovered"
           cmp -s "$test_content" "$recovered"
-          printf "Node Core E2E CID: %s\\n" "$cid"
+          printf "Node Core E2E CID: %s\n" "$cid"
 
       - name: Test uninstall rejects dangerous normalized paths
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           export HOME="${RUNNER_TEMP}/node-core-home"
@@ -166,7 +166,7 @@ jobs:
           test -d "$NODE_CORE_DATA_DIR"
       - name: Test uninstall
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           printf 'REMOVE\n' | ./installer/uninstall.sh
