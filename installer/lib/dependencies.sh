@@ -10,7 +10,7 @@ PY
 
 check_dependencies() {
   local missing=0 command_name
-  for command_name in bash python3 tar sha512sum mkdir cp rm mktemp uname awk; do
+  for command_name in bash python3 tar sha512sum mkdir cp rm mktemp uname awk realpath stat id; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
       printf 'Missing required command: %s\n' "$command_name" >&2
       missing=1
