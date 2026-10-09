@@ -5,9 +5,11 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 import os
+import re
 
 VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
 DEFAULT_VERSION_URL = "https://raw.githubusercontent.com/byLAEV/Node-Core-OS/main/VERSION"
+VERSION_PATTERN = re.compile(r"v?\d+(?:\.\d+){1,3}")
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,10 @@ def _read_local_version() -> str:
     return value or "unknown"
 
 
+def _version_key(value: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in value.removeprefix("v").split("."))
+
+
 def check_for_updates(timeout: float = 3.0) -> UpdateStatus:
     """Check GitHub on every menu opening; network errors never block the menu."""
     local_version = _read_local_version()
@@ -44,16 +50,20 @@ def check_for_updates(timeout: float = 3.0) -> UpdateStatus:
             f"GitHub check failed: {exc.__class__.__name__}",
         )
 
-    if not remote_version or any(char.isspace() for char in remote_version):
+    if not VERSION_PATTERN.fullmatch(remote_version):
         return UpdateStatus(
             local_version, "unknown", False, False,
             "GitHub returned an invalid VERSION file.",
         )
 
+    available = local_version == "unknown"
+    if VERSION_PATTERN.fullmatch(local_version):
+        available = _version_key(remote_version) > _version_key(local_version)
+
     return UpdateStatus(
         local_version=local_version,
         remote_version=remote_version,
-        available=local_version != remote_version,
+        available=available,
         checked=True,
         message="Version check completed.",
     )
