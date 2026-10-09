@@ -189,6 +189,7 @@ main() {
   printf '%s\n' 'Node Core OS updater'
   printf '%s\n' 'byLAEV'
   printf '\n'
+  require_user_installation
   require_installation
   migrate_termux_config
   ensure_launchers
