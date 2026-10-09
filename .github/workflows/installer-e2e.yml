@@ -133,7 +133,7 @@ jobs:
           cat "$output"
           grep -q "Node Core OS" "$output"
           grep -q "CID:" "$output"
-          cid="$(sed -n "s/^CID: //p" "$output" | tail -n 1)"
+          cid="$(sed -n "s/^.*IPFS CID: //p" "$output" | tail -n 1)"
           [[ "$cid" =~ ^(Qm[A-Za-z1-9]+|b[a-z2-7]+)$ ]]
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           recovered="$RUNNER_TEMP/node-core-recovered.txt"
