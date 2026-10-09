@@ -16,6 +16,7 @@ main() {
   printf '%s\n' 'GNU/Linux terminal only'
   printf '%s\n\n' 'byLAEV'
   require_bash
+  require_user_installation
   require_linux
   ensure_dependencies
   prepare_filesystem
