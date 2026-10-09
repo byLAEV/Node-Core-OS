@@ -67,7 +67,7 @@ There is no Android, Termux, Windows, macOS, GUI, or web installer path.
 └── config.json
 ```
 
-The installation is user-owned and therefore does not require a system-wide package manager.
+The installation is user-owned and therefore does not require a system-wide package manager. Installer, updater, and uninstaller explicitly refuse to run as UID 0 (root). The configured data directory must resolve to a directory inside the current user's HOME; an existing target must be a real directory owned by that user. Run all commands as the normal account, without `sudo`.
 
 ## Node Core launcher
 
@@ -205,7 +205,7 @@ The installer intentionally avoids:
 
 ## Host package resolution
 
-The installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths.
+The installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths. CI tests explicitly exercise the root-rejection and HOME-boundary guards.
 
 ## Third-party installation boundary
 
