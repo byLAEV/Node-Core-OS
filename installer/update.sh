@@ -178,16 +178,43 @@ update_application() (
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
 )
 
+backup_commit_marker() {
+  local backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
+  if [[ -f "$NODE_CORE_COMMIT_FILE" ]]; then
+    cp "$NODE_CORE_COMMIT_FILE" "$backup"
+    printf 'present\\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state"
+  else
+    rm -f "$backup"
+    printf 'absent\\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state"
+  fi
+}
+
 rollback_application() {
   local backup="$NODE_CORE_UPDATE_DIR/app-backup"
+  local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
   [[ -d "$backup" ]] || return 1
   rm -rf "$NODE_CORE_APP_DIR"
   cp -R "$backup" "$NODE_CORE_APP_DIR"
+
+  case "$(cat "$NODE_CORE_UPDATE_DIR/commit-marker-state" 2>/dev/null || true)" in
+    present)
+      [[ -f "$marker_backup" ]] || return 1
+      cp "$marker_backup" "$NODE_CORE_COMMIT_FILE"
+      ;;
+    absent)
+      rm -f "$NODE_CORE_COMMIT_FILE"
+      ;;
+    *)
+      printf 'Cannot determine prior commit marker state; manual recovery may be required.\\n' >&2
+      return 1
+      ;;
+  esac
 }
 
 cleanup_update_files() {
   rm -rf "$NODE_CORE_UPDATE_DIR/source" "$NODE_CORE_UPDATE_DIR/app-backup"
   rm -f "$NODE_CORE_UPDATE_DIR/source.tar.gz" "$NODE_CORE_UPDATE_DIR/latest-commit.json"
+  rm -f "$NODE_CORE_UPDATE_DIR/commit-marker-backup" "$NODE_CORE_UPDATE_DIR/commit-marker-state"
 }
 
 main() {
@@ -230,6 +257,7 @@ main() {
 
   local backup
   backup="$(backup_app)"
+  backup_commit_marker
 
   if update_application "$remote_commit"; then
     printf '\n✓ Node Core application updated.\n'
