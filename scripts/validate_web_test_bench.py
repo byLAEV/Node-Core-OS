@@ -12,6 +12,7 @@ REQUIRED = [
     SITE / "assets" / "app.js",
     SITE / "README.md",
     SITE / "menus.html",
+    SITE / "identity.html",
 ]
 errors = []
 
@@ -25,6 +26,7 @@ if not errors:
     js = (SITE / "assets" / "app.js").read_text(encoding="utf-8")
     readme = (SITE / "README.md").read_text(encoding="utf-8")
     menus = (SITE / "menus.html").read_text(encoding="utf-8")
+    identity = (SITE / "identity.html").read_text(encoding="utf-8")
     pages_workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     e2e_workflow = (ROOT / ".github" / "workflows" / "installer-e2e.yml").read_text(encoding="utf-8")
     ci_workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
@@ -55,6 +57,16 @@ if not errors:
     for token in ("@media(max-width:560px)", "prefers-reduced-motion"):
         if token not in css:
             errors.append(f"styles.css is missing responsive/accessibility rule: {token}")
+
+    for token in ('<html lang="es">', 'id="modelo"', 'id="evidencias"', 'id="privacidad"', 'id="roadmap"', 'ZKP', 'consenso', 'identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md'):
+        if token not in identity:
+            errors.append(f"identity.html is missing expected architecture content: {token}")
+    for target in re.findall(r'(?:src|href)="(\\./[^"#?]+)"', identity):
+        local = (SITE / target.removeprefix("./")).resolve()
+        if not local.is_relative_to(SITE.resolve()):
+            errors.append(f"Identity page asset escapes site directory: {target}")
+        elif not local.is_file():
+            errors.append(f"Identity page references missing local asset: {target}")
 
     if "workflow_dispatch:" not in pages_workflow:
         errors.append("Pages workflow must support manual validation/deployment.")
