@@ -225,6 +225,19 @@ grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 rm -f "$TEMP_ROOT/fake-bin/cp"
+# A later updater invocation must not erase recovery artifacts left by a failed rollback.
+set +e
+bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/pending-recovery.log" 2>&1
+pending_recovery_status=$?
+set -e
+test "$pending_recovery_status" -ne 0
+grep -q 'A previous update left recovery files that require inspection' "$TEMP_ROOT/pending-recovery.log"
+grep -q 'Refusing to start another update' "$TEMP_ROOT/pending-recovery.log"
+test -d "$NODE_CORE_DATA_DIR/runtime/update/app-backup"
+test -f "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+test -f "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-state"
+grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+
 printf 'Existing-install updater rollback-failure recovery retention test passed.\n'
 
 printf 'Existing-install updater preservation and rollback tests passed.\n'

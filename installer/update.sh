@@ -79,6 +79,20 @@ require_installation() {
   }
 }
 
+require_no_pending_recovery() {
+  local app_backup="$NODE_CORE_UPDATE_DIR/app-backup"
+  local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
+  local marker_state="$NODE_CORE_UPDATE_DIR/commit-marker-state"
+
+  if [[ -e "$app_backup" || -e "$marker_backup" || -e "$marker_state" ]]; then
+    printf 'A previous update left recovery files that require inspection.\n' >&2
+    printf 'Refusing to start another update to protect the existing recovery data.\n' >&2
+    printf 'Recovery directory: %s\n' "$NODE_CORE_UPDATE_DIR" >&2
+    printf 'Do not delete these files until the installed application and commit marker have been verified.\n' >&2
+    exit 1
+  fi
+}
+
 ensure_launchers() {
   mkdir -p "$NODE_CORE_DATA_DIR/bin"
 
@@ -222,6 +236,7 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
+  require_no_pending_recovery
   require_installation
   migrate_termux_config
   ensure_launchers
