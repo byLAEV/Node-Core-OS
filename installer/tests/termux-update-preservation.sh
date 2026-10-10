@@ -35,7 +35,16 @@ chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 printf '#!/usr/bin/env bash\nif [[ "${1:-}" == "version" ]]; then echo "kubo version test"; exit 0; fi\nexit 2\n' > "$PREFIX/bin/ipfs"
 chmod +x "$PREFIX/bin/ipfs"
 printf 'existing-termux-commit\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
-printf '{"sha":"existing-termux-commit"}\n' > "$TEST_FIXTURES/latest-commit.json"
+printf '{"sha":"new-termux-commit"}\n' > "$TEST_FIXTURES/latest-commit.json"
+
+# Build a local release archive to exercise the actual update path without network access.
+mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/installer"
+printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/main.py"
+printf 'VALUE = "updated"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/node_core/__init__.py"
+cp "$REPOSITORY_ROOT/installer/update.sh" "$TEST_FIXTURES/release/Node-Core-OS-test/installer/update.sh"
+tar -czf "$TEST_FIXTURES/new-termux-commit.tar.gz" \
+  -C "$TEST_FIXTURES/release" Node-Core-OS-test
 
 cat > "$TEMP_ROOT/fake-bin/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
@@ -52,13 +61,14 @@ done
 [[ -n "$output" && -n "$url" ]] || exit 2
 case "$url" in
   */commits/main) cp "$TEST_FIXTURES/latest-commit.json" "$output" ;;
+  */archive/new-termux-commit.tar.gz) cp "$TEST_FIXTURES/new-termux-commit.tar.gz" "$output" ;;
   *) printf 'unexpected URL in Termux updater test: %s\n' "$url" >&2; exit 3 ;;
 esac
 FAKE_CURL
 chmod +x "$TEMP_ROOT/fake-bin/curl"
 export PATH="$TEMP_ROOT/fake-bin:$PATH"
 
-bash "$REPOSITORY_ROOT/installer/update.sh" </dev/null
+printf "y\n" | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 python3 - "$NODE_CORE_DATA_DIR/config.json" "$PREFIX/bin/ipfs" <<'PY'
 import json
@@ -75,8 +85,9 @@ PY
 grep -qx 'preserve Termux local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve Termux IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -q 'old bundled Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
-grep -qx 'existing-termux-commit' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx 'new-termux-commit' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
-printf 'Termux updater migration and data-preservation tests passed.\n'
+printf 'Termux updater real-update and data-preservation tests passed.\n'
