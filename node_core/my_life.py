@@ -52,8 +52,8 @@ class MyLifeBlog:
     def list_entries(self) -> list[LifeEntry]:
         return [LifeEntry(**item) for item in self._load()]
 
-    def publish_entry(self, entry_id: str) -> LifeEntry:
-        """Publish and pin exactly one selected entry, preserving its local file."""
+    def publish_entry(self, entry_id: str, *, pin: bool = True) -> LifeEntry:
+        """Add one selected entry to IPFS, optionally pinning it on this node."""
         entries = self._load()
         selected = None
         for item in entries:
@@ -70,11 +70,11 @@ class MyLifeBlog:
         cid = selected.get("cid")
         pinned = bool(selected.get("pinned", False))
         if cid:
-            if not pinned:
+            if pin and not pinned:
                 self.content.pin(cid)
                 selected["pinned"] = True
         else:
-            record = self.content.add(local_path, pin=True)
+            record = self.content.add(local_path, pin=pin)
             selected["cid"] = record.cid
             selected["pinned"] = bool(record.pinned)
 
