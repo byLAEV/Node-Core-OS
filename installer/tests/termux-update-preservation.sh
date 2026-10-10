@@ -34,8 +34,8 @@ printf '#!/usr/bin/env bash\necho "old bundled Kubo fixture"\n' > "$NODE_CORE_DA
 chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 printf '#!/usr/bin/env bash\nif [[ "${1:-}" == "version" ]]; then echo "kubo version test"; exit 0; fi\nexit 2\n' > "$PREFIX/bin/ipfs"
 chmod +x "$PREFIX/bin/ipfs"
-printf 'existing-termux-commit\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
-printf '{"sha":"new-termux-commit"}\n' > "$TEST_FIXTURES/latest-commit.json"
+printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/latest-commit.json"
 
 # Build a local release archive to exercise the actual update path without network access.
 mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
@@ -43,7 +43,7 @@ mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
 printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/main.py"
 printf 'VALUE = "updated"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/node_core/__init__.py"
 cp "$REPOSITORY_ROOT/installer/update.sh" "$TEST_FIXTURES/release/Node-Core-OS-test/installer/update.sh"
-tar -czf "$TEST_FIXTURES/new-termux-commit.tar.gz" \
+tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
   -C "$TEST_FIXTURES/release" Node-Core-OS-test
 
 cat > "$TEMP_ROOT/fake-bin/curl" <<'FAKE_CURL'
@@ -61,7 +61,7 @@ done
 [[ -n "$output" && -n "$url" ]] || exit 2
 case "$url" in
   */commits/main) cp "$TEST_FIXTURES/latest-commit.json" "$output" ;;
-  */archive/new-termux-commit.tar.gz) cp "$TEST_FIXTURES/new-termux-commit.tar.gz" "$output" ;;
+  */archive/5555555555555555555555555555555555555555.tar.gz) cp "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" "$output" ;;
   *) printf 'unexpected URL in Termux updater test: %s\n' "$url" >&2; exit 3 ;;
 esac
 FAKE_CURL
@@ -85,7 +85,7 @@ PY
 grep -qx 'preserve Termux local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve Termux IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -q 'old bundled Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
-grep -qx 'new-termux-commit' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
