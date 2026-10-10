@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Especificación de Node Core OS para constancia de identidad, acreditación personal, evidencias individuales, consenso y divulgación selectiva.">
   <meta name="theme-color" content="#101827">
-  <title>Node Core OS — Identidad y evidencias</title>
+  <title>Node Core OS — Identity and Evidence</title>
   <link rel="stylesheet" href="./assets/styles.css">
 </head>
 <body>
@@ -17,161 +17,161 @@
     </a>
     <nav aria-label="Navegación principal">
       <a href="./index.html">Web Test Bench</a>
-      <a href="./menus.html">Menús</a>
-      <a href="#modelo">Modelo</a>
-      <a href="#evidencias">Evidencias</a>
-      <a href="#privacidad">Privacidad</a>
-      <a href="#roadmap">Implementación</a>
+      <a href="./menus.html">Menus</a>
+      <a href="#modelo">Model</a>
+      <a href="#evidencias">Evidence</a>
+      <a href="#privacidad">Privacy</a>
+      <a href="#roadmap">Implementation</a>
     </nav>
   </header>
 
   <main id="main">
     <section class="hero menu-hero">
-      <p class="eyebrow">ESPECIFICACIÓN ARQUITECTÓNICA · TRABAJO FUTURO</p>
-      <h1>Una identidad.<br><span>Una trayectoria verificable.</span></h1>
-      <p class="hero-copy">Node Core OS propone construir un historial de evidencias que permita evaluar la constancia de una identidad, registrar comprobaciones de existencia personal y presentar afirmaciones específicas sin revelar todo el historial privado.</p>
+      <p class="eyebrow">ARCHITECTURE SPECIFICATION · FUTURE WORK</p>
+      <h1>One identity.<br><span>A verifiable history.</span></h1>
+      <p class="hero-copy">Node Core OS proposes building an evidence history to evaluate identity constancy, record personhood checks, and present specific claims without revealing the entire private history.</p>
       <div class="hero-actions">
-        <a class="button primary" href="#modelo">Explorar el modelo ↓</a>
-        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md" target="_blank" rel="noopener noreferrer">Leer especificación completa ↗</a>
+        <a class="button primary" href="#modelo">Explore the model ↓</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md" target="_blank" rel="noopener noreferrer">Read the full specification ↗</a>
       </div>
-      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span>Estado transparente: esta página describe arquitectura propuesta. No afirma que la verificación personal, el consenso distribuido o las pruebas de conocimiento cero estén implementados.</div>
+      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span>Transparency note: this page describes a proposed architecture. It does not claim that personhood verification, distributed consensus, or zero-knowledge proofs are implemented.</div>
     </section>
 
     <section class="section" id="modelo">
       <div class="section-heading">
-        <div><p class="eyebrow">01 · MODELO FUNDAMENTAL</p><h2>Dos preguntas distintas</h2></div>
-        <p>La constancia construye evidencia de actividad. La existencia personal requiere un procedimiento específico de acreditación. Pueden relacionarse, pero no son equivalentes.</p>
+        <div><p class="eyebrow">01 · CORE MODEL</p><h2>Two different questions</h2></div>
+        <p>Constancy builds evidence of activity. Personhood requires a specific verification procedure. These concepts can be related, but they are not equivalent.</p>
       </div>
       <div class="evidence-grid">
-        <article class="evidence-card"><span class="card-number">A · ACREDITACIÓN</span><h3>¿La identidad corresponde a una persona real?</h3><p>Un procedimiento versionado debe definir qué se comprueba, cómo se vincula el resultado con la identidad, cuánto dura la acreditación y qué garantías ofrece frente a suplantaciones y duplicados.</p><span class="status-chip status-planned">Diseño futuro</span></article>
-        <article class="evidence-card"><span class="card-number">B · CONSTANCIA</span><h3>¿Mantiene una trayectoria válida?</h3><p>La actividad protocolizada, las votaciones elegibles, la propagación reconocida y los registros aceptados pueden aportar evidencias de continuidad durante periodos definidos.</p><span class="status-chip status-planned">Diseño futuro</span></article>
+        <article class="evidence-card"><span class="card-number">A · PERSONHOOD VERIFICATION</span><h3>Does the identity correspond to a real person?</h3><p>A versioned procedure must define what is checked, how the result is bound to the identity, how long the verification remains valid, and what safeguards it provides against impersonation and duplicate identities.</p><span class="status-chip status-planned">Planned</span></article>
+        <article class="evidence-card"><span class="card-number">B · CONSTANCY</span><h3>Does it maintain a valid history?</h3><p>Protocol-defined activity, eligible voting, recognized propagation, and accepted records can provide evidence of continuity across defined periods.</p><span class="status-chip status-planned">Planned</span></article>
       </div>
-      <div class="callout"><strong>Regla de seguridad:</strong> una identidad técnicamente activa, una votación ordinaria o una cadena larga no demuestran por sí solas que detrás exista una persona única y real. Esa conclusión debe limitarse a las garantías de un procedimiento de acreditación explícito.</div>
+      <div class="callout"><strong>Safety rule:</strong> a technically active identity, an ordinary vote, or a long chain does not by itself prove that a unique, real person is behind it. Any such conclusion must be limited to the guarantees of an explicit verification procedure.</div>
     </section>
 
     <section class="section">
       <div class="section-heading">
-        <div><p class="eyebrow">02 · CICLO DE EVIDENCIAS</p><h2>De la actividad al reconocimiento</h2></div>
-        <p>El flujo es conceptual; cada etapa requerirá esquemas, reglas deterministas y pruebas antes de considerarse operativa.</p>
+        <div><p class="eyebrow">02 · EVIDENCE LIFECYCLE</p><h2>From activity to recognition</h2></div>
+        <p>This flow is conceptual; each stage requires schemas, deterministic rules, and tests before it can be considered operational.</p>
       </div>
       <div class="flow-grid">
-        <div class="flow-step"><b>01</b><strong>Identidad</strong><span>Existe una referencia técnica y una vinculación definida.</span></div>
-        <div class="flow-step"><b>02</b><strong>Actividad</strong><span>Se generan registros de acciones que cumplen las reglas.</span></div>
-        <div class="flow-step"><b>03</b><strong>Propagación</strong><span>Se verifica qué pares o puntos de control observaron la evidencia.</span></div>
-        <div class="flow-step"><b>04</b><strong>Validación y consenso</strong><span>Los registros se reconocen solo según un protocolo definido y probado.</span></div>
-        <div class="flow-step"><b>05</b><strong>Historial</strong><span>Se acumulan referencias válidas, periodos, renovaciones y vacíos.</span></div>
+        <div class="flow-step"><b>01</b><strong>Identity</strong><span>A technical reference exists and its binding is defined.</span></div>
+        <div class="flow-step"><b>02</b><strong>Activity</strong><span>Records are generated for actions that satisfy the rules.</span></div>
+        <div class="flow-step"><b>03</b><strong>Propagation</strong><span>The peers or checkpoints that observed the evidence are verified.</span></div>
+        <div class="flow-step"><b>04</b><strong>Validation and consensus</strong><span>Records are recognized only under a defined and tested protocol.</span></div>
+        <div class="flow-step"><b>05</b><strong>History</strong><span>Valid references, periods, renewals, and gaps accumulate.</span></div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-heading">
-        <div><p class="eyebrow">03 · CADENA MÁS LARGA</p><h2>Referencia de constancia, no verdad automática</h2></div>
-        <p>La trayectoria válida de mayor duración puede servir como referencia temporal de comparación, después de validar sus registros y su aceptación por las reglas de la red.</p>
+        <div><p class="eyebrow">03 · LONGEST CHAIN</p><h2>A constancy reference, not automatic truth</h2></div>
+        <p>The longest valid history may serve as a temporal comparison reference after its records and acceptance under network rules have been validated.</p>
       </div>
       <div class="metric-panel">
-        <div><span class="metric-label">Ejemplo ilustrativo</span><strong>10 años</strong><p>Historial válido más largo reconocido según una política determinada.</p></div>
-        <div><span class="metric-label">Métrica descriptiva</span><strong>7 / 10 = 70%</strong><p>Una trayectoria de siete años equivale al 70 % de esa referencia temporal. No equivale a un 70 % de confianza ni a una probabilidad de ser una persona real.</p></div>
+        <div><span class="metric-label">Illustrative example</span><strong>10 años</strong><p>History válido más largo reconocido según una política determinada.</p></div>
+        <div><span class="metric-label">Descriptive metric</span><strong>7 / 10 = 70%</strong><p>A seven-year history equals 70% of that temporal reference. It does not mean 70% trust or a 70% probability of being a real person.</p></div>
       </div>
       <ul class="check-list">
-        <li>Medir por separado duración, periodos válidos, continuidad, vacíos, frescura, cantidad y propagación.</li>
-        <li>No aumentar constancia mediante archivos grandes, registros duplicados o votos repetidos.</li>
-        <li>No contar un periodo ausente como actividad continua.</li>
-        <li>No considerar verdadero un historial únicamente porque sea el más largo; deben existir reglas de validación, resolución de conflictos y finalización.</li>
-        <li>Una cadena larga no sustituye la acreditación personal ni valida automáticamente otras credenciales.</li>
+        <li>Measure duration, valid periods, continuity, gaps, freshness, count, and propagation separately.</li>
+        <li>Do not inflate constancy with large files, duplicate records, or repeated votes.</li>
+        <li>Do not count a missing period as continuous activity.</li>
+        <li>Do not treat a history as true solely because it is the longest; validation, conflict-resolution, and finality rules are required.</li>
+        <li>A long chain does not replace personhood verification or automatically validate other credentials.</li>
       </ul>
     </section>
 
     <section class="section">
       <div class="section-heading">
-        <div><p class="eyebrow">04 · VOTACIONES Y CONSENSO</p><h2>Funciones diferentes</h2></div>
-        <p>Una votación puede aportar evidencia de participación o formar parte de un procedimiento específico. El consenso es el mecanismo de reconocimiento del estado de la red y no tiene por qué ser una mayoría simple.</p>
+        <div><p class="eyebrow">04 · VOTING AND CONSENSUS</p><h2>Different functions</h2></div>
+        <p>A vote may provide participation evidence or form part of a specific procedure. Consensus recognizes network state and does not have to be a simple majority.</p>
       </div>
       <div class="evidence-grid three">
-        <article class="evidence-card"><h3>Preferencias</h3><p>Registra una opción y produce un resultado colectivo según reglas publicadas. La opción seleccionada no debe cambiar la evidencia de participación individual.</p></article>
-        <article class="evidence-card"><h3>Comprobación personal</h3><p>Puede requerir un desafío o una credencial con garantías definidas. Una votación ordinaria no es, por sí sola, una prueba de humanidad.</p></article>
-        <article class="evidence-card"><h3>Consenso</h3><p>Reconoce registros o estados conforme al algoritmo, el modelo de participantes, las tolerancias a fallos y las reglas de finalización.</p></article>
+        <article class="evidence-card"><h3>Preferences</h3><p>A preference vote records a choice and produces a collective result under published rules. The selected option must not change the individual participation evidence.</p></article>
+        <article class="evidence-card"><h3>Personhood check</h3><p>It may require a challenge or a credential with defined guarantees. An ordinary vote is not, by itself, proof of personhood.</p></article>
+        <article class="evidence-card"><h3>Consenso</h3><p>Recognizes records or states according to the algorithm, participant model, fault assumptions, and finality rules.</p></article>
       </div>
-      <p class="section-note">No responder a una comprobación no demuestra automáticamente fraude. Se necesitan estados pendientes, renovación, periodo de gracia, revisión y recuperación.</p>
+      <p class="section-note">Failing to respond to a check does not automatically prove fraud. Pending, renewal, grace-period, review, and recovery states are needed.</p>
     </section>
 
     <section class="section" id="evidencias">
       <div class="section-heading">
-        <div><p class="eyebrow">05 · CATÁLOGO INDIVIDUAL</p><h2>Las evidencias se organizan por contexto</h2></div>
-        <p>Las etiquetas ayudan a encontrar y presentar una evidencia. La etiqueta no demuestra que la afirmación sea verdadera: cada credencial requiere su propia verificación.</p>
+        <div><p class="eyebrow">05 · INDIVIDUAL EVIDENCE CATALOG</p><h2>Evidence is organized by context</h2></div>
+        <p>Labels help locate and present evidence. A label does not prove a claim is true: each credential requires its own verification.</p>
       </div>
       <div class="category-grid">
-        <div><b>Profesional</b><span>Licencias, experiencia y acreditaciones</span></div>
-        <div><b>Cultural</b><span>Participación y contribuciones culturales</span></div>
-        <div><b>Familiar</b><span>Relaciones respaldadas por fuentes apropiadas</span></div>
-        <div><b>Íntima</b><span>Información de acceso especialmente restringido</span></div>
-        <div><b>Salud</b><span>Credenciales sanitarias y condiciones específicas</span></div>
-        <div><b>Deportiva</b><span>Participación, resultados y acreditaciones</span></div>
-        <div><b>Académica</b><span>Estudios, títulos y certificaciones</span></div>
-        <div><b>Financiera</b><span>Credenciales o condiciones financieras acotadas</span></div>
-        <div><b>Ciudadanía</b><span>Credenciales emitidas por fuentes reconocidas</span></div>
-        <div><b>Actividad de identidad</b><span>Continuidad y participación protocolizada</span></div>
+        <div><b>Professional</b><span>Licenses, experience, and certifications</span></div>
+        <div><b>Cultural</b><span>Cultural participation and contributions</span></div>
+        <div><b>Family</b><span>Relationships supported by appropriate sources</span></div>
+        <div><b>Intimate</b><span>Highly restricted-access information</span></div>
+        <div><b>Health</b><span>Health credentials and specific conditions</span></div>
+        <div><b>Sports</b><span>Participation, results, and certifications</span></div>
+        <div><b>Academic</b><span>Education, degrees, and certifications</span></div>
+        <div><b>Financial</b><span>Scoped financial credentials or conditions</span></div>
+        <div><b>Citizenship</b><span>Credentials issued by recognized sources</span></div>
+        <div><b>Activity de identidad</b><span>Continuity and protocol-defined participation</span></div>
       </div>
-      <div class="callout"><strong>Verificación por separado:</strong> emisor, firma o mecanismo de integridad, vinculación con la identidad, alcance de la afirmación, vigencia, revocación y política aplicable. La constancia de la identidad no valida automáticamente una credencial profesional, familiar, sanitaria o financiera.</div>
+      <div class="callout"><strong>Independent verification:</strong> issuer, signature or integrity mechanism, identity binding, claim scope, validity, revocation, and applicable policy. Identity constancy does not automatically validate a professional, family, health, or financial credential.</div>
     </section>
 
     <section class="section">
       <div class="section-heading">
-        <div><p class="eyebrow">06 · DIVULGACIÓN SELECTIVA</p><h2>Demostrar una condición sin revelar todo</h2></div>
-        <p>Las pruebas de conocimiento cero (ZKP) podrían permitir demostrar una propiedad concreta de una credencial sin entregar el documento completo, cuando la credencial y el protocolo criptográfico lo permitan.</p>
+        <div><p class="eyebrow">06 · SELECTIVE DISCLOSURE</p><h2>Prove a condition without revealing everything</h2></div>
+        <p>Zero-knowledge proofs (ZKPs) may allow a specific property of a credential to be demonstrated without disclosing the complete document, where the credential and cryptographic protocol support it.</p>
       </div>
       <div class="architecture">
-        <article><h3>Lo que se conserva</h3><p>El registro personal completo, la credencial original o sus datos sensibles, preferentemente en almacenamiento controlado por la persona o cifrado.</p></article>
+        <article><h3>What remains private</h3><p>The full personal record, original credential, or sensitive data, preferably in user-controlled or encrypted storage.</p></article>
         <div class="architecture-link" aria-hidden="true">→</div>
-        <article><h3>Lo que se presenta</h3><p>Una prueba mínima de una afirmación requerida, ligada al verificador, al propósito, al desafío y a la frescura para reducir la reutilización indebida.</p></article>
+        <article><h3>What is presented</h3><p>A minimal proof of the required claim, bound to the verifier, purpose, challenge, and freshness requirements to reduce misuse.</p></article>
       </div>
       <ul class="check-list">
-        <li>Una ZKP no hace verdadera una afirmación falsa ni convierte automáticamente a un emisor en confiable.</li>
-        <li>La verificación debe contemplar vigencia y revocación de credenciales cuando corresponda.</li>
-        <li>El servicio tercero debe solicitar solo la información necesaria para su finalidad.</li>
+        <li>A ZKP does not make a false claim true or automatically make an issuer trustworthy.</li>
+        <li>Verification must account for credential validity and revocation where applicable.</li>
+        <li>A relying service should request only the information necessary for its purpose.</li>
       </ul>
     </section>
 
     <section class="section" id="privacidad">
       <div class="section-heading">
-        <div><p class="eyebrow">07 · PRIVACIDAD Y ALMACENAMIENTO</p><h2>Guardar no significa publicar</h2></div>
-        <p>El almacenamiento local y Kubo/IPFS cumplen funciones complementarias. Un CID identifica contenido, pero no proporciona confidencialidad ni controla quién lo obtiene.</p>
+        <div><p class="eyebrow">07 · PRIVACY AND STORAGE</p><h2>Storing does not mean publishing</h2></div>
+        <p>Local storage and Kubo/IPFS serve complementary roles. A CID identifies content, but does not provide confidentiality or control who can obtain it.</p>
       </div>
       <div class="evidence-grid">
-        <article class="evidence-card"><h3>Local o cifrado</h3><p>Preferido para fuentes personales, información familiar, íntima o sanitaria y material cuya divulgación no se desea. Las claves deben gestionarse por separado.</p></article>
-        <article class="evidence-card"><h3>Distribuido y público</h3><p>Reservado para contenido que se pretende compartir. Los manifiestos públicos no deberían revelar por defecto etiquetas sensibles, referencias privadas ni datos personales.</p></article>
+        <article class="evidence-card"><h3>Local or encrypted</h3><p>Preferred for personal sources, family, intimate, or health information, and material that should not be disclosed. Keys must be managed separately.</p></article>
+        <article class="evidence-card"><h3>Distributed and public</h3><p>Reserved for content intended to be shared. Public manifests should not reveal sensitive labels, private references, or personal data by default.</p></article>
       </div>
-      <p class="section-note">Despublicar una referencia no garantiza borrar copias ya distribuidas por IPFS. La web no debe prometer confidencialidad o eliminación que la infraestructura no puede garantizar.</p>
+      <p class="section-note">Unpublishing a reference does not guarantee deletion of copies already distributed through IPFS. The website must not promise confidentiality or deletion that the infrastructure cannot guarantee.</p>
     </section>
 
     <section class="section" id="roadmap">
       <div class="section-heading">
-        <div><p class="eyebrow">08 · PLAN DE IMPLEMENTACIÓN</p><h2>Construir por fases verificables</h2></div>
-        <p>La implementación debe avanzar desde esquemas locales simples y pruebas deterministas hacia criptografía y redes distribuidas, sin declarar capacidades antes de probarlas.</p>
+        <div><p class="eyebrow">08 · IMPLEMENTATION ROADMAP</p><h2>Build in verifiable phases</h2></div>
+        <p>Implementation should progress from simple local schemas and deterministic tests toward cryptography and distributed networks, without claiming capabilities before they are tested.</p>
       </div>
       <ol class="roadmap">
-        <li><b>Especificación y modelo de amenazas</b><span>Definir qué significa la acreditación personal, su nivel de garantía, privacidad y límites.</span></li>
-        <li><b>Esquemas locales</b><span>Separar registros de actividad, comprobaciones personales y credenciales individuales.</span></li>
-        <li><b>Validación determinista</b><span>Probar fechas, periodos, duplicados, vacíos, vigencia, renovación y revocación.</span></li>
-        <li><b>Métricas de constancia</b><span>Calcular duración y continuidad solo desde registros válidos, mostrando procedencia y periodos ausentes.</span></li>
-        <li><b>Simulación de preferencias</b><span>Separar el recuento colectivo de la evidencia individual y proteger la opción privada.</span></li>
-        <li><b>Propagación y consenso multinodo</b><span>Definir autenticación de pares, resistencia Sybil, modelo de fallos y finalización antes de implementar.</span></li>
-        <li><b>Catálogo de credenciales</b><span>Aplicar reglas específicas de emisor, integridad, alcance, privacidad y revocación.</span></li>
-        <li><b>Pruebas de conocimiento cero</b><span>Seleccionar protocolos revisados y probar vinculación al verificador, desafíos, frescura y revocación.</span></li>
-        <li><b>Verificación por terceros</b><span>Entregar resultados explicables y contextuales, no una puntuación universal de confianza.</span></li>
+        <li><b>Specification and threat model</b><span>Define personhood verification, its assurance level, privacy, and limitations.</span></li>
+        <li><b>Local schemas</b><span>Separate activity records, personhood checks, and individual credentials.</span></li>
+        <li><b>Deterministic validation</b><span>Test timestamps, periods, duplicates, gaps, validity, renewal, and revocation.</span></li>
+        <li><b>Constancy metrics</b><span>Calculate duration and continuity only from valid records, showing provenance and missing periods.</span></li>
+        <li><b>Preference simulation</b><span>Separate the collective tally from individual evidence and protect private choices.</span></li>
+        <li><b>Propagation y consenso multinodo</b><span>Define peer authentication, Sybil resistance, fault model, and finality before implementation.</span></li>
+        <li><b>Credential catalog</b><span>Apply issuer-, integrity-, scope-, privacy-, and revocation-specific rules.</span></li>
+        <li><b>Zero-knowledge proofs</b><span>Select reviewed protocols and test verifier binding, challenges, freshness, and revocation.</span></li>
+        <li><b>Third-party verification</b><span>Provide explainable, contextual results rather than a universal trust score.</span></li>
       </ol>
-      <div class="status-banner"><strong>Estado actual del proyecto:</strong> la página y los documentos describen especificaciones y trabajo futuro. El validador local existente comprueba estructura y semántica temporal de registros; no verifica criptográficamente firmas, no prueba que una persona sea real y no implementa consenso distribuido ni ZKP.</div>
+      <div class="status-banner"><strong>Current project status:</strong> this page and its documents describe specifications and future work. The existing local validator checks record structure and time semantics; it does not cryptographically verify signatures, prove that a person is real, or implement distributed consensus or ZKPs.</div>
       <div class="component-links">
-        <a href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md" target="_blank" rel="noopener noreferrer">Especificación de identidad y divulgación ↗</a>
-        <a href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-FUNCTION-PROOF.md" target="_blank" rel="noopener noreferrer">Prueba de funcionamiento y consenso ↗</a>
-        <a href="https://github.com/byLAEV/Node-Core-OS/pull/18" target="_blank" rel="noopener noreferrer">Revisar PR #18 ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md" target="_blank" rel="noopener noreferrer">Personhood and selective disclosure specification ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-FUNCTION-PROOF.md" target="_blank" rel="noopener noreferrer">Identity Function Proof and consensus ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/pull/18" target="_blank" rel="noopener noreferrer">Review PR #18 ↗</a>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <span>Node Core OS · Identidad y evidencias</span>
-    <span>Especificación pública · Capacidades futuras claramente identificadas</span>
-    <a href="./index.html">Volver al Web Test Bench ↑</a>
+    <span>Node Core OS · Identity and Evidence</span>
+    <span>Public specification · Future capabilities clearly identified</span>
+    <a href="./index.html">Back to Web Test Bench ↑</a>
   </footer>
 </body>
 </html>
