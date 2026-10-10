@@ -63,6 +63,10 @@ case "$url" in
     cp "$TEST_FIXTURES/latest-commit.json" "$output"
     ;;
   */archive/*.tar.gz)
+    if [[ "${FAIL_UPDATE_DOWNLOAD:-0}" == "1" ]]; then
+      printf 'simulated update archive download failure\\n' >&2
+      exit 22
+    fi
     archive_name="${url##*/}"
     archive="$TEST_FIXTURES/$archive_name"
     [[ -f "$archive" ]] || {
@@ -120,5 +124,24 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+
+
+# Verify that an archive download failure leaves the current app and data intact.
+previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
+printf '{"sha":"fixture-download-failure"}\n' > "$TEST_FIXTURES/latest-commit.json"
+set +e
+printf 'y\n' | FAIL_UPDATE_DOWNLOAD=1 bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/download-failure.log" 2>&1
+download_status=$?
+set -e
+test "$download_status" -ne 0
+grep -q 'Rolling back Node Core application' "$TEMP_ROOT/download-failure.log"
+grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
+grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+
+printf 'Existing-install updater download-failure rollback tests passed.\n'
 
 printf 'Existing-install updater preservation and rollback tests passed.\n'
