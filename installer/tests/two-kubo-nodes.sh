@@ -167,4 +167,29 @@ node_b swarm peers | tee "$WORK_DIR/node-b-peers.txt"
 grep -F "$PEER_B" "$WORK_DIR/node-a-peers.txt" >/dev/null
 grep -F "$PEER_A" "$WORK_DIR/node-b-peers.txt" >/dev/null
 
-echo "PASS: two independent Kubo nodes have different identities, connected to each other, and completed a peer ping."
+echo "Testing actual content transfer from Node A to Node B"
+SOURCE_FILE="$WORK_DIR/source-content.txt"
+RETRIEVED_FILE="$WORK_DIR/retrieved-content.txt"
+
+cat > "$SOURCE_FILE" <<'CONTENT'
+Node Core OS two-node content transfer test
+This file is created by Node A and retrieved by Node B using its IPFS CID.
+The receiving node must reproduce the exact original bytes.
+CONTENT
+
+CONTENT_CID="$(node_a add --quiet "$SOURCE_FILE")"
+test -n "$CONTENT_CID" || fail "Node A did not return a CID for the test content."
+echo "Content CID: $CONTENT_CID"
+
+# Node B has its own fresh repository. Retrieve the content through the Kubo network.
+node_b cat "$CONTENT_CID" > "$RETRIEVED_FILE" || fail "Node B could not retrieve content from the network."
+cmp -s "$SOURCE_FILE" "$RETRIEVED_FILE" || fail "Content retrieved by Node B does not match the source bytes."
+
+SOURCE_SHA256="$(sha256sum "$SOURCE_FILE" | awk '{print $1}')"
+RETRIEVED_SHA256="$(sha256sum "$RETRIEVED_FILE" | awk '{print $1}')"
+test "$SOURCE_SHA256" = "$RETRIEVED_SHA256" || fail "SHA-256 checksums differ after transfer."
+
+echo "Source SHA-256:    $SOURCE_SHA256"
+echo "Retrieved SHA-256: $RETRIEVED_SHA256"
+echo "PASS: Node B retrieved Node A's content by CID and the exact bytes matched."
+echo "PASS: two independent Kubo nodes connected, completed a peer ping, and transferred verifiable content."
