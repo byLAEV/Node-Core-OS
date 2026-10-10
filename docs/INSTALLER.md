@@ -93,6 +93,15 @@ The installer verifies:
 - Python major/minor version is supported
 - Python can compile the Node Core sources
 
+
+## Evidence and My Life / Node Blog
+
+The installer copies the complete `node_core` application package into `~/.node-core/app/node_core`; it must include `evidence.py` and `my_life.py`. Installation verification checks that both modules exist and compiles the installed Python sources before declaring the application verified.
+
+The Node Core menu exposes **Add Evidence** and **My Life / Node Blog**. Evidence creation stores a local text record and adds it to Kubo/IPFS with pinning. My Life entries are stored in local storage under `storage/my-life/entries/`, with a JSON index at `storage/my-life/index.json`.
+
+My Life entries are **local-only by default**. The user must explicitly choose to add an entry to IPFS and pin it. If IPFS addition fails, the entry remains saved locally and the interface reports the failure. Installing or updating these modules must not delete the user storage directory, the Kubo repository, or the existing configuration.
+
 ## Kubo
 
 The Kubo installer performs:
