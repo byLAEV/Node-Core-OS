@@ -76,7 +76,7 @@ export PATH="$TEMP_ROOT/fake-bin:$PATH"
 
 # The test must run as a normal user and exercise the actual updater entry point.
 test "$(id -u)" -ne 0
-printf 'y\n' | "$REPOSITORY_ROOT/installer/update.sh"
+printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
