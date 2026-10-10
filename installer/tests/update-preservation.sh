@@ -190,7 +190,7 @@ printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/
 mkdir -p "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core"
 printf 'def broken(:\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/main.py"
 printf 'VALUE = "broken"\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core/__init__.py"
-tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \\
+tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
   -C "$TEMP_ROOT/rollback-failure-release" Node-Core-OS-rollback-failure
 
 REAL_CP="$(command -v cp)"
