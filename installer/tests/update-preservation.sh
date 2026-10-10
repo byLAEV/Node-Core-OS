@@ -86,13 +86,16 @@ printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+printf 'Updater happy-path application check passed.\\n'
 grep -qx 'fixture-update-commit' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+printf 'Updater happy-path commit marker check passed.\\n'
 
 # Verify Kubo, its repository, local storage, and configuration remain untouched.
 grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+printf 'Updater happy-path persistence checks passed.\\n'
 
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
