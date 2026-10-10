@@ -272,11 +272,16 @@ main() {
     printf '✓ Configuration preserved unless Termux executable path migration was required.\n'
     cleanup_update_files
   else
-    printf '\nUpdate verification failed. Rolling back Node Core application...\n' >&2
-    rollback_application
-    printf '✓ Node Core application restored.\n' >&2
-    printf 'Kubo/IPFS and persistent data were not modified.\n' >&2
-    cleanup_update_files
+    printf '\nUpdate verification failed. Attempting to roll back Node Core application...\n' >&2
+    if rollback_application; then
+      printf '✓ Node Core application and commit marker restored.\n' >&2
+      printf 'Kubo/IPFS and persistent data were not modified.\n' >&2
+      cleanup_update_files
+    else
+      printf 'ERROR: Automatic rollback failed.\n' >&2
+      printf 'Recovery files have been retained at: %s\n' "$NODE_CORE_UPDATE_DIR" >&2
+      printf 'Do not delete this directory; restore the application and commit marker manually.\n' >&2
+    fi
     exit 1
   fi
 }
