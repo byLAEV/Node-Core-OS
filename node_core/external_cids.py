@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Persistent library of references to externally known IPFS content."""
 
 from dataclasses import asdict, dataclass
