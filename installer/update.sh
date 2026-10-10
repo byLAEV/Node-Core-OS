@@ -10,28 +10,28 @@ NODE_CORE_COMMIT_FILE="$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 
 require_user_installation() {
   if [[ "$(id -u)" == "0" ]]; then
-    printf 'Refusing to update Node Core OS as root. Run the updater as your normal user without sudo.\\n' >&2
+    printf 'Refusing to update Node Core OS as root. Run the updater as your normal user without sudo.\n' >&2
     exit 1
   fi
   local home_real target_real uid
   [[ -n "${HOME:-}" && -d "$HOME" ]] || {
-    printf 'A valid user HOME directory is required.\\n' >&2
+    printf 'A valid user HOME directory is required.\n' >&2
     exit 1
   }
   home_real="$(realpath -m -- "$HOME")"
   target_real="$(realpath -m -- "$NODE_CORE_DATA_DIR")"
   [[ "$target_real" == "$home_real/"* && "$target_real" != "$home_real" ]] || {
-    printf 'Unsafe update path: NODE_CORE_DATA_DIR must be inside the current user HOME.\\n' >&2
+    printf 'Unsafe update path: NODE_CORE_DATA_DIR must be inside the current user HOME.\n' >&2
     exit 1
   }
   if [[ -e "$NODE_CORE_DATA_DIR" || -L "$NODE_CORE_DATA_DIR" ]]; then
     [[ ! -L "$NODE_CORE_DATA_DIR" && -d "$NODE_CORE_DATA_DIR" ]] || {
-      printf 'Unsafe update path: installation must be a real directory, not a symbolic link.\\n' >&2
+      printf 'Unsafe update path: installation must be a real directory, not a symbolic link.\n' >&2
       exit 1
     }
     uid="$(id -u)"
     [[ "$(stat -c '%u' "$NODE_CORE_DATA_DIR")" == "$uid" ]] || {
-      printf 'Unsafe update path: installation is not owned by the current user.\\n' >&2
+      printf 'Unsafe update path: installation is not owned by the current user.\n' >&2
       exit 1
     }
   fi
@@ -181,11 +181,11 @@ update_application() (
 backup_commit_marker() {
   local backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
   if [[ -f "$NODE_CORE_COMMIT_FILE" ]]; then
-    cp "$NODE_CORE_COMMIT_FILE" "$backup"
-    printf 'present\\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state"
+    cp "$NODE_CORE_COMMIT_FILE" "$backup" || return 1
+    printf 'present\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state" || return 1
   else
-    rm -f "$backup"
-    printf 'absent\\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state"
+    rm -f "$backup" || return 1
+    printf 'absent\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state" || return 1
   fi
 }
 
@@ -193,19 +193,19 @@ rollback_application() {
   local backup="$NODE_CORE_UPDATE_DIR/app-backup"
   local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
   [[ -d "$backup" ]] || return 1
-  rm -rf "$NODE_CORE_APP_DIR"
-  cp -R "$backup" "$NODE_CORE_APP_DIR"
+  rm -rf "$NODE_CORE_APP_DIR" || return 1
+  cp -R "$backup" "$NODE_CORE_APP_DIR" || return 1
 
   case "$(cat "$NODE_CORE_UPDATE_DIR/commit-marker-state" 2>/dev/null || true)" in
     present)
       [[ -f "$marker_backup" ]] || return 1
-      cp "$marker_backup" "$NODE_CORE_COMMIT_FILE"
+      cp "$marker_backup" "$NODE_CORE_COMMIT_FILE" || return 1
       ;;
     absent)
-      rm -f "$NODE_CORE_COMMIT_FILE"
+      rm -f "$NODE_CORE_COMMIT_FILE" || return 1
       ;;
     *)
-      printf 'Cannot determine prior commit marker state; manual recovery may be required.\\n' >&2
+      printf 'Cannot determine prior commit marker state; manual recovery may be required.\n' >&2
       return 1
       ;;
   esac
@@ -257,7 +257,12 @@ main() {
 
   local backup
   backup="$(backup_app)"
-  backup_commit_marker
+  if ! backup_commit_marker; then
+    printf 'Failed to back up the installed commit marker; update cancelled.\n' >&2
+    rm -rf "$NODE_CORE_UPDATE_DIR/app-backup"
+    cleanup_update_files
+    return 1
+  fi
 
   if update_application "$remote_commit"; then
     printf '\n✓ Node Core application updated.\n'
