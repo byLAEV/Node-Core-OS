@@ -110,6 +110,7 @@ PID_B=$!
 
 wait_for_api() {
     local label="$1"
+    shift
     local attempts=0
     until "$@" >/dev/null 2>&1; do
         attempts=$((attempts + 1))
