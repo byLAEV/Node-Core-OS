@@ -58,7 +58,7 @@ if not errors:
         if token not in css:
             errors.append(f"styles.css is missing responsive/accessibility rule: {token}")
 
-    for token in ('<html lang="es">', 'id="modelo"', 'id="evidencias"', 'id="privacidad"', 'id="roadmap"', 'ZKP', 'consenso', 'identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md'):
+    for token in ('<html lang="es">', 'id="model"', 'id="evidence"', 'id="privacy"', 'id="roadmap"', 'ZKP', 'consensus', 'identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md'):
         if token not in identity:
             errors.append(f"identity.html is missing expected architecture content: {token}")
     for target in re.findall(r'(?:src|href)="(\./[^"#?]+)"', identity):
