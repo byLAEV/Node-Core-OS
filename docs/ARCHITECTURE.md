@@ -67,18 +67,41 @@ does not expose the administrative Kubo RPC.
 IPNS/key-backed naming belongs above this layer because it will require identity and
 cryptographic key management.
 
-## Identity activity, evidence, and consensus (future layer)
+## Identity activity, personhood, and evidence (future layers)
 
-The specification in [IDENTITY-FUNCTION-PROOF.md](IDENTITY-FUNCTION-PROOF.md)
-defines the planned relationship between periodic identity activity, preference
-protocols, evidence validation, propagation states, consensus/finality, evidence
-freshness, and contextual reputation.
+The specifications below define planned capabilities and are not claims of existing
+runtime functionality:
 
-This is an architectural specification, not a claim that network-wide consensus,
-preference voting, Sybil resistance, or identity-health scoring is implemented.
-The first implementation step is a local evidence schema and deterministic
-validation with tests. Consensus selection must wait until membership assumptions,
-threat model, fault model, and finality requirements are documented.
+- [Identity Function Proof, Preference Propagation, and Consensus](IDENTITY-FUNCTION-PROOF.md)
+  defines activity evidence, preference protocols, propagation states, consensus/finality,
+  freshness, and contextual reputation.
+- [Personhood Verification, Evidence Categories, and Selective Disclosure](IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md)
+  defines policy-bound personhood assessment, constancy-history metrics, evidence
+  categories, privacy boundaries, and future zero-knowledge selective disclosure.
+
+The architecture separates the identity's activity history from personhood assessment,
+node availability, credential validity, and third-party authorization. A long valid
+history may measure constancy, but it cannot alone prove that the identity belongs to
+a real person. That claim requires a qualifying personhood procedure and must remain
+bound to its policy and validity period. A preference vote alone is not a human test.
+
+Evidence labels such as professional, cultural, family, intimate, health, sports,
+academic, financial, and citizenship are classification metadata, not proof that a
+claim is true. Each credential needs its own issuer/authenticity, validity, and
+revocation checks. Zero-knowledge proofs may later support selective disclosure, but
+they do not independently establish the truth of an underlying claim.
+
+Local storage and Kubo/IPFS are complementary. A CID does not prove authenticity,
+consensus acceptance, persistence, or confidentiality. Sensitive evidence must be
+private or encrypted by design; public manifests must not reveal sensitive labels
+by default.
+
+The current identity implementation is a local structural/time validator only. It
+does not verify signatures cryptographically, establish that an identity is a real
+person, implement anti-Sybil controls, propagate evidence across peers, run distributed
+consensus, issue personal credentials, or generate ZKPs. The next phases must define
+the threat model, schemas, cryptographic contracts, and tests before network behavior
+is claimed.
 
 ## Storage layout
 
