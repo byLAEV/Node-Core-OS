@@ -52,6 +52,35 @@ class MyLifeBlog:
     def list_entries(self) -> list[LifeEntry]:
         return [LifeEntry(**item) for item in self._load()]
 
+    def publish_entry(self, entry_id: str, *, pin: bool = True) -> LifeEntry:
+        """Add one selected entry to IPFS, optionally pinning it on this node."""
+        entries = self._load()
+        selected = None
+        for item in entries:
+            if item.get("entry_id") == entry_id:
+                selected = item
+                break
+        if selected is None:
+            raise ValueError(f"My Life entry not found: {entry_id}")
+
+        local_path = Path(selected["text_path"])
+        if not local_path.is_file():
+            raise FileNotFoundError(f"My Life local entry is missing: {local_path}")
+
+        cid = selected.get("cid")
+        pinned = bool(selected.get("pinned", False))
+        if cid:
+            if pin and not pinned:
+                self.content.pin(cid)
+                selected["pinned"] = True
+        else:
+            record = self.content.add(local_path, pin=pin)
+            selected["cid"] = record.cid
+            selected["pinned"] = bool(record.pinned)
+
+        self._save(entries)
+        return LifeEntry(**selected)
+
     def create_entry(
         self, title: str, text: str, *, add_to_ipfs: bool = False
     ) -> LifeEntry:

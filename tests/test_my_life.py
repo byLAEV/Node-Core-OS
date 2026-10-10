@@ -51,6 +51,45 @@ class MyLifeBlogTests(unittest.TestCase):
         self.assertTrue(entry.pinned)
         self.assertEqual(self.blog.list_entries()[0].cid, "bafyblogtest")
 
+    def test_publishing_selected_entry_does_not_publish_other_entries(self):
+        first = self.blog.create_entry("First", "Publish only this entry.")
+        second = self.blog.create_entry("Second", "Keep this entry local.")
+        first_path = Path(first.text_path)
+        second_path = Path(second.text_path)
+
+        published = self.blog.publish_entry(first.entry_id)
+        entries = {entry.entry_id: entry for entry in self.blog.list_entries()}
+
+        self.assertEqual(published.entry_id, first.entry_id)
+        self.assertEqual(published.cid, "bafyblogtest")
+        self.assertTrue(published.pinned)
+        self.assertEqual(entries[first.entry_id].cid, "bafyblogtest")
+        self.assertIsNone(entries[second.entry_id].cid)
+        self.assertFalse(entries[second.entry_id].pinned)
+        self.assertTrue(first_path.is_file())
+        self.assertTrue(second_path.is_file())
+
+    def test_publishing_entry_can_skip_pin_and_pin_later(self):
+        entry = self.blog.create_entry("Unpinned", "Publish without pinning first.")
+
+        published = self.blog.publish_entry(entry.entry_id, pin=False)
+        self.assertEqual(published.cid, "bafyblogtest")
+        self.assertFalse(published.pinned)
+        self.assertNotIn("bafyblogtest", self.content.kubo.pinned)
+
+        pinned = self.blog.publish_entry(entry.entry_id, pin=True)
+        self.assertEqual(pinned.cid, "bafyblogtest")
+        self.assertTrue(pinned.pinned)
+        self.assertIn("bafyblogtest", self.content.kubo.pinned)
+        self.assertTrue(Path(entry.text_path).is_file())
+
+    def test_publishing_unknown_entry_fails_without_changing_index(self):
+        entry = self.blog.create_entry("Local", "Do not change this entry.")
+        with self.assertRaises(ValueError):
+            self.blog.publish_entry("unknown-entry-id")
+        self.assertEqual(self.blog.list_entries(), [entry])
+        self.assertTrue(Path(entry.text_path).is_file())
+
     def test_empty_title_or_text_is_rejected(self):
         with self.assertRaises(ValueError):
             self.blog.create_entry(" ", "body")
