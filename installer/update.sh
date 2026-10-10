@@ -131,10 +131,14 @@ latest_commit() {
     "$response"
   python3 - "$response" <<'PY'
 import json
+import re
 import sys
 with open(sys.argv[1], encoding="utf-8") as handle:
     data = json.load(handle)
-print(data["sha"])
+commit = data.get("sha")
+if not isinstance(commit, str) or re.fullmatch(r"[0-9a-fA-F]{40}", commit) is None:
+    raise SystemExit("GitHub returned invalid commit metadata; refusing to update.")
+print(commit.lower())
 PY
 }
 
