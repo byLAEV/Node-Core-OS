@@ -68,7 +68,7 @@
         <details class="menu-card">
           <summary><span class="menu-icon">03</span><span><strong>External CID Library</strong><small>References to externally known IPFS content</small></span></summary>
           <p>A local reference index kept separate from content that Node Core added to its own registry. Each entry stores a CID, description, source node, creation time, notes, and a unique reference ID.</p>
-          <ul class="menu-list-two"><li>Add external CID</li><li>Browse history</li><li>Search references</li><li>View details</li><li>Retrieve by CID</li><li>Pin on this node</li><li>Check local pin status</li><li>Unpin on this node</li><li>Edit metadata</li><li>Remove local reference</li></ul>
+          <ul class="menu-list-two"><li>Add external CID</li><li>Browse history</li><li>Search references</li><li>View details</li><li>Retrieve by CID</li><li>Read Content by CID</li><li>Pin on this node</li><li>Check local pin status</li><li>Unpin on this node</li><li>Edit metadata</li><li>Remove Reference from History</li></ul>
           <p class="menu-caveat">Unit tests cover local persistence and calls delegated to Kubo. Live retrieval and pin behavior still require verification against a running Kubo daemon. Removing a reference does not unpin or delete IPFS content.</p>
         </details>
         <details class="menu-card">
