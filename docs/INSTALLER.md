@@ -102,6 +102,14 @@ The Node Core menu exposes **Add Evidence** and **My Life / Node Blog**. Evidenc
 
 My Life entries are **local-only by default**. The user must explicitly choose to add an entry to IPFS and pin it. If IPFS addition fails, the entry remains saved locally and the interface reports the failure. Installing or updating these modules must not delete the user storage directory, the Kubo repository, or the existing configuration.
 
+### My Life entry navigation and publication
+
+The terminal interface displays at most 10 entries per page. Page-local numbers select one entry from the currently displayed page; they are not publication actions. The user opens the selected entry's detail menu before choosing **Publish this entry to IPFS**. That operation receives the stable entry ID and updates only the selected record in `my-life/index.json`.
+
+The browser supports next/previous page navigation and search by title, content, or entry ID. The entry's local Markdown file is preserved after successful publication and when publication fails. An IPFS CID is recorded only after Kubo successfully adds the content; existing CIDs are pinned rather than needlessly re-added. The interface must never interpret a generic menu option as a request to publish every entry.
+
+The updater installs this behavior by replacing the application code from the selected repository commit. It does not replace `storage/my-life/`, the existing Kubo binary, the Kubo repository, or the user configuration. No storage migration is required for existing index records because the entry schema is unchanged.
+
 ## Kubo
 
 The Kubo installer performs:
