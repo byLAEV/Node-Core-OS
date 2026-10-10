@@ -1583,5 +1583,5 @@ This is a proposed future capability, not a claim that a complete memory and del
 
 ## My Life / Node Blog entry management
 
-My Life / Node Blog supports paginated browsing (10 entries per page), searching by title/content/entry ID, and selecting an individual entry before publication. Publishing acts only on the selected entry, records its Kubo/IPFS CID, and preserves the local Markdown file. See [My Life / Node Blog documentation](docs/MY-LIFE-BLOG.md) for the behavior and update contract.
+My Life / Node Blog supports paginated browsing (10 entries per page), searching by title/content/entry ID, and selecting an individual entry before publication. Publishing acts only on the selected entry, asks whether to pin it on this node, records its Kubo/IPFS CID, and preserves the local Markdown file. See [My Life / Node Blog documentation](docs/MY-LIFE-BLOG.md) for the behavior and update contract.
 
