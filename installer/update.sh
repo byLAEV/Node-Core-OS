@@ -257,7 +257,12 @@ main() {
 
   local backup
   backup="$(backup_app)"
-  backup_commit_marker
+  if ! backup_commit_marker; then
+    printf 'Failed to back up the installed commit marker; update cancelled.\\n' >&2
+    rm -rf "$NODE_CORE_UPDATE_DIR/app-backup"
+    cleanup_update_files
+    return 1
+  fi
 
   if update_application "$remote_commit"; then
     printf '\n✓ Node Core application updated.\n'
