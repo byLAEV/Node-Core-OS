@@ -151,12 +151,12 @@ update_application() (
   local archive="$NODE_CORE_UPDATE_DIR/source.tar.gz"
   local extract="$NODE_CORE_UPDATE_DIR/source"
 
-  rm -rf "$extract"
-  mkdir -p "$extract"
+  rm -rf "$extract" || return 1
+  mkdir -p "$extract" || return 1
   download_file \
     "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz" \
-    "$archive"
-  tar -xzf "$archive" -C "$extract"
+    "$archive" || return 1
+  tar -xzf "$archive" -C "$extract" || return 1
 
   local source
   source="$(find "$extract" -mindepth 1 -maxdepth 1 -type d -print -quit)"
@@ -165,10 +165,10 @@ update_application() (
     return 1
   }
 
-  rm -rf "$NODE_CORE_APP_DIR"
-  mkdir -p "$NODE_CORE_APP_DIR"
-  cp -R "$source"/. "$NODE_CORE_APP_DIR"/
-  rm -rf "$NODE_CORE_APP_DIR/.git"
+  rm -rf "$NODE_CORE_APP_DIR" || return 1
+  mkdir -p "$NODE_CORE_APP_DIR" || return 1
+  cp -R "$source"/. "$NODE_CORE_APP_DIR"/ || return 1
+  rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
 
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core"
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE"
