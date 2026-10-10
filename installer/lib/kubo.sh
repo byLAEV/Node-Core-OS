@@ -100,7 +100,8 @@ start_kubo() {
   printf '%s\n' "$pid" > "$NODE_CORE_DATA_DIR/runtime/kubo.pid"
 
   local attempt
-  for attempt in {1..40}; do
+  printf 'Waiting up to 60 seconds for the local Kubo API to become ready...\n'
+  for attempt in {1..120}; do
     if http_post "$NODE_CORE_KUBO_API/api/v0/id" >/dev/null 2>&1; then
       return 0
     fi
@@ -108,9 +109,9 @@ start_kubo() {
       printf 'Kubo daemon exited during startup. See %s.\n' "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
       return 1
     fi
-    sleep 0.25
+    sleep 0.5
   done
 
-  printf 'Kubo API did not become ready. See %s.\n' "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
+  printf 'Kubo API did not become ready within 60 seconds. See %s.\n' "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
   return 1
 }
