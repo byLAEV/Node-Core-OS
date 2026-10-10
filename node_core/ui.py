@@ -21,7 +21,8 @@ class MainMenu:
             print("0. Exit")
             print("1. Node Core BIOS")
             print("2. Node Core")
-            print("3. Applications")
+            print("3. My Life / Node Blog")
+            print("4. Applications")
             print("Type Update to install an available Node Core OS update.")
             choice = input("\n> ").strip()
             if choice.lower() == "update":
@@ -56,6 +57,8 @@ class MainMenu:
             elif choice == "2":
                 self.core()
             elif choice == "3":
+                self.my_life_blog()
+            elif choice == "4":
                 self.applications()
 
     def _print_update_status(self, status: UpdateStatus) -> None:
@@ -262,6 +265,44 @@ class MainMenu:
         print(f"Gateway: {reference.gateway_url}")
         print(f"Path: {reference.path}")
         input("\n> ")
+
+    def my_life_blog(self) -> None:
+        while True:
+            print("\nMy Life / Node Blog\n")
+            print("Entries are stored locally by default.")
+            print("Adding an entry to IPFS pins its content on this node.")
+            print("0. Back")
+            print("1. New entry")
+            print("2. List entries")
+            choice = input("\n> ").strip()
+            try:
+                if choice == "0":
+                    return
+                if choice == "1":
+                    title = input("Title: ").strip()
+                    text = input("Entry: ").strip()
+                    publish = input("Also add to IPFS and pin? [y/N] ").strip().lower()
+                    entry = self.runtime.my_life.create_entry(title, text, add_to_ipfs=publish in ("y", "yes"))
+                    print("\nEntry saved locally.")
+                    if entry.cid:
+                        print("IPFS CID: " + entry.cid)
+                        print("Pinned: " + ("Yes" if entry.pinned else "No"))
+                    else:
+                        print("IPFS: not added; entry remains local-only.")
+                    input("\n> ")
+                elif choice == "2":
+                    entries = self.runtime.my_life.list_entries()
+                    if not entries:
+                        print("No My Life entries yet.")
+                    for entry in entries:
+                        print("\nTitle: " + entry.title)
+                        print("Created: " + entry.created_at)
+                        print("Local file: " + entry.text_path)
+                        print("CID: " + (entry.cid or "local-only"))
+                    input("\n> ")
+            except Exception as exc:
+                print("My Life error: " + str(exc))
+                input("\n> ")
 
     def applications(self) -> None:
         print("\nApplications\nbyLAEV\n")
