@@ -181,11 +181,11 @@ update_application() (
 backup_commit_marker() {
   local backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
   if [[ -f "$NODE_CORE_COMMIT_FILE" ]]; then
-    cp "$NODE_CORE_COMMIT_FILE" "$backup"
-    printf 'present\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state"
+    cp "$NODE_CORE_COMMIT_FILE" "$backup" || return 1
+    printf 'present\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state" || return 1
   else
-    rm -f "$backup"
-    printf 'absent\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state"
+    rm -f "$backup" || return 1
+    printf 'absent\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state" || return 1
   fi
 }
 
@@ -193,16 +193,16 @@ rollback_application() {
   local backup="$NODE_CORE_UPDATE_DIR/app-backup"
   local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
   [[ -d "$backup" ]] || return 1
-  rm -rf "$NODE_CORE_APP_DIR"
-  cp -R "$backup" "$NODE_CORE_APP_DIR"
+  rm -rf "$NODE_CORE_APP_DIR" || return 1
+  cp -R "$backup" "$NODE_CORE_APP_DIR" || return 1
 
   case "$(cat "$NODE_CORE_UPDATE_DIR/commit-marker-state" 2>/dev/null || true)" in
     present)
       [[ -f "$marker_backup" ]] || return 1
-      cp "$marker_backup" "$NODE_CORE_COMMIT_FILE"
+      cp "$marker_backup" "$NODE_CORE_COMMIT_FILE" || return 1
       ;;
     absent)
-      rm -f "$NODE_CORE_COMMIT_FILE"
+      rm -f "$NODE_CORE_COMMIT_FILE" || return 1
       ;;
     *)
       printf 'Cannot determine prior commit marker state; manual recovery may be required.\n' >&2
