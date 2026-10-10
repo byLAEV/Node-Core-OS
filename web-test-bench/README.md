@@ -4,7 +4,8 @@ A static, mobile-friendly public portal for project documentation and recent Git
 
 ## Files
 
-- `index.html`: accessible page structure and direct links to the repository/workflows.
+- `index.html`: accessible dashboard structure and direct links to the repository/workflows.
+- `menus.html`: Spanish visual guide to the actual terminal menu labels and the documented installer phases. The mock interface is illustrative and does not control a running node.
 - `assets/styles.css`: responsive styles and reduced-motion support.
 - `assets/app.js`: reads public workflow run metadata from the GitHub REST API; no token or secret is embedded in the page.
 
