@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Especificación de Node Core OS para constancia de identidad, acreditación personal, evidencias individuales, consenso y divulgación selectiva.">
+  <meta name="theme-color" content="#101827">
+  <title>Node Core OS — Identity and Evidence</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./index.html" aria-label="Volver a Web Test Bench">
+      <span class="brand-mark" aria-hidden="true">N</span>
+      <span><strong>NODE CORE OS</strong><small>IDENTIDAD Y EVIDENCIAS</small></span>
+    </a>
+    <nav aria-label="Navegación principal">
+      <a href="./index.html">Web Test Bench</a>
+      <a href="./menus.html">Menus</a>
+      <a href="#model">Model</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#roadmap">Implementation</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero menu-hero">
+      <p class="eyebrow">ARCHITECTURE SPECIFICATION · FUTURE WORK</p>
+      <h1>One identity.<br><span>A verifiable history.</span></h1>
+      <p class="hero-copy">Node Core OS proposes building an evidence history to evaluate identity constancy, record personhood checks, and present specific claims without revealing the entire private history.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#model">Explore the model ↓</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md" target="_blank" rel="noopener noreferrer">Read the full specification ↗</a>
+      </div>
+      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span>Transparency note: this page describes a proposed architecture. It does not claim that personhood verification, distributed consensus, or zero-knowledge proofs are implemented.</div>
+    </section>
+
+    <section class="section" id="model">
+      <div class="section-heading">
+        <div><p class="eyebrow">01 · CORE MODEL</p><h2>Two different questions</h2></div>
+        <p>Constancy builds evidence of activity. Personhood requires a specific verification procedure. These concepts can be related, but they are not equivalent.</p>
+      </div>
+      <div class="evidence-grid">
+        <article class="evidence-card"><span class="card-number">A · PERSONHOOD VERIFICATION</span><h3>Does the identity correspond to a real person?</h3><p>A versioned procedure must define what is checked, how the result is bound to the identity, how long the verification remains valid, and what safeguards it provides against impersonation and duplicate identities.</p><span class="status-chip status-planned">Planned</span></article>
+        <article class="evidence-card"><span class="card-number">B · CONSTANCY</span><h3>Does it maintain a valid history?</h3><p>Protocol-defined activity, eligible voting, recognized propagation, and accepted records can provide evidence of continuity across defined periods.</p><span class="status-chip status-planned">Planned</span></article>
+      </div>
+      <div class="callout"><strong>Safety rule:</strong> a technically active identity, an ordinary vote, or a long chain does not by itself prove that a unique, real person is behind it. Any such conclusion must be limited to the guarantees of an explicit verification procedure.</div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">02 · EVIDENCE LIFECYCLE</p><h2>From activity to recognition</h2></div>
+        <p>This flow is conceptual; each stage requires schemas, deterministic rules, and tests before it can be considered operational.</p>
+      </div>
+      <div class="flow-grid">
+        <div class="flow-step"><b>01</b><strong>Identity</strong><span>A technical reference exists and its binding is defined.</span></div>
+        <div class="flow-step"><b>02</b><strong>Activity</strong><span>Records are generated for actions that satisfy the rules.</span></div>
+        <div class="flow-step"><b>03</b><strong>Propagation</strong><span>The peers or checkpoints that observed the evidence are verified.</span></div>
+        <div class="flow-step"><b>04</b><strong>Validation and consensus</strong><span>Records are recognized only under a defined and tested protocol.</span></div>
+        <div class="flow-step"><b>05</b><strong>History</strong><span>Valid references, periods, renewals, and gaps accumulate.</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">03 · LONGEST CHAIN</p><h2>A constancy reference, not automatic truth</h2></div>
+        <p>The longest valid history may serve as a temporal comparison reference after its records and acceptance under network rules have been validated.</p>
+      </div>
+      <div class="metric-panel">
+        <div><span class="metric-label">Illustrative example</span><strong>10 años</strong><p>History válido más largo reconocido según una política determinada.</p></div>
+        <div><span class="metric-label">Descriptive metric</span><strong>7 / 10 = 70%</strong><p>A seven-year history equals 70% of that temporal reference. It does not mean 70% trust or a 70% probability of being a real person.</p></div>
+      </div>
+      <ul class="check-list">
+        <li>Measure duration, valid periods, continuity, gaps, freshness, count, and propagation separately.</li>
+        <li>Do not inflate constancy with large files, duplicate records, or repeated votes.</li>
+        <li>Do not count a missing period as continuous activity.</li>
+        <li>Do not treat a history as true solely because it is the longest; validation, conflict-resolution, and finality rules are required.</li>
+        <li>A long chain does not replace personhood verification or automatically validate other credentials.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">04 · VOTING AND CONSENSUS</p><h2>Different functions</h2></div>
+        <p>A vote may provide participation evidence or form part of a specific procedure. Consensus recognizes network state and does not have to be a simple majority.</p>
+      </div>
+      <div class="evidence-grid three">
+        <article class="evidence-card"><h3>Preferences</h3><p>A preference vote records a choice and produces a collective result under published rules. The selected option must not change the individual participation evidence.</p></article>
+        <article class="evidence-card"><h3>Personhood check</h3><p>It may require a challenge or a credential with defined guarantees. An ordinary vote is not, by itself, proof of personhood.</p></article>
+        <article class="evidence-card"><h3>Consenso</h3><p>Recognizes records or states according to the algorithm, participant model, fault assumptions, and finality rules.</p></article>
+      </div>
+      <p class="section-note">Failing to respond to a check does not automatically prove fraud. Pending, renewal, grace-period, review, and recovery states are needed.</p>
+    </section>
+
+    <section class="section" id="evidence">
+      <div class="section-heading">
+        <div><p class="eyebrow">05 · INDIVIDUAL EVIDENCE CATALOG</p><h2>Evidence is organized by context</h2></div>
+        <p>Labels help locate and present evidence. A label does not prove a claim is true: each credential requires its own verification.</p>
+      </div>
+      <div class="category-grid">
+        <div><b>Professional</b><span>Licenses, experience, and certifications</span></div>
+        <div><b>Cultural</b><span>Cultural participation and contributions</span></div>
+        <div><b>Family</b><span>Relationships supported by appropriate sources</span></div>
+        <div><b>Intimate</b><span>Highly restricted-access information</span></div>
+        <div><b>Health</b><span>Health credentials and specific conditions</span></div>
+        <div><b>Sports</b><span>Participation, results, and certifications</span></div>
+        <div><b>Academic</b><span>Education, degrees, and certifications</span></div>
+        <div><b>Financial</b><span>Scoped financial credentials or conditions</span></div>
+        <div><b>Citizenship</b><span>Credentials issued by recognized sources</span></div>
+        <div><b>Activity de identidad</b><span>Continuity and protocol-defined participation</span></div>
+      </div>
+      <div class="callout"><strong>Independent verification:</strong> issuer, signature or integrity mechanism, identity binding, claim scope, validity, revocation, and applicable policy. Identity constancy does not automatically validate a professional, family, health, or financial credential.</div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">06 · SELECTIVE DISCLOSURE</p><h2>Prove a condition without revealing everything</h2></div>
+        <p>Zero-knowledge proofs (ZKPs) may allow a specific property of a credential to be demonstrated without disclosing the complete document, where the credential and cryptographic protocol support it.</p>
+      </div>
+      <div class="architecture">
+        <article><h3>What remains private</h3><p>The full personal record, original credential, or sensitive data, preferably in user-controlled or encrypted storage.</p></article>
+        <div class="architecture-link" aria-hidden="true">→</div>
+        <article><h3>What is presented</h3><p>A minimal proof of the required claim, bound to the verifier, purpose, challenge, and freshness requirements to reduce misuse.</p></article>
+      </div>
+      <ul class="check-list">
+        <li>A ZKP does not make a false claim true or automatically make an issuer trustworthy.</li>
+        <li>Verification must account for credential validity and revocation where applicable.</li>
+        <li>A relying service should request only the information necessary for its purpose.</li>
+      </ul>
+    </section>
+
+    <section class="section" id="privacy">
+      <div class="section-heading">
+        <div><p class="eyebrow">07 · PRIVACY AND STORAGE</p><h2>Storing does not mean publishing</h2></div>
+        <p>Local storage and Kubo/IPFS serve complementary roles. A CID identifies content, but does not provide confidentiality or control who can obtain it.</p>
+      </div>
+      <div class="evidence-grid">
+        <article class="evidence-card"><h3>Local or encrypted</h3><p>Preferred for personal sources, family, intimate, or health information, and material that should not be disclosed. Keys must be managed separately.</p></article>
+        <article class="evidence-card"><h3>Distributed and public</h3><p>Reserved for content intended to be shared. Public manifests should not reveal sensitive labels, private references, or personal data by default.</p></article>
+      </div>
+      <p class="section-note">Unpublishing a reference does not guarantee deletion of copies already distributed through IPFS. The website must not promise confidentiality or deletion that the infrastructure cannot guarantee.</p>
+    </section>
+
+    <section class="section" id="roadmap">
+      <div class="section-heading">
+        <div><p class="eyebrow">08 · IMPLEMENTATION ROADMAP</p><h2>Build in verifiable phases</h2></div>
+        <p>Implementation should progress from simple local schemas and deterministic tests toward cryptography and distributed networks, without claiming capabilities before they are tested.</p>
+      </div>
+      <ol class="roadmap">
+        <li><b>Specification and threat model</b><span>Define personhood verification, its assurance level, privacy, and limitations.</span></li>
+        <li><b>Local schemas</b><span>Separate activity records, personhood checks, and individual credentials.</span></li>
+        <li><b>Deterministic validation</b><span>Test timestamps, periods, duplicates, gaps, validity, renewal, and revocation.</span></li>
+        <li><b>Constancy metrics</b><span>Calculate duration and continuity only from valid records, showing provenance and missing periods.</span></li>
+        <li><b>Preference simulation</b><span>Separate the collective tally from individual evidence and protect private choices.</span></li>
+        <li><b>Propagation y consenso multinodo</b><span>Define peer authentication, Sybil resistance, fault model, and finality before implementation.</span></li>
+        <li><b>Credential catalog</b><span>Apply issuer-, integrity-, scope-, privacy-, and revocation-specific rules.</span></li>
+        <li><b>Zero-knowledge proofs</b><span>Select reviewed protocols and test verifier binding, challenges, freshness, and revocation.</span></li>
+        <li><b>Third-party verification</b><span>Provide explainable, contextual results rather than a universal trust score.</span></li>
+      </ol>
+      <div class="status-banner"><strong>Current project status:</strong> this page and its documents describe specifications and future work. The existing local validator checks record structure and time semantics; it does not cryptographically verify signatures, prove that a person is real, or implement distributed consensus or ZKPs.</div>
+      <div class="component-links">
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md" target="_blank" rel="noopener noreferrer">Personhood and selective disclosure specification ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/docs/identity-function-proof-consensus-v1/docs/IDENTITY-FUNCTION-PROOF.md" target="_blank" rel="noopener noreferrer">Identity Function Proof and consensus ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/pull/18" target="_blank" rel="noopener noreferrer">Review PR #18 ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Node Core OS · Identity and Evidence</span>
+    <span>Public specification · Future capabilities clearly identified</span>
+    <a href="./index.html">Back to Web Test Bench ↑</a>
+  </footer>
+</body>
+</html>

@@ -5,9 +5,14 @@ A static, mobile-friendly public portal for project documentation and recent Git
 ## Files
 
 - `index.html`: accessible dashboard structure and direct links to the repository/workflows.
-- `menus.html`: Spanish visual guide to the actual terminal menu labels and the documented installer phases. The mock interface is illustrative and does not control a running node.
+- `menus.html`: English visual guide to the actual terminal menu labels and the documented installer phases. The mock interface is illustrative and does not control a running node.
+- `identity.html`: English architecture page explaining personhood assessment, activity constancy, longest valid evidence history, preference voting versus consensus, evidence categories, selective disclosure, privacy, and the future implementation roadmap. It clearly labels unimplemented capabilities.
 - `assets/styles.css`: responsive styles and reduced-motion support.
 - `assets/app.js`: reads public workflow run metadata from the GitHub REST API; no token or secret is embedded in the page.
+
+## Identity and evidence architecture
+
+The identity page is a public explanation of the planned design, not a live personhood-verification product. It distinguishes personhood assessment from activity constancy, node availability, propagation, consensus, and credential validity. It describes future evidence categories and zero-knowledge selective disclosure while documenting the limits of CIDs and distributed storage for confidentiality. It does not claim that distributed consensus, anti-Sybil controls, credential issuance, or ZKP cryptography are implemented.
 
 ## Local preview
 

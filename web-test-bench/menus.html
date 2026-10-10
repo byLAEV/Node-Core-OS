@@ -1,90 +1,91 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Guía gráfica de los menús de Node Core OS y de las fases reales de su instalador GNU/Linux.">
+  <meta name="description" content="Visual guide to the Node Core OS menus and the actual phases of its GNU/Linux installer.">
   <meta name="theme-color" content="#101827">
-  <title>Node Core OS — Guía gráfica de menús</title>
+  <title>Node Core OS — Menu Visual Guide</title>
   <link rel="stylesheet" href="./assets/styles.css">
 </head>
 <body>
-  <a class="skip-link" href="#main">Saltar al contenido</a>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
-    <a class="brand" href="./index.html" aria-label="Volver a Web Test Bench">
+    <a class="brand" href="./index.html" aria-label="Back to Web Test Bench">
       <span class="brand-mark" aria-hidden="true">N</span>
-      <span><strong>NODE CORE OS</strong><small>GUÍA GRÁFICA DE MENÚS</small></span>
+      <span><strong>NODE CORE OS</strong><small>MENU VISUAL GUIDE</small></span>
     </a>
-    <nav aria-label="Navegación principal">
+    <nav aria-label="Main navigation">
       <a href="./index.html">Web Test Bench</a>
-      <a href="#main-menu">Menú principal</a>
+      <a href="./identity.html">Identity and evidence</a>
+      <a href="#main-menu">Main menu</a>
       <a href="#bios">BIOS</a>
-      <a href="#installer">Instalador</a>
+      <a href="#installer">Installedr</a>
     </nav>
   </header>
 
   <main id="main">
     <section class="hero menu-hero">
-      <p class="eyebrow">RECORRIDO VISUAL · DOCUMENTACIÓN</p>
-      <h1>Explora la interfaz.<br><span>Entiende cada menú.</span></h1>
-      <p class="hero-copy">Una representación gráfica y navegable de las opciones que existen en el menú de terminal de Node Core OS, junto con las fases que ejecuta el instalador en GNU/Linux.</p>
+      <p class="eyebrow">VISUAL TOUR · DOCUMENTATION</p>
+      <h1>Explore the interface.<br><span>Understand every menu.</span></h1>
+      <p class="hero-copy">A graphical, navigable representation of the options in the Node Core OS terminal menu, alongside the phases performed by the GNU/Linux installer.</p>
       <div class="hero-actions">
-        <a class="button primary" href="#main-menu">Explorar los menús ↓</a>
-        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/main/node_core/ui.py" target="_blank" rel="noopener noreferrer">Ver código real ↗</a>
+        <a class="button primary" href="#main-menu">Explore the menus ↓</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/main/node_core/ui.py" target="_blank" rel="noopener noreferrer">View source code ↗</a>
       </div>
-      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span>Guía documental: los paneles son una simulación visual, no ejecutan acciones ni controlan el nodo.</div>
+      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span>Documentation guide: these panels are a visual simulation; they do not perform actions or control the node.</div>
     </section>
 
     <section class="section" id="main-menu">
       <div class="section-heading">
-        <div><p class="eyebrow">01 · INTERFAZ DE NODE CORE OS</p><h2>Menú principal</h2></div>
-        <p>El menú real es una interfaz de terminal. Selecciona una tarjeta para leer su función y revisar las opciones que expone el código.</p>
+        <div><p class="eyebrow">01 · NODE CORE OS INTERFACE</p><h2>Main menu</h2></div>
+        <p>The actual menu is a terminal interface. Select a card to read about its purpose and review the options exposed by the code.</p>
       </div>
       <div class="menu-window">
-        <div class="window-top"><span class="window-lights" aria-hidden="true"><i></i><i></i><i></i></span><span>node-core · terminal</span><span class="window-label">VISTA ILUSTRATIVA</span></div>
+        <div class="window-top"><span class="window-lights" aria-hidden="true"><i></i><i></i><i></i></span><span>node-core · terminal</span><span class="window-label">ILLUSTRATIVE VIEW</span></div>
         <div class="terminal-preview">
           <p class="terminal-muted">Node Core OS</p><p>byLAEV</p>
-          <p class="terminal-state">● Estado de actualización: se consulta al abrir el menú</p>
+          <p class="terminal-state">● Update status: checked when the menu opens</p>
           <div class="terminal-options">
-            <span><b>0.</b> Salir</span><span><b>1.</b> Node Core BIOS</span><span><b>2.</b> Node Core</span><span><b>3.</b> My Life / Node Blog</span><span><b>4.</b> Applications</span><span class="terminal-command"><b>Update</b> Actualizar si hay una versión confirmada</span>
+            <span><b>0.</b> Exit</span><span><b>1.</b> Node Core BIOS</span><span><b>2.</b> Node Core</span><span><b>3.</b> My Life / Node Blog</span><span><b>4.</b> Applications</span><span class="terminal-command"><b>Update</b> Update when a release is confirmed</span>
           </div>
           <div class="terminal-prompt"><span>&gt;</span><span class="cursor" aria-hidden="true"></span></div>
         </div>
       </div>
       <div class="menu-card-grid">
         <details class="menu-card" open>
-          <summary><span class="menu-icon">01</span><span><strong>Node Core BIOS</strong><small>Administración y estado del nodo</small></span></summary>
-          <p>Reúne las áreas de inspección y administración del entorno instalado.</p>
+          <summary><span class="menu-icon">01</span><span><strong>Node Core BIOS</strong><small>Node administration and status</small></span></summary>
+          <p>Groups inspection and administration areas for the installed environment.</p>
           <ul><li>Storage</li><li>IPFS / Kubo</li><li>Network</li><li>Services</li><li>Configuration</li><li>Security</li><li>Diagnostics</li><li>Updates</li><li>Lifecycle</li></ul>
-          <p class="menu-caveat">En el código actual, las rutas de BIOS implementadas en profundidad son Storage e IPFS / Kubo; las demás aparecen como opciones del menú.</p>
+          <p class="menu-caveat">In the current code, the BIOS paths implemented in depth are Storage and IPFS / Kubo; the others appear as menu options.</p>
         </details>
         <details class="menu-card">
-          <summary><span class="menu-icon">02</span><span><strong>Node Core</strong><small>Contenido, evidencias y operaciones</small></span></summary>
-          <p>El menú principal de funciones del nodo muestra estas opciones:</p>
-          <ul class="menu-list-two"><li>Add Evidence</li><li>Subir archivo</li><li>IPFS</li><li>Files</li><li>CID Registry</li><li>Publish</li><li>Retrieve</li><li>Pin</li><li>Unpin</li><li>Share</li><li>Identity</li><li>Reputation</li><li>Protocols</li><li>Services</li><li>Utilities</li></ul>
-          <p class="menu-caveat">Las opciones están presentes en la interfaz; no todas tienen todavía una acción conectada. La guía no las presenta como funciones finalizadas.</p>
+          <summary><span class="menu-icon">02</span><span><strong>Node Core</strong><small>Content, evidence, and operations</small></span></summary>
+          <p>The main node-functions menu displays these options:</p>
+          <ul class="menu-list-two"><li>Add Evidence</li><li>Upload file</li><li>IPFS</li><li>Files</li><li>CID Registry</li><li>Publish</li><li>Retrieve</li><li>Pin</li><li>Unpin</li><li>Share</li><li>Identity</li><li>Reputation</li><li>Protocols</li><li>Services</li><li>Utilities</li></ul>
+          <p class="menu-caveat">These options appear in the interface, but not all are connected to an action yet. This guide does not present them as completed features.</p>
         </details>
         <details class="menu-card">
-          <summary><span class="menu-icon">03</span><span><strong>My Life / Node Blog</strong><small>Historial personal con control de publicación</small></span></summary>
-          <p>Permite crear entradas y listar entradas guardadas. La persistencia local es la opción predeterminada.</p>
-          <div class="mini-flow"><span>Crear entrada</span><b>→</b><span>Guardar localmente</span><b>→</b><span>Publicar en IPFS solo si se elige</span></div>
-          <p class="menu-caveat">Añadir una entrada a IPFS puede hacer que el contenido sea accesible a otras personas. El almacenamiento local no equivale a publicación.</p>
+          <summary><span class="menu-icon">03</span><span><strong>My Life / Node Blog</strong><small>Personal history with publication control</small></span></summary>
+          <p>It allows users to create entries and list saved entries. Local persistence is the default.</p>
+          <div class="mini-flow"><span>Create entry</span><b>→</b><span>Save locally</span><b>→</b><span>Publish to IPFS only when selected</span></div>
+          <p class="menu-caveat">Adding an entry to IPFS may make the content accessible to others. Local storage is not the same as publication.</p>
         </details>
         <details class="menu-card">
-          <summary><span class="menu-icon">04</span><span><strong>Applications</strong><small>Espacio para aplicaciones futuras</small></span></summary>
-          <p>El menú actual informa que no hay aplicaciones instaladas y marca esta área como futura.</p>
-          <span class="status-chip status-planned">En desarrollo / futura</span>
+          <summary><span class="menu-icon">04</span><span><strong>Applications</strong><small>Space for future applications</small></span></summary>
+          <p>The current menu reports that no applications are installed and marks this area as future work.</p>
+          <span class="status-chip status-planned">In development / planned</span>
         </details>
       </div>
     </section>
 
     <section class="section" id="bios">
       <div class="section-heading">
-        <div><p class="eyebrow">02 · SUBMENÚS</p><h2>Dentro de Node Core BIOS</h2></div>
-        <p>Ejemplo detallado de la pantalla IPFS / Kubo, que sí tiene acciones conectadas en la interfaz de terminal actual.</p>
+        <div><p class="eyebrow">02 · SUBMENUS</p><h2>Inside Node Core BIOS</h2></div>
+        <p>A detailed example of the IPFS / Kubo screen, which has connected actions in the current terminal interface.</p>
       </div>
       <div class="bios-layout">
-        <div class="bios-sidebar" aria-label="Opciones ilustrativas de BIOS">
+        <div class="bios-sidebar" aria-label="Illustrative BIOS options">
           <div class="bios-brand"><span class="brand-mark">N</span><span><b>NODE CORE</b><small>BIOS</small></span></div>
           <div class="bios-item">01 &nbsp; Storage</div>
           <div class="bios-item bios-selected">02 &nbsp; IPFS / Kubo <span>●</span></div>
@@ -97,63 +98,63 @@
           <div class="bios-item">09 &nbsp; Lifecycle</div>
         </div>
         <div class="bios-panel">
-          <div class="bios-panel-heading"><div><p class="eyebrow">COMPONENTE DE ALMACENAMIENTO</p><h3>IPFS / Kubo</h3></div><span class="status-chip">Controles documentados</span></div>
+          <div class="bios-panel-heading"><div><p class="eyebrow">STORAGE COMPONENT</p><h3>IPFS / Kubo</h3></div><span class="status-chip">Documented controls</span></div>
           <div class="bios-status-grid">
-            <div><span>Instalado</span><strong>Estado consultado</strong><small>Binary / versión</small></div>
-            <div><span>Inicializado</span><strong>Estado consultado</strong><small>Repositorio Kubo</small></div>
-            <div><span>En ejecución</span><strong>Estado consultado</strong><small>Daemon / API</small></div>
+            <div><span>Installed</span><strong>Status checked</strong><small>Binary / version</small></div>
+            <div><span>Initialized</span><strong>Status checked</strong><small>Kubo repository</small></div>
+            <div><span>Running</span><strong>Status checked</strong><small>Daemon / API</small></div>
           </div>
           <div class="bios-action-list">
-            <div><b>01</b><span><strong>Status</strong><small>Consultar estado, versión e identificador del peer.</small></span></div>
-            <div><b>02</b><span><strong>Initialize</strong><small>Inicializar el repositorio Kubo cuando se solicita.</small></span></div>
-            <div><b>03</b><span><strong>Start</strong><small>Iniciar el daemon de Kubo.</small></span></div>
-            <div><b>04</b><span><strong>Stop</strong><small>Detener el daemon de Kubo.</small></span></div>
-            <div><b>05</b><span><strong>Show configuration</strong><small>Mostrar rutas, API, gateway y ejecutable configurados.</small></span></div>
+            <div><b>01</b><span><strong>Status</strong><small>Check status, version, and peer identifier.</small></span></div>
+            <div><b>02</b><span><strong>Initialize</strong><small>Initialize the Kubo repository when requested.</small></span></div>
+            <div><b>03</b><span><strong>Start</strong><small>Start the Kubo daemon.</small></span></div>
+            <div><b>04</b><span><strong>Stop</strong><small>Stop the Kubo daemon.</small></span></div>
+            <div><b>05</b><span><strong>Show configuration</strong><small>Show configured paths, API, gateway, and executable.</small></span></div>
           </div>
-          <p class="menu-caveat">Los estados de esta maqueta no están conectados a una instalación real. Para ver el estado real, abre Node Core OS en el equipo donde está instalado.</p>
+          <p class="menu-caveat">The statuses in this mockup are not connected to a real installation. To see actual status, open Node Core OS on the machine where it is installed.</p>
         </div>
       </div>
     </section>
 
     <section class="section" id="installer">
       <div class="section-heading">
-        <div><p class="eyebrow">03 · INSTALACIÓN GNU/LINUX</p><h2>Qué hace el instalador</h2></div>
-        <p>El instalador no tiene un menú gráfico interactivo propio: ejecuta una secuencia de pasos, comprueba los requisitos y termina con una verificación.</p>
+        <div><p class="eyebrow">03 · GNU/LINUX INSTALLATION</p><h2>What the installer does</h2></div>
+        <p>The installer has no interactive graphical menu of its own: it runs a sequence of steps, checks requirements, and finishes with verification.</p>
       </div>
-      <div class="installer-note"><strong>Importante:</strong> este recorrido representa el proceso real de instalación descrito en <code>docs/INSTALLER.md</code>. No es una captura de pantalla del instalador ni una interfaz que lo ejecute.</div>
+      <div class="installer-note"><strong>Important:</strong> this walkthrough represents the actual installation process described in <code>docs/INSTALLER.md</code>. It is not a screenshot of the installer or an interface that runs it.</div>
       <div class="installer-flow">
-        <article><span>01</span><div><h3>Comprobar plataforma</h3><p>Confirma GNU/Linux y rechaza la ejecución como root.</p></div><b>→</b></article>
-        <article><span>02</span><div><h3>Comprobar dependencias</h3><p>Revisa Bash, Python y utilidades requeridas; no instala paquetes del sistema.</p></div><b>→</b></article>
-        <article><span>03</span><div><h3>Preparar almacenamiento local</h3><p>Prepara el directorio del usuario y la estructura de archivos de Node Core.</p></div><b>→</b></article>
-        <article><span>04</span><div><h3>Instalar la aplicación</h3><p>Copia el código de Node Core y verifica que Python pueda compilarlo.</p></div><b>→</b></article>
-        <article><span>05</span><div><h3>Instalar y comprobar Kubo</h3><p>Selecciona el binario compatible, verifica la descarga e inicializa el repositorio si corresponde.</p></div><b>→</b></article>
-        <article><span>06</span><div><h3>Guardar configuración y launcher</h3><p>Escribe la configuración y prepara el comando <code>node-core</code>.</p></div><b>→</b></article>
-        <article><span>07</span><div><h3>Verificar la instalación</h3><p>Comprueba Kubo, la API, los archivos de Node Core y el launcher antes de finalizar.</p></div><b>✓</b></article>
+        <article><span>01</span><div><h3>Check platform</h3><p>Confirms GNU/Linux and refuses to run as root.</p></div><b>→</b></article>
+        <article><span>02</span><div><h3>Check dependencies</h3><p>Checks Bash, Python, and required utilities; it does not install system packages.</p></div><b>→</b></article>
+        <article><span>03</span><div><h3>Prepare local storage</h3><p>Prepares the user directory and Node Core file structure.</p></div><b>→</b></article>
+        <article><span>04</span><div><h3>Install the application</h3><p>Copies the Node Core code and verifies that Python can compile it.</p></div><b>→</b></article>
+        <article><span>05</span><div><h3>Install and check Kubo</h3><p>Selects the compatible binary, verifies the download, and initializes the repository when appropriate.</p></div><b>→</b></article>
+        <article><span>06</span><div><h3>Save configuration and launcher</h3><p>Writes the configuration and prepares the command <code>node-core</code>.</p></div><b>→</b></article>
+        <article><span>07</span><div><h3>Verify the installation</h3><p>Checks Kubo, the API, Node Core files, and the launcher before finishing.</p></div><b>✓</b></article>
       </div>
       <div class="installer-outcome">
-        <div><span class="outcome-symbol">✓</span><div><h3>Resultado esperado</h3><p>El instalador informa que terminó y muestra la ruta del launcher y el comando de primer inicio.</p></div></div>
-        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/main/installer/install.sh" target="_blank" rel="noopener noreferrer">Revisar instalador ↗</a>
+        <div><span class="outcome-symbol">✓</span><div><h3>Expected result</h3><p>The installer reports completion and displays the launcher path and first-start command.</p></div></div>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/main/installer/install.sh" target="_blank" rel="noopener noreferrer">Review installer ↗</a>
       </div>
     </section>
 
     <section class="section">
-      <div class="section-heading"><div><p class="eyebrow">04 · TRANSPARENCIA</p><h2>Menús existentes y funciones futuras</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">04 · TRANSPARENCY</p><h2>Existing menus and future features</h2></div></div>
       <div class="architecture">
-        <article><h3>Lo que muestra la interfaz</h3><p>Las opciones que el código actual imprime en la terminal, incluyendo los menús principales y submenús conocidos.</p></article>
+        <article><h3>What the interface displays</h3><p>The options printed by the current code in the terminal, including the main menus and known submenus.</p></article>
         <div class="architecture-link" aria-hidden="true">≠</div>
-        <article><h3>Lo que está implementado</h3><p>Una opción visible no garantiza por sí sola que su funcionalidad esté completa. La verificación requiere revisar el código y sus pruebas automatizadas.</p></article>
+        <article><h3>What is implemented</h3><p>A visible option does not guarantee that its functionality is complete. Verification requires reviewing the code and its automated tests.</p></article>
       </div>
       <div class="component-links">
-        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/node_core/ui.py" target="_blank" rel="noopener noreferrer">Código de menús ↗</a>
-        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/INSTALLER.md" target="_blank" rel="noopener noreferrer">Especificación del instalador ↗</a>
-        <a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Pruebas E2E del instalador ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/node_core/ui.py" target="_blank" rel="noopener noreferrer">Menu code ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/INSTALLER.md" target="_blank" rel="noopener noreferrer">Installer specification ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Installer E2E tests ↗</a>
       </div>
     </section>
   </main>
   <footer class="site-footer">
-    <span>Node Core OS · Guía gráfica de menús</span>
-    <span>Maqueta documental · No controla una instalación real</span>
-    <a href="./index.html">Volver a Web Test Bench ↗</a>
+    <span>Node Core OS · Menu Visual Guide</span>
+    <span>Documentation mockup · Does not control a real installation</span>
+    <a href="./index.html">Back to Web Test Bench ↗</a>
   </footer>
 </body>
 </html>
