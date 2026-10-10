@@ -269,14 +269,14 @@ class MainMenu:
 
     def my_life_blog(self) -> None:
         while True:
-            print("\\nMy Life / Node Blog\\n")
+            print("\nMy Life / Node Blog\n")
             print("Entries are stored locally by default.")
             print("Publishing an entry adds and pins only that selected entry in IPFS.")
             print("0. Back")
             print("1. New entry")
             print("2. Browse entries")
             print("3. Search entries")
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
             try:
                 if choice == "0":
                     return
@@ -284,17 +284,17 @@ class MainMenu:
                     title = input("Title: ").strip()
                     text = input("Entry: ").strip()
                     entry = self.runtime.my_life.create_entry(title, text)
-                    print("\\nEntry saved locally.")
+                    print("\nEntry saved locally.")
                     print("CID: local-only")
                     print("Use Browse entries to publish this entry later.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "2":
                     self._browse_my_life_entries(self.runtime.my_life.list_entries())
                 elif choice == "3":
                     self._search_my_life_entries()
             except Exception as exc:
                 print("My Life error: " + str(exc))
-                input("\\n> ")
+                input("\n> ")
 
     def _browse_my_life_entries(self, entries: list) -> None:
         page_size = 10
@@ -305,17 +305,17 @@ class MainMenu:
             page = min(page, page_count - 1)
             start = page * page_size
             visible = entries[start:start + page_size]
-            print("\\nMy Life / Node Blog — Entries")
+            print("\nMy Life / Node Blog — Entries")
             print(f"Entries: {total} | Page: {page + 1} of {page_count}")
             if not entries:
                 print("No matching entries.")
             for number, entry in enumerate(visible, start=1):
-                print(f"\\n{number}. {entry.title}")
+                print(f"\n{number}. {entry.title}")
                 print(f"   Created: {entry.created_at}")
                 print(f"   CID: {entry.cid or 'local-only'}")
-            print("\\nEnter an entry number to open it.")
+            print("\nEnter an entry number to open it.")
             print("N. Next page | P. Previous page | S. Search | 0. Back")
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
             if choice == "0":
                 return
             if choice.lower() == "n":
@@ -323,14 +323,14 @@ class MainMenu:
                     page += 1
                 else:
                     print("Already on the last page.")
-                    input("\\n> ")
+                    input("\n> ")
                 continue
             if choice.lower() == "p":
                 if page > 0:
                     page -= 1
                 else:
                     print("Already on the first page.")
-                    input("\\n> ")
+                    input("\n> ")
                 continue
             if choice.lower() == "s":
                 self._search_my_life_entries()
@@ -346,13 +346,13 @@ class MainMenu:
                     entries = [refreshed.get(item.entry_id, item) for item in entries]
                 else:
                     print(f"Choose a number from 1 to {len(visible)}.")
-                    input("\\n> ")
+                    input("\n> ")
 
     def _search_my_life_entries(self) -> None:
         query = input("Search by title, content, or entry ID: ").strip().casefold()
         if not query:
             print("Search query cannot be empty.")
-            input("\\n> ")
+            input("\n> ")
             return
         matches = []
         for entry in self.runtime.my_life.list_entries():
@@ -367,17 +367,17 @@ class MainMenu:
 
     def _my_life_entry_details(self, entry) -> None:
         while True:
-            print("\\nMy Life / Node Blog — Selected Entry")
-            print("\\nTitle: " + entry.title)
+            print("\nMy Life / Node Blog — Selected Entry")
+            print("\nTitle: " + entry.title)
             print("Entry ID: " + entry.entry_id)
             print("Created: " + entry.created_at)
             print("Local file: " + entry.text_path)
             print("CID: " + (entry.cid or "local-only"))
             print("Pinned on this node: " + ("Yes" if entry.pinned else "No"))
-            print("\\n1. Publish this entry to IPFS")
+            print("\n1. Publish this entry to IPFS")
             print("2. Open local entry")
             print("0. Back to entries")
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
             if choice == "0":
                 return
             if choice == "1":
@@ -385,20 +385,20 @@ class MainMenu:
                 pin = pin_choice not in ("n", "no")
                 try:
                     entry = self.runtime.my_life.publish_entry(entry.entry_id, pin=pin)
-                    print("\\nEntry publication confirmed.")
+                    print("\nEntry publication confirmed.")
                     print("CID: " + (entry.cid or "local-only"))
                     print("Pinned on this node: " + ("Yes" if entry.pinned else "No"))
                 except Exception as exc:
-                    print("\\nPublication failed: " + str(exc))
+                    print("\nPublication failed: " + str(exc))
                     print("The local entry has been preserved.")
-                input("\\n> ")
+                input("\n> ")
             elif choice == "2":
                 try:
-                    print("\\n--- Entry content ---")
+                    print("\n--- Entry content ---")
                     print(Path(entry.text_path).read_text(encoding="utf-8"))
                 except OSError as exc:
                     print("Unable to open local entry: " + str(exc))
-                input("\\n> ")
+                input("\n> ")
 
     def applications(self) -> None:
         print("\nApplications\nbyLAEV\n")
