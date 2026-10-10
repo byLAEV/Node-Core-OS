@@ -11,6 +11,8 @@ REPO_A="$WORK_DIR/node-a"
 REPO_B="$WORK_DIR/node-b"
 LOG_A="$WORK_DIR/node-a-daemon.log"
 LOG_B="$WORK_DIR/node-b-daemon.log"
+API_A="/ip4/127.0.0.1/tcp/5101"
+API_B="/ip4/127.0.0.1/tcp/5102"
 PID_A=""
 PID_B=""
 
@@ -57,6 +59,14 @@ download_file() {
     return 1
 }
 
+node_a() {
+    "$IPFS" --api="$API_A" "$@"
+}
+
+node_b() {
+    "$IPFS" --api="$API_B" "$@"
+}
+
 mkdir -p "$DOWNLOAD_DIR" "$REPO_A" "$REPO_B"
 
 ARCHIVE="kubo_v${KUBO_VERSION}_linux-amd64.tar.gz"
@@ -82,11 +92,11 @@ IPFS_PATH="$REPO_B" "$IPFS" init --profile=test
 
 # Both nodes run on the same GitHub Actions runner, but use independent repositories
 # and distinct API, gateway, and swarm ports.
-IPFS_PATH="$REPO_A" "$IPFS" config Addresses.API /ip4/127.0.0.1/tcp/5101
+IPFS_PATH="$REPO_A" "$IPFS" config Addresses.API "$API_A"
 IPFS_PATH="$REPO_A" "$IPFS" config Addresses.Gateway /ip4/127.0.0.1/tcp/8181
 IPFS_PATH="$REPO_A" "$IPFS" config Addresses.Swarm '["/ip4/127.0.0.1/tcp/4101"]' --json
 
-IPFS_PATH="$REPO_B" "$IPFS" config Addresses.API /ip4/127.0.0.1/tcp/5102
+IPFS_PATH="$REPO_B" "$IPFS" config Addresses.API "$API_B"
 IPFS_PATH="$REPO_B" "$IPFS" config Addresses.Gateway /ip4/127.0.0.1/tcp/8182
 IPFS_PATH="$REPO_B" "$IPFS" config Addresses.Swarm '["/ip4/127.0.0.1/tcp/4102"]' --json
 
@@ -99,10 +109,9 @@ IPFS_PATH="$REPO_B" "$IPFS" daemon >"$LOG_B" 2>&1 &
 PID_B=$!
 
 wait_for_api() {
-    local repo="$1"
-    local label="$2"
+    local label="$1"
     local attempts=0
-    until IPFS_PATH="$repo" "$IPFS" id >/dev/null 2>&1; do
+    until "$@" >/dev/null 2>&1; do
         attempts=$((attempts + 1))
         if [ "$attempts" -ge 60 ]; then
             fail "$label API did not become ready within 60 seconds."
@@ -112,11 +121,11 @@ wait_for_api() {
     echo "$label API is ready."
 }
 
-wait_for_api "$REPO_A" "Node A"
-wait_for_api "$REPO_B" "Node B"
+wait_for_api "Node A" node_a id
+wait_for_api "Node B" node_b id
 
-PEER_A="$(IPFS_PATH="$REPO_A" "$IPFS" id --format='<id>')"
-PEER_B="$(IPFS_PATH="$REPO_B" "$IPFS" id --format='<id>')"
+PEER_A="$(node_a id --format='<id>')"
+PEER_B="$(node_b id --format='<id>')"
 
 test -n "$PEER_A" || fail "Node A did not return a peer ID."
 test -n "$PEER_B" || fail "Node B did not return a peer ID."
@@ -126,11 +135,11 @@ echo "Node A peer ID: $PEER_A"
 echo "Node B peer ID: $PEER_B"
 echo "Connecting Node A to Node B"
 ADDRESS_B="/ip4/127.0.0.1/tcp/4102/p2p/$PEER_B"
-IPFS_PATH="$REPO_A" "$IPFS" swarm connect "$ADDRESS_B"
+node_a swarm connect "$ADDRESS_B"
 
 echo "Waiting for Node A to report Node B as a connected peer"
 attempts=0
-until IPFS_PATH="$REPO_A" "$IPFS" swarm peers | grep -F "$PEER_B" >/dev/null; do
+until node_a swarm peers | grep -F "$PEER_B" >/dev/null; do
     attempts=$((attempts + 1))
     if [ "$attempts" -ge 30 ]; then
         fail "Node A did not report Node B as connected."
@@ -140,7 +149,7 @@ done
 
 echo "Waiting for Node B to report Node A as a connected peer"
 attempts=0
-until IPFS_PATH="$REPO_B" "$IPFS" swarm peers | grep -F "$PEER_A" >/dev/null; do
+until node_b swarm peers | grep -F "$PEER_A" >/dev/null; do
     attempts=$((attempts + 1))
     if [ "$attempts" -ge 30 ]; then
         fail "Node B did not report Node A as connected."
@@ -149,11 +158,11 @@ until IPFS_PATH="$REPO_B" "$IPFS" swarm peers | grep -F "$PEER_A" >/dev/null; do
 done
 
 echo "Testing peer reachability with Kubo ping"
-IPFS_PATH="$REPO_A" "$IPFS" ping -n 1 "$PEER_B"
+node_a ping -n 1 "$PEER_B"
 
 echo "Verifying both nodes list the other peer"
-IPFS_PATH="$REPO_A" "$IPFS" swarm peers | tee "$WORK_DIR/node-a-peers.txt"
-IPFS_PATH="$REPO_B" "$IPFS" swarm peers | tee "$WORK_DIR/node-b-peers.txt"
+node_a swarm peers | tee "$WORK_DIR/node-a-peers.txt"
+node_b swarm peers | tee "$WORK_DIR/node-b-peers.txt"
 grep -F "$PEER_B" "$WORK_DIR/node-a-peers.txt" >/dev/null
 grep -F "$PEER_A" "$WORK_DIR/node-b-peers.txt" >/dev/null
 
