@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Public documentation and verified CI status for Node Core OS.">
+  <meta name="theme-color" content="#101827">
+  <title>Node Core OS — Web Test Bench</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+  <script src="./assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Node Core OS Web Test Bench home">
+      <span class="brand-mark" aria-hidden="true">N</span>
+      <span><strong>NODE CORE OS</strong><small>WEB TEST BENCH</small></span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="#overview">Overview</a>
+      <a href="#tests">Tests</a>
+      <a href="#results">Live results</a>
+      <a href="#components">Components</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="overview">
+      <p class="eyebrow">PUBLIC TEST & DOCUMENTATION PORTAL</p>
+      <h1>Verify the node.<br><span>Understand the results.</span></h1>
+      <p class="hero-copy">A browser-based window into the Node Core OS repository, automated Linux installer tests, and local-first storage components. Real installation tests run in isolated GitHub-hosted runners—not in your browser.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Open installer tests ↗</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Explore repository ↗</a>
+      </div>
+      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span> Results link to GitHub Actions; this page does not claim a test passed unless GitHub reports success.</div>
+    </section>
+
+    <section class="section" id="tests">
+      <div class="section-heading">
+        <div><p class="eyebrow">TEST CATALOG</p><h2>What can be verified?</h2></div>
+        <p>Use GitHub Actions to run available workflows and inspect their complete logs.</p>
+      </div>
+      <div class="test-grid">
+        <article class="test-card"><span class="card-number">01</span><h3>Terminal CI</h3><p>Python source compilation, shell syntax checks, installer unit checks, and the Python test suite.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/ci.yml" target="_blank" rel="noopener noreferrer">Open CI workflow ↗</a></article>
+        <article class="test-card"><span class="card-number">02</span><h3>Installer E2E</h3><p>Clean installation and uninstall scenarios on Ubuntu 24.04, including supported service modes.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Open E2E workflow ↗</a></article>
+        <article class="test-card"><span class="card-number">03</span><h3>Evidence</h3><p>Inspect automated coverage for evidence records and storage behavior. Coverage shown here is not a substitute for reviewing individual tests.</p><a href="https://github.com/byLAEV/Node-Core-OS/tree/main/tests" target="_blank" rel="noopener noreferrer">Review test files ↗</a></article>
+        <article class="test-card"><span class="card-number">04</span><h3>My Life / Node Blog</h3><p>Review local-first entries, persistence, and optional IPFS publishing tests as implemented in the repository.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/tests/test_my_life.py" target="_blank" rel="noopener noreferrer">Review blog tests ↗</a></article>
+      </div>
+      <p class="section-note">A workflow can only validate behavior covered by its actual steps. Review the run logs and test source before treating a capability as fully verified.</p>
+    </section>
+
+    <section class="section results-section" id="results">
+      <div class="section-heading">
+        <div><p class="eyebrow">GITHUB ACTIONS API</p><h2>Recent workflow runs</h2></div>
+        <button class="button secondary" id="refresh-results" type="button">Refresh results</button>
+      </div>
+      <p class="results-explainer">Live status is fetched from the public GitHub API. The API may be rate-limited; use the workflow links above if results cannot be loaded.</p>
+      <div id="run-status" class="run-status" role="status" aria-live="polite">Loading public workflow runs…</div>
+      <div id="workflow-runs" class="run-list"></div>
+      <noscript><p>This live panel needs JavaScript. You can still open the public workflow pages above.</p></noscript>
+    </section>
+
+    <section class="section" id="components">
+      <div class="section-heading"><div><p class="eyebrow">ARCHITECTURE</p><h2>One node, two storage domains</h2></div></div>
+      <div class="architecture">
+        <article><h3>Local storage</h3><p>Persistent records and application data remain under the node owner's control. Installation and updates must preserve existing user data.</p></article>
+        <div class="architecture-link" aria-hidden="true">↔</div>
+        <article><h3>Kubo / IPFS</h3><p>Content can be added to IPFS when requested. Publishing content to a content-addressed network may expose it; pinning is not a privacy feature.</p></article>
+      </div>
+      <div class="component-links">
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/README.md" target="_blank" rel="noopener noreferrer">Project overview ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/actions" target="_blank" rel="noopener noreferrer">All workflows ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Node Core OS · Web Test Bench</span>
+    <span>Static interface · Automated tests run separately</span>
+    <a href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Source on GitHub ↗</a>
+  </footer>
+</body>
+</html>
