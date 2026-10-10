@@ -103,6 +103,14 @@ consensus, issue personal credentials, or generate ZKPs. The next phases must de
 the threat model, schemas, cryptographic contracts, and tests before network behavior
 is claimed.
 
+## Remembering & Forgetting (future layer)
+
+The [Remembering & Forgetting specification](REMEMBERING-FORGETTING.md) extends the existing Forget / Remember Context Model. It distinguishes requirement-driven selective recall from data deletion and defines future work for context selection, access, validity, retention, revocation, local deletion, and Kubo/IPFS lifecycle operations.
+
+This is a planned layer, not a claim of current runtime functionality. Before implementation, audit existing content registry and storage contracts. Do not treat context forgetting, revocation, unpinning, and deletion as equivalent. In particular, local unpinning or reference removal does not establish network-wide deletion.
+
+The public [Remembering & Forgetting roadmap](../web-test-bench/remembering.html) explains the model and its planned implementation phases.
+
 ## Storage layout
 
 ~/.node-core/
