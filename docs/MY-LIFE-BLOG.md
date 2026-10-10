@@ -15,9 +15,9 @@ My Life / Node Blog is a local-first personal record feature. Creating an entry 
 
 ## Publish one entry
 
-Publication is a separate action inside the selected entry's detail menu. The operation receives the entry's stable `entry_id`, checks that its local file exists, adds that file to Kubo/IPFS with pinning, and stores the returned CID and pin state on that one index record.
+Publication is a separate action inside the selected entry's detail menu. The interface asks **Pin this entry on this node? [Y/n]** before publishing; pressing Enter selects Yes. The operation receives the entry's stable `entry_id`, checks that its local file exists, adds that file to Kubo/IPFS using the chosen pin setting, and stores the returned CID and pin state on that one index record.
 
-If the entry already has a CID but is not marked as pinned, Node Core asks Kubo to pin that CID rather than re-adding the file. If publication fails, the local Markdown file remains intact and the failure is reported. The interface does not offer a bulk-publish action.
+If the entry already has a CID and the user chooses pinning, Node Core asks Kubo to pin that CID rather than re-adding the file. If the user chooses not to pin, the content is added without a pin request; the user can later publish/open the same entry and choose pinning. If publication fails, the local Markdown file remains intact and the failure is reported. The interface does not offer a bulk-publish action.
 
 An IPFS CID identifies content; it does not by itself guarantee that content remains available across the network. Pinning preserves content on the local Kubo node. Users should consider privacy before publishing personal information.
 
