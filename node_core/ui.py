@@ -381,11 +381,13 @@ class MainMenu:
             if choice == "0":
                 return
             if choice == "1":
+                pin_choice = input("Pin this entry on this node? [Y/n] ").strip().lower()
+                pin = pin_choice not in ("n", "no")
                 try:
-                    entry = self.runtime.my_life.publish_entry(entry.entry_id)
+                    entry = self.runtime.my_life.publish_entry(entry.entry_id, pin=pin)
                     print("\\nEntry publication confirmed.")
                     print("CID: " + (entry.cid or "local-only"))
-                    print("Pinned: " + ("Yes" if entry.pinned else "No"))
+                    print("Pinned on this node: " + ("Yes" if entry.pinned else "No"))
                 except Exception as exc:
                     print("\\nPublication failed: " + str(exc))
                     print("The local entry has been preserved.")
