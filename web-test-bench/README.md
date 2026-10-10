@@ -18,6 +18,10 @@ python3 -m http.server 8000 --directory web-test-bench
 
 Open `http://localhost:8000` in a browser. The live results panel needs network access to the public GitHub API.
 
+## Manual test runs
+
+The terminal CI and installer E2E workflows support `workflow_dispatch`. Open the repository's Actions tab, select the workflow, and use **Run workflow** on the default branch. GitHub permissions still apply. This dashboard links to those workflows but intentionally does not invoke workflow runs directly from public JavaScript.
+
 ## Deployment
 
 The `.github/workflows/pages.yml` workflow validates the site and publishes this directory to GitHub Pages on pushes to `main`. The repository's Pages publishing source must be set to **GitHub Actions** in Settings → Pages. The workflow uses the official Pages actions and minimal deployment permissions.
