@@ -145,7 +145,8 @@ backup_app() {
   printf '%s\n' "$backup"
 }
 
-update_application() {
+update_application() (
+  set -euo pipefail
   local commit="$1"
   local archive="$NODE_CORE_UPDATE_DIR/source.tar.gz"
   local extract="$NODE_CORE_UPDATE_DIR/source"
@@ -171,7 +172,7 @@ update_application() {
 
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core"
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE"
-}
+)
 
 rollback_application() {
   local backup="$NODE_CORE_UPDATE_DIR/app-backup"
