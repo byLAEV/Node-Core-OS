@@ -68,6 +68,10 @@ case "$url" in
       exit 22
     fi
     archive_name="${url##*/}"
+    if [[ "$archive_name" == "fixture-corrupt-archive.tar.gz" ]]; then
+      printf 'this is not a gzip archive\\n' > "$output"
+      exit 0
+    fi
     archive="$TEST_FIXTURES/$archive_name"
     [[ -f "$archive" ]] || {
       printf 'missing updater archive fixture: %s\\n' "$archive" >&2
@@ -143,5 +147,23 @@ grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 printf 'Existing-install updater download-failure rollback tests passed.\n'
+
+# Verify that a downloaded but corrupt archive also triggers application rollback.
+previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
+printf '{"sha":"fixture-corrupt-archive"}\n' > "$TEST_FIXTURES/latest-commit.json"
+set +e
+printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/corrupt-archive.log" 2>&1
+archive_status=$?
+set -e
+test "$archive_status" -ne 0
+grep -q 'Rolling back Node Core application' "$TEMP_ROOT/corrupt-archive.log"
+grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
+grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+
+printf 'Existing-install updater corrupt-archive rollback tests passed.\n'
 
 printf 'Existing-install updater preservation and rollback tests passed.\n'
