@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPOSITORY_ROOT="$(cd -- "$(dirname -- "\${BASH_SOURCE[0]}")/../.." && pwd)"
+REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
@@ -32,7 +32,7 @@ printf '{"ipfs_executable":"%s","custom":"keep"}\n' \
   "$NODE_CORE_DATA_DIR/bin/ipfs" > "$NODE_CORE_DATA_DIR/config.json"
 printf '#!/usr/bin/env bash\necho "old bundled Kubo fixture"\n' > "$NODE_CORE_DATA_DIR/bin/ipfs"
 chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
-printf '#!/usr/bin/env bash\nif [[ "\${1:-}" == "version" ]]; then echo "kubo version test"; exit 0; fi\nexit 2\n' > "$PREFIX/bin/ipfs"
+printf '#!/usr/bin/env bash\nif [[ "${1:-}" == "version" ]]; then echo "kubo version test"; exit 0; fi\nexit 2\n' > "$PREFIX/bin/ipfs"
 chmod +x "$PREFIX/bin/ipfs"
 printf 'existing-termux-commit\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 printf '{"sha":"existing-termux-commit"}\n' > "$TEST_FIXTURES/latest-commit.json"
