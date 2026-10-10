@@ -24,6 +24,7 @@ class MainMenu:
             print("2. Node Core")
             print("3. My Life / Node Blog")
             print("4. Applications")
+            print("5. Network / Nodes")
             print("Type Update to install an available Node Core OS update.")
             choice = input("\n> ").strip()
             if choice.lower() == "update":
@@ -61,6 +62,8 @@ class MainMenu:
                 self.my_life_blog()
             elif choice == "4":
                 self.applications()
+            elif choice == "5":
+                self.network_nodes()
 
     def _print_update_status(self, status: UpdateStatus) -> None:
         if status.available:
@@ -526,3 +529,45 @@ class MainMenu:
         print("No applications installed.")
         print("\n[Future]")
         input("\n> ")
+
+    def network_nodes(self) -> None:
+        while True:
+            print("\nNode Core OS — Network / Nodes")
+            print("0. Back")
+            print("1. Refresh network status")
+            print("2. Connect to peer")
+            print("3. Ping a peer")
+            choice = input("\n> ").strip()
+
+            if choice == "0":
+                return
+
+            try:
+                if choice == "1":
+                    status = self.runtime.network.status()
+                    print("\nLocal node")
+                    print(f"Peer ID: {status.identity.peer_id}")
+                    print(f"Directly connected peers: {len(status.connected_peers)}")
+                    print(f"Nodes observed (this node + direct peers): {len(status.connected_peers) + 1}")
+                    if status.connected_peers:
+                        print("\nConnected peer IDs:")
+                        for peer_id in status.connected_peers:
+                            print(f"- {peer_id}")
+                    else:
+                        print("No directly connected peers were reported.")
+                    print("\nNote: this is not a count of every node on the IPFS network.")
+                    input("\n> ")
+                elif choice == "2":
+                    address = input("Complete peer multiaddress: ").strip()
+                    result = self.runtime.network.connect(address)
+                    print("\nConnection request completed.")
+                    print(result)
+                    print("Use Refresh network status to verify the peer appears.")
+                    input("\n> ")
+                elif choice == "3":
+                    peer_id = input("Peer ID: ").strip()
+                    print(self.runtime.network.ping(peer_id))
+                    input("\n> ")
+            except Exception as exc:
+                print(f"Network error: {exc}")
+                input("\n> ")
