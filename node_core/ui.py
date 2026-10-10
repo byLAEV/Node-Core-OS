@@ -268,41 +268,130 @@ class MainMenu:
 
     def my_life_blog(self) -> None:
         while True:
-            print("\nMy Life / Node Blog\n")
+            print("\\nMy Life / Node Blog\\n")
             print("Entries are stored locally by default.")
-            print("Adding an entry to IPFS pins its content on this node.")
+            print("Publishing an entry adds and pins only that selected entry in IPFS.")
             print("0. Back")
             print("1. New entry")
-            print("2. List entries")
-            choice = input("\n> ").strip()
+            print("2. Browse entries")
+            print("3. Search entries")
+            choice = input("\\n> ").strip()
             try:
                 if choice == "0":
                     return
                 if choice == "1":
                     title = input("Title: ").strip()
                     text = input("Entry: ").strip()
-                    publish = input("Also add to IPFS and pin? [y/N] ").strip().lower()
-                    entry = self.runtime.my_life.create_entry(title, text, add_to_ipfs=publish in ("y", "yes"))
-                    print("\nEntry saved locally.")
-                    if entry.cid:
-                        print("IPFS CID: " + entry.cid)
-                        print("Pinned: " + ("Yes" if entry.pinned else "No"))
-                    else:
-                        print("IPFS: not added; entry remains local-only.")
-                    input("\n> ")
+                    entry = self.runtime.my_life.create_entry(title, text)
+                    print("\\nEntry saved locally.")
+                    print("CID: local-only")
+                    print("Use Browse entries to publish this entry later.")
+                    input("\\n> ")
                 elif choice == "2":
-                    entries = self.runtime.my_life.list_entries()
-                    if not entries:
-                        print("No My Life entries yet.")
-                    for entry in entries:
-                        print("\nTitle: " + entry.title)
-                        print("Created: " + entry.created_at)
-                        print("Local file: " + entry.text_path)
-                        print("CID: " + (entry.cid or "local-only"))
-                    input("\n> ")
+                    self._browse_my_life_entries(self.runtime.my_life.list_entries())
+                elif choice == "3":
+                    self._search_my_life_entries()
             except Exception as exc:
                 print("My Life error: " + str(exc))
-                input("\n> ")
+                input("\\n> ")
+
+    def _browse_my_life_entries(self, entries: list) -> None:
+        page_size = 10
+        page = 0
+        while True:
+            total = len(entries)
+            page_count = max(1, (total + page_size - 1) // page_size)
+            page = min(page, page_count - 1)
+            start = page * page_size
+            visible = entries[start:start + page_size]
+            print("\\nMy Life / Node Blog — Entries")
+            print(f"Entries: {total} | Page: {page + 1} of {page_count}")
+            if not entries:
+                print("No matching entries.")
+            for number, entry in enumerate(visible, start=1):
+                print(f"\\n{number}. {entry.title}")
+                print(f"   Created: {entry.created_at}")
+                print(f"   CID: {entry.cid or 'local-only'}")
+            print("\\nEnter an entry number to open it.")
+            print("N. Next page | P. Previous page | S. Search | 0. Back")
+            choice = input("\\n> ").strip()
+            if choice == "0":
+                return
+            if choice.lower() == "n":
+                if page + 1 < page_count:
+                    page += 1
+                else:
+                    print("Already on the last page.")
+                    input("\\n> ")
+                continue
+            if choice.lower() == "p":
+                if page > 0:
+                    page -= 1
+                else:
+                    print("Already on the first page.")
+                    input("\\n> ")
+                continue
+            if choice.lower() == "s":
+                self._search_my_life_entries()
+                continue
+            if choice.isdigit():
+                number = int(choice)
+                if 1 <= number <= len(visible):
+                    self._my_life_entry_details(visible[number - 1])
+                else:
+                    print(f"Choose a number from 1 to {len(visible)}.")
+                    input("\\n> ")
+
+    def _search_my_life_entries(self) -> None:
+        query = input("Search by title, content, or entry ID: ").strip().casefold()
+        if not query:
+            print("Search query cannot be empty.")
+            input("\\n> ")
+            return
+        matches = []
+        for entry in self.runtime.my_life.list_entries():
+            searchable = f"{entry.title} {entry.entry_id}".casefold()
+            try:
+                searchable += " " + __import__("pathlib").Path(entry.text_path).read_text(encoding="utf-8").casefold()
+            except OSError:
+                pass
+            if query in searchable:
+                matches.append(entry)
+        self._browse_my_life_entries(matches)
+
+    def _my_life_entry_details(self, entry) -> None:
+        while True:
+            print("\\nMy Life / Node Blog — Selected Entry")
+            print("\\nTitle: " + entry.title)
+            print("Entry ID: " + entry.entry_id)
+            print("Created: " + entry.created_at)
+            print("Local file: " + entry.text_path)
+            print("CID: " + (entry.cid or "local-only"))
+            print("Pinned on this node: " + ("Yes" if entry.pinned else "No"))
+            print("\\n1. Publish this entry to IPFS")
+            print("2. Open local entry")
+            print("0. Back to entries")
+            choice = input("\\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                try:
+                    entry = self.runtime.my_life.publish_entry(entry.entry_id)
+                    print("\\nEntry publication confirmed.")
+                    print("CID: " + (entry.cid or "local-only"))
+                    print("Pinned: " + ("Yes" if entry.pinned else "No"))
+                except Exception as exc:
+                    print("\\nPublication failed: " + str(exc))
+                    print("The local entry has been preserved.")
+                input("\\n> ")
+            elif choice == "2":
+                from pathlib import Path
+                try:
+                    print("\\n--- Entry content ---")
+                    print(Path(entry.text_path).read_text(encoding="utf-8"))
+                except OSError as exc:
+                    print("Unable to open local entry: " + str(exc))
+                input("\\n> ")
 
     def applications(self) -> None:
         print("\nApplications\nbyLAEV\n")
