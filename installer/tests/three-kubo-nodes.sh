@@ -37,7 +37,7 @@ for i in 0 1 2; do
     IPFS_PATH="${REPOS[$i]}" "$IPFS" init --profile=test
     IPFS_PATH="${REPOS[$i]}" "$IPFS" config Addresses.API "${APIS[$i]}"
     IPFS_PATH="${REPOS[$i]}" "$IPFS" config Addresses.Gateway "${GATEWAYS[$i]}"
-    IPFS_PATH="${REPOS[$i]}" "$IPFS" config Addresses.Swarm "[\"\${SWARMS[$i]}\"]" --json
+        IPFS_PATH="${REPOS[$i]}" "$IPFS" config Addresses.Swarm "[\"${SWARMS[$i]}\"]" --json
 done
 node() { local index="$1"; shift; "$IPFS" --api="${APIS[$index]}" "$@"; }
 for i in 0 1 2; do IPFS_PATH="${REPOS[$i]}" "$IPFS" daemon >"${LOGS[$i]}" 2>&1 & PIDS+=("$!"); done
