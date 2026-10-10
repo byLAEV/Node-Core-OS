@@ -61,7 +61,7 @@ if not errors:
     for token in ('<html lang="es">', 'id="modelo"', 'id="evidencias"', 'id="privacidad"', 'id="roadmap"', 'ZKP', 'consenso', 'identity-function-proof-consensus-v1/docs/IDENTITY-PERSONHOOD-AND-SELECTIVE-EVIDENCE.md'):
         if token not in identity:
             errors.append(f"identity.html is missing expected architecture content: {token}")
-    for target in re.findall(r'(?:src|href)="(\\./[^"#?]+)"', identity):
+    for target in re.findall(r'(?:src|href)="(\./[^"#?]+)"', identity):
         local = (SITE / target.removeprefix("./")).resolve()
         if not local.is_relative_to(SITE.resolve()):
             errors.append(f"Identity page asset escapes site directory: {target}")
