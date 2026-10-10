@@ -67,6 +67,19 @@ does not expose the administrative Kubo RPC.
 IPNS/key-backed naming belongs above this layer because it will require identity and
 cryptographic key management.
 
+## Identity activity, evidence, and consensus (future layer)
+
+The specification in [IDENTITY-FUNCTION-PROOF.md](IDENTITY-FUNCTION-PROOF.md)
+defines the planned relationship between periodic identity activity, preference
+protocols, evidence validation, propagation states, consensus/finality, evidence
+freshness, and contextual reputation.
+
+This is an architectural specification, not a claim that network-wide consensus,
+preference voting, Sybil resistance, or identity-health scoring is implemented.
+The first implementation step is a local evidence schema and deterministic
+validation with tests. Consensus selection must wait until membership assumptions,
+threat model, fault model, and finality requirements are documented.
+
 ## Storage layout
 
 ~/.node-core/
