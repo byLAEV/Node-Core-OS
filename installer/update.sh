@@ -170,8 +170,8 @@ update_application() (
   cp -R "$source"/. "$NODE_CORE_APP_DIR"/ || return 1
   rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
 
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core"
-  printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE"
+  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
 )
 
 rollback_application() {
