@@ -11,6 +11,7 @@ REQUIRED = [
     SITE / "assets" / "styles.css",
     SITE / "assets" / "app.js",
     SITE / "README.md",
+    SITE / "menus.html",
 ]
 errors = []
 
@@ -23,6 +24,7 @@ if not errors:
     css = (SITE / "assets" / "styles.css").read_text(encoding="utf-8")
     js = (SITE / "assets" / "app.js").read_text(encoding="utf-8")
     readme = (SITE / "README.md").read_text(encoding="utf-8")
+    menus = (SITE / "menus.html").read_text(encoding="utf-8")
     pages_workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     e2e_workflow = (ROOT / ".github" / "workflows" / "installer-e2e.yml").read_text(encoding="utf-8")
     ci_workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
