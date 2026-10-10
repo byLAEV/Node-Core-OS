@@ -1,5 +1,6 @@
 """Terminal interface for Node Core OS."""
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 import subprocess
 
@@ -352,7 +353,7 @@ class MainMenu:
         for entry in self.runtime.my_life.list_entries():
             searchable = f"{entry.title} {entry.entry_id}".casefold()
             try:
-                searchable += " " + __import__("pathlib").Path(entry.text_path).read_text(encoding="utf-8").casefold()
+                searchable += " " + Path(entry.text_path).read_text(encoding="utf-8").casefold()
             except OSError:
                 pass
             if query in searchable:
@@ -385,7 +386,6 @@ class MainMenu:
                     print("The local entry has been preserved.")
                 input("\\n> ")
             elif choice == "2":
-                from pathlib import Path
                 try:
                     print("\\n--- Entry content ---")
                     print(Path(entry.text_path).read_text(encoding="utf-8"))
