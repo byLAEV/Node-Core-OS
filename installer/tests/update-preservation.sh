@@ -30,8 +30,8 @@ release_root="$TEMP_ROOT/release-root"
 mkdir -p "$release_root/Node-Core-OS-fixture/node_core"
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
-printf '{"sha":"fixture-update-commit"}\n' > "$TEST_FIXTURES/latest-commit.json"
-tar -czf "$TEST_FIXTURES/fixture-update-commit.tar.gz" \
+printf '{"sha":"1111111111111111111111111111111111111111"}\n' > "$TEST_FIXTURES/latest-commit.json"
+tar -czf "$TEST_FIXTURES/1111111111111111111111111111111111111111.tar.gz" \
   -C "$release_root" Node-Core-OS-fixture
 
 cat > "$TEMP_ROOT/fake-bin/curl" <<'FAKE_CURL'
@@ -68,7 +68,7 @@ case "$url" in
       exit 22
     fi
     archive_name="${url##*/}"
-    if [[ "$archive_name" == "fixture-corrupt-archive.tar.gz" ]]; then
+    if [[ "$archive_name" == "4444444444444444444444444444444444444444.tar.gz" ]]; then
       printf 'this is not a gzip archive\\n' > "$output"
       exit 0
     fi
@@ -95,7 +95,7 @@ printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
 printf 'Updater happy-path application check passed.\\n'
-grep -qx 'fixture-update-commit' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 printf 'Updater happy-path commit marker check passed.\\n'
 
 # Verify Kubo, its repository, local storage, and configuration remain untouched.
@@ -107,11 +107,11 @@ printf 'Updater happy-path persistence checks passed.\\n'
 
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
-printf '{"sha":"fixture-bad-update"}\n' > "$TEST_FIXTURES/latest-commit.json"
+printf '{"sha":"2222222222222222222222222222222222222222"}\n' > "$TEST_FIXTURES/latest-commit.json"
 mkdir -p "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core"
 printf 'def broken(:\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/main.py"
 printf 'VALUE = "bad"\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core/__init__.py"
-tar -czf "$TEST_FIXTURES/fixture-bad-update.tar.gz" \
+tar -czf "$TEST_FIXTURES/2222222222222222222222222222222222222222.tar.gz" \
   -C "$TEMP_ROOT/bad-release" Node-Core-OS-bad
 
 set +e
@@ -132,7 +132,7 @@ grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 # Verify that an archive download failure leaves the current app and data intact.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
-printf '{"sha":"fixture-download-failure"}\n' > "$TEST_FIXTURES/latest-commit.json"
+printf '{"sha":"3333333333333333333333333333333333333333"}\n' > "$TEST_FIXTURES/latest-commit.json"
 set +e
 printf 'y\n' | FAIL_UPDATE_DOWNLOAD=1 bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/download-failure.log" 2>&1
 download_status=$?
@@ -150,7 +150,7 @@ printf 'Existing-install updater download-failure rollback tests passed.\n'
 
 # Verify that a downloaded but corrupt archive also triggers application rollback.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
-printf '{"sha":"fixture-corrupt-archive"}\n' > "$TEST_FIXTURES/latest-commit.json"
+printf '{"sha":"4444444444444444444444444444444444444444"}\n' > "$TEST_FIXTURES/latest-commit.json"
 set +e
 printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/corrupt-archive.log" 2>&1
 archive_status=$?
@@ -165,5 +165,23 @@ grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 printf 'Existing-install updater corrupt-archive rollback tests passed.\n'
+
+# Refuse malformed release metadata before creating or applying an update.
+previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
+printf '{"sha":"not-a-full-git-commit"}\n' > "$TEST_FIXTURES/latest-commit.json"
+set +e
+bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/invalid-metadata.log" 2>&1
+metadata_status=$?
+set -e
+test "$metadata_status" -ne 0
+grep -q 'invalid commit metadata' "$TEMP_ROOT/invalid-metadata.log"
+grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
+grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+
+printf 'Existing-install updater invalid-release-metadata tests passed.\n'
 
 printf 'Existing-install updater preservation and rollback tests passed.\n'
