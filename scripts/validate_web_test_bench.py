@@ -23,6 +23,9 @@ if not errors:
     css = (SITE / "assets" / "styles.css").read_text(encoding="utf-8")
     js = (SITE / "assets" / "app.js").read_text(encoding="utf-8")
     readme = (SITE / "README.md").read_text(encoding="utf-8")
+    pages_workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+    e2e_workflow = (ROOT / ".github" / "workflows" / "installer-e2e.yml").read_text(encoding="utf-8")
+    ci_workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
     for token in ('<html lang="en">', '<meta name="viewport"', 'id="workflow-runs"',
                   'id="run-status"', 'assets/styles.css', 'assets/app.js'):
@@ -47,11 +50,14 @@ if not errors:
         if token not in css:
             errors.append(f"styles.css is missing responsive/accessibility rule: {token}")
 
-    if "workflow_dispatch:" not in readme:
-        errors.append("README should document manual workflow dispatch.")
-
-    if not (ROOT / ".github" / "workflows" / "pages.yml").is_file():
-        errors.append("Missing Pages deployment workflow.")
+    if "workflow_dispatch:" not in pages_workflow:
+        errors.append("Pages workflow must support manual validation/deployment.")
+    if "workflow_dispatch:" not in e2e_workflow:
+        errors.append("Installer E2E workflow must support manual runs.")
+    if "workflow_dispatch:" not in ci_workflow:
+        errors.append("Terminal CI workflow must support manual runs.")
+    if "actions/deploy-pages@" not in pages_workflow or "actions/upload-pages-artifact@" not in pages_workflow:
+        errors.append("Pages workflow must upload and deploy the static artifact.")
 
 if errors:
     print("Web Test Bench validation: FAILED")
