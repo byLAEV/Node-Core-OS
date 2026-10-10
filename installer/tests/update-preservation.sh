@@ -96,15 +96,15 @@ grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
-printf '{"sha":"fixture-bad-update"}\\n' > "$TEST_FIXTURES/latest-commit.json"
+printf '{"sha":"fixture-bad-update"}\n' > "$TEST_FIXTURES/latest-commit.json"
 mkdir -p "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core"
-printf 'def broken(:\\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/main.py"
-printf 'VALUE = "bad"\\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core/__init__.py"
-tar -czf "$TEST_FIXTURES/fixture-bad-update.tar.gz" \\
+printf 'def broken(:\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/main.py"
+printf 'VALUE = "bad"\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core/__init__.py"
+tar -czf "$TEST_FIXTURES/fixture-bad-update.tar.gz" \
   -C "$TEMP_ROOT/bad-release" Node-Core-OS-bad
 
 set +e
-printf 'y\\n' | bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/rollback.log" 2>&1
+printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/rollback.log" 2>&1
 update_status=$?
 set -e
 test "$update_status" -ne 0
@@ -118,4 +118,4 @@ grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 
-printf 'Existing-install updater preservation and rollback tests passed.\\n'
+printf 'Existing-install updater preservation and rollback tests passed.\n'
