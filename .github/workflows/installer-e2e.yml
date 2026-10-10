@@ -113,6 +113,80 @@ jobs:
           NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" \
             python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
 
+      - name: Test External CID Library against the running Kubo daemon
+        env:
+          HOME: ${{ runner.temp }}/node-core-home
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
+          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home/.node-core/config.json
+          PYTHONPATH: ${{ runner.temp }}/node-core-home/.node-core/app
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          test_source="$RUNNER_TEMP/external-cid-source.txt"
+          test_target="$RUNNER_TEMP/external-cid-retrieved.txt"
+          printf 'Node Core External CID Library live Kubo integration test.\\n' > "$test_source"
+          cid="$("$NODE_CORE_DATA_DIR/bin/ipfs" add -Q --pin=false "$test_source")"
+          export TEST_EXTERNAL_CID="$cid"
+          export TEST_EXTERNAL_SOURCE="$test_source"
+          export TEST_EXTERNAL_TARGET="$test_target"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          from node_core.config import NodeConfig
+          from node_core.external_cids import ExternalCIDLibrary
+          from node_core.ipfs import KuboManager
+          from node_core.storage import StorageManager
+
+          config = NodeConfig.load()
+          storage = StorageManager(config.local_storage_path)
+          storage.initialize()
+          kubo = KuboManager(
+              executable=config.ipfs_executable,
+              repo_path=config.ipfs_repo_path,
+              api=config.ipfs_api,
+              profile=config.ipfs_profile,
+          )
+          status = kubo.status()
+          assert status.running, "Kubo daemon must be running for this integration test"
+
+          library = ExternalCIDLibrary(storage, kubo)
+          cid = os.environ["TEST_EXTERNAL_CID"]
+          source = Path(os.environ["TEST_EXTERNAL_SOURCE"])
+          target = Path(os.environ["TEST_EXTERNAL_TARGET"])
+
+          reference = library.add(
+              cid,
+              "Live Kubo integration fixture",
+              source_node="local-e2e-fixture",
+              notes="Created by the installer E2E workflow",
+          )
+          assert library.get(reference.reference_id) is not None
+          assert library.search("live kubo integration fixture")
+          updated = library.update(
+              reference.reference_id,
+              description="Updated live Kubo integration fixture",
+          )
+          assert updated.description == "Updated live Kubo integration fixture"
+
+          library.retrieve(cid, target)
+          assert target.read_bytes() == source.read_bytes(), "Retrieved bytes differ"
+
+          library.pin(cid)
+          assert library.is_pinned_locally(cid), "CID should be pinned after pin()"
+
+          assert library.remove(reference.reference_id), "Reference removal failed"
+          assert library.get(reference.reference_id) is None
+          assert library.is_pinned_locally(cid), (
+              "Removing a reference must not remove the content pin"
+          )
+
+          library.unpin(cid)
+          assert not library.is_pinned_locally(cid), "CID should be unpinned after unpin()"
+          print(f"External CID Library live Kubo integration passed: {cid}")
+          PY
+
       - name: Run Node Core menu and publish test content
         env:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
