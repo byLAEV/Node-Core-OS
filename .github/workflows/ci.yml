@@ -52,6 +52,7 @@ jobs:
           bash installer/tests/plan.sh
           bash installer/tests/apply.sh
           bash installer/tests/update-preservation.sh
+          bash installer/tests/termux-update-preservation.sh
 
       - name: Run terminal test suite
         run: |
