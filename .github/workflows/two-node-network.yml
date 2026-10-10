@@ -1,0 +1,50 @@
+name: Node Core OS — Two Kubo Nodes Integration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/two-node-network.yml"
+      - "installer/tests/two-kubo-nodes.sh"
+      - "node_core/network.py"
+      - "tests/test_network.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/two-node-network.yml"
+      - "installer/tests/two-kubo-nodes.sh"
+      - "node_core/network.py"
+      - "tests/test_network.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  two-kubo-nodes:
+    name: Two independent Kubo nodes communicate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      KUBO_VERSION: "0.42.0"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install test utilities
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes curl tar
+
+      - name: Validate integration test shell syntax
+        run: |
+          set -euo pipefail
+          bash -n installer/tests/two-kubo-nodes.sh
+
+      - name: Start two isolated Kubo nodes and verify peer communication
+        run: |
+          set -euo pipefail
+          bash installer/tests/two-kubo-nodes.sh
