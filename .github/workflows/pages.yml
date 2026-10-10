@@ -1,0 +1,85 @@
+name: Node Core OS — Web Test Bench Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "web-test-bench/**"
+      - "scripts/validate_web_test_bench.py"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "web-test-bench/**"
+      - "scripts/validate_web_test_bench.py"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-test-bench-pages
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate static web portal
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate Web Test Bench structure
+        run: python3 scripts/validate_web_test_bench.py
+
+      - name: Check JavaScript syntax
+        run: node --check web-test-bench/assets/app.js
+
+      - name: Check workflow YAML syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import yaml
+          for path in (Path(".github/workflows/pages.yml"),):
+              with path.open(encoding="utf-8") as stream:
+                  yaml.safe_load(stream)
+              print(f"YAML parsed: {path}")
+          PY
+
+  deploy:
+    name: Publish Web Test Bench
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web-test-bench
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
