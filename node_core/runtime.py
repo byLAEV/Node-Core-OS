@@ -6,6 +6,7 @@ from node_core.evidence import EvidenceManager
 from node_core.external_cids import ExternalCIDLibrary
 from node_core.ipfs import KuboManager
 from node_core.my_life import MyLifeBlog
+from node_core.network import NodeNetwork
 from node_core.storage import StorageManager
 from node_core.ui import MainMenu
 
@@ -22,6 +23,7 @@ class NodeRuntime:
             api=self.config.ipfs_api,
             profile=self.config.ipfs_profile,
         )
+        self.network = NodeNetwork(self.kubo)
         self.content = ContentManager(
             self.kubo,
             self.storage,
