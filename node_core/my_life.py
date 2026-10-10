@@ -72,10 +72,14 @@ class MyLifeBlog:
 
         cid = None
         pinned = False
+        ipfs_error = None
         if add_to_ipfs:
-            record = self.content.add(local_path, pin=True)
-            cid = record.cid
-            pinned = record.pinned
+            try:
+                record = self.content.add(local_path, pin=True)
+                cid = record.cid
+                pinned = record.pinned
+            except Exception as exc:
+                ipfs_error = exc
 
         entry = LifeEntry(
             entry_id=entry_id,
@@ -88,4 +92,9 @@ class MyLifeBlog:
         entries = self._load()
         entries.append(asdict(entry))
         self._save(entries)
+        if ipfs_error is not None:
+            raise RuntimeError(
+                "Entry was saved locally, but adding it to IPFS failed: "
+                + str(ipfs_error)
+            ) from ipfs_error
         return entry
