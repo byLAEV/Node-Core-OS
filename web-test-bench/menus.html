@@ -62,17 +62,23 @@
         <details class="menu-card">
           <summary><span class="menu-icon">02</span><span><strong>Node Core</strong><small>Content, evidence, and operations</small></span></summary>
           <p>The main node-functions menu displays these options:</p>
-          <ul class="menu-list-two"><li>Add Evidence</li><li>Upload file</li><li>IPFS</li><li>Files</li><li>CID Registry</li><li>Publish</li><li>Retrieve</li><li>Pin</li><li>Unpin</li><li>Share</li><li>Identity</li><li>Reputation</li><li>Protocols</li><li>Services</li><li>Utilities</li></ul>
-          <p class="menu-caveat">These options appear in the interface, but not all are connected to an action yet. This guide does not present them as completed features.</p>
+          <ul class="menu-list-two"><li>Add Evidence</li><li>Upload file</li><li>IPFS</li><li>Files</li><li>CID Registry</li><li>Publish</li><li>Retrieve</li><li>Pin</li><li>Unpin</li><li>Share</li><li>Identity</li><li>Reputation</li><li>Protocols</li><li>Services</li><li>Utilities</li><li>External CID Library</li></ul>
+          <p class="menu-caveat">External CID Library is connected as option 16. Identity, Reputation, Protocols, Services, Utilities, and Files remain unconnected placeholders. See the External CID Library card below for its implemented scope.</p>
         </details>
         <details class="menu-card">
-          <summary><span class="menu-icon">03</span><span><strong>My Life / Node Blog</strong><small>Personal history with publication control</small></span></summary>
+          <summary><span class="menu-icon">03</span><span><strong>External CID Library</strong><small>References to externally known IPFS content</small></span></summary>
+          <p>A local reference index kept separate from content that Node Core added to its own registry. Each entry stores a CID, description, source node, creation time, notes, and a unique reference ID.</p>
+          <ul class="menu-list-two"><li>Add external CID</li><li>Browse history</li><li>Search references</li><li>View details</li><li>Retrieve by CID</li><li>Read Content by CID</li><li>Pin on this node</li><li>Check local pin status</li><li>Unpin on this node</li><li>Edit metadata</li><li>Remove Reference from History</li></ul>
+          <p class="menu-caveat">Unit tests cover local persistence and calls delegated to Kubo. Live retrieval and pin behavior still require verification against a running Kubo daemon. Removing a reference does not unpin or delete IPFS content.</p>
+        </details>
+        <details class="menu-card">
+          <summary><span class="menu-icon">04</span><span><strong>My Life / Node Blog</strong><small>Personal history with publication control</small></span></summary>
           <p>Users can create entries, browse them in pages of 10, search by title/content/entry ID, and open one entry at a time. Local persistence is the default.</p>
           <div class="mini-flow"><span>Create entry</span><b>→</b><span>Save locally</span><b>→</b><span>Select one entry</span><b>→</b><span>Publish to IPFS</span><b>→</b><span>Choose whether to pin locally</span></div>
           <p class="menu-caveat">The entry number is only a selection within the current page. Publishing acts only on the selected entry and asks whether to pin it on this node (Yes by default). Local files remain preserved.</p>
         </details>
         <details class="menu-card">
-          <summary><span class="menu-icon">04</span><span><strong>Applications</strong><small>Space for future applications</small></span></summary>
+          <summary><span class="menu-icon">05</span><span><strong>Applications</strong><small>Space for future applications</small></span></summary>
           <p>The current menu reports that no applications are installed and marks this area as future work.</p>
           <span class="status-chip status-planned">In development / planned</span>
         </details>

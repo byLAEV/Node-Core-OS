@@ -161,6 +161,7 @@ class MainMenu:
             print("13. Protocols")
             print("14. Services")
             print("15. Utilities")
+            print("16. External CID Library")
             choice = input("\n> ").strip()
             try:
                 if choice == "0":
@@ -185,6 +186,8 @@ class MainMenu:
                     self.unpin_content()
                 elif choice == "10":
                     self.share_content()
+                elif choice == "16":
+                    self.external_cid_library()
             except Exception as exc:
                 print(f"Core error: {exc}")
                 input("\n> ")
@@ -266,6 +269,124 @@ class MainMenu:
         print(f"Gateway: {reference.gateway_url}")
         print(f"Path: {reference.path}")
         input("\n> ")
+
+    def external_cid_library(self) -> None:
+        library = self.runtime.external_cids
+        while True:
+            print("\nEXTERNAL CID LIBRARY")
+            print("0. Back")
+            print("1. Add External CID")
+            print("2. Browse CID History")
+            print("3. Search Saved References")
+            print("4. View Reference Details")
+            print("5. Read Content by CID")
+            print("6. Pin Content on This Node")
+            print("7. Check Local Pin Status")
+            print("8. Unpin Content from This Node")
+            print("9. Edit Reference")
+            print("10. Remove Reference from History")
+            choice = input("\n> ").strip()
+            try:
+                if choice == "0":
+                    return
+                if choice == "1":
+                    cid = input("CID: ").strip()
+                    description = input("Description: ").strip()
+                    source_node = input("Source node (optional): ").strip()
+                    notes = input("Notes (optional): ").strip()
+                    reference = library.add(
+                        cid, description, source_node=source_node, notes=notes
+                    )
+                    print("Reference saved locally.")
+                    print(f"Reference ID: {reference.reference_id}")
+                    input("\n> ")
+                elif choice == "2":
+                    self._browse_external_cids(library.list())
+                elif choice == "3":
+                    query = input("Search: ").strip()
+                    self._browse_external_cids(library.search(query))
+                elif choice == "4":
+                    reference = library.get(input("Reference ID: ").strip())
+                    if reference is None:
+                        print("Reference not found.")
+                    else:
+                        self._show_external_cid_details(reference)
+                    input("\n> ")
+                elif choice == "5":
+                    cid = input("CID to retrieve: ").strip()
+                    destination = input("Destination file: ").strip()
+                    target = library.retrieve(cid, destination)
+                    print(f"Retrieved to: {target}")
+                    input("\n> ")
+                elif choice == "6":
+                    cid = input("CID to pin: ").strip()
+                    library.pin(cid)
+                    print("Kubo accepted the pin request.")
+                    input("\n> ")
+                elif choice == "7":
+                    cid = input("CID to check: ").strip()
+                    print(
+                        "Pinned on this node."
+                        if library.is_pinned_locally(cid)
+                        else "Not pinned on this node."
+                    )
+                    input("\n> ")
+                elif choice == "8":
+                    cid = input("CID to unpin: ").strip()
+                    library.unpin(cid)
+                    print("Kubo accepted the unpin request.")
+                    input("\n> ")
+                elif choice == "9":
+                    reference_id = input("Reference ID: ").strip()
+                    reference = library.get(reference_id)
+                    if reference is None:
+                        print("Reference not found.")
+                        input("\n> ")
+                        continue
+                    description = input(f"Description [{reference.description}]: ")
+                    source_node = input(f"Source node [{reference.source_node}]: ")
+                    notes = input(f"Notes [{reference.notes}]: ")
+                    library.update(
+                        reference_id,
+                        description=description if description.strip() else None,
+                        source_node=source_node if source_node.strip() else None,
+                        notes=notes if notes.strip() else None,
+                    )
+                    print("Reference updated.")
+                    input("\n> ")
+                elif choice == "10":
+                    reference_id = input("Reference ID to remove: ").strip()
+                    if library.remove(reference_id):
+                        print("Reference removed from the local history.")
+                        print("No content was unpinned or deleted.")
+                    else:
+                        print("Reference not found.")
+                    input("\n> ")
+            except Exception as exc:
+                print(f"External CID Library error: {exc}")
+                input("\n> ")
+
+    def _browse_external_cids(self, references: list) -> None:
+        if not references:
+            print("No matching external CID references.")
+            input("\n> ")
+            return
+        for number, reference in enumerate(references, start=1):
+            print(f"\n{number}. {reference.description}")
+            print(f"   CID: {reference.cid}")
+            print(f"   Reference ID: {reference.reference_id}")
+            print(f"   Added: {reference.added_at}")
+        input("\n> ")
+
+    @staticmethod
+    def _show_external_cid_details(reference) -> None:
+        print("\nExternal CID Reference")
+        print(f"Reference ID: {reference.reference_id}")
+        print(f"CID: {reference.cid}")
+        print(f"Description: {reference.description}")
+        print(f"Source node: {reference.source_node or '-'}")
+        print(f"Added: {reference.added_at}")
+        print(f"Notes: {reference.notes or '-'}")
 
     def my_life_blog(self) -> None:
         while True:

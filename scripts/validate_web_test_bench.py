@@ -50,6 +50,10 @@ if not errors:
         elif not local.is_file():
             errors.append(f"Missing referenced local asset: {target}")
 
+    for token in ("External CID Library", "Read Content by CID", "Remove Reference from History", "does not unpin or delete IPFS content"):
+        if token.casefold() not in menus.casefold():
+            errors.append(f"menus.html is missing External CID Library documentation: {token}")
+
     for token in ("api.github.com/repos/", "Promise.allSettled", "textContent"):
         if token not in js:
             errors.append(f"app.js is missing expected safe/live-results behavior: {token}")
