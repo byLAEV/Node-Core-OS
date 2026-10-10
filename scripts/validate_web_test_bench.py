@@ -32,10 +32,14 @@ if not errors:
         if token not in html:
             errors.append(f"index.html is missing required marker: {token}")
 
-    if re.search(r'<script\b[^>]*>\s*\S', html, re.IGNORECASE):
-        errors.append("Inline JavaScript is not permitted; use assets/app.js.")
+    # Detect executable inline script bodies without flagging an external
+    # script element whose body is empty, such as <script src="..." defer></script>.
+    for script_body in re.findall(r'<script\\b[^>]*>(.*?)</script\\s*>', html, re.IGNORECASE | re.DOTALL):
+        if script_body.strip():
+            errors.append("Inline JavaScript is not permitted; use assets/app.js.")
+            break
 
-    for target in re.findall(r'(?:src|href)="(\./[^"#?]+)"', html):
+    for target in re.findall(r'(?:src|href)="(\\./[^"#?]+)"', html):
         local = (SITE / target.removeprefix("./")).resolve()
         if not local.is_relative_to(SITE.resolve()):
             errors.append(f"Asset escapes site directory: {target}")
