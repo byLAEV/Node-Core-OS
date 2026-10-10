@@ -339,6 +339,11 @@ class MainMenu:
                 number = int(choice)
                 if 1 <= number <= len(visible):
                     self._my_life_entry_details(visible[number - 1])
+                    refreshed = {
+                        item.entry_id: item
+                        for item in self.runtime.my_life.list_entries()
+                    }
+                    entries = [refreshed.get(item.entry_id, item) for item in entries]
                 else:
                     print(f"Choose a number from 1 to {len(visible)}.")
                     input("\\n> ")
