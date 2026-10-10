@@ -1564,3 +1564,19 @@ Node Core OS is intended to be reusable by external projects through documented,
 byLAEV
 
 Repository: https://github.com/byLAEV/Node-Core-OS/
+
+
+## Remembering & Forgetting (future architecture)
+
+Node Core OS distinguishes **preserving historical information** from **actively applying it to the present context**. The present is the default context; historical information should be selectively recalled only when a current, authorized requirement needs it.
+
+- **Remember** means selectively applying the minimum relevant historical context to a specific request.
+- **Forget context** means not applying historical context by default. It does not, by itself, delete the underlying record.
+- **Restrict, expire, revoke, and delete** are separate operations with different meanings and effects.
+- Local storage and Kubo/IPFS have different deletion boundaries. Removing a local reference or unpinning a CID cannot guarantee deletion of copies held by other nodes or third parties.
+- Identity, evidence, credentials, validity, authorization, reputation, and active context must not be treated as interchangeable concepts.
+
+This is a proposed future capability, not a claim that a complete memory and deletion lifecycle is implemented. The implementation must begin with an audit of current storage and content contracts, followed by schemas, local tests, Kubo/IPFS integration, privacy safeguards, and explicit reporting of verified outcomes.
+
+- [Remembering & Forgetting specification](docs/REMEMBERING-FORGETTING.md)
+- [Remembering & Forgetting web roadmap](web-test-bench/remembering.html)

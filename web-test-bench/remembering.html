@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Future architecture for requirement-driven memory, context forgetting, local storage, Kubo/IPFS, privacy, and verified deletion in Node Core OS.">
+  <meta name="theme-color" content="#101827">
+  <title>Node Core OS — Remembering &amp; Forgetting</title>
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="./index.html" aria-label="Node Core OS Web Test Bench home">
+      <span class="brand-mark" aria-hidden="true">N</span>
+      <span><strong>NODE CORE OS</strong><small>REMEMBERING &amp; FORGETTING</small></span>
+    </a>
+    <nav aria-label="Main navigation">
+      <a href="./index.html">Web Test Bench</a>
+      <a href="./identity.html">Identity &amp; evidence</a>
+      <a href="#model">Context model</a>
+      <a href="#storage">Storage</a>
+      <a href="#roadmap">Implementation</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero menu-hero">
+      <p class="eyebrow">ARCHITECTURE SPECIFICATION · FUTURE WORK</p>
+      <h1>Remember selectively.<br><span>Forget without confusion.</span></h1>
+      <p class="hero-copy">Node Core OS proposes a requirement-driven memory model: historical information remains available as evidence, but it is not automatically applied to the present. Context forgetting, access restriction, revocation, and data deletion are separate operations.</p>
+      <div class="hero-actions">
+        <a class="button primary" href="#model">Explore the model ↓</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/REMEMBERING-FORGETTING.md" target="_blank" rel="noopener noreferrer">Read full specification ↗</a>
+      </div>
+      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span>Transparency note: this page describes proposed future behavior. It does not claim that the complete memory, privacy, or deletion lifecycle is implemented.</div>
+    </section>
+
+    <section class="section" id="model">
+      <div class="section-heading">
+        <div><p class="eyebrow">01 · CORE PRINCIPLE</p><h2>The present is the default context</h2></div>
+        <p>The past remains available as evidence, but a current requirement determines whether relevant history should be recalled and applied.</p>
+      </div>
+      <div class="evidence-grid three">
+        <article class="evidence-card"><span class="card-number">A · REMEMBER</span><h3>Recall what is relevant</h3><p>Select the minimum historical context needed for a specific authorized request. Do not load or disclose an entire personal history by default.</p><span class="status-chip status-planned">Planned</span></article>
+        <article class="evidence-card"><span class="card-number">B · FORGET CONTEXT</span><h3>Stop applying history by default</h3><p>A record can remain preserved while being excluded from the active context. Forgetting context does not itself destroy the underlying data.</p><span class="status-chip status-planned">Planned</span></article>
+        <article class="evidence-card"><span class="card-number">C · DELETE</span><h3>Remove controlled copies</h3><p>Deletion is a separate operation with explicit scope, authorization, execution results, and limitations. The system must not claim more than it can verify.</p><span class="status-chip status-planned">Planned</span></article>
+      </div>
+      <div class="callout"><strong>Core distinction:</strong> FORGOTTEN ≠ DELETED. PRESERVED ≠ ACTIVELY USED. STORED ≠ AUTHORIZED. AVAILABLE ≠ VALID.</div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">02 · REQUIREMENT-DRIVEN RECALL</p><h2>From a request to relevant evidence</h2></div>
+        <p>Memory should be selected by purpose and policy, not by automatically applying every historical record.</p>
+      </div>
+      <div class="flow-grid">
+        <div class="flow-step"><b>01</b><strong>Current request</strong><span>Identify the actor, purpose, scope, and requested outcome.</span></div>
+        <div class="flow-step"><b>02</b><strong>Requirement</strong><span>Determine which facts or evidence are actually needed.</span></div>
+        <div class="flow-step"><b>03</b><strong>Policy check</strong><span>Check authorization, access restrictions, validity, and freshness.</span></div>
+        <div class="flow-step"><b>04</b><strong>Selective recall</strong><span>Retrieve only the minimum relevant historical context.</span></div>
+        <div class="flow-step"><b>05</b><strong>Evaluation</strong><span>Apply that evidence to the current request and report limitations.</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="storage">
+      <div class="section-heading">
+        <div><p class="eyebrow">03 · TWO STORAGE DOMAINS</p><h2>Local control and distributed reality</h2></div>
+        <p>The same lifecycle policy must respect the different guarantees and limitations of each storage domain.</p>
+      </div>
+      <div class="architecture">
+        <article><h3>Local storage</h3><p>The Node can manage local files, registry references, metadata, and controlled keys. A deletion result must state which copies and indexes were actually covered; backups and external copies may remain.</p></article>
+        <div class="architecture-link" aria-hidden="true">↔</div>
+        <article><h3>Kubo / IPFS</h3><p>Removing a reference, unpinning a CID, or deleting the local source does not guarantee that peers or third parties no longer hold the content. A CID does not provide confidentiality or authorization.</p></article>
+      </div>
+      <div class="evidence-grid">
+        <article class="evidence-card"><h3>Encryption</h3><p>Private content should not be published in plaintext by default. Destroying a key may prevent decryption by parties without another key copy, but cannot prove that all plaintext copies or backups are gone.</p></article>
+        <article class="evidence-card"><h3>Truthful outcomes</h3><p>The interface should report exactly what was done: reference removed, local file deleted, content unpinned, key destroyed, or operation incomplete. Never claim “deleted everywhere” without proof.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">04 · INDEPENDENT DIMENSIONS</p><h2>One record can have different states</h2></div>
+        <p>Storage, active-context inclusion, authorization, validity, and deletion must not be collapsed into one universal status.</p>
+      </div>
+      <div class="category-grid">
+        <div><b>Context</b><span>Applied, forgotten from active context, or selected for recall</span></div>
+        <div><b>Access</b><span>Allowed, restricted, or unavailable to a requester</span></div>
+        <div><b>Validity</b><span>Current, expired, revoked, or superseded</span></div>
+        <div><b>Storage</b><span>Local, distributed, encrypted, or not currently available</span></div>
+        <div><b>Retention</b><span>Retained under a defined policy or eligible for deletion</span></div>
+        <div><b>Deletion</b><span>Not requested, pending, completed within scope, or incomplete</span></div>
+      </div>
+      <div class="callout"><strong>Identity and reputation:</strong> a preserved record is not automatically a current identity label. Credentials require their own validity and revocation checks, and reputation should be contextual and based on relevant evidence.</div>
+    </section>
+
+    <section class="section" id="roadmap">
+      <div class="section-heading">
+        <div><p class="eyebrow">05 · IMPLEMENTATION ROADMAP</p><h2>Build in verifiable phases</h2></div>
+        <p>The repository must be audited before runtime changes. Existing storage and content contracts should be reused rather than duplicated.</p>
+      </div>
+      <ol class="roadmap">
+        <li><b>Audit current modules</b><span>Review the local registry, content operations, Kubo lifecycle, identity/evidence models, and tests.</span></li>
+        <li><b>Define schemas and policy</b><span>Separate context selection, access, validity, retention, revocation, storage, and deletion state.</span></li>
+        <li><b>Test local selective recall</b><span>Prove that a record can be excluded from active context without deleting it.</span></li>
+        <li><b>Add lifecycle operations</b><span>Implement restriction, expiry, revocation, and controlled deletion with explicit outcomes.</span></li>
+        <li><b>Integrate Kubo/IPFS</b><span>Test add/retrieve, references, pin/unpin, publication withdrawal, and failure cases.</span></li>
+        <li><b>Specify encryption and key handling</b><span>Define threat model, backups, recovery, and destructive-operation safeguards first.</span></li>
+        <li><b>Expose real state in the UI</b><span>Show storage location, access, context state, retention, and deletion scope without overclaiming.</span></li>
+        <li><b>Gate releases on tests</b><span>Cover restart, unavailable storage, stale references, partial failure, and backup/restore scenarios.</span></li>
+      </ol>
+      <p class="section-note">This roadmap is a future specification, not a claim that these components or tests already exist.</p>
+    </section>
+
+    <section class="section">
+      <div class="section-heading">
+        <div><p class="eyebrow">06 · DOCUMENTATION</p><h2>Specification and source</h2></div>
+      </div>
+      <div class="component-links">
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/REMEMBERING-FORGETTING.md" target="_blank" rel="noopener noreferrer">Full specification on GitHub ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Implementation architecture ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Node Core OS repository ↗</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <span>Node Core OS · Remembering &amp; Forgetting</span>
+    <span>Proposed architecture · Implementation status must be verified</span>
+    <a href="./index.html">Web Test Bench home ↑</a>
+  </footer>
+</body>
+</html>
