@@ -184,4 +184,47 @@ grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 printf 'Existing-install updater invalid-release-metadata tests passed.\n'
 
+
+# If rollback itself fails, keep the recovery backup and report the failure honestly.
+printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/latest-commit.json"
+mkdir -p "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core"
+printf 'def broken(:\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/main.py"
+printf 'VALUE = "broken"\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core/__init__.py"
+tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
+  -C "$TEMP_ROOT/rollback-failure-release" Node-Core-OS-rollback-failure
+
+REAL_CP="$(command -v cp)"
+cat > "$TEMP_ROOT/fake-bin/cp" <<'FAKE_CP'
+#!/usr/bin/env bash
+set -euo pipefail
+source_path="${@: -2:1}"
+destination_path="${@: -1}"
+if [[ "$source_path" == */app-backup && "$destination_path" == "$NODE_CORE_DATA_DIR/app" ]]; then
+  printf 'simulated rollback copy failure\n' >&2
+  exit 1
+fi
+exec "$REAL_CP" "$@"
+FAKE_CP
+chmod +x "$TEMP_ROOT/fake-bin/cp"
+export REAL_CP
+previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
+set +e
+printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/rollback-failure.log" 2>&1
+rollback_failure_status=$?
+set -e
+test "$rollback_failure_status" -ne 0
+grep -q 'ERROR: Node Core application rollback failed' "$TEMP_ROOT/rollback-failure.log"
+grep -q 'Recovery files were retained for manual recovery' "$TEMP_ROOT/rollback-failure.log"
+! grep -q 'Node Core application and commit marker restored' "$TEMP_ROOT/rollback-failure.log"
+test -d "$NODE_CORE_DATA_DIR/runtime/update/app-backup"
+test -f "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+test -f "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-state"
+grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
+grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+rm -f "$TEMP_ROOT/fake-bin/cp"
+printf 'Existing-install updater rollback-failure recovery retention test passed.\n'
+
 printf 'Existing-install updater preservation and rollback tests passed.\n'

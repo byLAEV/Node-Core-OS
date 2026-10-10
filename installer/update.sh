@@ -273,10 +273,15 @@ main() {
     cleanup_update_files
   else
     printf '\nUpdate verification failed. Rolling back Node Core application...\n' >&2
-    rollback_application
-    printf '✓ Node Core application restored.\n' >&2
-    printf 'Kubo/IPFS and persistent data were not modified.\n' >&2
-    cleanup_update_files
+    if rollback_application; then
+      printf '✓ Node Core application and commit marker restored.\n' >&2
+      printf 'Kubo/IPFS and persistent data were not modified.\n' >&2
+      cleanup_update_files
+    else
+      printf 'ERROR: Node Core application rollback failed.\n' >&2
+      printf 'Recovery files were retained for manual recovery: %s\n' "$NODE_CORE_UPDATE_DIR" >&2
+      printf 'Do not delete the recovery directory until the previous application and commit marker have been restored.\n' >&2
+    fi
     exit 1
   fi
 }
