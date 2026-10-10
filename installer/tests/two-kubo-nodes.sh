@@ -36,19 +36,41 @@ fail() {
     exit 1
 }
 
+download_file() {
+    local asset="$1"
+    local destination="$2"
+    local github_url="https://github.com/ipfs/kubo/releases/download/v${KUBO_VERSION}/$asset"
+    local dist_url="https://dist.ipfs.tech/kubo/v${KUBO_VERSION}/$asset"
+
+    echo "Downloading $asset from the official GitHub release..."
+    if curl --fail --location --silent --show-error --retry 2 \
+        --connect-timeout 15 --max-time 180 "$github_url" -o "$destination"; then
+        return 0
+    fi
+
+    echo "GitHub release download failed; trying the official dist.ipfs.tech mirror..."
+    if curl --fail --location --silent --show-error --retry 2 \
+        --connect-timeout 15 --max-time 180 "$dist_url" -o "$destination"; then
+        return 0
+    fi
+
+    return 1
+}
+
 mkdir -p "$DOWNLOAD_DIR" "$REPO_A" "$REPO_B"
 
 ARCHIVE="kubo_v${KUBO_VERSION}_linux-amd64.tar.gz"
-BASE_URL="https://dist.ipfs.tech/kubo/v${KUBO_VERSION}"
-echo "Downloading official Kubo release: $KUBO_VERSION"
-curl --fail --location --retry 3 --connect-timeout 20 \
-    "$BASE_URL/$ARCHIVE" -o "$DOWNLOAD_DIR/$ARCHIVE"
-curl --fail --location --retry 3 --connect-timeout 20 \
-    "$BASE_URL/$ARCHIVE.sha512" -o "$DOWNLOAD_DIR/$ARCHIVE.sha512"
+CHECKSUM="${ARCHIVE}.sha512"
+
+echo "Preparing official Kubo release: $KUBO_VERSION"
+download_file "$ARCHIVE" "$DOWNLOAD_DIR/$ARCHIVE" || fail "Could not download Kubo archive from either official source."
+download_file "$CHECKSUM" "$DOWNLOAD_DIR/$CHECKSUM" || fail "Could not download the official Kubo SHA-512 checksum."
+
 (
     cd "$DOWNLOAD_DIR"
-    sha512sum --check "$ARCHIVE.sha512"
-)
+    sha512sum --check "$CHECKSUM"
+) || fail "Kubo archive checksum verification failed."
+
 tar -xzf "$DOWNLOAD_DIR/$ARCHIVE" -C "$DOWNLOAD_DIR"
 IPFS="$DOWNLOAD_DIR/kubo/ipfs"
 test -x "$IPFS" || fail "Kubo executable was not found in the official archive."
@@ -58,8 +80,8 @@ echo "Initializing two independent Kubo repositories"
 IPFS_PATH="$REPO_A" "$IPFS" init --profile=test
 IPFS_PATH="$REPO_B" "$IPFS" init --profile=test
 
-# Use loopback addresses because both test nodes run on the same GitHub Actions runner.
-# The separate ports and repository directories represent independent node identities.
+# Both nodes run on the same GitHub Actions runner, but use independent repositories
+# and distinct API, gateway, and swarm ports.
 IPFS_PATH="$REPO_A" "$IPFS" config Addresses.API /ip4/127.0.0.1/tcp/5101
 IPFS_PATH="$REPO_A" "$IPFS" config Addresses.Gateway /ip4/127.0.0.1/tcp/8181
 IPFS_PATH="$REPO_A" "$IPFS" config Addresses.Swarm '["/ip4/127.0.0.1/tcp/4101"]' --json
