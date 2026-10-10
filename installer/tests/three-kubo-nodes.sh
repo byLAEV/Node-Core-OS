@@ -90,7 +90,7 @@ done
 
 # Resilience check: two receivers pin the content before the publisher goes offline.
 RESILIENCE_SOURCE="$WORK_DIR/resilience-fixture.txt"
-printf 'Node Core OS resilience test: content must remain available on pinned peers.\\n' > "$RESILIENCE_SOURCE"
+printf 'Node Core OS resilience test: content must remain available on pinned peers.\n' > "$RESILIENCE_SOURCE"
 RESILIENCE_CID="$(node 0 add --quiet "$RESILIENCE_SOURCE")"
 test -n "$RESILIENCE_CID" || fail "Resilience fixture did not produce a CID."
 
