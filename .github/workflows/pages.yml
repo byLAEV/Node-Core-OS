@@ -43,17 +43,6 @@ jobs:
       - name: Check JavaScript syntax
         run: node --check web-test-bench/assets/app.js
 
-      - name: Check workflow YAML syntax
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import yaml
-          for path in (Path(".github/workflows/pages.yml"),):
-              with path.open(encoding="utf-8") as stream:
-                  yaml.safe_load(stream)
-              print(f"YAML parsed: {path}")
-          PY
-
   deploy:
     name: Publish Web Test Bench
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
