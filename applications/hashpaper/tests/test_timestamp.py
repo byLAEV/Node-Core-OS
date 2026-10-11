@@ -67,12 +67,21 @@ class OpenTimestampsClientTests(unittest.TestCase):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"existing")
         original_proof = proof.read_bytes()
-        result = OpenTimestampsClient().stamp(self.original_path)
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
+        result = client.stamp(self.original_path)
         self.assertEqual(result.operation, "stamp-existing-proof")
         self.assertEqual(result.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(result.proof_verification, "PENDING")
         self.assertEqual(proof.read_bytes(), original_proof)
         self.assertEqual(result.proof_sha256, hashlib.sha256(original_proof).hexdigest())
+
+    def test_stamp_preserves_empty_existing_proof_and_reports_error(self):
+        proof = Path(str(self.original_path) + ".ots")
+        proof.write_bytes(b"")
+        with self.assertRaisesRegex(TimestampError, "empty or non-file"):
+            OpenTimestampsClient(executable=str(self.fake_ots)).stamp(self.original_path)
+        self.assertTrue(proof.is_file())
+        self.assertEqual(proof.read_bytes(), b"")
 
     def test_stamp_rejects_terminal_control_characters(self):
         self.original_path.write_text("# 0\n\n\x1b\n", encoding="utf-8")
