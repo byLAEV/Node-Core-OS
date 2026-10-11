@@ -28,8 +28,13 @@ def _documents_dir() -> Path:
     return _data_dir() / "storage"
 
 
-def _default_document_path(*, for_create: bool = False) -> Path:
-    """Use the newest local text document; create a new non-overwriting default when requested."""
+def _default_document_path(
+    *,
+    for_create: bool = False,
+    require_proof: bool = False,
+    require_unstamped: bool = False,
+) -> Path | None:
+    """Choose a document appropriate to the requested operation."""
     directory = _documents_dir()
     directory.mkdir(parents=True, exist_ok=True)
     if not for_create:
@@ -38,8 +43,18 @@ def _default_document_path(*, for_create: bool = False) -> Path:
             if path.is_file() and path.name.startswith("Genesis-HashPaper")
             and path.suffix.lower() in {".txt", ".md", ".markdown"}
         ]
+        if require_proof:
+            candidates = [
+                path for path in candidates
+                if Path(str(path) + ".ots").is_file()
+                and Path(str(path) + ".ots").stat().st_size > 0
+            ]
+        elif require_unstamped:
+            candidates = [path for path in candidates if not Path(str(path) + ".ots").exists()]
         if candidates:
             return max(candidates, key=lambda path: path.stat().st_mtime)
+        if require_proof or require_unstamped:
+            return None
     base = directory / "Genesis-HashPaper.md"
     if not base.exists():
         return base
@@ -163,13 +178,33 @@ def run_interactive_menu() -> int:
             if command == "create":
                 title = input("Document title [Genesis HashPaper for Node Core OS]: ").strip()
                 title = title or "Genesis HashPaper for Node Core OS"
-                body = input("Document body text: ").strip()
+                if title.lower() in {"0", "q", "quit", "cancel"}:
+                    print("Document creation cancelled.")
+                    continue
+                body = input("Document body text (type CANCEL to abort): ").strip()
+                if body.lower() in {"cancel", "q", "quit"}:
+                    print("Document creation cancelled.")
+                    continue
                 if not body:
                     print("Cancelled: document body is required.")
                     continue
+                if any(ord(character) < 32 and character not in "\t\n\r" for character in title + body):
+                    print("Cancelled: title and body cannot contain terminal control characters.")
+                    continue
                 arguments = ["create", "--title", title, "--text", body]
             elif command in {"stamp", "check", "upgrade", "proof-info"}:
-                source = _default_document_path()
+                if command == "stamp":
+                    source = _default_document_path(require_unstamped=True)
+                elif command in {"check", "upgrade"}:
+                    source = _default_document_path(require_proof=True)
+                else:
+                    source = _default_document_path()
+                if source is None:
+                    if command == "stamp":
+                        print("No unstamped HashPaper original found. Create a new original with option 1 first.")
+                    else:
+                        print("No non-empty .ots proof found. Submit an original with option 2 first.")
+                    continue
                 if not source.is_file():
                     print(f"No local original document found. Create one with option 1 first. Default location: {source}")
                     continue
@@ -285,7 +320,16 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command in {"stamp", "check", "upgrade", "proof-info"}:
             if args.input is None:
-                args.input = _default_document_path()
+                if args.command == "stamp":
+                    args.input = _default_document_path(require_unstamped=True)
+                elif args.command in {"check", "upgrade"}:
+                    args.input = _default_document_path(require_proof=True)
+                else:
+                    args.input = _default_document_path()
+            if args.input is None:
+                if args.command == "stamp":
+                    raise ValueError("No unstamped HashPaper original found. Create a new original first or provide --input.")
+                raise ValueError("No non-empty OpenTimestamps .ots proof found. Submit an original first or provide --input.")
             if not args.input.is_file():
                 raise ValueError(f"No local original document found: {args.input}. Create one with HashPaper option 1 first.")
             if args.report:
@@ -302,25 +346,33 @@ def main(argv: list[str] | None = None) -> int:
                 proof = Path(str(original) + ".ots")
                 if not original.is_file():
                     raise ValueError(f"Original document does not exist: {original}")
-                if not proof.is_file() or proof.stat().st_size == 0:
-                    raise ValueError(f"OpenTimestamps proof is missing or empty: {proof}")
                 original_hash = hashlib.sha256(original.read_bytes()).hexdigest()
-                proof_hash = hashlib.sha256(proof.read_bytes()).hexdigest()
-                result = client.check(original)
+                proof_exists = proof.is_file() and proof.stat().st_size > 0
+                if proof_exists:
+                    proof_hash = hashlib.sha256(proof.read_bytes()).hexdigest()
+                    result = client.check(original)
+                    status, verification = result.status, result.proof_verification
+                    block_height, return_code = result.bitcoin_block_height, result.return_code
+                    stdout, stderr = result.stdout, result.stderr
+                else:
+                    proof_hash = None
+                    status, verification = "NOT_SUBMITTED", "NOT_CHECKED"
+                    block_height, return_code, stdout, stderr = None, None, "", ""
                 report = {
                     "application": "HashPaper for Node Core OS",
                     "operation": "proof-info",
                     "original_file": str(original.resolve()),
                     "original_sha256": original_hash,
                     "proof_file": str(proof.resolve()),
+                    "proof_exists": proof_exists,
                     "proof_file_sha256": proof_hash,
                     "proof_fingerprint_note": "SHA-256 fingerprint of the local .ots file; not an official OpenTimestamps-issued identifier.",
-                    "status": result.status,
-                    "proof_verification": result.proof_verification,
-                    "bitcoin_block_height": result.bitcoin_block_height,
-                    "verification_return_code": result.return_code,
-                    "verification_stdout": result.stdout,
-                    "verification_stderr": result.stderr,
+                    "status": status,
+                    "proof_verification": verification,
+                    "bitcoin_block_height": block_height,
+                    "verification_return_code": return_code,
+                    "verification_stdout": stdout,
+                    "verification_stderr": stderr,
                 }
                 if args.report:
                     if _same_path(args.report, original) or _same_path(args.report, proof):
@@ -329,13 +381,15 @@ def main(argv: list[str] | None = None) -> int:
                         raise FileExistsError(f"Proof-info report already exists; choose another path: {args.report}")
                     write_package(args.report, report)
                 print(json.dumps(report, ensure_ascii=False, indent=2))
-                if result.status == "WAITING_FOR_BITCOIN":
+                if not proof_exists:
+                    print("No .ots proof exists for this original. Status: NOT_SUBMITTED.")
+                elif status == "WAITING_FOR_BITCOIN":
                     print("Timestamp proof exists and is processing; no Bitcoin attestation is verified yet.")
-                elif result.status == "VERIFIED":
+                elif status == "VERIFIED":
                     print("OpenTimestamps verified the proof against the original document.")
                 else:
-                    print(f"Proof status is {result.status}; do not treat it as verified.")
-                return 0 if result.status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
+                    print(f"Proof status is {status}; do not treat it as verified.")
+                return 0 if status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
 
             if args.command == "stamp":
                 result = client.stamp(args.input)
