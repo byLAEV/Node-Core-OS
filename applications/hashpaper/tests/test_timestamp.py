@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -74,10 +75,22 @@ class OpenTimestampsClientTests(unittest.TestCase):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
         client = OpenTimestampsClient(executable=str(self.fake_ots))
+        client._run = lambda args: subprocess.CompletedProcess(
+            args,
+            0,
+            stdout="Calendar https://calendar.example: Pending confirmation in Bitcoin blockchain",
+            stderr="",
+        )
         pending = client.check(self.original_path)
         self.assertEqual(pending.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(pending.proof_verification, "PENDING")
         proof.write_bytes(b"fake-proof-verified")
+        client._run = lambda args: subprocess.CompletedProcess(
+            args,
+            0,
+            stdout="Success! Bitcoin block 123456 attests existence as of test time",
+            stderr="",
+        )
         verified = client.check(self.original_path)
         self.assertEqual(verified.status, "VERIFIED")
         self.assertEqual(verified.proof_verification, "SUCCESS")
@@ -86,7 +99,16 @@ class OpenTimestampsClientTests(unittest.TestCase):
     def test_upgrade_keeps_backup_if_proof_changes(self):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
-        result = OpenTimestampsClient(executable=str(self.fake_ots)).check(self.original_path, upgrade=True)
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
+
+        def successful_upgrade(args):
+            proof.write_bytes(b"fake-proof-verified")
+            return subprocess.CompletedProcess(
+                args, 0, stdout="Success! Timestamp is complete", stderr=""
+            )
+
+        client._run = successful_upgrade
+        result = client.check(self.original_path, upgrade=True)
         self.assertEqual(result.status, "ANCHOR_AVAILABLE")
         self.assertTrue(Path(str(proof) + ".before-upgrade").is_file())
         self.assertEqual(proof.read_bytes(), b"fake-proof-verified")
