@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  exit 1
+fi
+
 INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$INSTALLER_DIR/.." && pwd)"
 source "$INSTALLER_DIR/config/defaults"
