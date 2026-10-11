@@ -6,7 +6,7 @@ HashPaper is an application included in the Node Core OS repository. It creates 
 
 ## Current implementation status
 
-The application lives in `applications/hashpaper/` and has a CLI, unit tests, an Applications-menu entry, installer verification, persistent data directories, and updater preservation tests.
+The application lives in `applications/hashpaper/` and has a CLI, an interactive menu opened from the Node Core OS Applications menu, unit tests, installer verification, persistent data directories, and updater preservation tests.
 
 Verified in GitHub Actions on commit `d953d0732dba587b5a4153aba4b9758d656edf89`:
 
