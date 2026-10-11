@@ -79,6 +79,119 @@ require_installation() {
   }
 }
 
+validate_installed_application_for_recovery() {
+  [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/hashpaper/cli.py" ]] || return 1
+  [[ -d "$NODE_CORE_APP_DIR/applications/hashpaper/tests" ]] || return 1
+
+  python3 -m compileall -q \
+    "$NODE_CORE_APP_DIR/main.py" \
+    "$NODE_CORE_APP_DIR/node_core" \
+    "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+
+  (
+    cd "$NODE_CORE_APP_DIR"
+    python3 -m unittest discover \
+      -s applications/hashpaper/tests -p 'test_*.py' -v
+  )
+}
+
+recover_stale_cleanup_if_safe() {
+  local app_backup="$NODE_CORE_UPDATE_DIR/app-backup"
+  local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
+  local marker_state="$NODE_CORE_UPDATE_DIR/commit-marker-state"
+  local current_commit='' backup_commit='' archive_dir=''
+
+  # A real application backup means rollback may still be needed. Never auto-clear it.
+  if [[ -e "$app_backup" || -L "$app_backup" ]]; then
+    return 0
+  fi
+
+  # No marker files means there is no stale-cleanup case to reconcile.
+  if [[ ! -e "$marker_backup" && ! -e "$marker_state" ]]; then
+    return 0
+  fi
+
+  # The markers must describe a complete previous update transaction.
+  [[ -f "$marker_state" && ! -L "$marker_state" ]] || {
+    printf 'Recovery markers are incomplete; manual inspection is required.\n' >&2
+    return 1
+  }
+
+  case "$(cat "$marker_state")" in
+    present)
+      [[ -f "$marker_backup" && ! -L "$marker_backup" && -f "$NODE_CORE_COMMIT_FILE" ]] || {
+        printf 'Recovery commit markers are incomplete; refusing automatic recovery.\n' >&2
+        return 1
+      }
+      backup_commit="$(cat "$marker_backup")"
+      current_commit="$(cat "$NODE_CORE_COMMIT_FILE")"
+      [[ "$backup_commit" =~ ^[0-9a-fA-F]{40}$ && "$current_commit" =~ ^[0-9a-fA-F]{40}$ ]] || {
+        printf 'Recovery commit markers are invalid; refusing automatic recovery.\n' >&2
+        return 1
+      }
+      ;;
+    absent)
+      [[ ! -e "$marker_backup" && ! -e "$NODE_CORE_COMMIT_FILE" ]] || {
+        printf 'Recovery marker state conflicts with the current commit marker.\n' >&2
+        return 1
+      }
+      ;;
+    *)
+      printf 'Recovery marker state is unknown; manual inspection is required.\n' >&2
+      return 1
+      ;;
+  esac
+
+  printf 'Found recovery markers without an application backup.\n'
+  require_installation
+  printf 'Checking the installed application before reconciling interrupted cleanup.\n'
+  if ! validate_installed_application_for_recovery; then
+    printf 'Installed application validation failed; recovery files were preserved.\n' >&2
+    return 1
+  fi
+
+  archive_dir="$(mktemp -d "$NODE_CORE_DATA_DIR/runtime/update-recovery-XXXXXX")" || {
+    printf 'Could not create a recovery archive; recovery files were preserved.\n' >&2
+    return 1
+  }
+
+  if [[ -f "$marker_backup" ]]; then
+    cp "$marker_backup" "$archive_dir/commit-marker-backup" || return 1
+  fi
+  cp "$marker_state" "$archive_dir/commit-marker-state" || return 1
+
+  if [[ -f "$marker_backup" ]]; then
+    cmp -s "$marker_backup" "$archive_dir/commit-marker-backup" || {
+      printf 'Recovery marker archive verification failed; original files were preserved.\n' >&2
+      return 1
+    }
+  fi
+  cmp -s "$marker_state" "$archive_dir/commit-marker-state" || {
+    printf 'Recovery state archive verification failed; original files were preserved.\n' >&2
+    return 1
+  }
+
+  cat > "$archive_dir/RECOVERY.txt" <<EOF
+Node Core OS updater recovery marker archive.
+Created after validating the installed application and HashPaper tests.
+No application backup existed, so automatic rollback was not possible.
+Original marker files were copied and verified before their active copies were removed.
+Current commit: ${current_commit:-absent}
+Previous commit: ${backup_commit:-absent}
+EOF
+
+  rm -f "$marker_backup" "$marker_state" || {
+    printf 'Could not clear active recovery markers; archived copies remain at %s\n' "$archive_dir" >&2
+    return 1
+  }
+
+  printf '✓ Installed application validation passed.\n'
+  printf '✓ Recovery markers archived at: %s\n' "$archive_dir"
+  printf '✓ The updater can continue without deleting the recovery evidence.\n'
+}
+
 require_no_pending_recovery() {
   local app_backup="$NODE_CORE_UPDATE_DIR/app-backup"
   local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
@@ -269,6 +382,7 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
+  recover_stale_cleanup_if_safe
   require_no_pending_recovery
   require_installation
   migrate_termux_config
