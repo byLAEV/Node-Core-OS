@@ -138,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.output.expanduser().resolve() == args.input.expanduser().resolve():
             raise ValueError("Package output must be a different file from the immutable original document.")
+        if args.use_node_profile and args.node_id:
+            raise ValueError("--node-id cannot be combined with --use-node-profile; HashPaper reads the actual Kubo Peer ID.")
         if args.output.expanduser().exists():
             raise FileExistsError(f"Package output already exists; create a new versioned filename: {args.output}")
         identity = _read_json_object(args.identity_json, "Identity profile") if args.identity_json else None
