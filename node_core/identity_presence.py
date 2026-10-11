@@ -7,7 +7,6 @@ profile fields and document contents are never serialized by this module.
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import re
 from typing import Any
 from uuid import uuid4
 
