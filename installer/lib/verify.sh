@@ -18,6 +18,7 @@ verify_installation() {
   [[ "$(uname -s)" == "Linux" ]] || failures=1
   [[ -f "$NODE_CORE_DATA_DIR/app/node_core/evidence.py" ]] || failures=1
   [[ -f "$NODE_CORE_DATA_DIR/app/node_core/my_life.py" ]] || failures=1
+  [[ -f "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py" ]] || failures=1
   python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core" || failures=1
   [[ -x "$NODE_CORE_DATA_DIR/bin/node-core" ]] || failures=1
   [[ -x "$executable" ]] || failures=1
