@@ -75,7 +75,7 @@ jobs:
 
       - name: Run clean installation
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           export HOME="$(dirname "$NODE_CORE_DATA_DIR")"
@@ -92,7 +92,7 @@ jobs:
 
       - name: Verify installed filesystem
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
@@ -110,7 +110,7 @@ jobs:
 
       - name: Verify Kubo API and Node Core launcher
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
@@ -122,7 +122,7 @@ jobs:
 
       - name: Test installed HashPaper interactive menu
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
@@ -141,10 +141,10 @@ jobs:
 
       - name: Test HashPaper package publication against live Kubo
         env:
-          HOME: ${{ runner.temp }}/node-core-home
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
-          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
-          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
+          HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
+          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
@@ -211,10 +211,10 @@ jobs:
 
       - name: Test HashPaper live identity and Peer ID association
         env:
-          HOME: ${{ runner.temp }}/node-core-home
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
-          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
-          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
+          HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
+          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
@@ -283,10 +283,10 @@ jobs:
 
       - name: Test External CID Library against the running Kubo daemon
         env:
-          HOME: ${{ runner.temp }}/node-core-home
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
-          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
-          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
+          HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
+          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
@@ -357,10 +357,10 @@ jobs:
 
       - name: Run Node Core menu and publish test content
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
-          export HOME="${RUNNER_TEMP}/node-core-home"
+          export HOME="${RUNNER_TEMP}/node-core-home-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SERVICE_MODE:-${{ matrix.service_mode }}}"
           test_content="$RUNNER_TEMP/node-core-e2e-content.txt"
           printf 'Node Core OS E2E content — deterministic integration test.\n' > "$test_content"
           output="$RUNNER_TEMP/node-core-menu.log"
@@ -391,8 +391,8 @@ jobs:
 
       - name: Test real updater preserves installed HashPaper and user data
         env:
-          HOME: ${{ runner.temp }}/node-core-home
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
@@ -447,7 +447,7 @@ jobs:
 
       - name: Test uninstall rejects dangerous normalized paths
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           export HOME="${RUNNER_TEMP}/node-core-home"
@@ -465,7 +465,7 @@ jobs:
           test -d "$NODE_CORE_DATA_DIR"
       - name: Test uninstall
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
           printf 'REMOVE\n' | ./installer/uninstall.sh
