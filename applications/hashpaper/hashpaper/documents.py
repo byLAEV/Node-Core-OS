@@ -102,7 +102,7 @@ def build_transparent_package(
         "identity": {
             "status": (identity_profile or {}).get("identity_status", "NOT_ASSOCIATED"),
             "fields": read_identity_fields(identity_profile or {}),
-            "verification": "NOT_VERIFIED_BY_HASHpaper",
+            "verification": "NOT_VERIFIED_BY_HASHPAPER",
         },
         "node": {"peer_id": node_id, "verification": "TECHNICAL_IDENTIFIER_ONLY"},
         "document": {
