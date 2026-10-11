@@ -98,8 +98,6 @@ LAUNCHER
 main() {
   require_user_installation
   [[ -f "$OTS_HELPER" ]] || { printf "OpenTimestamps installer helper is missing: %s\n" "$OTS_HELPER" >&2; exit 1; }
-  source "$OTS_HELPER"
-  ensure_opentimestamps_client
   ensure_owned_directory "$NODE_CORE_DATA_DIR/runtime"
   ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper"
   ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/documents"
@@ -107,6 +105,8 @@ main() {
   ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/ipfs"
   ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/packages"
   ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/records"
+  source "$OTS_HELPER"
+  ensure_opentimestamps_client
   install_hashpaper_launcher
 }
 
