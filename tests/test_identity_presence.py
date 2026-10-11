@@ -112,6 +112,30 @@ class IdentityPresenceTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "unsupported fields"):
             other.import_report(cid)
 
+    def test_failed_pin_preserves_existing_current_report(self):
+        self.service.announce()
+        self.service.create_report()
+        original_bytes = self.service.current_report_path.read_bytes()
+
+        incoming_report = json.loads(original_bytes.decode("utf-8"))
+        incoming_report["report_reference_id"] = "e4f6c77a-4b5f-4e54-bf1a-2d7dbff6c111"
+        fixture = self.root / "incoming-report.json"
+        fixture.write_text(json.dumps(incoming_report), encoding="utf-8")
+        cid = self.kubo.add_file(fixture).cid
+
+        class FailingPinKubo(FakeKubo):
+            def __init__(self, source):
+                self.objects = source.objects
+                self.pinned = set()
+
+            def pin_add(self, cid):
+                raise RuntimeError("simulated pin failure")
+
+        self.service.kubo = FailingPinKubo(self.kubo)
+        with self.assertRaisesRegex(Exception, "current local report was preserved"):
+            self.service.import_report(cid)
+        self.assertEqual(self.service.current_report_path.read_bytes(), original_bytes)
+
     def test_import_report_saves_and_pins_same_bytes(self):
         self.service.announce()
         self.service.create_report()
