@@ -5,11 +5,13 @@ on:
     paths:
       - ".github/workflows/three-node-network.yml"
       - "installer/tests/three-kubo-nodes.sh"
+      - "installer/tests/three-node-identity-report.py"
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/three-node-network.yml"
       - "installer/tests/three-kubo-nodes.sh"
+      - "installer/tests/three-node-identity-report.py"
   workflow_dispatch:
 permissions:
   contents: read
@@ -32,3 +34,11 @@ jobs:
         run: bash -n installer/tests/three-kubo-nodes.sh
       - name: Start three independent Kubo nodes and verify mesh and content transfer
         run: bash installer/tests/three-kubo-nodes.sh
+      - name: Upload three-node identity report evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: three-node-identity-report-evidence
+          path: ${{ runner.temp }}/node-core-three-node-identity-report-evidence/
+          if-no-files-found: warn
+          retention-days: 14
