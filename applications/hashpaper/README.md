@@ -66,7 +66,7 @@ Timestamp commands require the official `ots` executable in `PATH`. A successful
 
 ## Live OpenTimestamps test
 
-To test the real OpenTimestamps client without using personal data, open the repository's Actions tab and run **HashPaper — Live OpenTimestamps Validation** manually. The workflow installs the official client, creates a synthetic document, submits it, checks the proof, verifies that the original SHA-256 is unchanged, and uploads the synthetic proof/report artifacts for seven days. A pending Bitcoin attestation is not considered a verified timestamp.
+To test the real OpenTimestamps client without using personal data, open the repository's Actions tab and run **HashPaper — Live OpenTimestamps Validation** manually. After this workflow is merged into the default branch, it is also scheduled weekly on Sunday at 06:00 UTC. The workflow installs the official client, creates a synthetic document, submits it, checks the proof, verifies that the original SHA-256 is unchanged, and uploads the synthetic proof/report artifacts for seven days. A pending Bitcoin attestation is not considered a verified timestamp.
 
 ## Persistent data
 
