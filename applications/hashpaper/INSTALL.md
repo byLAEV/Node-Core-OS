@@ -1,6 +1,6 @@
 # HashPaper Installation Plan
 
-HashPaper is currently a source-tree prototype and is not yet wired into the Node Core OS installer or updater.
+HashPaper is included in the Node Core OS source tree and Applications menu. Installer verification checks its entry point and compiles its package. Node Core OS creates persistent directories under `~/.node-core/hashpaper/`; the application code is still installed as part of the normal Node Core OS code tree, not through a separate HashPaper installer.
 
 ## Development tests
 

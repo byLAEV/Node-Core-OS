@@ -75,17 +75,17 @@ for transparent document records, OpenTimestamps evidence, and Kubo/IPFS publica
 The first source-tree milestone lives in `applications/hashpaper/` and provides
 local UTF-8 document creation, exact-byte SHA-256, and a transparent package model
 that embeds the full original text. OpenTimestamps submission/verification, Kubo
-publication/retrieval verification, main-menu integration, installer integration,
-and updater preservation are **not yet implemented**. CI tests the local foundation
+live publication/retrieval integration tests, main-menu integration, installer integration,
+and updater preservation are **not yet release-verified**. The official OpenTimestamps CLI adapter and Kubo publisher adapter have unit tests using fake executables/runtime objects, but live external-service verification is still pending. CI tests the local foundation
 only.
 
 No encryption is implemented in this stage. A package intended for IPFS includes
 the complete original text and any selected identity fields in cleartext. Public
-publication can disclose that data to third parties. HashPaper must require explicit
-confirmation before future publication and must not claim a declared identity is
+publication can disclose that data to third parties. HashPaper's current publisher requires explicit
+confirmation before publication and must not claim a declared identity is
 civilly verified or that a CID proves authenticity, pinning, or availability.
 
-HashPaper's user data must remain outside the replaceable application-code directory.
+HashPaper is listed in the Node Core OS Applications menu. Installer verification checks its entry point and compilation, and `NodeConfig.ensure_directories()` creates `~/.node-core/hashpaper/{documents,proofs,packages,records}` outside the replaceable application-code directory. The updater preservation tests now check these data categories.
 Installer/update integration is blocked on tests that prove documents, OTS proofs,
 generated packages, Node Core identity, configuration, local storage, and Kubo state
 survive upgrades.

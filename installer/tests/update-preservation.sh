@@ -14,6 +14,10 @@ mkdir -p "$HOME" "$TEST_FIXTURES" \
   "$NODE_CORE_DATA_DIR/ipfs" \
   "$NODE_CORE_DATA_DIR/bin" \
   "$NODE_CORE_DATA_DIR/runtime" \
+  "$NODE_CORE_DATA_DIR/hashpaper/documents" \
+  "$NODE_CORE_DATA_DIR/hashpaper/proofs" \
+  "$NODE_CORE_DATA_DIR/hashpaper/packages" \
+  "$NODE_CORE_DATA_DIR/hashpaper/records" \
   "$TEMP_ROOT/fake-bin"
 
 # Seed an existing, unprivileged installation and persistent user data.
@@ -23,6 +27,10 @@ printf 'VALUE = "old"\n' > "$NODE_CORE_DATA_DIR/app/node_core/__init__.py"
 printf 'preserve local storage\n' > "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 printf 'preserve IPFS repository\n' > "$NODE_CORE_DATA_DIR/ipfs/config"
 printf '{"custom":"keep"}\n' > "$NODE_CORE_DATA_DIR/config.json"
+printf 'preserve HashPaper document\n' > "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+printf 'preserve HashPaper proof\n' > "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+printf 'preserve HashPaper package\n' > "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+printf 'preserve HashPaper record\n' > "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 printf '#!/usr/bin/env bash\necho "Kubo fixture"\n' > "$NODE_CORE_DATA_DIR/bin/ipfs"
 chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 
@@ -108,6 +116,10 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+grep -qx 'preserve HashPaper document' "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 printf 'Updater happy-path persistence checks passed.\\n'
 
 # Verify that a syntactically invalid update rolls back the application.
@@ -134,6 +146,10 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+grep -qx 'preserve HashPaper document' "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 
 
 # Verify that an archive download failure leaves the current app and data intact.
@@ -151,6 +167,10 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+grep -qx 'preserve HashPaper document' "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 
 printf 'Existing-install updater download-failure rollback tests passed.\n'
 
@@ -169,6 +189,10 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+grep -qx 'preserve HashPaper document' "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 
 printf 'Existing-install updater corrupt-archive rollback tests passed.\n'
 
@@ -187,6 +211,10 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+grep -qx 'preserve HashPaper document' "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 
 printf 'Existing-install updater invalid-release-metadata tests passed.\n'
 
@@ -230,6 +258,10 @@ grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 grep -q 'Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
+grep -qx 'preserve HashPaper document' "$NODE_CORE_DATA_DIR/hashpaper/documents/document-001.md"
+grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/document-001.md.ots"
+grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
+grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 rm -f "$TEMP_ROOT/fake-bin/cp"
 # A later updater invocation must not erase recovery artifacts left by a failed rollback.
 set +e

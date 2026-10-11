@@ -42,6 +42,9 @@ class NodeConfig:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.local_storage_path.mkdir(parents=True, exist_ok=True)
         self.ipfs_repo_path.parent.mkdir(parents=True, exist_ok=True)
+        hashpaper_root = self.data_dir / "hashpaper"
+        for name in ("documents", "proofs", "packages", "records"):
+            (hashpaper_root / name).mkdir(parents=True, exist_ok=True)
 
     def save(self) -> None:
         self.ensure_directories()

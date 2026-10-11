@@ -12,6 +12,7 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 IDENTITY_FIELDS = (
+    "schema_version",
     "identity_id",
     "full_name",
     "alias",
@@ -119,11 +120,15 @@ def build_transparent_package(
             "proof_file": metadata.get("proof_file"),
             "status": metadata.get("status", "NOT_SUBMITTED"),
             "proof_verification": metadata.get("proof_verification", "NOT_CHECKED"),
+            "operation": metadata.get("operation"),
+            "return_code": metadata.get("return_code"),
+            "stdout": metadata.get("stdout", ""),
+            "stderr": metadata.get("stderr", ""),
             "calendars": metadata.get("calendars", []),
         },
         "bitcoin": {
             "network": metadata.get("network"),
-            "block_height": metadata.get("block_height"),
+            "block_height": metadata.get("bitcoin_block_height", metadata.get("block_height")),
             "block_hash": metadata.get("block_hash"),
             "block_timestamp": metadata.get("block_timestamp"),
             "attestation_verification": metadata.get("attestation_verification", "NOT_CHECKED"),
