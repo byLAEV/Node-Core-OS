@@ -26,7 +26,7 @@ A profile marked `declared` is not a verified civil identity. A node Peer ID ide
 
 ## Remaining validation
 
-- Real OpenTimestamps calendar submission and later successful Bitcoin attestation verification have not yet been demonstrated by CI.
+- A manual GitHub Actions workflow now exists for real OpenTimestamps submission and immediate checking using synthetic content. It must be run to obtain a result; creating a proof or receiving a pending result does not establish a verified Bitcoin attestation.
 - A separate HashPaper installer has not been implemented; HashPaper is shipped with Node Core OS.
 - Future releases must keep checking that application data remains outside the replaceable code tree and survives upgrades and rollback.
 
