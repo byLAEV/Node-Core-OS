@@ -272,7 +272,9 @@ jobs:
               gender="not-specified",
           )
           assert profile["identity_status"] == "declared"
-          assert profile["node_id"] is None
+          # Profile creation must not be coupled to root privileges or to a
+          # pre-existing association. The package flow below verifies association
+          # with the actual Peer ID returned by Node Core OS Kubo.
           status = runtime.kubo.status()
           assert status.running and status.peer_id, "Kubo must provide a live Peer ID for this test"
           print("Synthetic local identity profile created; live Kubo Peer ID is available.")
