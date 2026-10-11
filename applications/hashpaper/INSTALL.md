@@ -31,7 +31,7 @@ GitHub Actions additionally performs a clean installation and uninstall on Ubunt
 
 ## Data preservation
 
-HashPaper originals live in `~/.node-core/storage/`. Generated packages and publication receipts live outside the replaceable application-code directory:
+HashPaper originals live in `~/.node-core/hashpaper/documents/`. Generated packages and publication receipts live outside the replaceable application-code directory:
 
 ```text
 ~/.node-core/hashpaper/
