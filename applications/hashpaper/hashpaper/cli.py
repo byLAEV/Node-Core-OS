@@ -69,7 +69,7 @@ def run_interactive_menu() -> int:
         "6": ("publish", "Publish a package through IPFS"),
     }
     while True:
-        print("\\nHashPaper for Node Core OS\\n")
+        print("\nHashPaper for Node Core OS\n")
         print("1. Create original document")
         print("2. Submit document to OpenTimestamps")
         print("3. Check OpenTimestamps proof")
@@ -78,9 +78,9 @@ def run_interactive_menu() -> int:
         print("6. Publish package to IPFS")
         print("0. Exit")
         try:
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\\nHashPaper closed.")
+            print("\nHashPaper closed.")
             return 0
         if choice == "0":
             return 0
@@ -89,7 +89,7 @@ def run_interactive_menu() -> int:
             continue
 
         command, description = actions[choice]
-        print(f"\\n{description}\\n")
+        print(f"\n{description}\n")
         try:
             if command == "create":
                 output = input("New original document path: ").strip()
@@ -135,9 +135,9 @@ def run_interactive_menu() -> int:
             if status:
                 print(f"Command finished with status {status}.")
         except (EOFError, KeyboardInterrupt):
-            print("\\nOperation cancelled.")
+            print("\nOperation cancelled.")
         try:
-            input("\\nPress Enter to return to HashPaper menu...")
+            input("\nPress Enter to return to HashPaper menu...")
         except (EOFError, KeyboardInterrupt):
             return 0
 
