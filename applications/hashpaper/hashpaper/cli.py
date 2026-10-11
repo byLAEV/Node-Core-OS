@@ -36,7 +36,15 @@ def _hashpaper_dir() -> Path:
 
 def _documents_dir() -> Path:
     """Return the canonical directory for new originals and adjacent .ots proofs."""
-    return _data_dir() / "storage" / "opentimestamps"
+    try:
+        from node_core.config import NodeConfig
+
+        storage_root = NodeConfig.load().local_storage_path
+    except ImportError:
+        # Keep standalone HashPaper use possible when the Node Core package
+        # is not importable; the standard installation always uses NodeConfig.
+        storage_root = _data_dir() / "storage"
+    return storage_root / "opentimestamps"
 
 
 def _legacy_documents_dir() -> Path:
