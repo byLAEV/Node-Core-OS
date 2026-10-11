@@ -100,7 +100,7 @@ class MainMenu:
                 self.identity_bios()
 
     def _print_identity_summary(self) -> None:
-        """Show a privacy-conscious identity summary in the main menu."""
+        """Show the saved identity fields and their verification status."""
         try:
             profile = self.runtime.identity_profile.load()
         except (OSError, ValueError) as exc:
@@ -111,12 +111,15 @@ class MainMenu:
             return
 
         print(f"Name: {profile['full_name']}")
-        if profile.get("alias"):
-            print(f"Alias: {profile['alias']}")
-        if profile.get("nationality"):
-            print(f"Nationality: {profile['nationality']}")
-        print("Identity status: Declared (not independently verified)")
+        print(f"Alias: {profile.get('alias') or '-'}")
+        print(f"Nationality: {profile.get('nationality') or '-'}")
+        print(f"Issuing country: {profile['issuing_country']}")
+        print(f"Document type: {profile['document_type']}")
+        print(f"Document number: {profile['document_number']}")
+        print(f"Logical identity ID: {profile['identity_id']}")
         print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
+        print(f"Identity data status: {profile['identity_status'].capitalize()}")
+        print("Node Core OS network consensus verification: Not verified")
 
     def identity_bios(self) -> None:
         """Manage the user's declared identity profile and node association."""

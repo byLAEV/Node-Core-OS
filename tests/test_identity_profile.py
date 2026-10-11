@@ -70,8 +70,8 @@ class IdentityProfileStoreTests(unittest.TestCase):
                 document_number="SYNTHETIC-TEST-0001",
             )
 
-    def test_main_menu_shows_profile_without_document_number(self):
-        self.save_sample()
+    def test_main_menu_shows_all_saved_identity_values_and_consensus_status(self):
+        profile = self.save_sample()
         self.store.associate_node("12D3KooWExamplePeerId")
         menu = MainMenu(SimpleNamespace(identity_profile=self.store))
         output = StringIO()
@@ -79,11 +79,15 @@ class IdentityProfileStoreTests(unittest.TestCase):
             menu._print_identity_summary()
         displayed = output.getvalue()
         self.assertIn("Sample Person", displayed)
-        self.assertIn("SAMPLE", displayed)
-        self.assertIn("Costa Rican", displayed)
+        self.assertIn("Alias: SAMPLE", displayed)
+        self.assertIn("Nationality: Costa Rican", displayed)
+        self.assertIn("Issuing country: Costa Rica", displayed)
+        self.assertIn("Document type: National identity document", displayed)
+        self.assertIn("Document number: SYNTHETIC-TEST-0001", displayed)
+        self.assertIn(f"Logical identity ID: {profile['identity_id']}", displayed)
         self.assertIn("12D3KooWExamplePeerId", displayed)
-        self.assertIn("Declared (not independently verified)", displayed)
-        self.assertNotIn("SYNTHETIC-TEST-0001", displayed)
+        self.assertIn("Identity data status: Declared", displayed)
+        self.assertIn("Node Core OS network consensus verification: Not verified", displayed)
 
     def test_profile_file_permissions_are_private_where_supported(self):
         self.save_sample()
