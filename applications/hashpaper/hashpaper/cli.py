@@ -201,6 +201,10 @@ def main(argv: list[str] | None = None) -> int:
                 proof_path = Path(str(args.input.expanduser()) + ".ots")
                 if _same_path(args.report, args.input) or _same_path(args.report, proof_path):
                     raise ValueError("OpenTimestamps report must not overwrite the original document or its .ots proof.")
+                if args.report.expanduser().exists():
+                    raise FileExistsError(
+                        f"OpenTimestamps report already exists; choose a new report path: {args.report}"
+                    )
             client = OpenTimestampsClient()
             if args.command == "stamp":
                 result = client.stamp(args.input)
