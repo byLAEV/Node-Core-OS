@@ -7,6 +7,8 @@ on:
       - "test/hashpaper-professional-e2e"
     paths:
       - "applications/hashpaper/**"
+      - "installer/hashpaper-update.sh"
+      - "installer/tests/hashpaper-update.sh"
       - ".github/workflows/hashpaper-python-matrix.yml"
   pull_request:
     branches:
@@ -35,6 +37,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Test standalone HashPaper updater and data preservation
+        run: |
+          set -euo pipefail
+          bash installer/tests/hashpaper-update.sh
 
       - name: Compile HashPaper sources
         run: |
