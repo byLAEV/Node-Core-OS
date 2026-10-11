@@ -4,7 +4,7 @@ HashPaper is shipped as part of the Node Core OS application code and appears in
 
 ## Default local paths
 
-The interactive menu does not ask users to type filesystem paths for normal local workflows. Original text/Markdown documents are stored in `~/.node-core/storage/`; package JSON files are stored in `~/.node-core/hashpaper/packages/`; publication receipts are stored in `~/.node-core/hashpaper/records/`. HashPaper uses the newest local text document by default and never overwrites an existing original or package. Explicit `--input`/`--output` arguments remain available for automation or importing an existing file.
+The interactive menu does not ask users to type filesystem paths for normal local workflows. Original text/Markdown documents are stored in `~/.node-core/storage/`; package JSON files are stored in `~/.node-core/hashpaper/packages/`; publication receipts are stored in `~/.node-core/hashpaper/records/`. HashPaper uses the newest local text document for general operations, selects an original without an existing `.ots` proof for timestamp submission, and selects the newest original with a non-empty `.ots` proof for checking or upgrading. The proof-status view reports `NOT_SUBMITTED` when the selected original has no proof. HashPaper never overwrites an existing original or package. Terminal control characters are rejected in new original documents. Explicit `--input`/`--output` arguments remain available for automation or importing an existing file.
 
 ## Requirements
 
