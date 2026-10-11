@@ -69,26 +69,17 @@ cryptographic key management.
 
 ## HashPaper for Node Core OS
 
-[HashPaper architecture and roadmap](HASHPAPER.md) defines the planned application
-for transparent document records, OpenTimestamps evidence, and Kubo/IPFS publication.
+[HashPaper architecture and roadmap](HASHPAPER.md) defines the application for transparent document records, OpenTimestamps evidence, and Kubo/IPFS publication.
 
-The first source-tree milestone lives in `applications/hashpaper/` and provides
-local UTF-8 document creation, exact-byte SHA-256, and a transparent package model
-that embeds the full original text. OpenTimestamps submission/verification, Kubo
-live publication/retrieval integration tests, main-menu integration, installer integration,
-and updater preservation are **not yet release-verified**. The official OpenTimestamps CLI adapter and Kubo publisher adapter have unit tests using fake executables/runtime objects, but live external-service verification is still pending. CI tests the local foundation
-only.
+The integrated application lives in `applications/hashpaper/`. It creates local UTF-8 originals, hashes exact original bytes, builds transparent packages containing the complete original text, invokes the official OpenTimestamps CLI through an adapter, and publishes packages through Node Core OS `ContentManager` and `KuboManager` after explicit confirmation. The publication adapter retrieves the returned CID, checks byte-for-byte equality and SHA-256, and confirms pin state.
 
-No encryption is implemented in this stage. A package intended for IPFS includes
-the complete original text and any selected identity fields in cleartext. Public
-publication can disclose that data to third parties. HashPaper's current publisher requires explicit
-confirmation before publication and must not claim a declared identity is
-civilly verified or that a CID proves authenticity, pinning, or availability.
+The Applications menu, installer verification, persistent data directories, and updater preservation tests are implemented. HashPaper data lives under `~/.node-core/hashpaper/{documents,proofs,packages,records}`, outside the replaceable application-code directory.
 
-HashPaper is listed in the Node Core OS Applications menu. Installer verification checks its entry point and compilation, and `NodeConfig.ensure_directories()` creates `~/.node-core/hashpaper/{documents,proofs,packages,records}` outside the replaceable application-code directory. The updater preservation tests now check these data categories.
-Installer/update integration is blocked on tests that prove documents, OTS proofs,
-generated packages, Node Core identity, configuration, local storage, and Kubo state
-survive upgrades.
+GitHub Actions passed GNU/Linux terminal CI and Ubuntu 24.04 installer E2E on commit `d953d0732dba587b5a4153aba4b9758d656edf89`. The E2E run passed in both service modes and included live Kubo publication/retrieval, identity association with the real Kubo Peer ID using synthetic identity data, and uninstall safety checks. See [HashPaper documentation](HASHPAPER.md) for the verified scope and remaining validation.
+
+The OpenTimestamps adapter delegates to the official `ots` executable, while its automated tests use a fake CLI. Live calendar submission and later successful Bitcoin attestation verification remain unverified by CI. A separate HashPaper installer has not been implemented.
+
+Encryption is **NOT IMPLEMENTED**. A package includes the complete original text and any included identity fields in cleartext. Public IPFS publication can disclose this data to third parties. A declared identity is not civilly verified; a Peer ID does not prove who controls a node; and a CID alone does not prove authenticity, timestamp validity, pinning, or permanent availability.
 
 ## Identity activity, personhood, and evidence (future layers)
 
