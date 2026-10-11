@@ -103,7 +103,7 @@ class MainMenu:
         """Create and exchange public identity-presence claims and shared reports."""
         service = self.runtime.identity_presence
         while True:
-            print("\\nIdentity Presence / Shared Report")
+            print("\nIdentity Presence / Shared Report")
             print("0. Back")
             print("1. Publish my association declaration (get CID)")
             print("2. Import another node's declaration by CID")
@@ -111,24 +111,24 @@ class MainMenu:
             print("4. Publish and pin current report (get CID)")
             print("5. Import and pin a shared report by CID")
             print("6. Show local evidence and report status")
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
             try:
                 if choice == "0":
                     return
                 if choice == "1":
                     result = service.publish_announcement()
-                    print("\\nDeclaration published and pinned locally.")
+                    print("\nDeclaration published and pinned locally.")
                     print(f"Public node ID: {result['node_id']}")
                     print(f"Announcement CID: {result['cid']}")
                     print("Share this CID with the other nodes.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "2":
                     cid = input("Announcement CID: ").strip()
                     result = service.import_announcement(cid)
                     print(f"Declaration received for node: {result['node_id']}")
                     print(f"Association announced: {result['identity_associated']}")
                     print("Status: announced, not verified.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "3":
                     report = service.create_report()
                     print("Report saved locally.")
@@ -136,21 +136,21 @@ class MainMenu:
                     print(f"Known nodes: {report['known_nodes']}")
                     print(f"Associations announced: {report['identity_associations_announced']}")
                     print("Personal identity fields transmitted: 0")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "4":
                     result = service.publish_report()
                     print("Report published and pinned on this node.")
                     print(f"Report reference: {result['report_reference_id']}")
                     print(f"Report CID: {result['report_cid']}")
                     print("Share this CID with the other nodes.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "5":
                     cid = input("Shared report CID: ").strip()
                     result = service.import_report(cid)
                     print("Exact report content saved locally and pinned.")
                     print(f"Report reference: {result['report_reference_id']}")
                     print(f"Report CID: {result['report_cid']}")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "6":
                     status = service.status()
                     print(f"Local declarations known: {status['announcement_count']}")
@@ -164,10 +164,10 @@ class MainMenu:
                     if status["state"]:
                         print(f"Report CID: {status['state'].get('report_cid')}")
                         print(f"Pinned locally: {status['state'].get('pinned_locally')}")
-                    input("\\n> ")
+                    input("\n> ")
             except Exception as exc:
                 print(f"Identity presence error: {exc}")
-                input("\\n> ")
+                input("\n> ")
 
     def _print_identity_summary(self) -> None:
         """Show the saved identity fields and their verification status."""
