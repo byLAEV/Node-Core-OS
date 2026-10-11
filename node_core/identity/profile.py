@@ -3,7 +3,7 @@
 Identity data is private local data. This module never publishes profile content.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -22,6 +22,7 @@ class IdentityProfileStore:
 
     @staticmethod
     def _now() -> str:
+        """Return an ISO-8601 UTC timestamp."""
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     def load(self) -> dict[str, Any] | None:
@@ -42,6 +43,9 @@ class IdentityProfileStore:
         issuing_country: str,
         document_type: str,
         document_number: str,
+        birth_date: str = "",
+        height_cm: str | int | None = None,
+        gender: str = "",
     ) -> dict[str, Any]:
         """Save user-declared fields locally; this does not verify their truth."""
         fields = {
@@ -51,13 +55,36 @@ class IdentityProfileStore:
             "issuing_country": issuing_country,
             "document_type": document_type,
             "document_number": document_number,
+            "birth_date": birth_date,
+            "gender": gender,
         }
         normalized = {key: value.strip() for key, value in fields.items()}
         for key in ("full_name", "issuing_country", "document_type", "document_number"):
             if not normalized[key]:
                 raise ValueError(f"{key.replace('_', ' ').capitalize()} is required.")
 
+        parsed_birth_date = None
+        if normalized["birth_date"]:
+            try:
+                parsed_birth_date = date.fromisoformat(normalized["birth_date"])
+            except ValueError as exc:
+                raise ValueError("Birth date must be a valid date in YYYY-MM-DD format.") from exc
+            if parsed_birth_date.isoformat() != normalized["birth_date"]:
+                raise ValueError("Birth date must use YYYY-MM-DD format.")
+            if parsed_birth_date > date.today():
+                raise ValueError("Birth date cannot be in the future.")
+
+        parsed_height = None
+        if height_cm is not None and str(height_cm).strip():
+            try:
+                parsed_height = int(str(height_cm).strip())
+            except ValueError as exc:
+                raise ValueError("Height must be entered as a whole number of centimeters.") from exc
+            if not 1 <= parsed_height <= 300:
+                raise ValueError("Height must be between 1 and 300 centimeters.")
+
         previous = self.load()
+        now = self._now()
         payload: dict[str, Any] = {
             "schema_version": 1,
             "identity_id": (
@@ -71,10 +98,13 @@ class IdentityProfileStore:
             "issuing_country": normalized["issuing_country"],
             "document_type": normalized["document_type"],
             "document_number": normalized["document_number"],
+            "birth_date": normalized["birth_date"],
+            "height_cm": parsed_height,
+            "gender": normalized["gender"],
             "identity_status": "declared",
             "node_id": previous.get("node_id") if previous else None,
-            "created_at": previous.get("created_at", self._now()) if previous else self._now(),
-            "updated_at": self._now(),
+            "created_at": previous.get("created_at", now) if previous else now,
+            "updated_at": now,
         }
         self._write_private(payload)
         return payload
