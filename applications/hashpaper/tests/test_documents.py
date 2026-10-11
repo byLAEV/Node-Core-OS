@@ -33,6 +33,12 @@ class HashPaperDocumentTests(unittest.TestCase):
             write_original(path, "Replacement text")
         self.assertEqual(path.read_bytes(), b"Original text")
 
+    def test_original_rejects_terminal_escape_characters(self):
+        path = self.root / "document-with-escape.md"
+        with self.assertRaisesRegex(ValueError, "terminal control characters"):
+            write_original(path, "# 0\n\n\x1b\n")
+        self.assertFalse(path.exists())
+
     def test_package_includes_full_original_and_transparent_identity(self):
         original = self.root / "document.md"
         original.write_text("# Original\n\nFull body, not just a hash.\n", encoding="utf-8")
