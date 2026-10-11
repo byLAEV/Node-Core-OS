@@ -42,17 +42,24 @@ Encryption is **NOT IMPLEMENTED**. The package intentionally includes the comple
 
 ## Persistent data and updater
 
-Node Core OS creates HashPaper directories outside the replaceable application-code tree:
+Node Core OS keeps persistent HashPaper data outside the replaceable application-code tree. New original documents and their adjacent `.ots` proofs use the local-storage namespace:
 
 ```text
-~/.node-core/hashpaper/
-├── documents/
-├── proofs/
-├── packages/
-└── records/
+~/.node-core/
+├── storage/
+│   └── opentimestamps/
+│       ├── Genesis-HashPaper.md
+│       └── Genesis-HashPaper.md.ots
+└── hashpaper/
+    ├── documents/   # legacy originals remain discoverable in place
+    ├── ipfs/
+    ├── packages/
+    └── records/
 ```
 
-The updater preservation test seeds and checks these data categories through successful update and rollback scenarios. HashPaper is launched from the Applications menu and its files are checked by installer verification.
+HashPaper's document history searches both `storage/opentimestamps/` and the legacy `hashpaper/documents/` directory. Existing originals and proofs are not automatically moved. The updater preservation test seeds and checks persistent data through successful update and rollback scenarios. HashPaper is launched from the Applications menu and its files are checked by installer verification.
+
+A repeated `stamp` request does not overwrite or re-submit a non-empty existing `.ots` file. It runs the official client's verification operation against that original and reports the returned state. A pending proof remains pending; a proof is reported as verified only when the official client confirms it against the original. An empty `.ots` path is preserved and reported as an error for explicit repair.
 
 ## Remaining release validation
 
