@@ -121,6 +121,16 @@ class HashPaperMenuTests(unittest.TestCase):
             self.assertEqual(cli.run_interactive_menu(), 0)
 
 
+    def test_hashpaper_directory_helpers_use_app_data_not_a_private_kubo_repo(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.dict(os.environ, {"NODE_CORE_DATA_DIR": temporary}):
+                root = Path(temporary) / "hashpaper"
+                self.assertEqual(cli._hashpaper_dir(), root)
+                self.assertEqual(cli._documents_dir(), root / "documents")
+                self.assertEqual(cli._ipfs_dir(), root / "ipfs")
+                self.assertEqual(cli._records_dir(), root / "records")
+                self.assertNotEqual(cli._ipfs_dir(), Path(temporary) / "ipfs")
+
     def test_create_embeds_session_identity_and_uses_application_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             old_dir = os.environ.get("NODE_CORE_DATA_DIR")
