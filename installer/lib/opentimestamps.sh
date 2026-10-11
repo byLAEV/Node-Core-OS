@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+
 # Install the official OpenTimestamps CLI in a private, user-owned virtual
 # environment. This never modifies Termux's system Python or needs root.
 ensure_opentimestamps_client() {
