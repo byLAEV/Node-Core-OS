@@ -27,12 +27,10 @@ GitHub Actions additionally performs a clean installation and uninstall on Ubunt
 
 ## Data preservation
 
-HashPaper data lives outside the replaceable application-code directory:
+HashPaper originals live in `~/.node-core/storage/`. Generated packages and publication receipts live outside the replaceable application-code directory:
 
 ```text
 ~/.node-core/hashpaper/
-├── documents/
-├── proofs/
 ├── packages/
 └── records/
 ```
@@ -41,7 +39,7 @@ The updater preservation tests check these data categories through successful up
 
 ## Limitations
 
-- The companion launcher installer only creates `~/.node-core/bin/hashpaper`; it is not a standalone installer for a fresh machine and requires Node Core OS to be installed first.
+- The companion installer recreates `~/.node-core/bin/hashpaper` and installs/verifies the OpenTimestamps CLI; it is not a standalone installer for a fresh machine and requires Node Core OS to be installed first.
 - The Node Core OS updater downloads the current application source, installs/verifies the official OpenTimestamps CLI in the private user environment, compiles Node Core OS and HashPaper, runs the HashPaper unit tests before marking the new commit successful, and rolls back application code if verification fails. HashPaper resolves the executable directly from that private environment when it is not in `PATH`.
 - Re-running the clean installer over an existing `app/` directory is refused; use `~/.node-core/bin/node-core-update` to update existing installations safely.
 - Automated OpenTimestamps tests use a fake executable. Live calendar submission and successful Bitcoin attestation verification must not be inferred from those tests.
