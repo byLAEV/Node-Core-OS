@@ -11,6 +11,7 @@ on:
     paths:
       - ".github/workflows/three-node-network.yml"
       - "installer/tests/three-kubo-nodes.sh"
+      - "installer/tests/three-node-identity-report.py"
   workflow_dispatch:
 permissions:
   contents: read
