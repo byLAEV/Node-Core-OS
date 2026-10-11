@@ -50,10 +50,6 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.store.associate_node("12D3KooWExamplePeerId")
         updated = self.store.save_declared_profile(
             full_name="Sample Person Updated",
-            alias="SAMPLE",
-            nationality="Costa Rican",
-            issuing_country="Costa Rica",
-            document_type="National identity document",
             document_number="SYNTHETIC-TEST-0002",
         )
         self.assertEqual(updated["identity_id"], original["identity_id"])
@@ -64,6 +60,17 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertEqual(updated["gender"], "Man")
         self.assertEqual(updated["created_at"], original["created_at"])
         self.assertGreaterEqual(updated["updated_at"], original["updated_at"])
+
+    def test_optional_fields_can_be_cleared_explicitly(self):
+        self.save_sample()
+        updated = self.store.save_declared_profile(
+            birth_date="",
+            height_cm="",
+            gender="",
+        )
+        self.assertEqual(updated["birth_date"], "")
+        self.assertIsNone(updated["height_cm"])
+        self.assertEqual(updated["gender"], "")
 
     def test_association_requires_profile_and_nonempty_node_id(self):
         with self.assertRaises(ValueError):
