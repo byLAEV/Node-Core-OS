@@ -168,7 +168,7 @@ for source_node in 0 1; do
 done
 
 RECONNECT_SOURCE="$WORK_DIR/reconnection-fixture.txt"
-printf 'Node Core OS reconnection test: content transferred after peer restart.\\n' > "$RECONNECT_SOURCE"
+printf 'Node Core OS reconnection test: content transferred after peer restart.\n' > "$RECONNECT_SOURCE"
 RECONNECT_CID="$(node 0 add --quiet "$RECONNECT_SOURCE")"
 test -n "$RECONNECT_CID" || fail "Reconnection fixture did not produce a CID."
 RECONNECT_DEST="$WORK_DIR/reconnection-received-by-node-2.txt"
