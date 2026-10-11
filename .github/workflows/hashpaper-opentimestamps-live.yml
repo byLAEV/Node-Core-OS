@@ -153,8 +153,10 @@ jobs:
           report = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
           assert package["document"]["original_text"] == original.decode("utf-8")
           assert package["document"]["sha256"] == hashlib.sha256(original).hexdigest()
-          assert package["opentimestamps"] == report
-          assert package["identity"]["identity_id"] == "synthetic-hashpaper-live-test"
+          assert package["opentimestamps"]["status"] == report["status"]
+          assert package["opentimestamps"]["proof_file"] == Path(str(sys.argv[1]) + ".ots").name
+          assert package["opentimestamps"]["proof_sha256"]
+          assert package["identity"]["fields"]["identity_id"] == "synthetic-hashpaper-live-test"
           print("Transparent package includes the exact original text, its SHA-256, synthetic identity, and actual OTS report.")
           PY
 
