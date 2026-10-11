@@ -423,6 +423,9 @@ jobs:
         env:
           HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
+          # During pull-request CI, test the real updater against this PR's candidate
+          # branch, not main (which does not contain the candidate's test fixes yet).
+          NODE_CORE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
