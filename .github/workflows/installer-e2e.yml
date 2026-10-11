@@ -78,7 +78,7 @@ jobs:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
-          export HOME="${RUNNER_TEMP}/node-core-home"
+          export HOME="$(dirname "$NODE_CORE_DATA_DIR")"
           mkdir -p "$HOME"
           if ! ./installer/install.sh; then
             printf '\n--- Kubo startup log ---\n' >&2
