@@ -475,10 +475,34 @@ def main(argv: list[str] | None = None) -> int:
             args.ots_json = _expanded_path(args.ots_json)
 
         if args.command == "create":
-            args.output = args.output or _default_document_path(for_create=True)
-            metadata = write_original(args.output, f"# {args.title}\n\n{args.text}\n")
+            if args.output is None:
+                import re
+                slug = re.sub(r"[^A-Za-z0-9_-]+", "-", args.title.strip()).strip("-_") or "HashPaper-document"
+                candidate = _documents_dir() / f"{slug}.md"
+                index = 2
+                while candidate.exists() or Path(str(candidate) + ".ots").exists():
+                    candidate = _documents_dir() / f"{slug}-{index}.md"
+                    index += 1
+                args.output = candidate
+            if _SESSION_IDENTITY is not None and _SESSION_PEER_ID is not None:
+                identity_json = json.dumps(_SESSION_IDENTITY, ensure_ascii=False, indent=2)
+                document_text = (
+                    f"# {args.title}\n\n{args.text.rstrip()}\n\n"
+                    "## Node Core OS Identity Association\n"
+                    "Identity fields below were embedded after explicit consent to use identity data.\n"
+                    "This is a declared profile, not independent identity verification.\n\n"
+                    "~~~json\n" + identity_json + "\n~~~\n\n"
+                    f"Node Core OS Peer ID: {_SESSION_PEER_ID}\n"
+                )
+            else:
+                document_text = f"# {args.title}\n\n{args.text}\n"
+            metadata = write_original(args.output, document_text)
             print(json.dumps(metadata, ensure_ascii=False, indent=2))
-            print("Local original created. Timestamping and IPFS publication are separate steps.")
+            print(f"Local original created: {args.output.resolve()}")
+            print(f"SHA-256: {metadata['sha256']}")
+            print(f"Size: {metadata['size_bytes']} bytes")
+            print("Identity embedded: " + ("YES" if _SESSION_IDENTITY is not None else "NO (direct CLI mode)"))
+            print("Timestamping and IPFS publication are separate steps.")
             return 0
 
         if args.command == "publish":
