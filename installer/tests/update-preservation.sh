@@ -36,11 +36,14 @@ chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 # Create a deterministic release archive. The fake curl prevents network access.
 release_root="$TEMP_ROOT/release-root"
-mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity"
+mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity" \
+  "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper"
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
 printf '1.2.3\n' > "$release_root/Node-Core-OS-fixture/VERSION"
+printf 'print("updated HashPaper")\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/main.py"
+printf 'VALUE = "updated HashPaper CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper/cli.py"
 printf '{"sha":"1111111111111111111111111111111111111111"}\n' > "$TEST_FIXTURES/latest-commit.json"
 tar -czf "$TEST_FIXTURES/1111111111111111111111111111111111111111.tar.gz" \
   -C "$release_root" Node-Core-OS-fixture
@@ -109,6 +112,9 @@ grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx 'IDENTITY_PROFILE_RELEASE = "1.2.2"' "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py"
 printf 'Updater happy-path application check passed.\\n'
 grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+test -x "$NODE_CORE_DATA_DIR/bin/hashpaper"
+grep -q 'updated HashPaper' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
+grep -q 'updated HashPaper CLI' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/hashpaper/cli.py"
 printf 'Updater happy-path commit marker check passed.\\n'
 
 # Verify Kubo, its repository, local storage, and configuration remain untouched.
@@ -121,6 +127,19 @@ grep -qx 'preserve HashPaper proof' "$NODE_CORE_DATA_DIR/hashpaper/proofs/docume
 grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/document-001.json"
 grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 printf 'Updater happy-path persistence checks passed.\\n'
+
+# A clean installer invocation must not erase an existing installation.
+set +e
+bash "$REPOSITORY_ROOT/installer/install.sh" > "$TEMP_ROOT/reinstall-refused.log" 2>&1
+reinstall_status=$?
+set -e
+test "$reinstall_status" -ne 0
+grep -q 'Use .*node-core-update to update an existing installation' "$TEMP_ROOT/reinstall-refused.log"
+grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
+
 
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
