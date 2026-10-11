@@ -95,6 +95,7 @@ printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx 'IDENTITY_PROFILE_RELEASE = "1.2.2"' "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py"
 printf 'Updater happy-path application check passed.\\n'
 grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
@@ -123,6 +124,7 @@ set -e
 test "$update_status" -ne 0
 grep -q 'Rolling back Node Core application' "$TEMP_ROOT/rollback.log"
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 
 # A failed update must also preserve all persistent user data and Kubo assets.
