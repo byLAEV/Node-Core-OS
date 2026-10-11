@@ -9,7 +9,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from hashpaper.documents import build_transparent_package, sha256_bytes, write_original, write_package
+from hashpaper.documents import build_transparent_package, sha256_bytes, validate_ots_metadata, write_original, write_package
 
 
 class HashPaperDocumentTests(unittest.TestCase):
@@ -51,6 +51,62 @@ class HashPaperDocumentTests(unittest.TestCase):
         self.assertEqual(package["opentimestamps"]["status"], "NOT_SUBMITTED")
         self.assertIsNone(package["bitcoin"]["block_hash"])
         self.assertIsNone(package["publication"]["ipfs_cid"])
+
+    def test_ots_report_must_match_exact_original_and_real_proof(self):
+        original = self.root / "document.md"
+        original.write_text("Synthetic document\\n", encoding="utf-8")
+        proof = Path(str(original) + ".ots")
+        proof.write_bytes(b"synthetic-ots-proof")
+        metadata = {
+            "operation": "verify",
+            "status": "WAITING_FOR_BITCOIN",
+            "proof_verification": "PENDING",
+            "proof_file": str(proof),
+            "original_sha256": hashlib.sha256(original.read_bytes()).hexdigest(),
+            "stdout": f"proof path: {proof}",
+            "stderr": "",
+        }
+        sanitized = validate_ots_metadata(original, metadata)
+        self.assertEqual(sanitized["proof_file"], proof.name)
+        self.assertNotIn(str(self.root), sanitized["stdout"])
+
+        wrong_digest = dict(metadata, original_sha256="0" * 64)
+        with self.assertRaisesRegex(ValueError, "SHA-256"):
+            validate_ots_metadata(original, wrong_digest)
+
+    def test_ots_report_cannot_self_assert_verified_status(self):
+        original = self.root / "document.md"
+        original.write_text("Synthetic document\\n", encoding="utf-8")
+        proof = Path(str(original) + ".ots")
+        proof.write_bytes(b"synthetic-ots-proof")
+        metadata = {
+            "operation": "verify",
+            "status": "VERIFIED",
+            "proof_verification": "SUCCESS",
+            "proof_file": str(proof),
+            "original_sha256": hashlib.sha256(original.read_bytes()).hexdigest(),
+        }
+        with self.assertRaisesRegex(ValueError, "cannot establish VERIFIED"):
+            build_transparent_package(
+                original_path=original,
+                identity_profile=None,
+                node_id=None,
+                ots_metadata=metadata,
+            )
+
+    def test_ots_report_requires_existing_nonempty_proof(self):
+        original = self.root / "document.md"
+        original.write_text("Synthetic document\\n", encoding="utf-8")
+        proof = Path(str(original) + ".ots")
+        metadata = {
+            "operation": "verify",
+            "status": "WAITING_FOR_BITCOIN",
+            "proof_verification": "PENDING",
+            "proof_file": str(proof),
+            "original_sha256": hashlib.sha256(original.read_bytes()).hexdigest(),
+        }
+        with self.assertRaisesRegex(ValueError, "proof is missing or empty"):
+            validate_ots_metadata(original, metadata)
 
     def test_package_rejects_non_utf8_source(self):
         original = self.root / "binary.txt"
