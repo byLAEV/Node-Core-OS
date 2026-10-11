@@ -120,6 +120,12 @@ class HashPaperDocumentTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_transparent_package(original_path=original, identity_profile=None, node_id=None)
 
+    def test_package_rejects_terminal_control_characters_in_existing_original(self):
+        original = self.root / "malformed.md"
+        original.write_text("# title\n\n\x1b\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "terminal control characters"):
+            build_transparent_package(original_path=original, identity_profile=None, node_id=None)
+
     def test_package_writes_valid_json_with_private_permissions(self):
         original = self.root / "doc.txt"
         original.write_text("test", encoding="utf-8")
