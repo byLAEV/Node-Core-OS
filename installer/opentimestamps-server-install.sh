@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  exit 1
+fi
+
+
 # Optional source setup for the official OpenTimestamps calendar server.
 # This installs source and Python dependencies only. It does not start a public
 # service, configure Bitcoin Core, create a funded wallet, or expose a network port.
