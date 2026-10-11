@@ -26,6 +26,9 @@ class IdentityProfileStoreTests(unittest.TestCase):
             issuing_country="Costa Rica",
             document_type="National identity document",
             document_number="SYNTHETIC-TEST-0001",
+            birth_date="1990-05-12",
+            height_cm=178,
+            gender="Man",
         )
 
     def test_profile_is_saved_locally_and_marked_declared(self):
@@ -33,6 +36,11 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertTrue(self.store.profile_path.is_file())
         self.assertEqual(profile["identity_status"], "declared")
         self.assertEqual(profile["full_name"], "Sample Person")
+        self.assertEqual(profile["birth_date"], "1990-05-12")
+        self.assertEqual(profile["height_cm"], 178)
+        self.assertEqual(profile["gender"], "Man")
+        self.assertTrue(profile["created_at"].endswith("+00:00"))
+        self.assertTrue(profile["updated_at"].endswith("+00:00"))
         self.assertIsNone(profile["node_id"])
         stored = json.loads(self.store.profile_path.read_text(encoding="utf-8"))
         self.assertEqual(stored["document_number"], "SYNTHETIC-TEST-0001")
@@ -51,6 +59,11 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertEqual(updated["identity_id"], original["identity_id"])
         self.assertEqual(updated["node_id"], "12D3KooWExamplePeerId")
         self.assertEqual(updated["full_name"], "Sample Person Updated")
+        self.assertEqual(updated["birth_date"], "1990-05-12")
+        self.assertEqual(updated["height_cm"], 178)
+        self.assertEqual(updated["gender"], "Man")
+        self.assertEqual(updated["created_at"], original["created_at"])
+        self.assertGreaterEqual(updated["updated_at"], original["updated_at"])
 
     def test_association_requires_profile_and_nonempty_node_id(self):
         with self.assertRaises(ValueError):
@@ -84,10 +97,37 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertIn("Issuing country: Costa Rica", displayed)
         self.assertIn("Document type: National identity document", displayed)
         self.assertIn("Document number: SYNTHETIC-TEST-0001", displayed)
+        self.assertIn("Date of birth: 1990-05-12", displayed)
+        self.assertIn("Height: 178 cm", displayed)
+        self.assertIn("Gender: Man", displayed)
+        self.assertIn(f"Identity data first entered (UTC): {profile['created_at']}", displayed)
+        self.assertIn(f"Identity data last updated (UTC): {profile['updated_at']}", displayed)
         self.assertIn(f"Logical identity ID: {profile['identity_id']}", displayed)
         self.assertIn("12D3KooWExamplePeerId", displayed)
         self.assertIn("Identity data status: Declared", displayed)
         self.assertIn("Node Core OS network consensus verification: Not verified", displayed)
+
+    def test_invalid_birth_date_and_height_are_rejected(self):
+        with self.assertRaises(ValueError):
+            self.store.save_declared_profile(
+                full_name="Sample Person",
+                alias="",
+                nationality="",
+                issuing_country="Costa Rica",
+                document_type="National identity document",
+                document_number="SYNTHETIC-TEST-0001",
+                birth_date="2035-01-01",
+            )
+        with self.assertRaises(ValueError):
+            self.store.save_declared_profile(
+                full_name="Sample Person",
+                alias="",
+                nationality="",
+                issuing_country="Costa Rica",
+                document_type="National identity document",
+                document_number="SYNTHETIC-TEST-0001",
+                height_cm="not-a-number",
+            )
 
     def test_profile_file_permissions_are_private_where_supported(self):
         self.save_sample()
