@@ -200,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
             print("The CID is recorded in this separate receipt because embedding a file's own CID in itself would change the content and CID.")
             return 0
 
-        if args.command in {"stamp", "check", "upgrade"}:
+        if args.command in {"stamp", "check", "upgrade", "proof-info"}:
             if args.report:
                 proof_path = Path(str(args.input.expanduser()) + ".ots")
                 if _same_path(args.report, args.input) or _same_path(args.report, proof_path):
