@@ -60,3 +60,24 @@ The updater preservation test seeds and checks these data categories through suc
 - Recheck the resulting proof after an attestation becomes available, and claim `VERIFIED` only after the official client verifies it against the original document.
 - Continue validating updater preservation and failure paths as the updater evolves.
 - Do not claim encryption, civil identity verification, authorship, or truth from a hash, CID, Peer ID, or timestamp alone.
+
+## OpenTimestamps evidence lifecycle and continuity
+
+OpenTimestamps confirmation may take hours or days. A proof that is pending confirmation is an expected intermediate state, not a verification failure. HashPaper must not assume that a Bitcoin transaction ID exists, that a transaction is in the mempool, or that a Bitcoin block attestation is available before the official client reports it.
+
+Every timestamp report records the SHA-256 fingerprint of the original document and, when a non-empty proof exists, the SHA-256 fingerprint of the exact local `.ots` proof. These are local integrity fingerprints, not identifiers issued by OpenTimestamps or Bitcoin. A proof upgrade records the prior proof fingerprint when the bytes change, while the existing `.before-upgrade` backup preserves the prior proof bytes. This lets operators compare evidence across upgrade attempts without discarding the earlier proof.
+
+HashPaper exposes calendar URLs and Bitcoin transaction IDs only when those values are explicitly present in the official client's captured output. It does not infer a transaction ID from an arbitrary 64-character hash, manufacture missing identifiers, or interpret a calendar URL as proof of Bitcoin confirmation. The captured standard output and standard error remain available for inspection. An identifier that the official client does not expose is reported as unavailable; the application must not pretend that it extracted all internal proof fields.
+
+Use the following lifecycle:
+
+1. **Submission:** retain the original document, its SHA-256, the created `.ots` proof, its SHA-256, and any calendar URLs or explicitly labelled transaction IDs actually printed by the official client. The status remains unverified.
+2. **Pending period:** rerun `check` to ask the official client to verify the current proof. If it reports pending Bitcoin confirmation, preserve that state and the available evidence. Network failures must remain distinguishable from pending confirmation.
+3. **Upgrade:** run `upgrade` only when appropriate. Preserve the prior proof when the proof bytes change. An upgrade result such as “Timestamp is complete” is not, by itself, a successful verification against the original document.
+4. **Verification:** run `check` after upgrade. Report `VERIFIED` only when the official verifier reports a Bitcoin block attestation for the proof. Record the reported block height and current proof fingerprint. Never claim a block height that was not returned by the verifier.
+5. **Continuity:** retain the original document fingerprint, prior and current proof fingerprints, captured client output, and any available identifiers. These fingerprints support comparison of local artifacts; they do not replace official OpenTimestamps verification or independently prove that an identifier belongs to a particular transaction.
+
+The `proof_sha256`, `previous_proof_sha256`, `calendar_urls`, and `bitcoin_transaction_ids` fields are additive report metadata. Empty identifier lists mean the official output did not expose a matching identifier; they do not mean no such identifier exists internally. The parser is intentionally conservative.
+
+Unit tests use a fake `ots` executable and validate metadata extraction and proof continuity. They do not establish that a real calendar accepted a submission, that a transaction entered the mempool, or that a Bitcoin block confirmed a timestamp. Real-network validation must be reported separately and must not be represented as successful until the official verifier returns a confirmed attestation.
+
