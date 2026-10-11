@@ -1,0 +1,31 @@
+name: Node Core OS — Identity Presence Tests
+on:
+  push:
+    branches: [main, "feature/identity-presence-sync"]
+    paths:
+      - "node_core/identity_presence.py"
+      - "tests/test_identity_presence.py"
+      - ".github/workflows/identity-presence.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "node_core/identity_presence.py"
+      - "tests/test_identity_presence.py"
+      - ".github/workflows/identity-presence.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  identity-presence:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify CI runs as a non-root user
+        run: test "$(id -u)" -ne 0
+      - name: Compile Python sources
+        run: python -m compileall -q main.py node_core tests
+      - name: Run identity-presence tests
+        run: python -m unittest discover -s tests -p 'test_identity_presence.py' -v
