@@ -450,7 +450,7 @@ jobs:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
         run: |
           set -euo pipefail
-          export HOME="${RUNNER_TEMP}/node-core-home"
+          export HOME="${RUNNER_TEMP}/node-core-home-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${SERVICE_MODE:-${{ matrix.service_mode }}}"
           marker="$HOME/node-core-uninstall-safety-marker"
           printf 'must survive uninstall safety tests\n' > "$marker"
           for dangerous in "$HOME" "$HOME/" "$HOME/." "$HOME/./" "$HOME/.." "$HOME/../"; do
