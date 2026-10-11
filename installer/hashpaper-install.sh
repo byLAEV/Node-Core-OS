@@ -53,16 +53,16 @@ require_user_installation() {
 ensure_owned_directory() {
   local directory="$1"
   if [[ -L "$directory" ]]; then
-    printf 'Refusing to use a symbolic-link directory: %s\\n' "$directory" >&2
+    printf 'Refusing to use a symbolic-link directory: %s\n' "$directory" >&2
     exit 1
   fi
   mkdir -p "$directory"
   [[ -d "$directory" && ! -L "$directory" ]] || {
-    printf 'Required directory is not a real directory: %s\\n' "$directory" >&2
+    printf 'Required directory is not a real directory: %s\n' "$directory" >&2
     exit 1
   }
   [[ "$(stat -c '%u' "$directory")" == "$(id -u)" ]] || {
-    printf 'Directory is not owned by the current user: %s\\n' "$directory" >&2
+    printf 'Directory is not owned by the current user: %s\n' "$directory" >&2
     exit 1
   }
   chmod 700 "$directory"
