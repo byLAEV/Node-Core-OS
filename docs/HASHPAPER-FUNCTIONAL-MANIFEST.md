@@ -427,7 +427,52 @@ HashPaper MUST NOT imply any of the following unless a separate mechanism proves
 
 The tool should preserve evidence and report uncertainty explicitly rather than manufacture certainty.
 
-## 13. Change-control rule for this manifest
+## 13. Experimental example: cryptographic identifiers for process descriptions
+
+**Purpose:** demonstrate how a content hash can identify a specific process description in this manifest. This is a documentation and user-education experiment only. It does not add runtime behavior, execute steps, sign requests, or change HashPaper's internal request handling.
+
+### 13.1 Rules for this example
+
+1. Each identifier below is the SHA-256 digest of the exact UTF-8 bytes of the English description shown in the table.
+2. For reproducibility, hash only the description text in the table cell: no quotation marks, no identifier, no table separators, and no trailing newline.
+3. The `HP-DESC-NNN` value is a human-readable logical index. It is not the cryptographic hash.
+4. The `sha256:` value identifies the exact description text. It does not, by itself, encode the item's order, meaning, author, or execution result.
+5. The process order is defined separately by the sequence number and the `next` reference. The sequence is documentary and does not prove that the application actually executed these steps.
+6. If a description changes, its SHA-256 must be recalculated and any references to the old hash must be reviewed. Do not silently reuse an old hash for changed text.
+
+### 13.2 Worked example
+
+This illustrative flow describes creating a local HashPaper document. The descriptions are intended to align with the current documented behavior; before using them as conformance evidence, compare each statement with the source and tests cited elsewhere in this manifest.
+
+| Sequence | Logical index | SHA-256 identifier of exact description text | Description | Next logical index |
+|---:|---|---|---|---|
+| 1 | `HP-DESC-001` | `sha256:f5a3b3e2c7f34a2777a517b5af201edd40b5ce500ea2df9c43e0f72bb0ef00c6` | Receive a user request to create a local HashPaper document. | `HP-DESC-002` |
+| 2 | `HP-DESC-002` | `sha256:41833b6c8d93ac49773045305de7c979548db39c4057efe180e7e2eb8be2bce4` | Validate the document title and body before writing. | `HP-DESC-003` |
+| 3 | `HP-DESC-003` | `sha256:7a1c4c654ce9c79a1b5037134a01146de7389ab3edadc0ddc77111698971dca5` | Write the original document to the configured local storage path without overwriting an existing file. | `HP-DESC-004` |
+| 4 | `HP-DESC-004` | `sha256:4e6e65b3ebd18d7aa81707a3b0caf0de6844816dcd08f90b773648401357a31b` | Calculate SHA-256 over the exact bytes of the saved original document. | `HP-DESC-005` |
+| 5 | `HP-DESC-005` | `sha256:391d6b0bc0fce701273012c2282564a16b543ac1623e1d45c95f02404ca563b8` | Report the resulting path and hash to the user; timestamping and publication remain separate operations. | `END` |
+
+### 13.3 How to read the index
+
+- Looking up `HP-DESC-003` tells the reader that sequence 3 describes writing the original document without overwriting an existing file.
+- Comparing the calculated SHA-256 with the table value checks whether the description text is unchanged under the encoding and byte rules above.
+- Following `next` from `HP-DESC-001` to `HP-DESC-005` reconstructs the documented sequence.
+- `END` is a logical terminator, not a cryptographic identifier.
+
+This is a simple indexed reference model, not yet a hash chain: the hash of each item covers its own description only, and the order is recorded separately. A future experiment could hash a canonical structured record that includes the sequence and previous record's hash, but that would be a distinct design and must define serialization, versioning, and verification rules first.
+
+### 13.4 Validation checklist for the example
+
+- [ ] Recalculate every digest from the exact description text using UTF-8 and no trailing newline.
+- [ ] Confirm each logical index is unique.
+- [ ] Confirm every `next` reference resolves to an existing index or `END`.
+- [ ] Confirm sequence numbers are strictly increasing and there are no accidental loops.
+- [ ] Check each description against the implementation and tests; mark unsupported claims as unverified or revise them.
+- [ ] Change one description in a controlled copy and confirm its digest no longer matches the recorded value.
+- [ ] Ask a reader unfamiliar with the example to resolve an index and explain its meaning and next step.
+- [ ] Record the result as a documentation experiment. Do not describe it as a HashPaper runtime feature.
+
+## 14. Change-control rule for this manifest
 
 Every change to a menu label, command, file path, default, status mapping, confirmation phrase, output schema, or storage write MUST include:
 
