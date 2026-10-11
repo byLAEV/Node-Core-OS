@@ -682,7 +682,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.report:
                 write_package(args.report, report)
             print(json.dumps(report, ensure_ascii=False, indent=2))
-            print("\\nHashPaper evidence identifiers")
+            print("\nHashPaper evidence identifiers")
             print(f"Document SHA-256: {result.original_sha256 or 'NOT AVAILABLE'}")
             print(f"OpenTimestamps proof SHA-256: {result.proof_sha256 or 'NOT AVAILABLE'}")
             print(f"OpenTimestamps status: {result.status}")
