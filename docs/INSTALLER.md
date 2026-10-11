@@ -69,6 +69,16 @@ There is no Android, Termux, Windows, macOS, GUI, or web installer path.
 
 The installation is user-owned and therefore does not require a system-wide package manager. Installer, updater, and uninstaller explicitly refuse to run as UID 0 (root). The configured data directory must resolve to a directory inside the current user's HOME; an existing target must be a real directory owned by that user. Run all commands as the normal account, without `sudo`.
 
+## Application version and update behavior
+
+The repository `VERSION` file is the user-facing application version. Any user-visible application release must update this file so an existing installation can detect the release through the main-menu version check.
+
+The installed launcher exposes `~/.node-core/bin/node-core-update`. The updater checks the latest commit on the configured repository branch, asks for explicit confirmation, downloads that exact commit archive, validates and compiles the application, and rolls back the application and commit marker if verification fails.
+
+An update replaces only `~/.node-core/app/` and its commit marker. It must preserve `storage/`, the Kubo executable, the Kubo repository, and `config.json`. The installer and updater are user-owned operations and must not require root or sudo.
+
+The installer verification contract explicitly checks the identity-profile module as well as the existing evidence and My Life modules. The updater regression test verifies that the identity-profile module is delivered by an update while persistent user data and Kubo assets remain unchanged.
+
 ## Node Core launcher
 
 The installer creates:
