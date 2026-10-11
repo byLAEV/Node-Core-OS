@@ -284,6 +284,7 @@ fi
 exec "$REAL_CP" "$@"
 FAKE_CP
 chmod +x "$TEMP_ROOT/fake-bin/cp"
+hash -r
 export REAL_CP
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
 set +e
