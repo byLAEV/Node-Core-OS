@@ -33,15 +33,17 @@ class HashPaperMenuTests(unittest.TestCase):
         ])
 
     def test_proof_info_menu_uses_default_document_without_path_prompt(self):
-        default_document = Path("/tmp/synthetic-document.md")
-        answers = ["7", "", "0"]
-        with patch.object(cli, "_default_document_path", return_value=default_document):
-            with patch("builtins.input", side_effect=answers):
-                with patch.object(cli, "main", side_effect=[0]) as command:
-                    self.assertEqual(cli.run_interactive_menu(), 0)
-        command.assert_called_once_with([
-            "proof-info", "--input", str(default_document)
-        ])
+        with tempfile.TemporaryDirectory() as temporary:
+            default_document = Path(temporary) / "synthetic-document.md"
+            default_document.write_text("synthetic", encoding="utf-8")
+            answers = ["7", "", "0"]
+            with patch.object(cli, "_default_document_path", return_value=default_document):
+                with patch("builtins.input", side_effect=answers):
+                    with patch.object(cli, "main", side_effect=[0]) as command:
+                        self.assertEqual(cli.run_interactive_menu(), 0)
+            command.assert_called_once_with([
+                "proof-info", "--input", str(default_document)
+            ])
 
     def test_environment_variables_are_expanded_in_explicit_paths(self):
         with patch.dict(os.environ, {"HASH_PAPER_TEST_PATH": "/tmp/expanded.md"}):
