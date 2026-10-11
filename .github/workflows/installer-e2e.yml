@@ -116,6 +116,23 @@ jobs:
           NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" \
             python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
 
+      - name: Test installed HashPaper interactive menu
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e-data
+        run: |
+          set -euo pipefail
+          launcher="$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
+          test -f "$launcher"
+          output="$(printf '0\\n' | python3 "$launcher")"
+          printf '%s\\n' "$output"
+          grep -Fq "HashPaper for Node Core OS" <<< "$output"
+          grep -Fq "1. Create original document" <<< "$output"
+          grep -Fq "2. Submit document to OpenTimestamps" <<< "$output"
+          grep -Fq "5. Build transparent package" <<< "$output"
+          grep -Fq "6. Publish package to IPFS" <<< "$output"
+          grep -Fq "0. Exit" <<< "$output"
+          printf 'Installed HashPaper interactive menu test passed.\\n'
+
       - name: Test HashPaper package publication against live Kubo
         env:
           HOME: ${{ runner.temp }}/node-core-home
