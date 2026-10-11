@@ -45,9 +45,71 @@ ensure_opentimestamps_client() {
   fi
 
   if [[ ! -x "$ots_bin" ]] || ! "$ots_bin" --help >/dev/null 2>&1 || ! "$venv_python" -c 'import opentimestamps' >/dev/null 2>&1; then
-    printf '%s\n' 'Installing the official opentimestamps-client package...'
-    "$venv_python" -m pip install --upgrade pip
-    "$venv_python" -m pip install --upgrade opentimestamps-client
+    local installed=0 source_work='' source_url
+    printf '%s\n' 'Installing the official OpenTimestamps client (pinned release 0.7.2)...'
+
+    # Primary source: the official PyPI package. Keep pip inside this venv.
+    if "$venv_python" -m pip install --upgrade --retries 3 --timeout 20 \
+      --index-url https://pypi.org/simple 'opentimestamps-client==0.7.2'; then
+      installed=1
+    else
+      printf '%s\n' 'PyPI installation failed; trying the official GitHub source archive.' >&2
+    fi
+
+    # Fallbacks are official upstream GitHub archive endpoints for the same tag.
+    if [[ "$installed" != 1 ]]; then
+      source_work="$(mktemp -d "$runtime_dir/opentimestamps-source.XXXXXX")" || {
+        printf 'Could not create a temporary OpenTimestamps source directory.\n' >&2
+        return 1
+      }
+      local source_urls=(
+        'https://github.com/opentimestamps/opentimestamps-client/archive/refs/tags/opentimestamps-client-v0.7.2.tar.gz'
+        'https://codeload.github.com/opentimestamps/opentimestamps-client/tar.gz/refs/tags/opentimestamps-client-v0.7.2'
+      )
+      for source_url in "${source_urls[@]}"; do
+        rm -f -- "$source_work/source.tar.gz"
+        printf 'Trying OpenTimestamps source: %s\n' "$source_url"
+        if command -v curl >/dev/null 2>&1; then
+          if ! curl --fail --location --silent --show-error --connect-timeout 15 \
+            --retry 2 --retry-delay 2 --retry-all-errors \
+            --output "$source_work/source.tar.gz" "$source_url"; then
+            continue
+          fi
+        elif command -v wget >/dev/null 2>&1; then
+          if ! wget --quiet --connect-timeout=15 --tries=3 --waitretry=2 \
+            --output-document="$source_work/source.tar.gz" "$source_url"; then
+            continue
+          fi
+        else
+          printf 'Neither curl nor wget is available for source fallback.\n' >&2
+          rm -rf -- "$source_work"
+          return 1
+        fi
+
+        if ! tar -tzf "$source_work/source.tar.gz" >/dev/null 2>&1; then
+          printf 'OpenTimestamps source archive is invalid; trying the next official source.\n' >&2
+          continue
+        fi
+        mkdir -p "$source_work/extracted"
+        if ! tar -xzf "$source_work/source.tar.gz" -C "$source_work/extracted"; then
+          rm -rf -- "$source_work/extracted"
+          continue
+        fi
+        local source_dir
+        source_dir="$(find "$source_work/extracted" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+        if [[ -n "$source_dir" ]] && "$venv_python" -m pip install --upgrade --retries 3 --timeout 20 "$source_dir"; then
+          installed=1
+          break
+        fi
+        rm -rf -- "$source_work/extracted"
+      done
+      rm -rf -- "$source_work"
+    fi
+
+    if [[ "$installed" != 1 ]]; then
+      printf 'Could not install OpenTimestamps client from PyPI or either official GitHub source.\n' >&2
+      return 1
+    fi
   fi
 
   if [[ ! -x "$ots_bin" ]]; then
