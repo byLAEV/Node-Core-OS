@@ -2,6 +2,18 @@
 
 All notable changes to Node Core OS are documented here.
 
+## HashPaper [0.3.3] - 2026-10-11
+
+### Fixed
+- Validate that both the official `ots` command and its Python `opentimestamps` module are usable in the private user-owned virtual environment.
+- Create the persistent `~/.node-core/hashpaper/proofs/` directory during installation.
+- Reject symbolic-link and foreign-owned HashPaper runtime/data/launcher directories instead of writing through them.
+- Keep HashPaper installation and dependency setup in the normal user context; root execution remains rejected.
+
+### Validation
+- Extend the HashPaper installer regression test to assert that the proofs directory is present and private.
+- Real Termux and live public-calendar execution must be run on the target device; they are not claimed as passed by this change.
+
 ## [1.2.7] - 2026-10-11
 
 ### Added
