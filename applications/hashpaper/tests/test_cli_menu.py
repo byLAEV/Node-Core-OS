@@ -36,6 +36,24 @@ class HashPaperMenuTests(unittest.TestCase):
             "--text", "Synthetic body",
         ])
 
+
+    def test_proof_info_menu_option_builds_expected_cli_arguments(self):
+        answers = [
+            "7",
+            "/tmp/synthetic-document.md",
+            "/tmp/synthetic-proof-info.json",
+            "",
+            "0",
+        ]
+        with patch("builtins.input", side_effect=answers):
+            with patch.object(cli, "main", side_effect=[0]) as command:
+                self.assertEqual(cli.run_interactive_menu(), 0)
+        command.assert_called_once_with([
+            "proof-info",
+            "--input", "/tmp/synthetic-document.md",
+            "--report", "/tmp/synthetic-proof-info.json",
+        ])
+
     def test_menu_rejects_unknown_choice_and_can_exit(self):
         with patch("builtins.input", side_effect=["unknown", "0"]):
             self.assertEqual(cli.run_interactive_menu(), 0)
