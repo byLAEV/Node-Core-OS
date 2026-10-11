@@ -13,7 +13,7 @@ The following components are implemented in the main branch:
 - A Kubo/IPFS publisher using Node Core OS `ContentManager` and `KuboManager`. It asks for explicit confirmation, retrieves the published CID, compares the retrieved bytes, and checks pin state.
 - An identity association flow that requires an existing Node Core OS identity profile, a live Kubo Peer ID, and explicit confirmation.
 - A Node Core OS Applications-menu entry with an interactive HashPaper menu for creating documents, running timestamp operations, building packages, and publishing; installer checks for HashPaper files/compilation.
-- Persistent HashPaper data directories outside the replaceable application-code tree.
+- Persistent HashPaper data directories outside the replaceable application-code tree.\n- A companion user-level installer at `installer/hashpaper-install.sh` that creates `~/.node-core/bin/hashpaper` for an existing Node Core OS installation without replacing application files or user data.
 - Automated tests for the local application, timestamp adapter behavior, publication behavior, and data-preservation scenarios.
 
 GitHub Actions has passed the Linux terminal CI and the Ubuntu 24.04 installer E2E workflow. The E2E run includes a clean install in both service modes, publication/retrieval against a live Kubo daemon, identity association against the live Kubo Peer ID, and uninstall safety checks. See the repository Actions page for the exact run and commit.
