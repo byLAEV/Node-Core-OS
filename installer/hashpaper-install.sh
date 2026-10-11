@@ -27,9 +27,15 @@ require_user_installation() {
     exit 1
   }
 
-  [[ -d "$NODE_CORE_APP_DIR" && -f "$HASH_PAPER_ENTRY" ]] || {
-    printf 'Node Core OS with HashPaper is not installed at: %s\n' "$NODE_CORE_APP_DIR" >&2
+  [[ -d "$NODE_CORE_APP_DIR" && -f "$HASH_PAPER_ENTRY" && -f "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION" ]] || {
+    printf 'Node Core OS with a versioned HashPaper installation is not installed at: %s\n' "$NODE_CORE_APP_DIR" >&2
     printf 'Install or update Node Core OS first, then run this installer again.\n' >&2
+    exit 1
+  }
+  local installed_version
+  installed_version="$(tr -d '\r\n' < "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION")"
+  [[ "$installed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+    printf 'Installed HashPaper version metadata is invalid: %s\n' "$installed_version" >&2
     exit 1
   }
 
@@ -64,6 +70,10 @@ ensure_owned_directory() {
 
 install_hashpaper_launcher() {
   ensure_owned_directory "$NODE_CORE_BIN_DIR"
+  if [[ -L "$HASH_PAPER_LAUNCHER" ]]; then
+    printf 'Refusing to overwrite a symbolic-link launcher: %s\n' "$HASH_PAPER_LAUNCHER" >&2
+    exit 1
+  fi
 
   cat > "$HASH_PAPER_LAUNCHER" <<'LAUNCHER'
 #!/usr/bin/env bash
