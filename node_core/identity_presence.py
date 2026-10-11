@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 
 PROTOCOL = "node-core-identity-presence/1.0"
@@ -107,6 +107,14 @@ class IdentityPresence:
             raise IdentityPresenceError(f"Could not retrieve declaration by CID: {exc}") from exc
         if not isinstance(payload, dict) or payload.get("protocol") != PROTOCOL:
             raise IdentityPresenceError("CID does not contain a supported identity declaration.")
+        allowed_fields = {
+            "protocol", "message_type", "node_id", "identity_associated",
+            "claim_status", "created_at",
+        }
+        if set(payload) - allowed_fields:
+            raise IdentityPresenceError("Declaration contains unsupported fields; refusing to store possible personal data.")
+        if payload.get("message_type") != "identity_association":
+            raise IdentityPresenceError("Declaration has an unsupported message type.")
         node_id = payload.get("node_id")
         if not isinstance(node_id, str) or not node_id or "/" in node_id:
             raise IdentityPresenceError("Declaration has an invalid public node ID.")
@@ -126,6 +134,14 @@ class IdentityPresence:
                 payload = self._read_json(path)
                 if payload.get("protocol") != PROTOCOL:
                     continue
+                allowed_fields = {
+                    "protocol", "message_type", "node_id", "identity_associated",
+                    "claim_status", "created_at",
+                }
+                if set(payload) - allowed_fields:
+                    raise IdentityPresenceError(
+                        f"Declaration file {path.name} contains unsupported fields."
+                    )
                 node_id = payload.get("node_id")
                 if not isinstance(node_id, str) or not node_id:
                     continue
@@ -209,7 +225,24 @@ class IdentityPresence:
                 or not isinstance(announcement.get("identity_associated"), bool)
             ):
                 raise IdentityPresenceError("Report contains an invalid announcement.")
-        target = self.reports_dir / f"{report['report_reference_id']}.json"
+        reference_id = report.get("report_reference_id")
+        try:
+            UUID(str(reference_id))
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise IdentityPresenceError("Report reference ID must be a UUID.") from exc
+        allowed_report_fields = {
+            "protocol", "report_reference_id", "report_type", "created_at",
+            "report_creator_node_id", "known_nodes", "connected_nodes",
+            "identity_associations_announced", "identity_documents_transmitted",
+            "personal_identity_fields_transmitted", "announcements",
+        }
+        if set(report) - allowed_report_fields:
+            raise IdentityPresenceError("Report contains unsupported fields; refusing to store possible personal data.")
+        if report.get("identity_documents_transmitted") != 0:
+            raise IdentityPresenceError("Report must declare zero identity documents transmitted.")
+        if report.get("personal_identity_fields_transmitted") != 0:
+            raise IdentityPresenceError("Report must declare zero personal identity fields transmitted.")
+        target = self.reports_dir / f"{reference_id}.json"
         target.write_bytes(raw)
         self.current_report_path.write_bytes(raw)
         try:
