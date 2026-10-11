@@ -348,6 +348,8 @@ class MainMenu:
             print(f"\nInstalled: {'Yes' if status.installed else 'No'}")
             print(f"Initialized: {'Yes' if status.initialized else 'No'}")
             print(f"Running: {'Yes' if status.running else 'No'}")
+            print("Daemon mode: detached background process")
+            print(f"Daemon log: {self.runtime.kubo.log_path}")
             choice = input("\n> ").strip()
             try:
                 if choice == "0":
