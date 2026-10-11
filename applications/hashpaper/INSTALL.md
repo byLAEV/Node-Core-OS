@@ -1,6 +1,6 @@
 # HashPaper Installation
 
-HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A companion user-level launcher installer is available at `installer/hashpaper-install.sh`; it requires an existing Node Core OS installation that already contains HashPaper. It does not install Node Core OS or download application code independently.
+HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A user-level launcher is installed automatically by the Node Core OS clean installer and updater at `~/.node-core/bin/hashpaper`. The companion script `installer/hashpaper-install.sh` can recreate that launcher for an existing installation that already contains HashPaper. It does not download application code independently.
 
 ## Requirements
 
@@ -36,7 +36,9 @@ The updater preservation tests check these data categories through successful up
 
 ## Limitations
 
-- The companion installer only installs `~/.node-core/bin/hashpaper`; it is not a standalone installer for a fresh machine and requires Node Core OS to be installed first.
+- The companion launcher installer only creates `~/.node-core/bin/hashpaper`; it is not a standalone installer for a fresh machine and requires Node Core OS to be installed first.
+- The Node Core OS updater downloads the current application source, compiles Node Core OS and HashPaper, runs the HashPaper unit tests before marking the new commit successful, and rolls back application code if verification fails.
+- Re-running the clean installer over an existing `app/` directory is refused; use `~/.node-core/bin/node-core-update` to update existing installations safely.
 - Automated OpenTimestamps tests use a fake executable. Live calendar submission and successful Bitcoin attestation verification must not be inferred from those tests.
 - Encryption is not implemented; the evidence package contains the complete original text and included identity fields in cleartext.
 - Use synthetic data in tests and review the complete package before public IPFS publication.
