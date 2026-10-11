@@ -261,21 +261,72 @@ PY
 
 latest_commit() {
   local response="$NODE_CORE_UPDATE_DIR/latest-commit.json"
+  local temporary_response encoded_branch commit
   mkdir -p "$NODE_CORE_UPDATE_DIR"
-  download_file \
-    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$NODE_CORE_BRANCH" \
-    "$response"
-  python3 - "$response" <<'PY'
+
+  # Branch names often contain slashes. Send the branch as a URL-encoded
+  # query parameter instead of inserting it into the API path.
+  encoded_branch="$(python3 - "$NODE_CORE_BRANCH" <<'PY'
+from urllib.parse import quote
+import sys
+print(quote(sys.argv[1], safe=""))
+PY
+  )" || {
+    printf 'Could not encode the update branch name.\\n' >&2
+    return 1
+  }
+
+  temporary_response="$(mktemp "$NODE_CORE_UPDATE_DIR/latest-commit.XXXXXX")" || {
+    printf 'Could not create a temporary update metadata file.\\n' >&2
+    return 1
+  }
+
+  if ! download_file \
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits?sha=$encoded_branch&per_page=1" \
+    "$temporary_response"; then
+    rm -f -- "$temporary_response"
+    printf 'Could not retrieve update metadata from GitHub for branch: %s\\n' "$NODE_CORE_BRANCH" >&2
+    return 1
+  fi
+
+  if ! commit="$(python3 - "$temporary_response" <<'PY'
 import json
 import re
 import sys
-with open(sys.argv[1], encoding="utf-8") as handle:
-    data = json.load(handle)
-commit = data.get("sha")
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"GitHub update metadata is unreadable: {exc}")
+
+if not isinstance(data, list) or not data:
+    raise SystemExit("GitHub returned no commits for the requested branch.")
+first = data[0]
+commit = first.get("sha") if isinstance(first, dict) else None
 if not isinstance(commit, str) or re.fullmatch(r"[0-9a-fA-F]{40}", commit) is None:
     raise SystemExit("GitHub returned invalid commit metadata; refusing to update.")
 print(commit.lower())
 PY
+  )"; then
+    rm -f -- "$temporary_response"
+    printf 'GitHub returned invalid update metadata; refusing to update.\\n' >&2
+    return 1
+  fi
+
+  # Keep a complete diagnostic/cache copy only after the response is validated.
+  local metadata_temporary="$response.tmp.$$"
+  printf '{"commit":"%s","branch":"%s"}\\n' "$commit" "$NODE_CORE_BRANCH" > "$metadata_temporary" || {
+    rm -f -- "$temporary_response" "$metadata_temporary"
+    return 1
+  }
+  mv -f -- "$metadata_temporary" "$response" || {
+    rm -f -- "$temporary_response" "$metadata_temporary"
+    return 1
+  }
+  rm -f -- "$temporary_response"
+  printf '%s\\n' "$commit"
 }
 
 backup_app() {
