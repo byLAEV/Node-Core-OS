@@ -251,9 +251,23 @@ printf 'Existing-install updater invalid-release-metadata tests passed.\n'
 
 # If rollback itself fails, keep the recovery backup and report the failure honestly.
 printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/latest-commit.json"
-mkdir -p "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core"
+mkdir -p "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core" \
+  "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/hashpaper" \
+  "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/tests"
 printf 'def broken(:\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/main.py"
 printf 'VALUE = "broken"\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core/__init__.py"
+printf 'print("fixture")\\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/main.py"
+printf 'VALUE = "fixture"\\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/hashpaper/cli.py"
+cat > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/tests/test_smoke.py" <<'PY'
+import unittest
+
+class UpdaterFixtureSmokeTest(unittest.TestCase):
+    def test_fixture_release_is_testable(self):
+        self.assertTrue(True)
+
+if __name__ == "__main__":
+    unittest.main()
+PY
 tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
   -C "$TEMP_ROOT/rollback-failure-release" Node-Core-OS-rollback-failure
 
