@@ -12,6 +12,7 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 IDENTITY_FIELDS = (
+    "schema_version",
     "identity_id",
     "full_name",
     "alias",
