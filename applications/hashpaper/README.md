@@ -1,5 +1,9 @@
 # HashPaper for Node Core OS
 
+## Functional manifest and audit manual
+
+The detailed **[HashPaper Functional Manifest and Audit Guide](../../docs/HASHPAPER-FUNCTIONAL-MANIFEST.md)** defines each interactive menu option and CLI command, expected steps, code locations, file/storage effects, observable outputs, security boundaries, failure handling, and the automated/manual tests required to audit conformance. Update the manifest and relevant tests whenever behavior, paths, confirmation prompts, or report schemas change. The manifest describes expected behavior; use the linked source and CI results to verify what actually runs.
+
 HashPaper is an application included in the Node Core OS source tree. It creates local UTF-8 text/Markdown originals, calculates SHA-256 over the exact original bytes, requests timestamp operations through the official OpenTimestamps CLI, builds a transparent JSON evidence package, and publishes that package through the existing Node Core OS Kubo/IPFS content interfaces after explicit confirmation.
 
 ## Pending OpenTimestamps proof display\n\nHashPaper can display the original document SHA-256 and the SHA-256 fingerprint of the local `.ots` proof while the timestamp is pending. The proof-file fingerprint is a local integrity identifier for that exact `.ots` file; it is **not** an official OpenTimestamps-issued timestamp ID and it does not prove Bitcoin confirmation. The displayed state comes from running the official `ots verify` command against the original proof. A pending proof is labelled `WAITING_FOR_BITCOIN` and is not presented as verified.\n\nCLI usage:\n\n```bash\npython applications/hashpaper/main.py proof-info --input /path/to/document.md --report /path/to/proof-info.json\n```\n\n## Current verified milestone
