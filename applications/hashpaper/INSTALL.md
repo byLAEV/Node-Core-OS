@@ -1,13 +1,13 @@
 # HashPaper Installation
 
-HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A user-level launcher is installed automatically by the Node Core OS clean installer and updater at `~/.node-core/bin/hashpaper`. The companion script `installer/hashpaper-install.sh` can recreate that launcher for an existing installation that already contains HashPaper. It does not download application code independently.
+HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A user-level launcher is installed automatically by the Node Core OS clean installer and updater at `~/.node-core/bin/hashpaper`. The companion script `installer/hashpaper-install.sh` can recreate that launcher and install/verify the OpenTimestamps client for an existing installation that already contains HashPaper. It does not download application code independently.
 
-## Requirements
+## Default local paths\n\nThe interactive menu does not ask users to type filesystem paths for normal local workflows. Original text/Markdown documents are stored in `~/.node-core/storage/`; package JSON files are stored in `~/.node-core/hashpaper/packages/`; publication receipts are stored in `~/.node-core/hashpaper/records/`. HashPaper uses the newest local text document by default and never overwrites an existing original or package. Explicit `--input`/`--output` arguments remain available for automation or importing an existing file.\n\n## Requirements
 
 - A supported GNU/Linux terminal environment.
 - Python 3.10 or newer.
 - A functioning Node Core OS installation for identity association and Kubo/IPFS publication.
-- The official OpenTimestamps `ots` executable in `PATH` for timestamp operations.
+- The official `opentimestamps-client` package, installed automatically into the user-owned private environment at `~/.node-core/runtime/opentimestamps-venv/` by the Node Core OS installer/updater or HashPaper installer. No root access or system Python modification is required.
 
 ## Verification
 
@@ -37,7 +37,7 @@ The updater preservation tests check these data categories through successful up
 ## Limitations
 
 - The companion launcher installer only creates `~/.node-core/bin/hashpaper`; it is not a standalone installer for a fresh machine and requires Node Core OS to be installed first.
-- The Node Core OS updater downloads the current application source, compiles Node Core OS and HashPaper, runs the HashPaper unit tests before marking the new commit successful, and rolls back application code if verification fails.
+- The Node Core OS updater downloads the current application source, installs/verifies the official OpenTimestamps CLI in the private user environment, compiles Node Core OS and HashPaper, runs the HashPaper unit tests before marking the new commit successful, and rolls back application code if verification fails. HashPaper resolves the executable directly from that private environment when it is not in `PATH`.
 - Re-running the clean installer over an existing `app/` directory is refused; use `~/.node-core/bin/node-core-update` to update existing installations safely.
 - Automated OpenTimestamps tests use a fake executable. Live calendar submission and successful Bitcoin attestation verification must not be inferred from those tests.
 - Encryption is not implemented; the evidence package contains the complete original text and included identity fields in cleartext.
