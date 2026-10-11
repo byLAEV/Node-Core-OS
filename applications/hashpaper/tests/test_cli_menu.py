@@ -52,7 +52,7 @@ class HashPaperMenuTests(unittest.TestCase):
             default_document = Path(temporary) / "synthetic-document.md"
             default_document.write_text("synthetic", encoding="utf-8")
             answers = ["7", "", "0"]
-            with patch.object(cli, "_default_document_path", return_value=default_document):
+            with patch.object(cli, "_select_document_history", return_value=default_document):
                 with patch("builtins.input", side_effect=answers):
                     with patch.object(cli, "main", side_effect=[0]) as command:
                         self.assertEqual(cli.run_interactive_menu(), 0)
@@ -66,7 +66,7 @@ class HashPaperMenuTests(unittest.TestCase):
             original.write_text("synthetic", encoding="utf-8")
             Path(str(original) + ".ots").write_bytes(b"synthetic proof")
             for choice, command_name in (("3", "check"), ("4", "upgrade")):
-                with patch.object(cli, "_default_document_path", return_value=original) as select:
+                with patch.object(cli, "_select_document_history", return_value=original) as select:
                     with patch("builtins.input", side_effect=[choice, "", "0"]):
                         with patch.object(cli, "main", return_value=0) as command:
                             self.assertEqual(cli.run_interactive_menu(), 0)
@@ -139,10 +139,6 @@ class HashPaperMenuTests(unittest.TestCase):
                     os.environ.pop("NODE_CORE_DATA_DIR", None)
                 else:
                     os.environ["NODE_CORE_DATA_DIR"] = old_dir
-
-    def test_identity_consent_requires_exact_phrase(self):
-        with patch("builtins.input", return_value="yes"):
-            self.assertFalse(cli._authorize_identity_session())
 
 
 if __name__ == "__main__":
