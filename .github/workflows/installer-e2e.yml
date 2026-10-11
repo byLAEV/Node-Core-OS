@@ -389,6 +389,62 @@ jobs:
           cmp -s "$test_content" "$recovered"
           printf "Node Core E2E CID: %s\n" "$cid"
 
+      - name: Test real updater preserves installed HashPaper and user data
+        env:
+          HOME: ${{ runner.temp }}/node-core-home
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          app="$NODE_CORE_DATA_DIR/app"
+          test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+          test -f "$app/installer/update.sh"
+
+          # Seed persistent synthetic HashPaper data and capture exact-byte digests.
+          mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" \
+            "$NODE_CORE_DATA_DIR/hashpaper/proofs" \
+            "$NODE_CORE_DATA_DIR/hashpaper/packages" \
+            "$NODE_CORE_DATA_DIR/hashpaper/records"
+          printf 'synthetic upgrade preservation document\n' > "$NODE_CORE_DATA_DIR/hashpaper/documents/upgrade-preservation.md"
+          printf 'synthetic OTS proof placeholder for preservation test\n' > "$NODE_CORE_DATA_DIR/hashpaper/proofs/upgrade-preservation.md.ots"
+          printf '{"synthetic":"package preservation fixture"}\n' > "$NODE_CORE_DATA_DIR/hashpaper/packages/upgrade-preservation.json"
+          printf '{"synthetic":"publication record preservation fixture"}\n' > "$NODE_CORE_DATA_DIR/hashpaper/records/upgrade-preservation.json"
+          printf 'synthetic local storage preservation fixture\n' > "$NODE_CORE_DATA_DIR/storage/upgrade-preservation.txt"
+
+          document_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/documents/upgrade-preservation.md" | awk '{print $1}')"
+          proof_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/proofs/upgrade-preservation.md.ots" | awk '{print $1}')"
+          package_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/packages/upgrade-preservation.json" | awk '{print $1}')"
+          record_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/records/upgrade-preservation.json" | awk '{print $1}')"
+          storage_hash="$(sha256sum "$NODE_CORE_DATA_DIR/storage/upgrade-preservation.txt" | awk '{print $1}')"
+          identity_hash="$(sha256sum "$NODE_CORE_DATA_DIR/identity/profile.json" | awk '{print $1}')"
+          config_hash="$(sha256sum "$NODE_CORE_DATA_DIR/config.json" | awk '{print $1}')"
+          ipfs_config_hash="$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')"
+          kubo_hash="$(sha256sum "$NODE_CORE_DATA_DIR/bin/ipfs" | awk '{print $1}')"
+
+          # Mark the installed app as an older commit so the real updater exercises
+          # the download, replacement, verification, and cleanup path against main.
+          printf '5858956bf88e457077ea57b7a75c2b9dac1ea897\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+          printf 'y\n' | "$NODE_CORE_DATA_DIR/bin/node-core-update"
+
+          test -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
+          test -x "$NODE_CORE_DATA_DIR/bin/node-core"
+          test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/documents/upgrade-preservation.md" | awk '{print $1}')" = "$document_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/proofs/upgrade-preservation.md.ots" | awk '{print $1}')" = "$proof_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/packages/upgrade-preservation.json" | awk '{print $1}')" = "$package_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/records/upgrade-preservation.json" | awk '{print $1}')" = "$record_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/storage/upgrade-preservation.txt" | awk '{print $1}')" = "$storage_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/identity/profile.json" | awk '{print $1}')" = "$identity_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/config.json" | awk '{print $1}')" = "$config_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')" = "$ipfs_config_hash"
+          test "$(sha256sum "$NODE_CORE_DATA_DIR/bin/ipfs" | awk '{print $1}')" = "$kubo_hash"
+          test ! -e "$NODE_CORE_DATA_DIR/runtime/update/app-backup"
+          test ! -e "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+          test "$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")" != '5858956bf88e457077ea57b7a75c2b9dac1ea897'
+          test "$(id -u)" -ne 0
+          test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
+          printf 'Real updater preserved HashPaper documents, proofs, packages, records, identity, config, local storage, Kubo binary and repository.\n'
+
       - name: Test uninstall rejects dangerous normalized paths
         env:
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
