@@ -1,0 +1,4 @@
+# Local document/package foundation uses the Python standard library.
+# Timestamp commands require the official OpenTimestamps CLI executable `ots`.
+# Install it from the upstream project: https://github.com/opentimestamps/opentimestamps-client
+# Kubo/IPFS is provided by Node Core OS; no separate Python IPFS client is used.
