@@ -82,6 +82,19 @@ class IdentityPresence:
         self._write_json(self.announcements_dir / f"{node_id}.json", payload)
         return payload
 
+    def publish_announcement(self) -> dict[str, Any]:
+        """Publish this node's own declaration by CID and pin it locally."""
+        announcement = self.announce()
+        path = self.announcements_dir / f"{announcement['node_id']}.json"
+        result = self.kubo.add_file(path, pin=True)
+        try:
+            pinned = result.cid in self.kubo.pin_list()
+        except Exception as exc:
+            raise IdentityPresenceError(f"Announcement was added but pin status could not be checked: {exc}") from exc
+        if not pinned:
+            raise IdentityPresenceError(f"Announcement CID {result.cid} is not pinned on this node.")
+        return {"node_id": announcement["node_id"], "cid": result.cid, "pinned_locally": True}
+
     def import_announcement(self, cid: str) -> dict[str, Any]:
         """Fetch one public declaration by CID, validate it, and save it locally."""
         self._ensure_directories()
