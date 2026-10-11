@@ -43,6 +43,8 @@ mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/hashpaper" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/tests"
 printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/main.py"
+printf '1.2.6\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/VERSION"
+printf '0.3.0\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/VERSION"
 printf 'VALUE = "updated"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/node_core/__init__.py"
 cp "$REPOSITORY_ROOT/installer/update.sh" "$TEST_FIXTURES/release/Node-Core-OS-test/installer/update.sh"
 printf 'print("updated HashPaper")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/main.py"
@@ -101,6 +103,8 @@ grep -qx 'preserve Termux IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
 grep -q 'old bundled Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx '1.2.6' "$NODE_CORE_DATA_DIR/app/VERSION"
+grep -qx '0.3.0' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
