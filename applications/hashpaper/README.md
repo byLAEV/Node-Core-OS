@@ -86,3 +86,20 @@ They are outside the replaceable application-code directory so a normal applicat
 A profile marked `declared` is not independently verified civil identity. A Kubo Peer ID identifies a technical node, not the person controlling it. An OpenTimestamps proof does not by itself establish authorship, truth, ownership, or civil identity. A CID identifies exact content; it does not alone prove validity, pinning, or permanent availability.
 
 HashPaper is shipped with the main Node Core OS code tree. A separate HashPaper installer has not yet been implemented. A manual GitHub Actions workflow, `.github/workflows/hashpaper-opentimestamps-live.yml`, is available for live testing with synthetic data. It is intentionally opt-in because it requires external network access; an immediate pending result is not reported as Bitcoin verification.
+
+
+## Independent HashPaper updates
+
+Existing Node Core OS installations can update HashPaper without reinstalling or replacing the Node Core OS core. Download the standalone updater from the repository and run it as the normal Termux/Linux user:
+
+```bash
+mkdir -p "$HOME/.node-core/bin"
+curl --fail --location --show-error \
+  https://raw.githubusercontent.com/byLAEV/Node-Core-OS/main/installer/hashpaper-update.sh \
+  --output "$HOME/.node-core/bin/hashpaper-update"
+chmod 700 "$HOME/.node-core/bin/hashpaper-update"
+"$HOME/.node-core/bin/hashpaper-update"
+```
+
+The updater requires an existing Node Core OS installation. It updates only `app/applications/hashpaper/`, verifies the downloaded code with Python compilation and HashPaper unit tests, asks before replacing files, and attempts rollback if post-update verification fails. Persistent HashPaper data under `~/.node-core/hashpaper/`, identity, configuration, local storage, and Kubo/IPFS data remain outside the update target. Do not run it as root.
+
