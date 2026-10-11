@@ -76,6 +76,8 @@ main() {
   [[ -f "$OTS_HELPER" ]] || { printf "OpenTimestamps installer helper is missing: %s\n" "$OTS_HELPER" >&2; exit 1; }
   source "$OTS_HELPER"
   ensure_opentimestamps_client
+  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
+  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   install_hashpaper_launcher
 }
 
