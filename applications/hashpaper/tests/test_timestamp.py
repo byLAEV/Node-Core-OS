@@ -52,7 +52,7 @@ class OpenTimestampsClientTests(unittest.TestCase):
 
     def test_stamp_creates_proof_and_preserves_original(self):
         original_bytes = self.original_path.read_bytes()
-        result = OpenTimestampsClient().stamp(self.original_path)
+        result = OpenTimestampsClient(executable=str(self.fake_ots)).stamp(self.original_path)
         self.assertEqual(result.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(result.proof_verification, "NOT_VERIFIED")
         self.assertTrue(Path(result.proof_file).is_file())
@@ -73,7 +73,7 @@ class OpenTimestampsClientTests(unittest.TestCase):
     def test_check_distinguishes_pending_from_verified(self):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
-        client = OpenTimestampsClient()
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
         pending = client.check(self.original_path)
         self.assertEqual(pending.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(pending.proof_verification, "PENDING")
@@ -86,7 +86,7 @@ class OpenTimestampsClientTests(unittest.TestCase):
     def test_upgrade_keeps_backup_if_proof_changes(self):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
-        result = OpenTimestampsClient().check(self.original_path, upgrade=True)
+        result = OpenTimestampsClient(executable=str(self.fake_ots)).check(self.original_path, upgrade=True)
         self.assertEqual(result.status, "ANCHOR_AVAILABLE")
         self.assertTrue(Path(str(proof) + ".before-upgrade").is_file())
         self.assertEqual(proof.read_bytes(), b"fake-proof-verified")
@@ -95,7 +95,7 @@ class OpenTimestampsClientTests(unittest.TestCase):
         proof = Path(str(self.original_path) + ".ots")
         original_proof = b"proof-before-interrupted-upgrade"
         proof.write_bytes(original_proof)
-        client = OpenTimestampsClient()
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
 
         def fail_after_modifying_proof(args):
             proof.write_bytes(b"partially-upgraded-proof")
