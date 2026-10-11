@@ -51,7 +51,7 @@ The optional server setup uses the official repository:
 
 - https://github.com/opentimestamps/opentimestamps-server
 
-This component is not required to use HashPaper with public calendars. Preparing its source/dependencies does not start a server or make a calendar operational. Running a calendar requires separate Bitcoin Core/wallet configuration, secrets, stable URI, monitoring, and network security.
+The optional installer attempts the official Git clone first, then official GitHub archive and codeload URLs if Git is unavailable or cloning fails. An archive-based checkout is marked with the official repository URL so a later run can verify it without overwriting it. This component is not required to use HashPaper with public calendars. Preparing its source/dependencies does not start a server or make a calendar operational. Running a calendar requires separate Bitcoin Core/wallet configuration, secrets, stable URI, monitoring, and network security.
 
 ## Download safety requirements
 
