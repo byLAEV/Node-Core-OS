@@ -142,12 +142,12 @@ jobs:
               "bitcoin_block_height": info["bitcoin_block_height"],
           }, indent=2))
           with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-              summary.write("\\n## HashPaper proof-info real .ots check\\n\\n")
-              summary.write(f"- Original SHA-256: {info['original_sha256']}\\n")
-              summary.write(f"- Local .ots SHA-256 fingerprint: {info['proof_file_sha256']}\\n")
-              summary.write(f"- Official OpenTimestamps status: {info['status']}\\n")
-              summary.write(f"- Proof verification: {info['proof_verification']}\\n")
-              summary.write("- The .ots SHA-256 is a local file fingerprint, not an official OpenTimestamps-issued ID.\\n")
+              summary.write("\n## HashPaper proof-info real .ots check\n\n")
+              summary.write(f"- Original SHA-256: {info['original_sha256']}\n")
+              summary.write(f"- Local .ots SHA-256 fingerprint: {info['proof_file_sha256']}\n")
+              summary.write(f"- Official OpenTimestamps status: {info['status']}\n")
+              summary.write(f"- Proof verification: {info['proof_verification']}\n")
+              summary.write("- The .ots SHA-256 is a local file fingerprint, not an official OpenTimestamps-issued ID.\n")
           PY
 
       - name: Build transparent package containing original and real OTS report
