@@ -101,7 +101,7 @@ jobs:
           test -f "$NODE_CORE_DATA_DIR/app/VERSION"
           cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
           test -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
-          grep -qx '0.3.0' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
+          grep -qx '0.3.1' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
           grep -Eq "^[0-9]+\\.[0-9]+\\.[0-9]+$" "$NODE_CORE_DATA_DIR/app/VERSION"
           test -f "$NODE_CORE_DATA_DIR/ipfs/config"
           test -d "$NODE_CORE_DATA_DIR/storage"

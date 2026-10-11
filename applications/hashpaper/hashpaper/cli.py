@@ -682,6 +682,19 @@ def main(argv: list[str] | None = None) -> int:
             if args.report:
                 write_package(args.report, report)
             print(json.dumps(report, ensure_ascii=False, indent=2))
+            print("\nHashPaper evidence identifiers")
+            print(f"Document SHA-256: {result.original_sha256 or 'NOT AVAILABLE'}")
+            print(f"OpenTimestamps proof SHA-256: {result.proof_sha256 or 'NOT AVAILABLE'}")
+            print(f"OpenTimestamps status: {result.status}")
+            print(f"Bitcoin verification: {result.proof_verification}")
+            if result.calendar_urls:
+                print("Calendar URLs reported by the official client:")
+                for calendar_url in result.calendar_urls:
+                    print(f"  {calendar_url}")
+            if result.bitcoin_transaction_ids:
+                print("Bitcoin transaction IDs explicitly reported by the official client:")
+                for transaction_id in result.bitcoin_transaction_ids:
+                    print(f"  {transaction_id}")
             if args.command == "stamp":
                 print("Timestamp submitted. This does not mean a Bitcoin attestation is already verified.")
             elif result.status == "VERIFIED":

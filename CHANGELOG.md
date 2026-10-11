@@ -2,6 +2,18 @@
 
 All notable changes to Node Core OS are documented here.
 
+## [1.2.7] - 2026-10-11
+
+### Added
+- Show the original document SHA-256, exact local `.ots` file SHA-256, proof status, verification status, and calendar URLs immediately after timestamp operations.
+- Display Bitcoin transaction IDs only when explicitly labelled in output from the official OpenTimestamps client.
+- Release HashPaper 0.3.1 with clearer pending-proof evidence reporting.
+
+### Safety
+- A pending `.ots` proof remains distinct from a Bitcoin-confirmed proof.
+- Local SHA-256 fingerprints identify exact bytes; they are not represented as OpenTimestamps-issued identifiers.
+- Failed submissions do not fabricate proof files or identifiers.
+
 ## [1.2.6] - 2026-10-11
 
 ### Added
