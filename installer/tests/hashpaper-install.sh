@@ -34,6 +34,17 @@ grep -q 'exec python3 "$HASH_PAPER_ENTRY" "$@"' "$NODE_CORE_DATA_DIR/bin/hashpap
 after="$(find "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/storage" "$NODE_CORE_DATA_DIR/ipfs" -type f -exec sha256sum {} + | sort)"
 test "$before" = "$after"
 
+# A pre-existing launcher symlink must not be followed or overwritten.
+printf 'keep symlink target unchanged\\n' > "$temporary_root/launcher-target"
+rm -f "$NODE_CORE_DATA_DIR/bin/hashpaper"
+ln -s "$temporary_root/launcher-target" "$NODE_CORE_DATA_DIR/bin/hashpaper"
+if bash "$INSTALLER" >/dev/null 2>&1; then
+  printf 'Installer unexpectedly overwrote a symbolic-link launcher.\\n' >&2
+  exit 1
+fi
+grep -qx 'keep symlink target unchanged' "$temporary_root/launcher-target"
+rm "$NODE_CORE_DATA_DIR/bin/hashpaper"
+
 if NODE_CORE_DATA_DIR="$temporary_root/outside/.node-core" bash "$INSTALLER" >/dev/null 2>&1; then
   printf 'Installer unexpectedly accepted a data directory outside HOME.\n' >&2
   exit 1
