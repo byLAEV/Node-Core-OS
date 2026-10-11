@@ -322,6 +322,21 @@ update_application() (
     printf 'Update is missing HashPaper tests; refusing activation.\n' >&2
     return 1
   }
+  python3 - "$NODE_CORE_APP_DIR/VERSION" "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+for value in sys.argv[1:]:
+    path = Path(value)
+    if not path.is_file():
+        raise SystemExit(f"Required application version file is missing: {path}")
+    version = path.read_text(encoding="utf-8").strip()
+    if re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", version) is None:
+        raise SystemExit(f"Invalid application version in {path}: {version!r}")
+print("Node Core OS version:", Path(sys.argv[1]).read_text(encoding="utf-8").strip())
+print("HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
+PY
   if [[ -f "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" ]]; then
     source "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" || return 1
     ensure_opentimestamps_client || return 1
@@ -335,6 +350,7 @@ update_application() (
     printf 'HashPaper tests failed after update; refusing to mark the update successful.\n' >&2
     return 1
   fi
+  printf '✓ Node Core OS and bundled HashPaper versions validated.\n'
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
 )
 
