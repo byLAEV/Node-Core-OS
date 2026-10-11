@@ -14,7 +14,8 @@
 - Added installer verification and compilation checks for HashPaper.
 - Added persistent directories under `~/.node-core/hashpaper/{documents,proofs,packages,records}`.
 - Expanded updater preservation checks for HashPaper documents, proofs, packages, and records during successful update and rollback scenarios.
-- Added live Kubo installer E2E checks for publication, retrieval, and identity/Peer ID association. The Ubuntu 24.04 installer E2E workflow and GNU/Linux terminal CI passed on commit `d953d0732dba587b5a4153aba4b9758d656edf89`.
+- Added live Kubo installer E2E checks for publication, retrieval, and identity/Peer ID association.
+- Added a manually triggered GitHub Actions workflow for real OpenTimestamps client/calendar submission and immediate proof checking using synthetic content. It preserves the distinction between pending timestamps and verified Bitcoin attestations. The Ubuntu 24.04 installer E2E workflow and GNU/Linux terminal CI passed on commit `d953d0732dba587b5a4153aba4b9758d656edf89`.
 - HashPaper remains shipped with Node Core OS; a separate HashPaper installer has not been implemented.
 - Encryption status: **NOT IMPLEMENTED**. Identity and document content included in packages are unencrypted.
 - Live OpenTimestamps calendar submission and verified Bitcoin attestation are not yet claimed by CI.
