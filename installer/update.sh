@@ -145,6 +145,7 @@ recover_stale_cleanup_if_safe() {
   esac
 
   printf 'Found recovery markers without an application backup.\n'
+  require_installation
   printf 'Checking the installed application before reconciling interrupted cleanup.\n'
   if ! validate_installed_application_for_recovery; then
     printf 'Installed application validation failed; recovery files were preserved.\n' >&2
@@ -381,9 +382,9 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
-  require_installation
   recover_stale_cleanup_if_safe
   require_no_pending_recovery
+  require_installation
   migrate_termux_config
   ensure_launchers
 
