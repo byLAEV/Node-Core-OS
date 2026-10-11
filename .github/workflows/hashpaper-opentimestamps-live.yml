@@ -106,6 +106,45 @@ jobs:
 
           PY
 
+      - name: Verify HashPaper proof-info view against the real pending .ots proof
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/hashpaper-ots-live"
+          original="$work/synthetic-document.md"
+          proof_info="$work/proof-info-report.json"
+
+          python3 applications/hashpaper/main.py proof-info \
+            --input "$original" \
+            --report "$proof_info"
+
+          python3 - "$original" "$proof_info" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          original = Path(sys.argv[1])
+          proof = Path(str(original) + ".ots")
+          report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          assert report["original_sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
+          assert report["proof_file_sha256"] == hashlib.sha256(proof.read_bytes()).hexdigest()
+          assert report["status"] in {"WAITING_FOR_BITCOIN", "VERIFIED"}
+          assert "not an official OpenTimestamps-issued identifier" in report["proof_fingerprint_note"]
+          print(json.dumps({
+              "original_sha256": report["original_sha256"],
+              "proof_file_sha256": report["proof_file_sha256"],
+              "status": report["status"],
+              "proof_verification": report["proof_verification"],
+              "bitcoin_block_height": report["bitcoin_block_height"],
+          }, indent=2))
+          with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n## HashPaper proof-info verification\n\n")
+              summary.write(f"- Original SHA-256: {report['original_sha256']}\n")
+              summary.write(f"- Local .ots SHA-256 fingerprint: {report['proof_file_sha256']}\n")
+              summary.write(f"- Actual OpenTimestamps status: {report['status']}\n")
+              summary.write("- The .ots fingerprint is a local file identifier, not an official OpenTimestamps-issued ID.\n")
+          PY
+
       - name: Build transparent package containing original and real OTS report
         run: |
           set -euo pipefail
