@@ -87,4 +87,32 @@ for publisher in 0 1 2; do
         echo "PASS: node $publisher -> node $receiver | CID=$cid | SHA-256=$source_sha"
     done
 done
-echo "PASS: three independent Kubo nodes, distinct identities, full-mesh connectivity, all pairwise pings, and six verified content transfers."
+
+# Resilience check: two receivers pin the content before the publisher goes offline.
+RESILIENCE_SOURCE="$WORK_DIR/resilience-fixture.txt"
+printf 'Node Core OS resilience test: content must remain available on pinned peers.\n' > "$RESILIENCE_SOURCE"
+RESILIENCE_CID="$(node 0 add --quiet "$RESILIENCE_SOURCE")"
+test -n "$RESILIENCE_CID" || fail "Resilience fixture did not produce a CID."
+
+for receiver in 1 2; do
+    node "$receiver" pin add "$RESILIENCE_CID" || fail "Node $receiver could not pin the resilience fixture."
+    node "$receiver" pin ls "$RESILIENCE_CID" >/dev/null || fail "Node $receiver did not report the resilience fixture as pinned."
+done
+
+echo "INFO: stopping publisher node 0 after nodes 1 and 2 have pinned the fixture."
+kill "${PIDS[0]}" 2>/dev/null || fail "Could not stop publisher node 0."
+wait "${PIDS[0]}" 2>/dev/null || true
+PIDS[0]=""
+sleep 2
+
+for receiver in 1 2; do
+    destination="$WORK_DIR/resilience-retrieved-by-$receiver.txt"
+    node "$receiver" cat "$RESILIENCE_CID" > "$destination" || fail "Node $receiver could not retrieve the pinned fixture after publisher shutdown."
+    cmp -s "$RESILIENCE_SOURCE" "$destination" || fail "Resilience content mismatch on node $receiver after publisher shutdown."
+    source_sha="$(sha256sum "$RESILIENCE_SOURCE" | awk '{print $1}')"
+    received_sha="$(sha256sum "$destination" | awk '{print $1}')"
+    [ "$source_sha" = "$received_sha" ] || fail "Resilience SHA-256 mismatch on node $receiver."
+    echo "PASS: publisher offline -> node $receiver retrieved pinned content | CID=$RESILIENCE_CID | SHA-256=$received_sha"
+done
+
+echo "PASS: three independent Kubo nodes, distinct identities, full-mesh connectivity, all pairwise pings, six verified transfers, and retrieval from two pinned peers after publisher shutdown."
