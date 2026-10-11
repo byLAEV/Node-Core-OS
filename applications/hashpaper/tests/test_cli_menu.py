@@ -39,7 +39,7 @@ class HashPaperMenuTests(unittest.TestCase):
         menu.assert_called_once_with()
 
     def test_create_menu_uses_default_path_without_asking_for_it(self):
-        answers = ["1", "Synthetic title", "Synthetic body", "", "0"]
+        answers = ["1", "Synthetic title", "Synthetic body", "1", "", "0"]
         with patch("builtins.input", side_effect=answers):
             with patch.object(cli, "main", side_effect=[0]) as command:
                 self.assertEqual(cli.run_interactive_menu(), 0)
