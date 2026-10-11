@@ -63,11 +63,16 @@ class OpenTimestampsClientTests(unittest.TestCase):
         self.assertEqual(result.bitcoin_transaction_ids, ())
         self.assertEqual(self.original_path.read_bytes(), original_bytes)
 
-    def test_stamp_refuses_to_overwrite_existing_proof(self):
-        Path(str(self.original_path) + ".ots").write_bytes(b"existing")
-        with self.assertRaises(TimestampError):
-            OpenTimestampsClient().stamp(self.original_path)
-        self.assertEqual(Path(str(self.original_path) + ".ots").read_bytes(), b"existing")
+    def test_stamp_checks_existing_proof_without_overwriting_or_resubmitting(self):
+        proof = Path(str(self.original_path) + ".ots")
+        proof.write_bytes(b"existing")
+        original_proof = proof.read_bytes()
+        result = OpenTimestampsClient().stamp(self.original_path)
+        self.assertEqual(result.operation, "stamp-existing-proof")
+        self.assertEqual(result.status, "WAITING_FOR_BITCOIN")
+        self.assertEqual(result.proof_verification, "PENDING")
+        self.assertEqual(proof.read_bytes(), original_proof)
+        self.assertEqual(result.proof_sha256, hashlib.sha256(original_proof).hexdigest())
 
     def test_stamp_rejects_terminal_control_characters(self):
         self.original_path.write_text("# 0\n\n\x1b\n", encoding="utf-8")
