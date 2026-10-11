@@ -78,6 +78,7 @@ test "$(id -u)" -ne 0 || fail "Three-node integration tests must run as a non-ro
 python3 installer/tests/three-node-identity-report.py \
     --kubo "$IPFS" \
     --work-dir "$WORK_DIR/identity-report" \
+    --evidence-dir "${RUNNER_TEMP:-$WORK_DIR}/node-core-three-node-identity-report-evidence" \
     --repo-a "${REPOS[0]}" --api-a "http://127.0.0.1:5101" \
     --repo-b "${REPOS[1]}" --api-b "http://127.0.0.1:5102" \
     --repo-c "${REPOS[2]}" --api-c "http://127.0.0.1:5103"
