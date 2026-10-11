@@ -1,22 +1,42 @@
-# HashPaper Installation Plan
+# HashPaper Installation
 
-HashPaper is included in the Node Core OS source tree and Applications menu. Installer verification checks its entry point and compiles its package. Node Core OS creates persistent directories under `~/.node-core/hashpaper/`; the application code is still installed as part of the normal Node Core OS code tree, not through a separate HashPaper installer.
+HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. There is no separate HashPaper installer yet.
 
-## Development tests
+## Requirements
 
-From the repository root on GNU/Linux with Python 3.10 or newer:
+- A supported GNU/Linux terminal environment.
+- Python 3.10 or newer.
+- A functioning Node Core OS installation for identity association and Kubo/IPFS publication.
+- The official OpenTimestamps `ots` executable in `PATH` for timestamp operations.
+
+## Verification
+
+From the repository root:
 
 ```bash
 python3 -m unittest discover -s applications/hashpaper/tests -v
+bash installer/tests/update-preservation.sh
 ```
 
-## Integration requirements before installation is supported
+GitHub Actions additionally performs a clean installation and uninstall on Ubuntu 24.04 in two service modes. Its E2E test creates synthetic HashPaper data, publishes a package through the live Kubo daemon, retrieves it by CID and compares bytes, checks a real Kubo Peer ID association, and exercises uninstall safety checks.
 
-1. Add HashPaper to the versioned application inventory and verify its files during installation.
-2. Install code under the replaceable application directory, but store documents, `.ots` proofs, packages, and application state under a persistent data directory outside that code directory.
-3. Update the installer and updater without deleting existing Node Core OS configuration, local storage, Kubo repository, identity profile, or HashPaper data.
-4. Add clean-install and upgrade tests, including an upgrade from a release without HashPaper.
-5. Verify the OpenTimestamps executable/client is installed or report a clear actionable dependency error; do not silently substitute an unverified timestamp implementation.
-6. Verify Kubo API availability before publishing and confirm the returned CID by retrieving the package and comparing its bytes.
+## Data preservation
 
-Do not install this prototype on a production node or publish real personal data until the end-to-end workflow and update-preservation tests pass.
+HashPaper data lives outside the replaceable application-code directory:
+
+```text
+~/.node-core/hashpaper/
+├── documents/
+├── proofs/
+├── packages/
+└── records/
+```
+
+The updater preservation tests check these data categories through successful update and rollback scenarios, alongside Node Core OS configuration, local storage, and Kubo data.
+
+## Limitations
+
+- A separate HashPaper installer is not implemented.
+- Automated OpenTimestamps tests use a fake executable. Live calendar submission and successful Bitcoin attestation verification must not be inferred from those tests.
+- Encryption is not implemented; the evidence package contains the complete original text and included identity fields in cleartext.
+- Use synthetic data in tests and review the complete package before public IPFS publication.
