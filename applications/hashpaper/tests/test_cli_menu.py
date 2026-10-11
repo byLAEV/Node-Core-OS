@@ -132,6 +132,19 @@ class HashPaperMenuTests(unittest.TestCase):
                 self.assertEqual(cli._records_dir(), root / "records")
                 self.assertNotEqual(cli._ipfs_dir(), Path(temporary) / "ipfs")
 
+    def test_document_history_includes_canonical_and_legacy_directories(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.dict(os.environ, {"NODE_CORE_DATA_DIR": temporary}):
+                canonical = cli._documents_dir() / "canonical.md"
+                legacy = cli._legacy_documents_dir() / "legacy.md"
+                canonical.parent.mkdir(parents=True, exist_ok=True)
+                legacy.parent.mkdir(parents=True, exist_ok=True)
+                canonical.write_text("canonical", encoding="utf-8")
+                legacy.write_text("legacy", encoding="utf-8")
+                history = cli._document_history()
+                self.assertIn(canonical, history)
+                self.assertIn(legacy, history)
+
     def test_create_embeds_session_identity_and_uses_application_directory(self):
         with tempfile.TemporaryDirectory() as temporary:
             old_dir = os.environ.get("NODE_CORE_DATA_DIR")
