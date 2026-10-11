@@ -160,6 +160,8 @@ def build_transparent_package(
         original_text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError("HashPaper currently packages UTF-8 text/Markdown documents only.") from exc
+    if any(ord(character) < 32 and character not in "\t\n\r" for character in original_text):
+        raise ValueError("Original document contains terminal control characters; clean or recreate it before packaging.")
 
     validated_metadata = validate_ots_metadata(original, ots_metadata, trusted_verified_result=trusted_verified_result)
     metadata = validated_metadata or {}
