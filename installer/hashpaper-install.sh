@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
+NODE_CORE_APP_DIR="$NODE_CORE_DATA_DIR/app"
+HASH_PAPER_ENTRY="$NODE_CORE_APP_DIR/applications/hashpaper/main.py"
+NODE_CORE_BIN_DIR="$NODE_CORE_DATA_DIR/bin"
+HASH_PAPER_LAUNCHER="$NODE_CORE_BIN_DIR/hashpaper"
+
+require_user_installation() {
+  if [[ "$(id -u)" == "0" ]]; then
+    printf 'Refusing to install HashPaper as root. Run this script as your normal user without sudo.\n' >&2
+    exit 1
+  fi
+
+  [[ -n "${HOME:-}" && -d "$HOME" ]] || {
+    printf 'A valid user HOME directory is required.\n' >&2
+    exit 1
+  }
+
+  local home_real target_real
+  home_real="$(realpath -m -- "$HOME")"
+  target_real="$(realpath -m -- "$NODE_CORE_DATA_DIR")"
+  [[ "$target_real" == "$home_real/"* && "$target_real" != "$home_real" ]] || {
+    printf 'Unsafe installation path: NODE_CORE_DATA_DIR must be inside the current user HOME.\n' >&2
+    exit 1
+  }
+
+  [[ -d "$NODE_CORE_APP_DIR" && -f "$HASH_PAPER_ENTRY" ]] || {
+    printf 'Node Core OS with HashPaper is not installed at: %s\n' "$NODE_CORE_APP_DIR" >&2
+    printf 'Install or update Node Core OS first, then run this installer again.\n' >&2
+    exit 1
+  }
+
+  [[ ! -L "$NODE_CORE_DATA_DIR" && -d "$NODE_CORE_DATA_DIR" ]] || {
+    printf 'Unsafe installation path: Node Core OS data directory must be a real directory.\n' >&2
+    exit 1
+  }
+
+  [[ "$(stat -c '%u' "$NODE_CORE_DATA_DIR")" == "$(id -u)" ]] || {
+    printf 'Unsafe installation path: Node Core OS data directory is not owned by the current user.\n' >&2
+    exit 1
+  }
+}
+
+install_hashpaper_launcher() {
+  mkdir -p "$NODE_CORE_BIN_DIR"
+  [[ ! -L "$NODE_CORE_BIN_DIR" && -d "$NODE_CORE_BIN_DIR" ]] || {
+    printf 'Unsafe launcher directory: %s\n' "$NODE_CORE_BIN_DIR" >&2
+    exit 1
+  }
+
+  cat > "$HASH_PAPER_LAUNCHER" <<'LAUNCHER'
+#!/usr/bin/env bash
+set -euo pipefail
+NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
+HASH_PAPER_ENTRY="$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
+if [[ ! -f "$HASH_PAPER_ENTRY" ]]; then
+  printf 'HashPaper is missing. Update Node Core OS and try again.\n' >&2
+  exit 1
+fi
+exec python3 "$HASH_PAPER_ENTRY" "$@"
+LAUNCHER
+  chmod 700 "$HASH_PAPER_LAUNCHER"
+  [[ -x "$HASH_PAPER_LAUNCHER" ]]
+  printf 'HashPaper launcher installed: %s\n' "$HASH_PAPER_LAUNCHER"
+  printf 'Run it with: %s/hashpaper --help\n' "$NODE_CORE_BIN_DIR"
+  printf 'This installer does not overwrite HashPaper documents, proofs, packages, records, identity, configuration, storage, or Kubo data.\n'
+}
+
+main() {
+  require_user_installation
+  install_hashpaper_launcher
+}
+
+main "$@"
