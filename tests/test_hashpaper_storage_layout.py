@@ -18,7 +18,7 @@ class HashPaperStorageLayoutTests(unittest.TestCase):
                 ipfs_repo_path=data_dir / "ipfs",
             )
             config.ensure_directories()
-            expected = ["documents", "proofs", "packages", "records"]
+            expected = ["documents", "ipfs", "packages", "records"]
             for name in expected:
                 path = data_dir / "hashpaper" / name
                 self.assertTrue(path.is_dir(), str(path))

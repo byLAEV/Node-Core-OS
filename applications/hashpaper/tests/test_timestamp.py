@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import unittest
 
@@ -52,7 +53,7 @@ class OpenTimestampsClientTests(unittest.TestCase):
 
     def test_stamp_creates_proof_and_preserves_original(self):
         original_bytes = self.original_path.read_bytes()
-        result = OpenTimestampsClient().stamp(self.original_path)
+        result = OpenTimestampsClient(executable=str(self.fake_ots)).stamp(self.original_path)
         self.assertEqual(result.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(result.proof_verification, "NOT_VERIFIED")
         self.assertTrue(Path(result.proof_file).is_file())
@@ -64,14 +65,32 @@ class OpenTimestampsClientTests(unittest.TestCase):
             OpenTimestampsClient().stamp(self.original_path)
         self.assertEqual(Path(str(self.original_path) + ".ots").read_bytes(), b"existing")
 
+    def test_stamp_rejects_terminal_control_characters(self):
+        self.original_path.write_text("# 0\n\n\x1b\n", encoding="utf-8")
+        with self.assertRaisesRegex(TimestampError, "terminal control characters"):
+            OpenTimestampsClient().stamp(self.original_path)
+        self.assertFalse(Path(str(self.original_path) + ".ots").exists())
+
     def test_check_distinguishes_pending_from_verified(self):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
-        client = OpenTimestampsClient()
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
+        client._run = lambda args: subprocess.CompletedProcess(
+            args,
+            0,
+            stdout="Calendar https://calendar.example: Pending confirmation in Bitcoin blockchain",
+            stderr="",
+        )
         pending = client.check(self.original_path)
         self.assertEqual(pending.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(pending.proof_verification, "PENDING")
         proof.write_bytes(b"fake-proof-verified")
+        client._run = lambda args: subprocess.CompletedProcess(
+            args,
+            0,
+            stdout="Success! Bitcoin block 123456 attests existence as of test time",
+            stderr="",
+        )
         verified = client.check(self.original_path)
         self.assertEqual(verified.status, "VERIFIED")
         self.assertEqual(verified.proof_verification, "SUCCESS")
@@ -80,7 +99,16 @@ class OpenTimestampsClientTests(unittest.TestCase):
     def test_upgrade_keeps_backup_if_proof_changes(self):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
-        result = OpenTimestampsClient().check(self.original_path, upgrade=True)
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
+
+        def successful_upgrade(args):
+            proof.write_bytes(b"fake-proof-verified")
+            return subprocess.CompletedProcess(
+                args, 0, stdout="Success! Timestamp is complete", stderr=""
+            )
+
+        client._run = successful_upgrade
+        result = client.check(self.original_path, upgrade=True)
         self.assertEqual(result.status, "ANCHOR_AVAILABLE")
         self.assertTrue(Path(str(proof) + ".before-upgrade").is_file())
         self.assertEqual(proof.read_bytes(), b"fake-proof-verified")
@@ -89,7 +117,7 @@ class OpenTimestampsClientTests(unittest.TestCase):
         proof = Path(str(self.original_path) + ".ots")
         original_proof = b"proof-before-interrupted-upgrade"
         proof.write_bytes(original_proof)
-        client = OpenTimestampsClient()
+        client = OpenTimestampsClient(executable=str(self.fake_ots))
 
         def fail_after_modifying_proof(args):
             proof.write_bytes(b"partially-upgraded-proof")

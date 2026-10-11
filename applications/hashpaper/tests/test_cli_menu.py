@@ -17,6 +17,21 @@ import hashpaper.cli as cli
 
 
 class HashPaperMenuTests(unittest.TestCase):
+    def setUp(self):
+        self.consent_patch = patch.object(cli, "_authorize_identity_session", return_value=True)
+        self.consent_patch.start()
+        cli._SESSION_IDENTITY = {
+            "identity_id": "synthetic-identity",
+            "full_name": "Synthetic Test Person",
+            "identity_status": "declared",
+        }
+        cli._SESSION_PEER_ID = "12D3KooW-synthetic"
+
+    def tearDown(self):
+        self.consent_patch.stop()
+        cli._SESSION_IDENTITY = None
+        cli._SESSION_PEER_ID = None
+
     def test_launcher_without_arguments_opens_interactive_menu(self):
         with patch.object(sys, "argv", ["main.py"]):
             with patch.object(cli, "run_interactive_menu", return_value=0) as menu:
@@ -24,7 +39,7 @@ class HashPaperMenuTests(unittest.TestCase):
         menu.assert_called_once_with()
 
     def test_create_menu_uses_default_path_without_asking_for_it(self):
-        answers = ["1", "Synthetic title", "Synthetic body", "", "0"]
+        answers = ["1", "Synthetic title", "Synthetic body", "1", "", "0"]
         with patch("builtins.input", side_effect=answers):
             with patch.object(cli, "main", side_effect=[0]) as command:
                 self.assertEqual(cli.run_interactive_menu(), 0)
@@ -37,13 +52,32 @@ class HashPaperMenuTests(unittest.TestCase):
             default_document = Path(temporary) / "synthetic-document.md"
             default_document.write_text("synthetic", encoding="utf-8")
             answers = ["7", "", "0"]
-            with patch.object(cli, "_default_document_path", return_value=default_document):
+            with patch.object(cli, "_select_document_history", return_value=default_document):
                 with patch("builtins.input", side_effect=answers):
                     with patch.object(cli, "main", side_effect=[0]) as command:
                         self.assertEqual(cli.run_interactive_menu(), 0)
             command.assert_called_once_with([
                 "proof-info", "--input", str(default_document)
             ])
+
+    def test_check_and_upgrade_menu_select_document_with_a_proof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original = Path(temporary) / "Genesis-HashPaper.md"
+            original.write_text("synthetic", encoding="utf-8")
+            Path(str(original) + ".ots").write_bytes(b"synthetic proof")
+            for choice, command_name in (("3", "check"), ("4", "upgrade")):
+                with patch.object(cli, "_select_document_history", return_value=original) as select:
+                    with patch("builtins.input", side_effect=[choice, "", "0"]):
+                        with patch.object(cli, "main", return_value=0) as command:
+                            self.assertEqual(cli.run_interactive_menu(), 0)
+                select.assert_called_once_with(require_proof=True)
+                command.assert_called_once_with([command_name, "--input", str(original)])
+
+    def test_create_menu_cancels_when_zero_is_entered_as_title(self):
+        with patch("builtins.input", side_effect=["1", "0", "0"]):
+            with patch.object(cli, "main") as command:
+                self.assertEqual(cli.run_interactive_menu(), 0)
+        command.assert_not_called()
 
     def test_environment_variables_are_expanded_in_explicit_paths(self):
         with patch.dict(os.environ, {"HASH_PAPER_TEST_PATH": "/tmp/expanded.md"}):
@@ -85,6 +119,36 @@ class HashPaperMenuTests(unittest.TestCase):
     def test_menu_rejects_unknown_choice_and_can_exit(self):
         with patch("builtins.input", side_effect=["unknown", "0"]):
             self.assertEqual(cli.run_interactive_menu(), 0)
+
+
+    def test_hashpaper_directory_helpers_use_app_data_not_a_private_kubo_repo(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.dict(os.environ, {"NODE_CORE_DATA_DIR": temporary}):
+                root = Path(temporary) / "hashpaper"
+                self.assertEqual(cli._hashpaper_dir(), root)
+                self.assertEqual(cli._documents_dir(), root / "documents")
+                self.assertEqual(cli._ipfs_dir(), root / "ipfs")
+                self.assertEqual(cli._records_dir(), root / "records")
+                self.assertNotEqual(cli._ipfs_dir(), Path(temporary) / "ipfs")
+
+    def test_create_embeds_session_identity_and_uses_application_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            old_dir = os.environ.get("NODE_CORE_DATA_DIR")
+            try:
+                os.environ["NODE_CORE_DATA_DIR"] = temporary
+                output = Path(temporary) / "hashpaper" / "documents" / "Synthetic-Title.md"
+                with patch.object(cli, "_default_document_path", return_value=output):
+                    status = cli.main(["create", "--title", "Synthetic Title", "--text", "Synthetic body"])
+                self.assertEqual(status, 0)
+                text = output.read_text(encoding="utf-8")
+                self.assertIn("Synthetic body", text)
+                self.assertIn("synthetic-identity", text)
+                self.assertIn("12D3KooW-synthetic", text)
+            finally:
+                if old_dir is None:
+                    os.environ.pop("NODE_CORE_DATA_DIR", None)
+                else:
+                    os.environ["NODE_CORE_DATA_DIR"] = old_dir
 
 
 if __name__ == "__main__":

@@ -215,6 +215,8 @@ update_application() (
   else
     printf '%s\\n' 'Warning: update source does not include the OpenTimestamps installer helper; skipping dependency setup.' >&2
   fi
+  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records" || return 1
+  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records" || return 1
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
   if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v); then
     printf 'HashPaper tests failed after update; refusing to mark the update successful.\n' >&2

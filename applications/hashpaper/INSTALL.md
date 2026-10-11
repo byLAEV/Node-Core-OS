@@ -4,7 +4,11 @@ HashPaper is shipped as part of the Node Core OS application code and appears in
 
 ## Default local paths
 
-The interactive menu does not ask users to type filesystem paths for normal local workflows. Original text/Markdown documents are stored in `~/.node-core/storage/`; package JSON files are stored in `~/.node-core/hashpaper/packages/`; publication receipts are stored in `~/.node-core/hashpaper/records/`. HashPaper uses the newest local text document by default and never overwrites an existing original or package. Explicit `--input`/`--output` arguments remain available for automation or importing an existing file.
+HashPaper requires a fresh identity-data consent each time its interactive application is opened. The user must type `ACCEPT IDENTITY DATA USE` before the menu is shown. After consent, HashPaper reads the saved Node Core OS identity profile and live Kubo Peer ID; every new interactive Markdown original embeds those fields as plaintext. Consent is not saved as permanent consent. Timestamping submits the document hash to OpenTimestamps; publishing a copy through IPFS can disclose the full text and embedded identity publicly.
+
+The installer creates a private, application-specific data tree at `~/.node-core/hashpaper/`: originals and their adjacent `.ots` files live in `documents/`, timestamp-enriched copies prepared for IPFS live in `ipfs/`, advanced JSON packages live in `packages/`, and publication receipts/history live in `records/`. This `ipfs/` directory is only HashPaper's local staging area for files; it is not an IPFS/Kubo repository. All applications use the Kubo executable, daemon, API, and repository configured and managed by Node Core OS (`ipfs_repo_path`), and HashPaper publishes through Node Core OS's shared `NodeRuntime`/`ContentManager` interfaces. HashPaper must not initialize, replace, or create a separate Kubo repository. New originals use the document title as the filename and are never overwritten. The document picker shows history in chronological order, 10 items per page, and reports whether each original has an `.ots` file. The text editor accepts multiline text; Enter adds a line, Ctrl-D finishes input, and Escape cancels. Creation is executed only after the application returns to the menu command selection flow.
+
+The IPFS action creates a separate Markdown copy with original SHA-256, proof presence/fingerprint, and current OpenTimestamps status. It publishes the copy, verifies retrieval against the local bytes, confirms pin state, and saves a receipt with public gateway URLs. Gateway availability is not guaranteed. Existing files in the legacy `~/.node-core/storage/` directory are not deleted or automatically moved. Explicit `--input`/`--output` arguments remain available for advanced CLI use.
 
 ## Requirements
 
@@ -27,7 +31,7 @@ GitHub Actions additionally performs a clean installation and uninstall on Ubunt
 
 ## Data preservation
 
-HashPaper originals live in `~/.node-core/storage/`. Generated packages and publication receipts live outside the replaceable application-code directory:
+HashPaper originals live in `~/.node-core/hashpaper/documents/`. Generated packages and publication receipts live outside the replaceable application-code directory:
 
 ```text
 ~/.node-core/hashpaper/

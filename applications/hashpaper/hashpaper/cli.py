@@ -8,6 +8,11 @@ import json
 import os
 from pathlib import Path
 import sys
+import termios
+import tty
+
+_SESSION_IDENTITY = None
+_SESSION_PEER_ID = None
 
 from .documents import build_transparent_package, write_original, write_package
 from .timestamp import OpenTimestampsClient, TimestampError
@@ -24,22 +29,63 @@ def _data_dir() -> Path:
     return _expanded_path(os.environ.get("NODE_CORE_DATA_DIR", str(Path.home() / ".node-core")))
 
 
+def _hashpaper_dir() -> Path:
+    """Return the private root directory used exclusively by HashPaper."""
+    return _data_dir() / "hashpaper"
+
+
 def _documents_dir() -> Path:
-    return _data_dir() / "storage"
+    return _hashpaper_dir() / "documents"
 
 
-def _default_document_path(*, for_create: bool = False) -> Path:
-    """Use the newest local text document; create a new non-overwriting default when requested."""
+def _ipfs_dir() -> Path:
+    return _hashpaper_dir() / "ipfs"
+
+
+def _records_dir() -> Path:
+    return _hashpaper_dir() / "records"
+
+
+def _has_terminal_control_characters(path: Path) -> bool:
+    """Treat unreadable or non-UTF-8 originals as unsuitable for text workflows."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return True
+    return any(ord(character) < 32 and character not in "\t\n\r" for character in content)
+
+
+def _default_document_path(
+    *,
+    for_create: bool = False,
+    require_proof: bool = False,
+    require_unstamped: bool = False,
+) -> Path | None:
+    """Choose a document appropriate to the requested operation."""
     directory = _documents_dir()
     directory.mkdir(parents=True, exist_ok=True)
     if not for_create:
         candidates = [
             path for path in directory.iterdir()
-            if path.is_file() and path.name.startswith("Genesis-HashPaper")
-            and path.suffix.lower() in {".txt", ".md", ".markdown"}
+            if path.is_file() and path.suffix.lower() in {".txt", ".md", ".markdown"}
+            and not path.stem.endswith("-ipfs")
         ]
+        if require_proof:
+            candidates = [
+                path for path in candidates
+                if Path(str(path) + ".ots").is_file()
+                and Path(str(path) + ".ots").stat().st_size > 0
+            ]
+        elif require_unstamped:
+            candidates = [
+                path for path in candidates
+                if not Path(str(path) + ".ots").exists()
+                and not _has_terminal_control_characters(path)
+            ]
         if candidates:
             return max(candidates, key=lambda path: path.stat().st_mtime)
+        if require_proof or require_unstamped:
+            return None
     base = directory / "Genesis-HashPaper.md"
     if not base.exists():
         return base
@@ -125,26 +171,224 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _authorize_identity_session() -> bool:
+    """Require explicit identity-data consent each time the app is opened."""
+    global _SESSION_IDENTITY, _SESSION_PEER_ID
+    _SESSION_IDENTITY = None
+    _SESSION_PEER_ID = None
+    print("\nIDENTITY DATA USE — REQUIRED TO ENTER HASHPAPER")
+    print("HashPaper will read your saved Node Core OS identity profile and live Kubo Peer ID.")
+    print("After acceptance, every new Markdown original will embed identity fields and the node identifier.")
+    print("These fields are plaintext. OpenTimestamps timestamps the document hash, not the full text.")
+    print("Publishing an IPFS copy makes the copy and embedded identity readable to third parties.")
+    print("Consent is requested every time HashPaper opens and is not saved as permanent consent.")
+    try:
+        answer = input('Type "ACCEPT IDENTITY DATA USE" to continue, or anything else to exit: ').strip()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if answer != "ACCEPT IDENTITY DATA USE":
+        print("Access denied: identity-data use was not accepted.")
+        return False
+    try:
+        from node_core.runtime import NodeRuntime
+        runtime = NodeRuntime()
+        runtime.boot()
+        profile, peer_id = load_identity_and_peer_id(runtime)
+        _SESSION_IDENTITY = associate_identity_with_peer(runtime, profile, peer_id)
+        _SESSION_PEER_ID = peer_id
+    except Exception as exc:
+        print(f"HashPaper cannot open without the accepted identity and a live node identifier: {exc}", file=sys.stderr)
+        return False
+    for directory in (_documents_dir(), _ipfs_dir(), _records_dir(), _hashpaper_dir() / "packages"):
+        directory.mkdir(parents=True, exist_ok=True)
+    print(f"Identity data use accepted for this session. Application directory: {_hashpaper_dir()}")
+    return True
+
+
+def _read_multiline_body() -> str | None:
+    """Enter creates a new line; Ctrl-D finishes; ESC cancels."""
+    if not sys.stdin.isatty():
+        try:
+            value = input("Document body text (one line; type CANCEL to abort): ")
+        except (EOFError, KeyboardInterrupt):
+            return None
+        return None if value.strip().lower() in {"cancel", "q", "quit"} else value
+    print("Document body text (Enter adds a line; Ctrl-D finishes; ESC cancels):")
+    fd = sys.stdin.fileno()
+    previous = termios.tcgetattr(fd)
+    chars: list[str] = []
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch == "\x1b":
+                print("\nText input cancelled.")
+                return None
+            if ch == "\x04":
+                print()
+                return "".join(chars).rstrip("\n")
+            if ch in ("\r", "\n"):
+                chars.append("\n")
+                sys.stdout.write("\r\n")
+            elif ch in ("\x7f", "\b"):
+                if chars:
+                    chars.pop()
+                    sys.stdout.write("\b \b")
+            else:
+                chars.append(ch)
+                sys.stdout.write(ch)
+            sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, previous)
+
+
+def _document_history() -> list[Path]:
+    directory = _documents_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    return sorted(
+        [p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in {".md", ".txt", ".markdown"}],
+        key=lambda p: (p.stat().st_mtime_ns, p.name),
+    )
+
+
+def _select_document_history(*, require_proof: bool = False, require_unstamped: bool = False, page_size: int = 10) -> Path | None:
+    docs = _document_history()
+    if require_proof:
+        docs = [p for p in docs if Path(str(p) + ".ots").is_file() and Path(str(p) + ".ots").stat().st_size > 0]
+    elif require_unstamped:
+        docs = [p for p in docs if not Path(str(p) + ".ots").exists() and not _has_terminal_control_characters(p)]
+    if not docs:
+        print("No matching documents in HashPaper history.")
+        return None
+    page = 0
+    while True:
+        start = page * page_size
+        current = docs[start:start + page_size]
+        print(f"\nDocument history — page {page + 1}/{(len(docs) + page_size - 1) // page_size}")
+        for number, path in enumerate(current, 1):
+            proof = Path(str(path) + ".ots")
+            has_proof = proof.is_file() and proof.stat().st_size > 0
+            print(f"{number}. {path.name} | OTS: {'PRESENT' if has_proof else 'NOT PRESENT'} | {path.stat().st_size} bytes")
+        print("N. Next page | P. Previous page | 0. Cancel")
+        choice = input("Select document number: ").strip().lower()
+        if choice == "0":
+            return None
+        if choice == "n" and start + page_size < len(docs):
+            page += 1
+            continue
+        if choice == "p" and page > 0:
+            page -= 1
+            continue
+        if choice.isdigit() and 1 <= int(choice) <= len(current):
+            return current[int(choice) - 1]
+        print("Choose a listed number, N, P, or 0.")
+
+
+def _publish_document_copy(source: Path) -> dict:
+    """Create a separate OTS-enriched Markdown copy, publish, pin, and save gateway receipt."""
+    from datetime import datetime, timezone
+    from node_core.runtime import NodeRuntime
+    from .publication import HashPaperPublisher
+
+    source = source.resolve()
+    raw = source.read_bytes()
+    original_text = raw.decode("utf-8")
+    proof = Path(str(source) + ".ots")
+    proof_exists = proof.is_file() and proof.stat().st_size > 0
+    proof_hash = hashlib.sha256(proof.read_bytes()).hexdigest() if proof_exists else None
+    ots_status = "NOT_SUBMITTED"
+    if proof_exists:
+        try:
+            ots_status = OpenTimestampsClient().check(source).status
+        except TimestampError as exc:
+            ots_status = f"CHECK_ERROR: {exc}"
+    copy_text = (
+        original_text.rstrip() + "\n\n---\n"
+        "## HashPaper publication evidence\n"
+        f"- Original filename: {source.name}\n"
+        f"- Original SHA-256: {hashlib.sha256(raw).hexdigest()}\n"
+        f"- OpenTimestamps proof file: {proof.name if proof_exists else 'NOT PRESENT'}\n"
+        f"- OpenTimestamps proof SHA-256: {proof_hash or 'NOT AVAILABLE'}\n"
+        f"- OpenTimestamps status at copy creation: {ots_status}\n"
+        f"- Identity-data consent: ACCEPTED FOR THIS SESSION\n"
+        f"- Node Peer ID: {_SESSION_PEER_ID}\n"
+    )
+    output_dir = _ipfs_dir()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    target = output_dir / f"{source.stem}-ipfs.md"
+    index = 2
+    while target.exists():
+        target = output_dir / f"{source.stem}-ipfs-{index}.md"
+        index += 1
+    metadata = write_original(target, copy_text)
+    runtime = NodeRuntime()
+    runtime.boot()
+    result = HashPaperPublisher(runtime).publish_package(target, confirmed_publication=True)
+    gateways = [
+        f"https://ipfs.io/ipfs/{result.cid}",
+        f"https://dweb.link/ipfs/{result.cid}",
+        f"https://w3s.link/ipfs/{result.cid}",
+        f"https://gateway.pinata.cloud/ipfs/{result.cid}",
+    ]
+    receipt = {
+        "application": "HashPaper for Node Core OS",
+        "operation": "publish-document-copy",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "original_path": str(source),
+        "published_copy_path": str(target.resolve()),
+        "original_sha256": hashlib.sha256(raw).hexdigest(),
+        "published_copy_sha256": metadata["sha256"],
+        "proof_exists": proof_exists,
+        "proof_file": str(proof.resolve()) if proof_exists else None,
+        "proof_sha256": proof_hash,
+        "opentimestamps_status": ots_status,
+        "cid": result.cid,
+        "pinned": result.pinned,
+        "content_verified": result.content_verified,
+        "gateways": gateways,
+    }
+    record_path = _records_dir() / f"{target.stem}-{result.cid}.json"
+    write_package(record_path, receipt)
+    return receipt
+
+
+def _show_ipfs_history() -> None:
+    records = sorted(_records_dir().glob("*.json"), key=lambda p: p.stat().st_mtime_ns) if _records_dir().is_dir() else []
+    for path in records:
+        item = _read_json_object(path, "IPFS publication receipt")
+        if item.get("operation") != "publish-document-copy":
+            continue
+        print(f"\n{item.get('original_path')}\nCID: {item.get('cid')} | pinned={item.get('pinned')}")
+        for gateway in item.get("gateways", []):
+            print(f"  {gateway}")
+
+
 def run_interactive_menu() -> int:
-    """Run the menu shown when HashPaper is launched without CLI arguments."""
+    """Require identity-data consent, then show HashPaper menu."""
+    if not _authorize_identity_session():
+        return 3
     actions = {
-        "1": ("create", "Create a local original document"),
-        "2": ("stamp", "Submit the original to OpenTimestamps"),
+        "1": ("create", "Create original document"),
+        "2": ("stamp", "Send selected document to OpenTimestamps"),
         "3": ("check", "Check an OpenTimestamps proof"),
-        "4": ("upgrade", "Upgrade a pending OpenTimestamps proof"),
-        "5": ("package", "Build a transparent package"),
-        "6": ("publish", "Publish a package through IPFS"),
+        "4": ("upgrade", "Upgrade an OpenTimestamps proof"),
+        "5": ("send-ipfs", "Create a timestamp-enriched copy and publish it to IPFS"),
+        "6": ("ipfs-history", "Show IPFS publication history and gateways"),
         "7": ("proof-info", "Show .ots hashes and processing status"),
+        "8": ("package", "Build a transparent JSON package (advanced)"),
+        "9": ("publish", "Publish an existing transparent JSON package (advanced)"),
     }
     while True:
         print("\nHashPaper for Node Core OS\n")
         print("1. Create original document")
-        print("2. Submit document to OpenTimestamps")
-        print("3. Check OpenTimestamps proof")
-        print("4. Upgrade OpenTimestamps proof")
-        print("5. Build transparent package")
-        print("6. Publish package to IPFS")
+        print("2. Send selected document to OpenTimestamps")
+        print("3. Check an OpenTimestamps proof")
+        print("4. Upgrade an OpenTimestamps proof")
+        print("5. Send selected document copy to IPFS (pin and show gateways)")
+        print("6. IPFS publication history and gateways")
         print("7. Show .ots hashes and processing status")
+        print("8. Build transparent JSON package (advanced)")
+        print("9. Publish existing transparent package (advanced)")
         print("0. Exit")
         try:
             choice = input("\n> ").strip()
@@ -156,59 +400,89 @@ def run_interactive_menu() -> int:
         if choice not in actions:
             print("Choose an available option.")
             continue
-
         command, description = actions[choice]
         print(f"\n{description}\n")
         try:
             if command == "create":
-                title = input("Document title [Genesis HashPaper for Node Core OS]: ").strip()
-                title = title or "Genesis HashPaper for Node Core OS"
-                body = input("Document body text: ").strip()
-                if not body:
-                    print("Cancelled: document body is required.")
+                title = input("Document title: ").strip()
+                if not title or title.lower() in {"0", "q", "quit", "cancel"}:
+                    print("Document creation cancelled.")
                     continue
+                if any(ord(character) < 32 and character not in "\t" for character in title):
+                    print("Document creation cancelled: title contains terminal control characters.")
+                    continue
+                body = _read_multiline_body()
+                if body is None or not body.strip():
+                    print("Document creation cancelled: body is empty or input was cancelled.")
+                    continue
+                if any(ord(character) < 32 and character not in "\t\n\r" for character in body):
+                    print("Document creation cancelled: body contains terminal control characters.")
+                    continue
+                confirmation = input("Type 1 to CREATE this document, or 0 to cancel: ").strip()
+                if confirmation != "1":
+                    print("Document creation cancelled.")
+                    continue
+                if _SESSION_IDENTITY is None or _SESSION_PEER_ID is None:
+                    print("Identity session is unavailable. Exiting for safety.")
+                    return 3
                 arguments = ["create", "--title", title, "--text", body]
             elif command in {"stamp", "check", "upgrade", "proof-info"}:
-                source = _default_document_path()
-                if not source.is_file():
-                    print(f"No local original document found. Create one with option 1 first. Default location: {source}")
+                source = _select_document_history(require_proof=command in {"check", "upgrade"})
+                if source is None:
                     continue
-                print(f"Using local document: {source.name}")
+                if command == "stamp" and Path(str(source) + ".ots").exists():
+                    print("This document already has an .ots file; select an unstamped original.")
+                    continue
+                print(f"Selected document: {source.name}")
                 arguments = [command, "--input", str(source)]
+            elif command == "send-ipfs":
+                source = _select_document_history()
+                if source is None:
+                    continue
+                proof = Path(str(source) + ".ots")
+                print(f"Selected document: {source.name}")
+                print(f"OpenTimestamps proof: {'PRESENT' if proof.is_file() and proof.stat().st_size else 'NOT PRESENT'}")
+                print("A separate Markdown copy with timestamp indicators will be created and published.")
+                if input('Type "PUBLISH" to publish this copy publicly: ').strip() != "PUBLISH":
+                    print("IPFS publication cancelled.")
+                    continue
+                receipt = _publish_document_copy(source)
+                print(json.dumps(receipt, ensure_ascii=False, indent=2))
+                print("Public gateway links (availability depends on each gateway):")
+                for gateway in receipt["gateways"]:
+                    print(gateway)
+                status = 0
+            elif command == "ipfs-history":
+                _show_ipfs_history()
+                status = 0
             elif command == "package":
-                source = _default_document_path()
-                if not source.is_file():
-                    print(f"No local original document found. Create one with option 1 first. Default location: {source}")
+                source = _select_document_history()
+                if source is None:
                     continue
                 output = _default_package_path()
-                print(f"Using local document: {source.name}")
-                print(f"Package will be saved locally as: {output.name}")
                 arguments = ["package", "--input", str(source), "--output", str(output)]
-                use_identity = input("Include saved Node Core identity and live Peer ID? [y/N]: ").strip().lower()
-                if use_identity in {"y", "yes"}:
+                if input("Include identity and Peer ID again in this advanced JSON package? [y/N]: ").strip().lower() in {"y", "yes"}:
                     arguments.append("--use-node-profile")
             else:
-                packages_dir = _data_dir() / "hashpaper" / "packages"
+                packages_dir = _hashpaper_dir() / "packages"
                 packages = sorted(packages_dir.glob("*.json"), key=lambda path: path.stat().st_mtime, reverse=True) if packages_dir.is_dir() else []
                 if not packages:
-                    print("No local HashPaper package found. Build one with option 5 first.")
+                    print("No local HashPaper package found. Build one with option 8 first.")
                     continue
                 source = packages[0]
-                print(f"Using local package: {source.name}")
-                arguments = ["publish", "--input", str(source)]
-                report = _default_publication_report_path()
-                arguments.extend(["--report", str(report)])
-
-            status = main(arguments)
+                arguments = ["publish", "--input", str(source), "--report", str(_default_publication_report_path())]
+            if command not in {"send-ipfs", "ipfs-history"}:
+                status = main(arguments)
             if status:
                 print(f"Command finished with status {status}.")
         except (EOFError, KeyboardInterrupt):
             print("\nOperation cancelled.")
+        except (OSError, ValueError, RuntimeError, TimestampError, PublicationError, IdentityIntegrationError) as exc:
+            print(f"HashPaper error: {exc}", file=sys.stderr)
         try:
             input("\nPress Enter to return to HashPaper menu...")
         except (EOFError, KeyboardInterrupt):
             return 0
-
 
 def main(argv: list[str] | None = None) -> int:
     if argv is None and len(sys.argv) == 1:
@@ -226,10 +500,34 @@ def main(argv: list[str] | None = None) -> int:
             args.ots_json = _expanded_path(args.ots_json)
 
         if args.command == "create":
-            args.output = args.output or _default_document_path(for_create=True)
-            metadata = write_original(args.output, f"# {args.title}\n\n{args.text}\n")
+            if args.output is None:
+                import re
+                slug = re.sub(r"[^A-Za-z0-9_-]+", "-", args.title.strip()).strip("-_") or "HashPaper-document"
+                candidate = _documents_dir() / f"{slug}.md"
+                index = 2
+                while candidate.exists() or Path(str(candidate) + ".ots").exists():
+                    candidate = _documents_dir() / f"{slug}-{index}.md"
+                    index += 1
+                args.output = candidate
+            if _SESSION_IDENTITY is not None and _SESSION_PEER_ID is not None:
+                identity_json = json.dumps(_SESSION_IDENTITY, ensure_ascii=False, indent=2)
+                document_text = (
+                    f"# {args.title}\n\n{args.text.rstrip()}\n\n"
+                    "## Node Core OS Identity Association\n"
+                    "Identity fields below were embedded after explicit consent to use identity data.\n"
+                    "This is a declared profile, not independent identity verification.\n\n"
+                    "~~~json\n" + identity_json + "\n~~~\n\n"
+                    f"Node Core OS Peer ID: {_SESSION_PEER_ID}\n"
+                )
+            else:
+                document_text = f"# {args.title}\n\n{args.text}\n"
+            metadata = write_original(args.output, document_text)
             print(json.dumps(metadata, ensure_ascii=False, indent=2))
-            print("Local original created. Timestamping and IPFS publication are separate steps.")
+            print(f"Local original created: {args.output.resolve()}")
+            print(f"SHA-256: {metadata['sha256']}")
+            print(f"Size: {metadata['size_bytes']} bytes")
+            print("Identity embedded: " + ("YES" if _SESSION_IDENTITY is not None else "NO (direct CLI mode)"))
+            print("Timestamping and IPFS publication are separate steps.")
             return 0
 
         if args.command == "publish":
@@ -248,6 +546,16 @@ def main(argv: list[str] | None = None) -> int:
             document = package_value.get("document")
             if not isinstance(document, dict) or not isinstance(document.get("original_text"), str):
                 raise ValueError("Refusing publication: package must include the complete original document text.")
+            original_text = document["original_text"]
+            original_bytes = original_text.encode("utf-8")
+            if any(ord(character) < 32 and character not in "\t\n\r" for character in original_text):
+                raise ValueError("Refusing publication: original text contains terminal control characters.")
+            if (
+                document.get("hash_algorithm") != "sha256"
+                or document.get("sha256") != hashlib.sha256(original_bytes).hexdigest()
+                or document.get("size_bytes") != len(original_bytes)
+            ):
+                raise ValueError("Refusing publication: document size or SHA-256 does not match the exact original text.")
             if args.report and _same_path(args.report, package_path):
                 raise ValueError("Publication receipt must be a separate file from the package being published.")
             if args.report and args.report.exists():
@@ -285,7 +593,16 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command in {"stamp", "check", "upgrade", "proof-info"}:
             if args.input is None:
-                args.input = _default_document_path()
+                if args.command == "stamp":
+                    args.input = _default_document_path(require_unstamped=True)
+                elif args.command in {"check", "upgrade"}:
+                    args.input = _default_document_path(require_proof=True)
+                else:
+                    args.input = _default_document_path()
+            if args.input is None:
+                if args.command == "stamp":
+                    raise ValueError("No unstamped HashPaper original found. Create a new original first or provide --input.")
+                raise ValueError("No non-empty OpenTimestamps .ots proof found. Submit an original first or provide --input.")
             if not args.input.is_file():
                 raise ValueError(f"No local original document found: {args.input}. Create one with HashPaper option 1 first.")
             if args.report:
@@ -302,25 +619,33 @@ def main(argv: list[str] | None = None) -> int:
                 proof = Path(str(original) + ".ots")
                 if not original.is_file():
                     raise ValueError(f"Original document does not exist: {original}")
-                if not proof.is_file() or proof.stat().st_size == 0:
-                    raise ValueError(f"OpenTimestamps proof is missing or empty: {proof}")
                 original_hash = hashlib.sha256(original.read_bytes()).hexdigest()
-                proof_hash = hashlib.sha256(proof.read_bytes()).hexdigest()
-                result = client.check(original)
+                proof_exists = proof.is_file() and proof.stat().st_size > 0
+                if proof_exists:
+                    proof_hash = hashlib.sha256(proof.read_bytes()).hexdigest()
+                    result = client.check(original)
+                    status, verification = result.status, result.proof_verification
+                    block_height, return_code = result.bitcoin_block_height, result.return_code
+                    stdout, stderr = result.stdout, result.stderr
+                else:
+                    proof_hash = None
+                    status, verification = "NOT_SUBMITTED", "NOT_CHECKED"
+                    block_height, return_code, stdout, stderr = None, None, "", ""
                 report = {
                     "application": "HashPaper for Node Core OS",
                     "operation": "proof-info",
                     "original_file": str(original.resolve()),
                     "original_sha256": original_hash,
                     "proof_file": str(proof.resolve()),
+                    "proof_exists": proof_exists,
                     "proof_file_sha256": proof_hash,
                     "proof_fingerprint_note": "SHA-256 fingerprint of the local .ots file; not an official OpenTimestamps-issued identifier.",
-                    "status": result.status,
-                    "proof_verification": result.proof_verification,
-                    "bitcoin_block_height": result.bitcoin_block_height,
-                    "verification_return_code": result.return_code,
-                    "verification_stdout": result.stdout,
-                    "verification_stderr": result.stderr,
+                    "status": status,
+                    "proof_verification": verification,
+                    "bitcoin_block_height": block_height,
+                    "verification_return_code": return_code,
+                    "verification_stdout": stdout,
+                    "verification_stderr": stderr,
                 }
                 if args.report:
                     if _same_path(args.report, original) or _same_path(args.report, proof):
@@ -329,13 +654,15 @@ def main(argv: list[str] | None = None) -> int:
                         raise FileExistsError(f"Proof-info report already exists; choose another path: {args.report}")
                     write_package(args.report, report)
                 print(json.dumps(report, ensure_ascii=False, indent=2))
-                if result.status == "WAITING_FOR_BITCOIN":
+                if not proof_exists:
+                    print("No .ots proof exists for this original. Status: NOT_SUBMITTED.")
+                elif status == "WAITING_FOR_BITCOIN":
                     print("Timestamp proof exists and is processing; no Bitcoin attestation is verified yet.")
-                elif result.status == "VERIFIED":
+                elif status == "VERIFIED":
                     print("OpenTimestamps verified the proof against the original document.")
                 else:
-                    print(f"Proof status is {result.status}; do not treat it as verified.")
-                return 0 if result.status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
+                    print(f"Proof status is {status}; do not treat it as verified.")
+                return 0 if status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
 
             if args.command == "stamp":
                 result = client.stamp(args.input)

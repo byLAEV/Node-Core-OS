@@ -113,6 +113,12 @@ class OpenTimestampsClient:
             raise TimestampError(f"Original document does not exist: {original}")
         if original.name.endswith(".ots"):
             raise TimestampError("The original document path must not end in .ots.")
+        try:
+            original_text = original.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            raise TimestampError("HashPaper timestamps UTF-8 text/Markdown originals only.") from exc
+        if any(ord(character) < 32 and character not in "\t\n\r" for character in original_text):
+            raise TimestampError("Original document contains terminal control characters; clean or recreate it before timestamping.")
         proof = Path(str(original) + ".ots")
         if proof.exists():
             raise TimestampError(f"Proof already exists; refusing to overwrite it: {proof}")

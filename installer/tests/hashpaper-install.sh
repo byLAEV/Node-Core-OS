@@ -23,6 +23,10 @@ printf 'synthetic Kubo config\n' > "$NODE_CORE_DATA_DIR/ipfs/config"
 before="$(find "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/storage" "$NODE_CORE_DATA_DIR/ipfs" -type f -exec sha256sum {} + | sort)"
 bash "$INSTALLER"
 test -x "$NODE_CORE_DATA_DIR/bin/hashpaper"
+for directory in documents ipfs packages records; do
+  test -d "$NODE_CORE_DATA_DIR/hashpaper/$directory"
+  test "$(stat -c '%a' "$NODE_CORE_DATA_DIR/hashpaper/$directory")" = "700"
+done
 grep -q 'export NODE_CORE_DATA_DIR' "$NODE_CORE_DATA_DIR/bin/hashpaper"
 grep -q 'opentimestamps-venv/bin:$PATH' "$NODE_CORE_DATA_DIR/bin/hashpaper"
 grep -q 'exec python3 "$HASH_PAPER_ENTRY" "$@"' "$NODE_CORE_DATA_DIR/bin/hashpaper"
