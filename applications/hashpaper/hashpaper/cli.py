@@ -9,6 +9,7 @@ import sys
 
 from .documents import build_transparent_package, write_original, write_package
 from .timestamp import OpenTimestampsClient, TimestampError
+from .publication import PublicationError
 
 
 def _read_json_object(path: Path, description: str) -> dict:
@@ -133,9 +134,9 @@ def main(argv: list[str] | None = None) -> int:
         write_package(args.output, package)
         print(f"Transparent package written locally: {args.output}")
         print("WARNING: package includes the complete original text and any supplied identity fields; do not publish real personal data unintentionally.")
-        print("Kubo/IPFS publication is not implemented in this milestone.")
+        print("To publish this package, run the publish command and review the full public-disclosure warning.")
         return 0
-    except (OSError, ValueError, json.JSONDecodeError, TimestampError) as exc:
+    except (OSError, ValueError, json.JSONDecodeError, TimestampError, PublicationError) as exc:
         print(f"HashPaper error: {exc}", file=sys.stderr)
         return 1
 
