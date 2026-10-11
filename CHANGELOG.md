@@ -8,6 +8,8 @@ All notable changes to Node Core OS are documented here.
 - Document good-faith identity UX, privacy-by-default, declared-versus-verified status, and layered future security controls in `docs/IDENTITY-DESIGN-PRINCIPLES.md`.
 - Add a local text-only identity profile under the Node Core BIOS, with explicit association to an available Kubo Peer ID.
 - Show all locally saved identity fields in the main menu, including the document number, logical identity ID, and node association, while clearly marking network-consensus verification as not verified.
+- Add optional date of birth, height in centimeters, and self-described gender fields, with input validation and explicit declared-data semantics.
+- Display the first-entry and last-updated timestamps for identity data in ISO-8601 UTC format.
 - Add tests for local persistence, stable logical identity, node association, and private file permissions.
 
 ### Security and scope
