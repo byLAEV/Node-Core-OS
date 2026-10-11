@@ -54,7 +54,7 @@ class HashPaperDocumentTests(unittest.TestCase):
 
     def test_package_rejects_non_utf8_source(self):
         original = self.root / "binary.txt"
-        original.write_bytes(b"\\xff\\xfe\\xfd")
+        original.write_bytes(bytes([255, 254, 253]))
         with self.assertRaises(ValueError):
             build_transparent_package(original_path=original, identity_profile=None, node_id=None)
 
