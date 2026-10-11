@@ -23,7 +23,7 @@ printf 'synthetic Kubo config\n' > "$NODE_CORE_DATA_DIR/ipfs/config"
 before="$(find "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/storage" "$NODE_CORE_DATA_DIR/ipfs" -type f -exec sha256sum {} + | sort)"
 bash "$INSTALLER"
 test -x "$NODE_CORE_DATA_DIR/bin/hashpaper"
-for directory in documents ipfs packages records; do
+for directory in documents proofs ipfs packages records; do
   test -d "$NODE_CORE_DATA_DIR/hashpaper/$directory"
   test "$(stat -c '%a' "$NODE_CORE_DATA_DIR/hashpaper/$directory")" = "700"
 done
