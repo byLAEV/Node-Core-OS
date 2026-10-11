@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  return 1 2>/dev/null || exit 1
+fi
+
 kubo_asset() {
   case "$(uname -m)" in
     x86_64|amd64) printf 'linux-amd64\n' ;;
