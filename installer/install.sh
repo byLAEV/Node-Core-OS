@@ -32,6 +32,29 @@ main() {
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   ensure_opentimestamps_client
+  [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || {
+    printf 'Installed Node Core OS version file is missing.\n' >&2
+    exit 1
+  }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION" ]] || {
+    printf 'Installed HashPaper version file is missing.\n' >&2
+    exit 1
+  }
+  python3 - "$NODE_CORE_DATA_DIR/app/VERSION" "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+for value in sys.argv[1:]:
+    path = Path(value)
+    version = path.read_text(encoding="utf-8").strip()
+    if re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", version) is None:
+        raise SystemExit(f"Invalid application version in {path}: {version!r}")
+print("Installed Node Core OS version:", Path(sys.argv[1]).read_text(encoding="utf-8").strip())
+print("Installed HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
+PY
+  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v)
   mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   install_kubo
