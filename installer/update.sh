@@ -267,11 +267,9 @@ PY
 
 latest_commit() {
   local response="$NODE_CORE_UPDATE_DIR/latest-commit.json"
-  local temporary_response encoded_branch commit
+  local temporary_response encoded_branch commit url downloaded=0
   mkdir -p "$NODE_CORE_UPDATE_DIR"
 
-  # GitHub's commit endpoint accepts a branch or commit ref as one path
-  # component. URL-encode slashes in branch names before using the endpoint.
   encoded_branch="$(python3 - "$NODE_CORE_BRANCH" <<'PY'
 from urllib.parse import quote
 import sys
@@ -287,11 +285,24 @@ PY
     return 1
   }
 
-  if ! download_file \
-    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$encoded_branch" \
-    "$temporary_response"; then
+  # Official GitHub API alternatives. The query form handles branch names
+  # containing slashes; the ref endpoint is a second official API route.
+  local urls=(
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits?sha=$encoded_branch&per_page=1"
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$encoded_branch"
+  )
+  for url in "${urls[@]}"; do
     rm -f -- "$temporary_response"
-    printf 'Could not retrieve update metadata from GitHub for branch: %s\n' "$NODE_CORE_BRANCH" >&2
+    printf 'Trying update metadata source: %s\n' "$url"
+    if download_file "$url" "$temporary_response"; then
+      downloaded=1
+      break
+    fi
+    printf 'Update metadata source failed; trying the next official source.\n' >&2
+  done
+  if [[ "$downloaded" != 1 ]]; then
+    rm -f -- "$temporary_response"
+    printf 'Could not retrieve update metadata from any official GitHub API endpoint.\n' >&2
     return 1
   fi
 
@@ -301,16 +312,17 @@ import re
 import sys
 from pathlib import Path
 
-path = Path(sys.argv[1])
 try:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 except (OSError, json.JSONDecodeError) as exc:
     raise SystemExit(f"GitHub update metadata is unreadable: {exc}")
 
-if not isinstance(data, list) or not data:
-    raise SystemExit("GitHub returned no commits for the requested branch.")
-first = data[0]
-commit = first.get("sha") if isinstance(first, dict) else None
+# /commits?sha=... returns a list; /commits/{ref} returns one object.
+if isinstance(data, list):
+    if not data:
+        raise SystemExit("GitHub returned no commits for the requested branch.")
+    data = data[0]
+commit = data.get("sha") if isinstance(data, dict) else None
 if not isinstance(commit, str) or re.fullmatch(r"[0-9a-fA-F]{40}", commit) is None:
     raise SystemExit("GitHub returned invalid commit metadata; refusing to update.")
 print(commit.lower())
@@ -321,7 +333,6 @@ PY
     return 1
   fi
 
-  # Publish metadata only after the response has been validated.
   mv -f -- "$temporary_response" "$response" || {
     rm -f -- "$temporary_response"
     printf 'Could not save validated update metadata.\n' >&2
@@ -345,9 +356,29 @@ update_application() (
 
   rm -rf "$extract" || return 1
   mkdir -p "$extract" || return 1
-  download_file \
-    "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz" \
-    "$archive" || return 1
+  local source_url downloaded=0
+  local archive_urls=(
+    "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz"
+    "https://codeload.github.com/byLAEV/Node-Core-OS/tar.gz/$commit"
+  )
+  for source_url in "${archive_urls[@]}"; do
+    rm -f -- "$archive"
+    printf 'Trying Node Core OS source archive: %s\n' "$source_url"
+    if download_file "$source_url" "$archive"; then
+      if tar -tzf "$archive" >/dev/null 2>&1; then
+        downloaded=1
+        break
+      fi
+      printf 'Downloaded archive is invalid; trying the next official GitHub source.\n' >&2
+    else
+      printf 'Source archive download failed; trying the next official GitHub source.\n' >&2
+    fi
+  done
+  [[ "$downloaded" == 1 ]] || {
+    rm -f -- "$archive"
+    printf 'Could not download a valid source archive from any official GitHub endpoint.\n' >&2
+    return 1
+  }
   tar -xzf "$archive" -C "$extract" || return 1
 
   local source
