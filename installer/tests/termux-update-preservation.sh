@@ -104,4 +104,25 @@ grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
+# An interrupted cleanup can leave marker files after the app backup has gone.
+# The updater must validate the installed app, archive the markers, and continue.
+printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+printf 'present\n' > "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-state"
+test ! -e "$NODE_CORE_DATA_DIR/runtime/update/app-backup"
+bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/stale-cleanup-recovery.log" 2>&1
+grep -q 'Installed application validation passed' "$TEMP_ROOT/stale-cleanup-recovery.log"
+grep -q 'Recovery markers archived at:' "$TEMP_ROOT/stale-cleanup-recovery.log"
+test ! -e "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
+test ! -e "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-state"
+recovery_archive="$(find "$NODE_CORE_DATA_DIR/runtime" -maxdepth 1 -type d -name 'update-recovery-*' -print -quit)"
+test -n "$recovery_archive"
+test -f "$recovery_archive/commit-marker-backup"
+test -f "$recovery_archive/commit-marker-state"
+test -f "$recovery_archive/RECOVERY.txt"
+grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -qx 'preserve Termux local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+grep -qx 'preserve Termux IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+
+printf 'Termux updater stale-cleanup recovery test passed.\n'
+
 printf 'Termux updater real-update and data-preservation tests passed.\n'
