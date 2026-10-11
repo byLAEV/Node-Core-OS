@@ -20,7 +20,7 @@ A package changes when timestamp metadata changes. Such changes create a new pac
 
 The existing Node Core OS profile schema includes `identity_id`, `full_name`, `alias`, `nationality`, `issuing_country`, `document_type`, `document_number`, `birth_date`, `height_cm`, `gender`, `identity_status`, `node_id`, `created_at`, and `updated_at`. HashPaper must not invent values for missing fields. The profile's current status `declared` is not civil-identity verification. A Kubo Peer ID is a technical node identifier and does not establish who controls it.
 
-Identity association and public publication must require explicit confirmation after showing the exact fields and document text that will be published. The user must be able to cancel before any network operation.
+The `package --use-node-profile` flow now requires an existing local identity profile and a live Kubo Peer ID. It displays the complete original text and all known profile fields, requires the exact confirmation `INCLUDE IDENTITY AND NODE`, and only then persists the local association and creates the package. The user can cancel before association or publication. Public publication separately requires typing `PUBLISH` after reviewing the complete package.
 
 ## Transparency and encryption
 
