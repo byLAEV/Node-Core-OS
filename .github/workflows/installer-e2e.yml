@@ -98,6 +98,9 @@ jobs:
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
           test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
           test -f "$NODE_CORE_DATA_DIR/config.json"
+          test -f "$NODE_CORE_DATA_DIR/app/VERSION"
+          cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
+          grep -Eq "^[0-9]+\\.[0-9]+\\.[0-9]+$" "$NODE_CORE_DATA_DIR/app/VERSION"
           test -f "$NODE_CORE_DATA_DIR/ipfs/config"
           test -d "$NODE_CORE_DATA_DIR/storage"
 

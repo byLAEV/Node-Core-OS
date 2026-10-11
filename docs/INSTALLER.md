@@ -73,7 +73,7 @@ The installation is user-owned and therefore does not require a system-wide pack
 
 The repository `VERSION` file is the user-facing application version. Any user-visible application release must update this file so an existing installation can detect the release through the main-menu version check.
 
-The installed launcher exposes `~/.node-core/bin/node-core-update`. The updater checks the latest commit on the configured repository branch, asks for explicit confirmation, downloads that exact commit archive, validates and compiles the application, and rolls back the application and commit marker if verification fails.
+The installed launcher exposes `~/.node-core/bin/node-core-update`. The updater checks the latest commit on the configured repository branch, asks for explicit confirmation, downloads that exact commit archive, validates and compiles the application, and rolls back the application and commit marker if verification fails. The installed `app/VERSION` must be a valid semantic version and must be updated together with the source so the main-menu version check can recognize the release.
 
 An update replaces only `~/.node-core/app/` and its commit marker. It must preserve `storage/`, the Kubo executable, the Kubo repository, and `config.json`. The installer and updater are user-owned operations and must not require root or sudo.
 

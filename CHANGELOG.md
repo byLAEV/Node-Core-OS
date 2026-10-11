@@ -2,6 +2,20 @@
 
 All notable changes to Node Core OS are documented here.
 
+## [1.2.3] - 2026-10-10
+
+### Added
+- Add end-to-end integration coverage for identity-association announcements across three independent Kubo nodes and convergence on one shared, locally stored, pinned report CID.
+- Preserve machine-readable evidence for each node in the GitHub Actions artifact.
+- Verify that clean installations include a valid application `VERSION` file and that the existing-install updater delivers the new version without replacing user data or Kubo assets.
+
+### Fixed
+- Correct the trailing newline in the three-node evidence summary so the downloaded `summary.json` remains valid JSON.
+
+### Validation
+- Three-node Kubo integration, GNU/Linux terminal CI, and Ubuntu 24.04 x86_64 installer E2E are required checks for this release.
+- Installer and updater operations remain user-level and do not require root or sudo.
+
 ## [Unreleased]
 
 ### Added
