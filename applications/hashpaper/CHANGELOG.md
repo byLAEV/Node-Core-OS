@@ -9,7 +9,8 @@
 - Added safe proof-backup behavior for upgrades, including preservation of a changed proof backup when an upgrade is interrupted.
 - Added a Kubo/IPFS publisher using Node Core OS `ContentManager` and `KuboManager`, requiring explicit public-disclosure confirmation and checking CID retrieval, byte equality, SHA-256, and pin state.
 - Added explicit local identity association using the saved Node Core OS identity profile and a live Kubo Peer ID after user confirmation.
-- Added HashPaper to the Node Core OS Applications menu.
+- Added HashPaper to the Node Core OS Applications menu and implemented the interactive application menu for document creation, timestamp operations, package generation, and IPFS publication.
+- Added automated tests for no-argument launcher behavior and interactive menu command dispatch.
 - Added installer verification and compilation checks for HashPaper.
 - Added persistent directories under `~/.node-core/hashpaper/{documents,proofs,packages,records}`.
 - Expanded updater preservation checks for HashPaper documents, proofs, packages, and records during successful update and rollback scenarios.
