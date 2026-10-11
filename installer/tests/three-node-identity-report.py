@@ -8,6 +8,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import sys
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +33,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--kubo", required=True)
     parser.add_argument("--work-dir", required=True)
+    parser.add_argument("--evidence-dir", required=True)
     for label in ("a", "b", "c"):
         parser.add_argument(f"--repo-{label}", required=True)
         parser.add_argument(f"--api-{label}", required=True)
@@ -160,10 +162,22 @@ def main() -> int:
         "identity_documents_transmitted": report["identity_documents_transmitted"],
         "personal_identity_fields_transmitted": report["personal_identity_fields_transmitted"],
     }
-    evidence_path = work_dir / "three-node-identity-report-evidence.json"
-    evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print("PASS: all three real Kubo nodes have the same local report bytes, report reference, report CID, and independently verified local pin.")
-    print(f"PASS: machine-readable evidence written to {evidence_path}")
+    evidence_dir = Path(args.evidence_dir)
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    evidence_path = evidence_dir / "summary.json"
+    evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    for label in labels:
+        node_evidence = evidence_dir / f"node-{label.upper()}"
+        node_evidence.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(services[label].current_report_path, node_evidence / "current-report.json")
+        shutil.copy2(services[label].state_path, node_evidence / "state.json")
+        for source_dir_name in ("announcements", "incoming"):
+            source_dir = services[label].root / source_dir_name
+            target_dir = node_evidence / source_dir_name
+            if source_dir.is_dir():
+                shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+    print("PASS: all three real Kubo nodes have the same local report bytes, report reference, and independently verified local pin.")
+    print(f"PASS: machine-readable evidence and each node's local report/state/declarations copied to {evidence_dir}")
     return 0
 
 
