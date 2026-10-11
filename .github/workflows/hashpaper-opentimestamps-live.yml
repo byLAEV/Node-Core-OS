@@ -130,7 +130,8 @@ jobs:
 
           assert info["original_sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
           assert info["proof_file_sha256"] == hashlib.sha256(proof.read_bytes()).hexdigest()
-          assert info["proof_file_sha256"] == checked["proof_sha256"]
+          assert info["proof_file"] == checked["proof_file"]
+          assert info["original_sha256"] == checked["original_sha256"]
           assert info["status"] in {"VERIFIED", "WAITING_FOR_BITCOIN"}, info
           assert info["proof_verification"] in {"VERIFIED", "PENDING", "NOT_VERIFIED"}, info
           assert "not an official OpenTimestamps-issued identifier" in info["proof_fingerprint_note"]
