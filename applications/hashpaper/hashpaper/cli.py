@@ -69,7 +69,7 @@ def run_interactive_menu() -> int:
         "6": ("publish", "Publish a package through IPFS"),
     }
     while True:
-        print("\\nHashPaper for Node Core OS\\n")
+        print("\nHashPaper for Node Core OS\n")
         print("1. Create original document")
         print("2. Submit document to OpenTimestamps")
         print("3. Check OpenTimestamps proof")
@@ -78,9 +78,9 @@ def run_interactive_menu() -> int:
         print("6. Publish package to IPFS")
         print("0. Exit")
         try:
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\\nHashPaper closed.")
+            print("\nHashPaper closed.")
             return 0
         if choice == "0":
             return 0
@@ -89,7 +89,7 @@ def run_interactive_menu() -> int:
             continue
 
         command, description = actions[choice]
-        print(f"\\n{description}\\n")
+        print(f"\n{description}\n")
         try:
             if command == "create":
                 output = input("New original document path: ").strip()
@@ -135,9 +135,9 @@ def run_interactive_menu() -> int:
             if status:
                 print(f"Command finished with status {status}.")
         except (EOFError, KeyboardInterrupt):
-            print("\\nOperation cancelled.")
+            print("\nOperation cancelled.")
         try:
-            input("\\nPress Enter to return to HashPaper menu...")
+            input("\nPress Enter to return to HashPaper menu...")
         except (EOFError, KeyboardInterrupt):
             return 0
 
@@ -201,6 +201,10 @@ def main(argv: list[str] | None = None) -> int:
                 proof_path = Path(str(args.input.expanduser()) + ".ots")
                 if _same_path(args.report, args.input) or _same_path(args.report, proof_path):
                     raise ValueError("OpenTimestamps report must not overwrite the original document or its .ots proof.")
+                if args.report.expanduser().exists():
+                    raise FileExistsError(
+                        f"OpenTimestamps report already exists; choose a new report path: {args.report}"
+                    )
             client = OpenTimestampsClient()
             if args.command == "stamp":
                 result = client.stamp(args.input)
@@ -252,11 +256,24 @@ def main(argv: list[str] | None = None) -> int:
             identity = associate_identity_with_peer(runtime, identity, peer_id)
             node_id = peer_id
         ots_metadata = _read_json_object(args.ots_json, "OpenTimestamps report") if args.ots_json else None
+        trusted_verified_result = False
+        if ots_metadata and ots_metadata.get("status") == "VERIFIED":
+            # A JSON report can be edited. Never accept its VERIFIED claim without
+            # running the official client against the current original and .ots.
+            verification_result = OpenTimestampsClient().check(args.input)
+            if verification_result.status != "VERIFIED" or verification_result.proof_verification != "SUCCESS":
+                raise ValueError(
+                    "The supplied report claims VERIFIED, but the official OpenTimestamps client "
+                    "did not verify the current original and proof."
+                )
+            ots_metadata = verification_result.to_dict()
+            trusted_verified_result = True
         package = build_transparent_package(
             original_path=args.input,
             identity_profile=identity,
             node_id=node_id,
             ots_metadata=ots_metadata,
+            trusted_verified_result=trusted_verified_result,
         )
         write_package(args.output, package)
         print(f"Transparent package written locally: {args.output}")

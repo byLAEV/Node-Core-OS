@@ -74,7 +74,7 @@ def write_original(path: Path, content: str) -> dict[str, Any]:
     }
 
 
-def validate_ots_metadata(original_path: Path, metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+def validate_ots_metadata(original_path: Path, metadata: dict[str, Any] | None, *, trusted_verified_result: bool = False) -> dict[str, Any] | None:
     """Validate that an OTS report refers to these exact original bytes.
 
     Reports are user-editable JSON, so their presence is not trusted as proof by
@@ -101,6 +101,10 @@ def validate_ots_metadata(original_path: Path, metadata: dict[str, Any] | None) 
             f"OpenTimestamps report must refer to the expected proof filename: {expected_proof_name}"
         )
 
+    proof_path = Path(str(original) + ".ots")
+    if not proof_path.is_file() or proof_path.stat().st_size == 0:
+        raise ValueError("OpenTimestamps report supplied, but the corresponding .ots proof is missing or empty.")
+
     allowed_statuses = {
         "WAITING_FOR_BITCOIN",
         "ANCHOR_AVAILABLE",
@@ -113,6 +117,10 @@ def validate_ots_metadata(original_path: Path, metadata: dict[str, Any] | None) 
     if status not in allowed_statuses:
         raise ValueError("OpenTimestamps report has an unknown or unsupported status.")
     verification = metadata.get("proof_verification")
+    if status == "VERIFIED" and not trusted_verified_result:
+        raise ValueError(
+            "A JSON report cannot establish VERIFIED status by itself; run the official OpenTimestamps check first."
+        )
     if status == "VERIFIED" and verification != "SUCCESS":
         raise ValueError("OpenTimestamps report has an inconsistent VERIFIED status.")
     if verification == "SUCCESS" and status != "VERIFIED":
@@ -136,6 +144,7 @@ def build_transparent_package(
     identity_profile: dict[str, Any] | None,
     node_id: str | None,
     ots_metadata: dict[str, Any] | None = None,
+    trusted_verified_result: bool = False,
 ) -> dict[str, Any]:
     """Build a transparent package model including the complete original text.
 
@@ -143,14 +152,14 @@ def build_transparent_package(
     must pass actual metadata obtained from the official client; absent data stays
     explicitly unknown.
     """
-    original = Path(original_path)
+    original = Path(original_path).expanduser()
     raw = original.read_bytes()
     try:
         original_text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError("HashPaper currently packages UTF-8 text/Markdown documents only.") from exc
 
-    validated_metadata = validate_ots_metadata(original, ots_metadata)
+    validated_metadata = validate_ots_metadata(original, ots_metadata, trusted_verified_result=trusted_verified_result)
     metadata = validated_metadata or {}
     proof_path = Path(str(original) + ".ots")
     proof_exists = proof_path.is_file() and proof_path.stat().st_size > 0
@@ -191,12 +200,12 @@ def build_transparent_package(
         },
         "bitcoin": {
             "network": metadata.get("network"),
-            "block_height": metadata.get("bitcoin_block_height", metadata.get("block_height")),
-            "block_hash": metadata.get("block_hash"),
-            "block_timestamp": metadata.get("block_timestamp"),
-            "attestation_verification": metadata.get("attestation_verification", "NOT_CHECKED"),
-            "chain_height": metadata.get("chain_height"),
-            "confirmations": metadata.get("confirmations"),
+            "block_height": metadata.get("bitcoin_block_height") if metadata.get("status") == "VERIFIED" and trusted_verified_result else None,
+            "block_hash": None,
+            "block_timestamp": None,
+            "attestation_verification": "VERIFIED_BY_OFFICIAL_OTS_CLIENT" if metadata.get("status") == "VERIFIED" and trusted_verified_result else "NOT_CHECKED",
+            "chain_height": None,
+            "confirmations": None,
         },
         "publication": {"ipfs_cid": None, "pin_status": "NOT_PUBLISHED"},
     }

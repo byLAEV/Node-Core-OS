@@ -103,6 +103,10 @@ jobs:
           grep -Eq "^[0-9]+\\.[0-9]+\\.[0-9]+$" "$NODE_CORE_DATA_DIR/app/VERSION"
           test -f "$NODE_CORE_DATA_DIR/ipfs/config"
           test -d "$NODE_CORE_DATA_DIR/storage"
+          test "$(id -u)" -ne 0
+          test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
+          test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
+          printf 'Non-root ownership verified for Node Core OS installation: %s (uid=%s).\\n' "$(id -un)" "$(id -u)"
 
       - name: Verify Kubo API and Node Core launcher
         env:
@@ -118,20 +122,22 @@ jobs:
 
       - name: Test installed HashPaper interactive menu
         env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e-data
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
+          test "$(id -u)" -ne 0
+          test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
           launcher="$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
           test -f "$launcher"
-          output="$(printf '0\\n' | python3 "$launcher")"
-          printf '%s\\n' "$output"
+          output="$(printf '0\n' | python3 "$launcher")"
+          printf '%s\n' "$output"
           grep -Fq "HashPaper for Node Core OS" <<< "$output"
           grep -Fq "1. Create original document" <<< "$output"
           grep -Fq "2. Submit document to OpenTimestamps" <<< "$output"
           grep -Fq "5. Build transparent package" <<< "$output"
           grep -Fq "6. Publish package to IPFS" <<< "$output"
           grep -Fq "0. Exit" <<< "$output"
-          printf 'Installed HashPaper interactive menu test passed.\\n'
+          printf 'Installed HashPaper interactive menu test passed.\n'
 
       - name: Test HashPaper package publication against live Kubo
         env:

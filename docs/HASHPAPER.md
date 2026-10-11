@@ -18,7 +18,7 @@ Verified in GitHub Actions on commit `d953d0732dba587b5a4153aba4b9758d656edf89`:
 - Identity association against the live Kubo Peer ID passed using synthetic identity data.
 - Uninstall safety and uninstall checks passed.
 
-The OpenTimestamps adapter invokes the official `ots` CLI for `stamp`, `check`, and `upgrade`. Unit tests use a fake executable. A manual workflow, `.github/workflows/hashpaper-opentimestamps-live.yml`, now installs the official client and attempts a real submission/check using synthetic data. The workflow must be run and its result inspected; a pending result does not establish a verified Bitcoin attestation. A separate HashPaper installer has not been implemented; HashPaper ships with Node Core OS.
+The OpenTimestamps adapter invokes the official `ots` CLI for `stamp`, `check`, and `upgrade`. Unit tests use a fake executable. A workflow, `.github/workflows/hashpaper-opentimestamps-live.yml`, now installs the official client and attempts a real submission/check using synthetic data. It supports manual execution and a weekly schedule after merge to the default branch. Its result must be inspected; a pending result does not establish a verified Bitcoin attestation. A separate HashPaper installer has not been implemented; HashPaper ships with Node Core OS.
 
 ## Artifact contract
 
