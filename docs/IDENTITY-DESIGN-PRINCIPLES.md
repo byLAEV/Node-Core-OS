@@ -7,7 +7,9 @@
 
 Node Core OS identity features must begin with a clear, accessible workflow for people acting in good faith. The initial experience must not treat every person as a suspect or make ordinary registration unnecessarily difficult.
 
-The user should be able to enter the text fields from an identity document without uploading photographs, scans, or videos. Fields must adapt to the document type and issuing jurisdiction; the system must not require fields that do not apply.
+The user should be able to enter the text fields from an identity document without uploading photographs, scans, or videos. The initial profile may also include date of birth (YYYY-MM-DD), height in centimeters, and a self-described gender field. These additional demographic fields are optional, should be clearly labelled as user-declared, and must not be treated as independently verified physical or civil attributes. Fields must adapt to the document type and issuing jurisdiction; the system must not require fields that do not apply.
+
+The profile must record when identity data was first entered and when it was last updated, using ISO-8601 UTC timestamps. Editing the profile must preserve the first-entry timestamp and update the last-updated timestamp. These timestamps document local profile operations; they are not proof that the identity data is true or that a trusted third party witnessed the entry.
 
 This usability principle does not mean that declared information is automatically true or verified. The interface must clearly distinguish what a person entered from what a verification procedure has established.
 
@@ -15,7 +17,7 @@ This usability principle does not mean that declared information is automaticall
 
 A profile belongs to a persistent Node Core OS identity reference. Correcting a typographical error, renewing a document, changing an eligible attribute, recovering access, or rotating keys must not silently create a new logical identity.
 
-Updates should preserve the identity reference and relevant history while allowing users to correct legitimate mistakes through an understandable process.
+Updates should preserve the identity reference and relevant history while allowing users to correct legitimate mistakes through an understandable process. When an update omits a field, the implementation must retain that field's existing value. Optional values may be cleared only through an explicit empty value; required fields must remain present.
 
 ## 3. Distinguish declared data from verified evidence
 
@@ -86,7 +88,7 @@ The first identity-profile implementation is acceptable only if tests demonstrat
 - the profile persists across menu sessions;
 - a stable logical identity reference is retained when the profile is edited;
 - node association is explicit and uses a real, available node identifier;
-- the main menu reflects all saved identity fields, including the document number, logical identity ID, node ID, and the current network-consensus verification status;
+- the main menu reflects all saved identity fields, including optional date of birth, height, gender, first-entry and last-updated UTC timestamps, document number, logical identity ID, node ID, and the current network-consensus verification status;
 - the main menu clearly says that network-consensus verification has not occurred unless a real verification protocol returns an appropriate result;
 - identity data is stored locally and is not sent to IPFS or another network service;
 - missing node identifiers and incomplete verification are explained without treating them as fraud;
