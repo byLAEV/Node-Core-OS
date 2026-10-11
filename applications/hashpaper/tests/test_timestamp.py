@@ -57,6 +57,9 @@ class OpenTimestampsClientTests(unittest.TestCase):
         self.assertEqual(result.status, "WAITING_FOR_BITCOIN")
         self.assertEqual(result.proof_verification, "NOT_VERIFIED")
         self.assertTrue(Path(result.proof_file).is_file())
+        self.assertEqual(result.proof_sha256, __import__("hashlib").sha256(Path(result.proof_file).read_bytes()).hexdigest())
+        self.assertEqual(result.calendar_urls, ("https://calendar.example",))
+        self.assertEqual(result.bitcoin_transaction_ids, ())
         self.assertEqual(self.original_path.read_bytes(), original_bytes)
 
     def test_stamp_refuses_to_overwrite_existing_proof(self):
@@ -112,6 +115,20 @@ class OpenTimestampsClientTests(unittest.TestCase):
         self.assertEqual(result.status, "ANCHOR_AVAILABLE")
         self.assertTrue(Path(str(proof) + ".before-upgrade").is_file())
         self.assertEqual(proof.read_bytes(), b"fake-proof-verified")
+        self.assertEqual(result.previous_proof_sha256, __import__("hashlib").sha256(b"fake-proof").hexdigest())
+        self.assertEqual(result.proof_sha256, __import__("hashlib").sha256(b"fake-proof-verified").hexdigest())
+
+    def test_extracts_transaction_id_only_when_explicitly_labelled(self):
+        transaction_id = "a" * 64
+        output = (
+            "Calendar https://calendar.example "
+            f"transaction id: {transaction_id} "
+            f"unlabelled {transaction_id}"
+        )
+        self.assertEqual(
+            OpenTimestampsClient._bitcoin_transaction_ids(output),
+            (transaction_id,),
+        )
 
     def test_interrupted_upgrade_keeps_backup_if_proof_changed(self):
         proof = Path(str(self.original_path) + ".ots")
