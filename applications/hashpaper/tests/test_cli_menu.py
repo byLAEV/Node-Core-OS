@@ -45,6 +45,25 @@ class HashPaperMenuTests(unittest.TestCase):
                 "proof-info", "--input", str(default_document)
             ])
 
+    def test_check_and_upgrade_menu_select_document_with_a_proof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            original = Path(temporary) / "Genesis-HashPaper.md"
+            original.write_text("synthetic", encoding="utf-8")
+            Path(str(original) + ".ots").write_bytes(b"synthetic proof")
+            for choice, command_name in (("3", "check"), ("4", "upgrade")):
+                with patch.object(cli, "_default_document_path", return_value=original) as select:
+                    with patch("builtins.input", side_effect=[choice, "", "0"]):
+                        with patch.object(cli, "main", return_value=0) as command:
+                            self.assertEqual(cli.run_interactive_menu(), 0)
+                select.assert_called_once_with(require_proof=True)
+                command.assert_called_once_with([command_name, "--input", str(original)])
+
+    def test_create_menu_cancels_when_zero_is_entered_as_title(self):
+        with patch("builtins.input", side_effect=["1", "0", "0"]):
+            with patch.object(cli, "main") as command:
+                self.assertEqual(cli.run_interactive_menu(), 0)
+        command.assert_not_called()
+
     def test_environment_variables_are_expanded_in_explicit_paths(self):
         with patch.dict(os.environ, {"HASH_PAPER_TEST_PATH": "/tmp/expanded.md"}):
             self.assertEqual(cli._expanded_path("$HASH_PAPER_TEST_PATH"), Path("/tmp/expanded.md"))
