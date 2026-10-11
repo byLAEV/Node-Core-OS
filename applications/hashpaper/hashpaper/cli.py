@@ -1,4 +1,4 @@
-"""Initial local-only HashPaper command-line interface."""
+"""Initial HashPaper command-line interface."""
 
 from __future__ import annotations
 
@@ -8,10 +8,18 @@ from pathlib import Path
 import sys
 
 from .documents import build_transparent_package, write_original, write_package
+from .timestamp import OpenTimestampsClient, TimestampError
+
+
+def _read_json_object(path: Path, description: str) -> dict:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"{description} JSON must contain an object.")
+    return value
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="hashpaper", description="HashPaper for Node Core OS (local prototype)")
+    parser = argparse.ArgumentParser(prog="hashpaper", description="HashPaper for Node Core OS")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     create = subparsers.add_parser("create", help="Create a local original text/Markdown document")
@@ -24,6 +32,17 @@ def build_parser() -> argparse.ArgumentParser:
     package.add_argument("--output", required=True, type=Path, help="Output JSON package path")
     package.add_argument("--identity-json", type=Path, help="Optional local identity profile JSON")
     package.add_argument("--node-id", help="Actual technical node ID, if known")
+    package.add_argument("--ots-json", type=Path, help="Optional report produced by an actual OpenTimestamps command")
+
+    for name, help_text in (
+        ("stamp", "Submit the exact original document bytes to the official OpenTimestamps client"),
+        ("check", "Check/verify an existing OpenTimestamps proof"),
+        ("upgrade", "Ask the official client to upgrade a pending proof"),
+    ):
+        command = subparsers.add_parser(name, help=help_text)
+        command.add_argument("--input", required=True, type=Path, help="Original UTF-8 text/Markdown document")
+        command.add_argument("--report", type=Path, help="Optional JSON report output path")
+
     return parser
 
 
@@ -33,25 +52,45 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "create":
             metadata = write_original(args.output, f"# {args.title}\n\n{args.text}\n")
             print(json.dumps(metadata, ensure_ascii=False, indent=2))
-            print("Local original created. OpenTimestamps submission and IPFS publication are not implemented in this milestone.")
+            print("Local original created. Timestamping and IPFS publication are separate steps.")
             return 0
 
-        identity = None
-        if args.identity_json:
-            identity = json.loads(args.identity_json.read_text(encoding="utf-8"))
-            if not isinstance(identity, dict):
-                raise ValueError("Identity profile JSON must contain an object.")
+        if args.command in {"stamp", "check", "upgrade"}:
+            client = OpenTimestampsClient()
+            if args.command == "stamp":
+                result = client.stamp(args.input)
+            else:
+                result = client.check(args.input, upgrade=args.command == "upgrade")
+            report = result.to_dict()
+            if args.report:
+                write_package(args.report, report)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            if args.command == "stamp":
+                print("Timestamp submitted. This does not mean a Bitcoin attestation is already verified.")
+            elif result.status == "VERIFIED":
+                print("OpenTimestamps verification succeeded for the original document.")
+            elif result.status == "WAITING_FOR_BITCOIN":
+                print("The timestamp is pending Bitcoin confirmation; it is not yet verified.")
+            elif result.status == "ANCHOR_AVAILABLE":
+                print("Upgrade reported a completed timestamp. Run 'check' to verify against the original document.")
+            else:
+                print(f"OpenTimestamps result status: {result.status}")
+            return 0 if result.status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
+
+        identity = _read_json_object(args.identity_json, "Identity profile") if args.identity_json else None
+        ots_metadata = _read_json_object(args.ots_json, "OpenTimestamps report") if args.ots_json else None
         package = build_transparent_package(
             original_path=args.input,
             identity_profile=identity,
             node_id=args.node_id,
+            ots_metadata=ots_metadata,
         )
         write_package(args.output, package)
         print(f"Transparent package written locally: {args.output}")
         print("WARNING: package includes the complete original text and any supplied identity fields; do not publish real personal data unintentionally.")
-        print("OpenTimestamps submission, verification, and IPFS publication are not implemented in this milestone.")
+        print("Kubo/IPFS publication is not implemented in this milestone.")
         return 0
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, json.JSONDecodeError, TimestampError) as exc:
         print(f"HashPaper error: {exc}", file=sys.stderr)
         return 1
 
