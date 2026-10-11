@@ -256,8 +256,8 @@ mkdir -p "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node
   "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/tests"
 printf 'def broken(:\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/main.py"
 printf 'VALUE = "broken"\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/node_core/__init__.py"
-printf 'print("fixture")\\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/main.py"
-printf 'VALUE = "fixture"\\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/hashpaper/cli.py"
+printf 'print("fixture")\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/main.py"
+printf 'VALUE = "fixture"\n' > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/hashpaper/cli.py"
 cat > "$TEMP_ROOT/rollback-failure-release/Node-Core-OS-rollback-failure/applications/hashpaper/tests/test_smoke.py" <<'PY'
 import unittest
 
