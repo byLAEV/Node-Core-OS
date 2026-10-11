@@ -34,7 +34,7 @@ ensure_opentimestamps_client() {
     fi
   fi
 
-  if [[ ! -x "$ots_bin" ]] || ! "$ots_bin" --help >/dev/null 2>&1; then
+  if [[ ! -x "$ots_bin" ]] || ! "$ots_bin" --help >/dev/null 2>&1 || ! "$venv_python" -c 'import opentimestamps' >/dev/null 2>&1; then
     printf '%s\n' 'Installing the official opentimestamps-client package...'
     "$venv_python" -m pip install --upgrade pip
     "$venv_python" -m pip install --upgrade opentimestamps-client
