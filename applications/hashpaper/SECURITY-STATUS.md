@@ -17,7 +17,8 @@ A profile marked `declared` is not a verified civil identity. A node Peer ID is 
 
 ## Required safeguards before a release
 
-- Require explicit user confirmation before incorporating identity data or publishing a package.
+- The `--use-node-profile` workflow shows all identity fields, original document text, and the current real Kubo Peer ID, then requires explicit confirmation before saving the local association and incorporating identity data.
+- The `publish` workflow shows the complete package and requires explicit confirmation before network publication.
 - Show the exact fields and complete document content that will be published.
 - Preserve source document bytes and `.ots` proof files without silent modification.
 - Keep application data outside the replaceable application-code directory.
