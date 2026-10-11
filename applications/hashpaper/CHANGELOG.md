@@ -1,5 +1,13 @@
 # HashPaper Changelog
 
+## 0.3.0 — Independent application updates
+
+- Added a standalone updater that replaces only `applications/hashpaper/`, without reinstalling or replacing the Node Core OS application.
+- Added pre-install compilation and unit-test checks, explicit user confirmation, an update lock, and rollback to the previous HashPaper code if post-install verification fails.
+- Kept persistent documents, adjacent OpenTimestamps proofs, packages, publication receipts, identity, configuration, local storage, and the Kubo repository outside the updated application directory.
+- Documented a direct installation path for the updater for existing Node Core OS installations, including installations that have not yet received the latest Node Core OS updater.
+- No claim is made that live OpenTimestamps calendar submission or Bitcoin attestation has been verified by the unit tests.
+
 ## 0.1.0 — Initial integrated milestone
 
 - Added local UTF-8 text/Markdown document creation without overwriting existing originals.
