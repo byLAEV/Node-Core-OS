@@ -23,6 +23,7 @@ class HashPaperStorageLayoutTests(unittest.TestCase):
                 path = data_dir / "hashpaper" / name
                 self.assertTrue(path.is_dir(), str(path))
                 self.assertFalse((data_dir / "app" / "hashpaper" / name).exists())
+            self.assertTrue((data_dir / "storage" / "opentimestamps").is_dir())
 
 
 if __name__ == "__main__":
