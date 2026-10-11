@@ -73,7 +73,7 @@ cryptographic key management.
 
 The integrated application lives in `applications/hashpaper/`. It creates local UTF-8 originals, hashes exact original bytes, builds transparent packages containing the complete original text, invokes the official OpenTimestamps CLI through an adapter, and publishes packages through Node Core OS `ContentManager` and `KuboManager` after explicit confirmation. The publication adapter retrieves the returned CID, checks byte-for-byte equality and SHA-256, and confirms pin state.
 
-The Applications menu, installer verification, persistent data directories, and updater preservation tests are implemented. HashPaper data lives under `~/.node-core/hashpaper/{documents,proofs,packages,records}`, outside the replaceable application-code directory.
+The Applications menu launches an interactive HashPaper menu. Installer verification, persistent data directories, and updater preservation tests are implemented. HashPaper data lives under `~/.node-core/hashpaper/{documents,proofs,packages,records}`, outside the replaceable application-code directory.
 
 GitHub Actions passed GNU/Linux terminal CI and Ubuntu 24.04 installer E2E on commit `d953d0732dba587b5a4153aba4b9758d656edf89`. The E2E run passed in both service modes and included live Kubo publication/retrieval, identity association with the real Kubo Peer ID using synthetic identity data, and uninstall safety checks. See [HashPaper documentation](HASHPAPER.md) for the verified scope and remaining validation.
 
