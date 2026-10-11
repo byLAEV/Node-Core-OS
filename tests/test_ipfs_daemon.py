@@ -1,0 +1,43 @@
+"""Tests for launching Kubo independently from the interactive terminal."""
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from node_core.ipfs import KuboManager, KuboStatus
+
+
+class KuboBackgroundLaunchTests(unittest.TestCase):
+    def test_start_detaches_daemon_and_redirects_terminal_streams(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = Path(temporary) / "ipfs"
+            manager = KuboManager("ipfs", repo, "http://127.0.0.1:5001")
+
+            process = unittest.mock.Mock()
+            process.pid = 4321
+            process.poll.return_value = None
+
+            with (
+                patch.object(manager, "status", side_effect=[
+                    KuboStatus(True, True, False),
+                    KuboStatus(True, True, True, peer_id="peer-test"),
+                ]),
+                patch.object(manager, "is_initialized", return_value=True),
+                patch("node_core.ipfs.subprocess.Popen", return_value=process) as popen,
+            ):
+                manager.start(wait_seconds=0.5)
+
+            args, kwargs = popen.call_args
+            self.assertEqual(args[0], ["ipfs", "daemon"])
+            self.assertIs(kwargs["stdin"], subprocess.DEVNULL)
+            self.assertIs(kwargs["stderr"], subprocess.STDOUT)
+            self.assertTrue(kwargs["start_new_session"])
+            self.assertTrue(kwargs["close_fds"])
+            self.assertEqual(kwargs["env"]["IPFS_PATH"], str(repo))
+            self.assertEqual(manager.pid_path.read_text(encoding="utf-8").strip(), "4321")
+            self.assertTrue(manager.log_path.is_file())
+
+
+if __name__ == "__main__":
+    unittest.main()
