@@ -101,6 +101,17 @@ class IdentityPresenceTests(unittest.TestCase):
         self.assertTrue(result["pinned_locally"])
         self.assertIn(result["report_cid"], self.kubo.pin_list())
 
+    def test_import_report_rejects_personal_fields_in_announcements(self):
+        self.service.announce()
+        report = self.service.create_report()
+        report["announcements"][0]["full_name"] = "Must Not Be Accepted"
+        path = self.root / "unsafe-report.json"
+        path.write_text(json.dumps(report), encoding="utf-8")
+        cid = self.kubo.add_file(path).cid
+        other = IdentityPresence(self.root / "other-node", self.profile, self.network, self.kubo)
+        with self.assertRaisesRegex(Exception, "unsupported fields"):
+            other.import_report(cid)
+
     def test_import_report_saves_and_pins_same_bytes(self):
         self.service.announce()
         self.service.create_report()
