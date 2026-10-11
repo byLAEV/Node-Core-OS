@@ -143,8 +143,12 @@ class OpenTimestampsClient:
             args = (["upgrade", str(proof)] if upgrade else ["verify", str(proof)])
             result = self._run(args)
         except Exception:
-            if backup is not None and backup.exists():
-                backup.unlink()
+            # An interrupted upgrade may have modified the proof before the
+            # client timed out or failed. Keep the backup unless the current
+            # proof is byte-for-byte identical to it.
+            if backup is not None and backup.exists() and proof.is_file():
+                if backup.read_bytes() == proof.read_bytes():
+                    backup.unlink()
             raise
 
         output = self._combined_output(result)
