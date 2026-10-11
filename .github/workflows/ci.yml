@@ -40,7 +40,7 @@ jobs:
       - name: Validate Python sources
         run: |
           set -euo pipefail
-          python -m compileall -q main.py node_core tests
+          python -m compileall -q main.py node_core tests applications/hashpaper
 
       - name: Validate installer shell syntax
         run: |
@@ -58,3 +58,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -v
+
+      - name: Run HashPaper local foundation tests
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s applications/hashpaper/tests -v

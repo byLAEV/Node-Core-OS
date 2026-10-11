@@ -67,6 +67,29 @@ does not expose the administrative Kubo RPC.
 IPNS/key-backed naming belongs above this layer because it will require identity and
 cryptographic key management.
 
+## HashPaper for Node Core OS
+
+[HashPaper architecture and roadmap](HASHPAPER.md) defines the planned application
+for transparent document records, OpenTimestamps evidence, and Kubo/IPFS publication.
+
+The first source-tree milestone lives in `applications/hashpaper/` and provides
+local UTF-8 document creation, exact-byte SHA-256, and a transparent package model
+that embeds the full original text. OpenTimestamps submission/verification, Kubo
+publication/retrieval verification, main-menu integration, installer integration,
+and updater preservation are **not yet implemented**. CI tests the local foundation
+only.
+
+No encryption is implemented in this stage. A package intended for IPFS includes
+the complete original text and any selected identity fields in cleartext. Public
+publication can disclose that data to third parties. HashPaper must require explicit
+confirmation before future publication and must not claim a declared identity is
+civilly verified or that a CID proves authenticity, pinning, or availability.
+
+HashPaper's user data must remain outside the replaceable application-code directory.
+Installer/update integration is blocked on tests that prove documents, OTS proofs,
+generated packages, Node Core identity, configuration, local storage, and Kubo state
+survive upgrades.
+
 ## Identity activity, personhood, and evidence (future layers)
 
 The specifications below define planned capabilities and are not claims of existing
