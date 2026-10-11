@@ -28,6 +28,15 @@ def _documents_dir() -> Path:
     return _data_dir() / "storage"
 
 
+def _has_terminal_control_characters(path: Path) -> bool:
+    """Treat unreadable or non-UTF-8 originals as unsuitable for text workflows."""
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return True
+    return any(ord(character) < 32 and character not in "\t\n\r" for character in content)
+
+
 def _default_document_path(
     *,
     for_create: bool = False,
@@ -50,7 +59,11 @@ def _default_document_path(
                 and Path(str(path) + ".ots").stat().st_size > 0
             ]
         elif require_unstamped:
-            candidates = [path for path in candidates if not Path(str(path) + ".ots").exists()]
+            candidates = [
+                path for path in candidates
+                if not Path(str(path) + ".ots").exists()
+                and not _has_terminal_control_characters(path)
+            ]
         if candidates:
             return max(candidates, key=lambda path: path.stat().st_mtime)
         if require_proof or require_unstamped:
