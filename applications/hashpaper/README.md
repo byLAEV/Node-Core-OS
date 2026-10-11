@@ -1,57 +1,81 @@
 # HashPaper for Node Core OS
 
-HashPaper is an application prototype for creating transparent document records, timestamping the exact original document with OpenTimestamps, and publishing a complete evidence package through the Node Core OS Kubo/IPFS layer.
+HashPaper is an application included in the Node Core OS source tree. It creates local UTF-8 text/Markdown originals, calculates SHA-256 over the exact original bytes, requests timestamp operations through the official OpenTimestamps CLI, builds a transparent JSON evidence package, and publishes that package through the existing Node Core OS Kubo/IPFS content interfaces after explicit confirmation.
 
-## Current status
+## Current verified milestone
 
-This directory establishes the application contract and local document-package foundation. It is not yet an end-to-end release: the OpenTimestamps client integration, Kubo publication workflow, installer integration, update preservation, and full CI coverage remain pending implementation and verification.
+The following components are implemented in the main branch:
 
-## Transparency and security status
+- Local original-document creation with no-overwrite behavior.
+- Transparent JSON packages that embed the complete original text and known identity/node fields.
+- SHA-256 calculated from the exact original bytes, separately from the generated package hash.
+- An adapter for the official `ots` CLI: `stamp`, `check`, and `upgrade`.
+- A Kubo/IPFS publisher using Node Core OS `ContentManager` and `KuboManager`. It asks for explicit confirmation, retrieves the published CID, compares the retrieved bytes, and checks pin state.
+- An identity association flow that requires an existing Node Core OS identity profile, a live Kubo Peer ID, and explicit confirmation.
+- A Node Core OS Applications-menu entry and installer checks for HashPaper files/compilation.
+- Persistent HashPaper data directories outside the replaceable application-code tree.
+- Automated tests for the local application, timestamp adapter behavior, publication behavior, and data-preservation scenarios.
 
-- No encryption is implemented in this stage.
-- The planned IPFS package intentionally includes the complete original document text, the identity fields explicitly selected for the record, the original document's SHA-256, and real OpenTimestamps results when available.
-- Publishing such a package makes its contents publicly retrievable by anyone able to access the IPFS content. Use synthetic data for tests. Do not publish real identity or civil-document data unless you explicitly accept permanent public disclosure.
-- A local identity profile is declared data, not independently verified civil identity. A Kubo Peer ID identifies a technical node, not the person controlling it.
-- An OpenTimestamps proof can establish timestamp-related evidence for bytes; it does not by itself prove authorship, truth, ownership, or civil identity.
-- A CID identifies the exact published package. It does not itself prove timestamp validity, pinning, identity, or permanent availability.
+GitHub Actions has passed the Linux terminal CI and the Ubuntu 24.04 installer E2E workflow. The E2E run includes a clean install in both service modes, publication/retrieval against a live Kubo daemon, identity association against the live Kubo Peer ID, and uninstall safety checks. See the repository Actions page for the exact run and commit.
 
-## Planned files
+## Commands
 
-A record will preserve three separate artifacts:
-
-1. The immutable original text/Markdown file whose exact bytes are submitted to OpenTimestamps.
-2. The `.ots` proof file returned by the official OpenTimestamps client, with status tracked separately from proof-file existence.
-3. A versioned IPFS package that includes the entire original text plus identity/node metadata, SHA-256, and only the OpenTimestamps/Bitcoin fields actually returned and verified.
-
-Changes to the original create a new document version. If timestamp or verification metadata changes, a new package version and CID are produced; the original and prior package are not silently overwritten.
-
-## Persistent data
-
-Application data must live outside the replaceable Node Core OS application-code directory. The planned default is `~/.node-core/hashpaper/`; this location must be confirmed against the shared installer/update contract before release.
-
-## Development
-
-The project officially supports GNU/Linux terminal environments and Python 3.10+.
+Run from the repository root on GNU/Linux with Python 3.10 or newer:
 
 ```bash
 python3 -m unittest discover -s applications/hashpaper/tests -v
+
+python3 applications/hashpaper/main.py create \
+  --output /tmp/document-001.md \
+  --title "Synthetic test" \
+  --text "Synthetic body"
+
+python3 applications/hashpaper/main.py stamp \
+  --input /tmp/document-001.md \
+  --report /tmp/document-001.stamp-report.json
+
+python3 applications/hashpaper/main.py check \
+  --input /tmp/document-001.md \
+  --report /tmp/document-001.check-report.json
+
+python3 applications/hashpaper/main.py upgrade \
+  --input /tmp/document-001.md \
+  --report /tmp/document-001.upgrade-report.json
+
+python3 applications/hashpaper/main.py package \
+  --input /tmp/document-001.md \
+  --output /tmp/document-001.ipfs.json \
+  --ots-json /tmp/document-001.check-report.json
+
+# Optional identity association: review and confirm the complete fields.
+python3 applications/hashpaper/main.py package \
+  --input /tmp/document-001.md \
+  --output /tmp/document-001.with-identity.json \
+  --use-node-profile
+
+# Public disclosure: review the complete package and type PUBLISH.
+python3 applications/hashpaper/main.py publish \
+  --input /tmp/document-001.ipfs.json \
+  --report /tmp/document-001.publication.json
 ```
 
-The current milestone is a local-first foundation, an adapter for the official OpenTimestamps CLI, and an explicit identity/Peer ID association flow. The adapter is tested with a fake executable in CI; that does not prove that a real calendar request or Bitcoin verification has succeeded. Kubo/IPFS publication now has an adapter using Node Core OS's existing `ContentManager` and `KuboManager`. The `publish` command prints the complete package and requires typing `PUBLISH` before network operations. It verifies byte-for-byte retrieval and confirms pin state. This adapter is tested with fake runtime objects in CI; a live Kubo end-to-end run is still pending. Installer integration remains pending.
+Timestamp commands require the official `ots` executable in `PATH`. A successful submission is not proof that a Bitcoin attestation is already available. After an upgrade, run `check` to verify the proof against the unchanged original. The adapter retains a backup when the proof changes, including when an upgrade is interrupted.
 
-## Local commands
+## Persistent data
 
-Run from the repository root on GNU/Linux with Python 3.10+:
+Node Core OS creates these directories under `~/.node-core/hashpaper/`:
 
-```bash
-python3 applications/hashpaper/main.py create --output /tmp/document-001.md --title "Synthetic test" --text "Synthetic body"
-python3 applications/hashpaper/main.py stamp --input /tmp/document-001.md --report /tmp/document-001.ots-report.json
-python3 applications/hashpaper/main.py check --input /tmp/document-001.md --report /tmp/document-001.check-report.json
-python3 applications/hashpaper/main.py upgrade --input /tmp/document-001.md --report /tmp/document-001.upgrade-report.json
-python3 applications/hashpaper/main.py package --input /tmp/document-001.md --output /tmp/document-001.ipfs.json --ots-json /tmp/document-001.check-report.json
-# Or load the actual Node Core identity and live Kubo Peer ID with explicit confirmation:
-python3 applications/hashpaper/main.py package --input /tmp/document-001.md --output /tmp/document-001.with-identity.json --use-node-profile
-python3 applications/hashpaper/main.py publish --input /tmp/document-001.ipfs.json --report /tmp/document-001.publication.json
-```
+- `documents/` — original documents.
+- `proofs/` — OpenTimestamps proof files.
+- `packages/` — generated packages.
+- `records/` — local publication receipts and records.
 
-The timestamp commands require the official `ots` executable in `PATH`. `stamp` creates the proof using remote calendars; it does not mean the Bitcoin attestation is already confirmed. `upgrade` retains a `.before-upgrade` backup if the proof changes. Run `check` afterwards to verify the proof against the original. `publish` is the exception: after showing the complete package, it asks for the exact confirmation `PUBLISH`, then uses the existing Node Core Kubo/content interfaces. It refuses to report success unless the retrieved bytes match and the CID is confirmed pinned. The CID is recorded in a separate receipt because embedding a package's own CID in the package would change its content. Use synthetic content for network tests.
+They are outside the replaceable application-code directory so a normal application update does not remove user data.
+
+## Transparency and security
+
+**Encryption is NOT IMPLEMENTED.** A generated package intentionally contains the complete original document text and any identity fields included in the package, in cleartext. Publishing the package to IPFS can expose that information to third parties. Use synthetic data for testing and do not publish real identity or civil-document data unless public disclosure is intentional.
+
+A profile marked `declared` is not independently verified civil identity. A Kubo Peer ID identifies a technical node, not the person controlling it. An OpenTimestamps proof does not by itself establish authorship, truth, ownership, or civil identity. A CID identifies exact content; it does not alone prove validity, pinning, or permanent availability.
+
+HashPaper is shipped with the main Node Core OS code tree. A separate HashPaper installer has not yet been implemented. Live OpenTimestamps calendar/Bitcoin attestation testing remains separate from the automated tests that use a fake `ots` executable.
