@@ -39,10 +39,24 @@ printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/
 
 # Build a local release archive to exercise the actual update path without network access.
 mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
-  "$TEST_FIXTURES/release/Node-Core-OS-test/installer"
+  "$TEST_FIXTURES/release/Node-Core-OS-test/installer" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/hashpaper" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/tests"
 printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/main.py"
 printf 'VALUE = "updated"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/node_core/__init__.py"
 cp "$REPOSITORY_ROOT/installer/update.sh" "$TEST_FIXTURES/release/Node-Core-OS-test/installer/update.sh"
+printf 'print("updated HashPaper")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/main.py"
+printf 'VALUE = "updated HashPaper CLI"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/hashpaper/cli.py"
+cat > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/tests/test_smoke.py" <<'PY'
+import unittest
+
+class UpdaterFixtureSmokeTest(unittest.TestCase):
+    def test_fixture_release_is_testable(self):
+        self.assertTrue(True)
+
+if __name__ == "__main__":
+    unittest.main()
+PY
 tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
   -C "$TEST_FIXTURES/release" Node-Core-OS-test
 
