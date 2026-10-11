@@ -37,7 +37,7 @@ The project officially supports GNU/Linux terminal environments and Python 3.10+
 python3 -m unittest discover -s applications/hashpaper/tests -v
 ```
 
-The current milestone is a local-first foundation plus an adapter for the official OpenTimestamps CLI. The adapter is tested with a fake executable in CI; that does not prove that a real calendar request or Bitcoin verification has succeeded. Kubo/IPFS publication now has an adapter using Node Core OS's existing `ContentManager` and `KuboManager`. The `publish` command prints the complete package and requires typing `PUBLISH` before network operations. It verifies byte-for-byte retrieval and confirms pin state. This adapter is tested with fake runtime objects in CI; a live Kubo end-to-end run is still pending. Installer integration remains pending.
+The current milestone is a local-first foundation, an adapter for the official OpenTimestamps CLI, and an explicit identity/Peer ID association flow. The adapter is tested with a fake executable in CI; that does not prove that a real calendar request or Bitcoin verification has succeeded. Kubo/IPFS publication now has an adapter using Node Core OS's existing `ContentManager` and `KuboManager`. The `publish` command prints the complete package and requires typing `PUBLISH` before network operations. It verifies byte-for-byte retrieval and confirms pin state. This adapter is tested with fake runtime objects in CI; a live Kubo end-to-end run is still pending. Installer integration remains pending.
 
 ## Local commands
 
@@ -49,6 +49,8 @@ python3 applications/hashpaper/main.py stamp --input /tmp/document-001.md --repo
 python3 applications/hashpaper/main.py check --input /tmp/document-001.md --report /tmp/document-001.check-report.json
 python3 applications/hashpaper/main.py upgrade --input /tmp/document-001.md --report /tmp/document-001.upgrade-report.json
 python3 applications/hashpaper/main.py package --input /tmp/document-001.md --output /tmp/document-001.ipfs.json --ots-json /tmp/document-001.check-report.json
+# Or load the actual Node Core identity and live Kubo Peer ID with explicit confirmation:
+python3 applications/hashpaper/main.py package --input /tmp/document-001.md --output /tmp/document-001.with-identity.json --use-node-profile
 python3 applications/hashpaper/main.py publish --input /tmp/document-001.ipfs.json --report /tmp/document-001.publication.json
 ```
 
