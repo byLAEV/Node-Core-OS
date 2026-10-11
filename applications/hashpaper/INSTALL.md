@@ -2,7 +2,11 @@
 
 HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A user-level launcher is installed automatically by the Node Core OS clean installer and updater at `~/.node-core/bin/hashpaper`. The companion script `installer/hashpaper-install.sh` can recreate that launcher and install/verify the OpenTimestamps client for an existing installation that already contains HashPaper. It does not download application code independently.
 
-## Default local paths\n\nThe interactive menu does not ask users to type filesystem paths for normal local workflows. Original text/Markdown documents are stored in `~/.node-core/storage/`; package JSON files are stored in `~/.node-core/hashpaper/packages/`; publication receipts are stored in `~/.node-core/hashpaper/records/`. HashPaper uses the newest local text document by default and never overwrites an existing original or package. Explicit `--input`/`--output` arguments remain available for automation or importing an existing file.\n\n## Requirements
+## Default local paths
+
+The interactive menu does not ask users to type filesystem paths for normal local workflows. Original text/Markdown documents are stored in `~/.node-core/storage/`; package JSON files are stored in `~/.node-core/hashpaper/packages/`; publication receipts are stored in `~/.node-core/hashpaper/records/`. HashPaper uses the newest local text document by default and never overwrites an existing original or package. Explicit `--input`/`--output` arguments remain available for automation or importing an existing file.
+
+## Requirements
 
 - A supported GNU/Linux terminal environment.
 - Python 3.10 or newer.
@@ -15,7 +19,8 @@ From the repository root:
 
 ```bash
 python3 -m unittest discover -s applications/hashpaper/tests -v
-bash installer/tests/update-preservation.sh\nbash installer/tests/hashpaper-install.sh
+bash installer/tests/update-preservation.sh
+bash installer/tests/hashpaper-install.sh
 ```
 
 GitHub Actions additionally performs a clean installation and uninstall on Ubuntu 24.04 in two service modes. Its E2E test creates synthetic HashPaper data, publishes a package through the live Kubo daemon, retrieves it by CID and compares bytes, checks a real Kubo Peer ID association, and exercises uninstall safety checks.
