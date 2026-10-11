@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import hashlib
+import os
 from pathlib import Path
 import re
 import shutil
@@ -43,13 +44,31 @@ class OpenTimestampsClient:
         self.timeout_seconds = timeout_seconds
 
     def _executable_path(self) -> str:
+        # Prefer PATH so users can select an official client; otherwise check
+        # the private environment managed by Node Core OS.
         path = shutil.which(self.executable)
-        if path is None:
-            raise TimestampError(
-                "OpenTimestamps client 'ots' was not found in PATH. Install the official "
-                "opentimestamps-client package before using timestamp operations."
-            )
-        return path
+        if path is not None:
+            return path
+
+        if self.executable == "ots":
+            configured = os.environ.get("NODE_CORE_OTS_EXECUTABLE")
+            candidates = []
+            if configured:
+                candidates.append(Path(configured).expanduser())
+            data_dir = Path(
+                os.environ.get("NODE_CORE_DATA_DIR", str(Path.home() / ".node-core"))
+            ).expanduser()
+            candidates.append(data_dir / "runtime" / "opentimestamps-venv" / "bin" / "ots")
+            for candidate in candidates:
+                if candidate.is_file() and os.access(candidate, os.X_OK):
+                    return str(candidate)
+
+        raise TimestampError(
+            "OpenTimestamps client 'ots' was not found. Node Core OS expects the official "
+            "opentimestamps-client package in its private environment at "
+            "'~/.node-core/runtime/opentimestamps-venv/bin/ots'. "
+            "Run the Node Core OS installer/updater or the HashPaper installer."
+        )
 
     @staticmethod
     def _sha256(path: Path) -> str:
