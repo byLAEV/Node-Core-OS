@@ -18,6 +18,7 @@ class MainMenu:
         update_status = check_for_updates()
         while True:
             print("\nNode Core OS\nbyLAEV\n")
+            self._print_identity_summary()
             self._print_update_status(update_status)
             print("0. Exit")
             print("1. Node Core BIOS")
@@ -87,6 +88,7 @@ class MainMenu:
             print("7. Diagnostics")
             print("8. Updates")
             print("9. Lifecycle")
+            print("10. Identity Profile")
             choice = input("\n> ").strip()
             if choice == "0":
                 return
@@ -94,6 +96,135 @@ class MainMenu:
                 self.storage_bios()
             elif choice == "2":
                 self.kubo_bios()
+            elif choice == "10":
+                self.identity_bios()
+
+    def _print_identity_summary(self) -> None:
+        """Show a privacy-conscious identity summary in the main menu."""
+        try:
+            profile = self.runtime.identity_profile.load()
+        except (OSError, ValueError) as exc:
+            print(f"Identity profile unavailable: {exc}")
+            return
+        if profile is None:
+            print("Identity: Not configured (Node Core BIOS > Identity Profile).")
+            return
+
+        print(f"Name: {profile['full_name']}")
+        if profile.get("alias"):
+            print(f"Alias: {profile['alias']}")
+        if profile.get("nationality"):
+            print(f"Nationality: {profile['nationality']}")
+        print("Identity status: Declared (not independently verified)")
+        print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
+
+    def identity_bios(self) -> None:
+        """Manage the user's declared identity profile and node association."""
+        store = self.runtime.identity_profile
+        while True:
+            print("\nIdentity Profile")
+            try:
+                profile = store.load()
+            except (OSError, ValueError) as exc:
+                print(f"Could not read identity profile: {exc}")
+                input("\n> ")
+                return
+
+            if profile:
+                print(f"Name: {profile['full_name']}")
+                print(f"Alias: {profile.get('alias') or '-'}")
+                print(f"Nationality: {profile.get('nationality') or '-'}")
+                print(f"Identity status: {profile['identity_status']}")
+                print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
+            else:
+                print("No identity profile has been saved.")
+
+            print("\n0. Back")
+            print("1. Enter or edit identity document data")
+            print("2. Associate profile with this node")
+            print("3. View profile details (document number masked)")
+            choice = input("\n> ").strip()
+
+            if choice == "0":
+                return
+            if choice == "1":
+                previous = profile or {}
+                full_name = input(
+                    f"Full name [{previous.get('full_name', '')}]: "
+                ).strip() or previous.get("full_name", "")
+                alias = input(
+                    f"Alias [{previous.get('alias', '')}]: "
+                ).strip() or previous.get("alias", "")
+                nationality = input(
+                    f"Nationality [{previous.get('nationality', '')}]: "
+                ).strip() or previous.get("nationality", "")
+                issuing_country = input(
+                    f"Issuing country [{previous.get('issuing_country', 'Costa Rica')}]: "
+                ).strip() or previous.get("issuing_country", "Costa Rica")
+                document_type = input(
+                    f"Document type [{previous.get('document_type', 'National identity document')}]: "
+                ).strip() or previous.get("document_type", "National identity document")
+                document_number = input(
+                    "Document number (leave blank to keep the saved value): "
+                ).strip() or previous.get("document_number", "")
+                try:
+                    saved = store.save_declared_profile(
+                        full_name=full_name,
+                        alias=alias,
+                        nationality=nationality,
+                        issuing_country=issuing_country,
+                        document_type=document_type,
+                        document_number=document_number,
+                    )
+                    print("Identity profile saved locally as declared data.")
+                    print("No document photo or video was requested.")
+                    print(f"Logical identity ID: {saved['identity_id']}")
+                    print("No identity verification has been performed.")
+                except (OSError, ValueError) as exc:
+                    print(f"Could not save identity profile: {exc}")
+                input("\n> ")
+            elif choice == "2":
+                if profile is None:
+                    print("Enter identity data before associating a node.")
+                    input("\n> ")
+                    continue
+                try:
+                    status = self.runtime.kubo.status()
+                    node_id = status.peer_id
+                    if not node_id:
+                        print("No Kubo Peer ID is currently available.")
+                        if status.initialized:
+                            print("Start Kubo and ensure its API is available, then retry.")
+                        else:
+                            print("Initialize and start Kubo, then return here to associate the profile.")
+                    else:
+                        store.associate_node(node_id)
+                        print("Identity profile associated with the current node.")
+                        print(f"Node ID: {node_id}")
+                except Exception as exc:
+                    print(f"Could not associate identity with this node: {exc}")
+                input("\n> ")
+            elif choice == "3":
+                if profile is None:
+                    print("No identity profile has been saved.")
+                else:
+                    number = profile.get("document_number", "")
+                    masked_number = (
+                        ("*" * max(0, len(number) - 4) + number[-4:])
+                        if number
+                        else "-"
+                    )
+                    print(f"Logical identity ID: {profile['identity_id']}")
+                    print(f"Name: {profile['full_name']}")
+                    print(f"Alias: {profile.get('alias') or '-'}")
+                    print(f"Nationality: {profile.get('nationality') or '-'}")
+                    print(f"Issuing country: {profile['issuing_country']}")
+                    print(f"Document type: {profile['document_type']}")
+                    print(f"Document number: {masked_number}")
+                    print(f"Identity status: {profile['identity_status']}")
+                    print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
+                    print("Storage: Local only; not published to IPFS.")
+                input("\n> ")
 
     def storage_bios(self) -> None:
         print("\nStorage")

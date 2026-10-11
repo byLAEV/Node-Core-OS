@@ -1585,3 +1585,14 @@ This is a proposed future capability, not a claim that a complete memory and del
 
 My Life / Node Blog supports paginated browsing (10 entries per page), searching by title/content/entry ID, and selecting an individual entry before publication. Publishing acts only on the selected entry, asks whether to pin it on this node, records its Kubo/IPFS CID, and preserves the local Markdown file. See [My Life / Node Blog documentation](docs/MY-LIFE-BLOG.md) for the behavior and update contract.
 
+
+
+---
+
+# Identity Registration Design and Initial Profile
+
+Identity registration follows the principles in [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md): design the ordinary, good-faith workflow first; distinguish user-declared data from verified evidence; preserve a logical identity across corrections; and keep personal data private by default.
+
+The initial terminal profile is available from **Node Core BIOS → Identity Profile**. It accepts text fields, stores the profile locally under the user's Node Core OS data directory, and allows explicit association with an available Kubo Peer ID. The main menu displays the saved name, alias, nationality, declaration status, and node association. It does not display the full document number.
+
+This initial profile is a local declaration only. It does not verify a civil identity, authenticate an identity document, prove that the user is its legitimate holder, or establish personhood or uniqueness. The profile is not published to IPFS. File permissions are a baseline safeguard, not a substitute for a future reviewed encryption, key-management, recovery, and threat-model design.

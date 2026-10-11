@@ -5,6 +5,7 @@ from node_core.content import ContentManager
 from node_core.evidence import EvidenceManager
 from node_core.external_cids import ExternalCIDLibrary
 from node_core.ipfs import KuboManager
+from node_core.identity.profile import IdentityProfileStore
 from node_core.my_life import MyLifeBlog
 from node_core.network import NodeNetwork
 from node_core.storage import StorageManager
@@ -30,6 +31,7 @@ class NodeRuntime:
             gateway=self.config.ipfs_gateway,
         )
         self.evidence = EvidenceManager(self.content)
+        self.identity_profile = IdentityProfileStore(self.config.data_dir)
         self.external_cids = ExternalCIDLibrary(self.storage, self.kubo)
         self.my_life = MyLifeBlog(self.storage, self.content)
         self._booted = False
