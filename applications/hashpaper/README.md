@@ -2,14 +2,14 @@
 
 HashPaper is an application included in the Node Core OS source tree. It creates local UTF-8 text/Markdown originals, calculates SHA-256 over the exact original bytes, requests timestamp operations through the official OpenTimestamps CLI, builds a transparent JSON evidence package, and publishes that package through the existing Node Core OS Kubo/IPFS content interfaces after explicit confirmation.
 
-## Current verified milestone
+## Pending OpenTimestamps proof display\n\nHashPaper can display the original document SHA-256 and the SHA-256 fingerprint of the local `.ots` proof while the timestamp is pending. The proof-file fingerprint is a local integrity identifier for that exact `.ots` file; it is **not** an official OpenTimestamps-issued timestamp ID and it does not prove Bitcoin confirmation. The displayed state comes from running the official `ots verify` command against the original proof. A pending proof is labelled `WAITING_FOR_BITCOIN` and is not presented as verified.\n\nCLI usage:\n\n```bash\npython applications/hashpaper/main.py proof-info --input /path/to/document.md --report /path/to/proof-info.json\n```\n\n## Current verified milestone
 
 The following components are implemented in the main branch:
 
 - Local original-document creation with no-overwrite behavior.
 - Transparent JSON packages that embed the complete original text and known identity/node fields.
 - SHA-256 calculated from the exact original bytes, separately from the generated package hash.
-- An adapter for the official `ots` CLI: `stamp`, `check`, and `upgrade`.
+- An adapter for the official `ots` CLI: `stamp`, `check`, and `upgrade`.\n- A proof-information view available as menu option 7 or `proof-info`, showing the original SHA-256, the local `.ots` file SHA-256 fingerprint, and the actual status returned by the official verifier.
 - A Kubo/IPFS publisher using Node Core OS `ContentManager` and `KuboManager`. It asks for explicit confirmation, retrieves the published CID, compares the retrieved bytes, and checks pin state.
 - An identity association flow that requires an existing Node Core OS identity profile, a live Kubo Peer ID, and explicit confirmation.
 - A Node Core OS Applications-menu entry with an interactive HashPaper menu for creating documents, running timestamp operations, building packages, and publishing; installer checks for HashPaper files/compilation.
