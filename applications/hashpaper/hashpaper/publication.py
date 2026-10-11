@@ -20,13 +20,14 @@ class PublicationResult:
     content_verified: bool
     pinned: bool
     published: bool
+    sha256: str
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "cid": self.cid,
             "name": self.name,
             "size_bytes": self.size_bytes,
-            "sha256": None,
+            "sha256": self.sha256,
             "content_verified": self.content_verified,
             "pinned": self.pinned,
             "published": self.published,
@@ -84,6 +85,7 @@ class HashPaperPublisher:
                 content_verified=True,
                 pinned=True,
                 published=True,
+                sha256=expected_sha256,
             )
         except PublicationError:
             raise
