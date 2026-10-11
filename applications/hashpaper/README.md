@@ -12,13 +12,16 @@ The following components are implemented in the main branch:
 - An adapter for the official `ots` CLI: `stamp`, `check`, and `upgrade`.
 - A Kubo/IPFS publisher using Node Core OS `ContentManager` and `KuboManager`. It asks for explicit confirmation, retrieves the published CID, compares the retrieved bytes, and checks pin state.
 - An identity association flow that requires an existing Node Core OS identity profile, a live Kubo Peer ID, and explicit confirmation.
-- A Node Core OS Applications-menu entry and installer checks for HashPaper files/compilation.
+- A Node Core OS Applications-menu entry with an interactive HashPaper menu for creating documents, running timestamp operations, building packages, and publishing; installer checks for HashPaper files/compilation.
 - Persistent HashPaper data directories outside the replaceable application-code tree.
 - Automated tests for the local application, timestamp adapter behavior, publication behavior, and data-preservation scenarios.
 
 GitHub Actions has passed the Linux terminal CI and the Ubuntu 24.04 installer E2E workflow. The E2E run includes a clean install in both service modes, publication/retrieval against a live Kubo daemon, identity association against the live Kubo Peer ID, and uninstall safety checks. See the repository Actions page for the exact run and commit.
 
-## Commands
+## Interactive menu and commands
+
+Launching HashPaper from the Node Core OS Applications menu now opens an interactive menu. It supports local document creation, OpenTimestamps submission/check/upgrade, transparent package generation, and IPFS publication. The menu prompts for required paths and fields, and the identity/publication workflows retain their explicit confirmation steps. The CLI commands below are also available for scripted workflows.
+
 
 Run from the repository root on GNU/Linux with Python 3.10 or newer:
 
