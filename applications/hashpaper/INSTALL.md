@@ -1,6 +1,6 @@
 # HashPaper Installation
 
-HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A user-level launcher is installed automatically by the Node Core OS clean installer and updater at `~/.node-core/bin/hashpaper`. The companion script `installer/hashpaper-install.sh` can recreate that launcher and install/verify the OpenTimestamps client for an existing installation that already contains HashPaper. It does not download application code independently.
+HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. A user-level launcher is installed automatically by the Node Core OS clean installer and updater at `~/.node-core/bin/hashpaper`. The companion script `installer/hashpaper-install.sh` can recreate that launcher and install/verify the OpenTimestamps client for an existing installation that already contains HashPaper. It does not download application code independently. The separate `installer/hashpaper-update.sh` updater downloads and updates only the HashPaper application code.
 
 ## Default local paths
 
