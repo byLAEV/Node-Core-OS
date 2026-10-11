@@ -6,7 +6,7 @@ HashPaper is the document-evidence application planned for Node Core OS. It is d
 
 ## Current implementation status
 
-The first source-tree milestone is `applications/hashpaper/` version `0.1.0`. It provides local UTF-8 document creation, SHA-256 calculation, and transparent JSON package generation with tests. The complete original text is embedded in the package. It does **not** yet submit or verify OpenTimestamps proofs, publish to Kubo/IPFS, integrate with the main menu, or participate in installer/update lifecycle. Those features must not be represented as operational until implemented and tested.
+The first source-tree milestone is `applications/hashpaper/` version `0.1.0`. It provides local UTF-8 document creation, SHA-256 calculation, and transparent JSON package generation with tests. The complete original text is embedded in the package. It does **not** yet submit or verify OpenTimestamps proofs, publish to Kubo/IPFS, integrate with the main menu, or participate in installer/update lifecycle. The official OpenTimestamps CLI adapter is now implemented for `stamp`, `check`, and `upgrade`. CI exercises it with a fake CLI executable, not live calendars or Bitcoin verification. Kubo/IPFS publication, retrieval verification, main-menu integration, and installer/update lifecycle remain pending and must not be represented as operational.
 
 ## Artifact contract
 
@@ -29,7 +29,7 @@ No encryption is implemented in this stage. The planned published package intent
 ## Integration plan
 
 1. Complete and test the local record workflow and schema.
-2. Integrate only the official OpenTimestamps client; never reimplement its cryptographic protocol.
+2. The CLI adapter invokes only the official OpenTimestamps client for `stamp`, `verify`, and `upgrade`; CI uses a fake executable to test state handling. Live calendar and Bitcoin verification still require integration tests. Never reimplement its cryptographic protocol.
 3. Distinguish pending proofs, network errors, available attestations, and successful verification.
 4. Integrate with the existing `node_core.ipfs.KuboManager` and content registry only after confirming their current contracts. Do not expose Kubo's administrative RPC to applications.
 5. Verify a published CID by retrieving the package and comparing bytes; confirm pin state separately.
