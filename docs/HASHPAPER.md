@@ -6,7 +6,7 @@ HashPaper is the document-evidence application planned for Node Core OS. It is d
 
 ## Current implementation status
 
-The first source-tree milestone is `applications/hashpaper/` version `0.1.0`. It provides local UTF-8 document creation, SHA-256 calculation, and transparent JSON package generation with tests. The complete original text is embedded in the package. It does **not** yet submit or verify OpenTimestamps proofs, publish to Kubo/IPFS, integrate with the main menu, or participate in installer/update lifecycle. The official OpenTimestamps CLI adapter is now implemented for `stamp`, `check`, and `upgrade`. CI exercises it with a fake CLI executable, not live calendars or Bitcoin verification. Kubo/IPFS publication, retrieval verification, main-menu integration, and installer/update lifecycle remain pending and must not be represented as operational.
+The first source-tree milestone is `applications/hashpaper/` version `0.1.0`. It provides local UTF-8 document creation, SHA-256 calculation, and transparent JSON package generation with tests. The complete original text is embedded in the package. It does **not** yet submit or verify OpenTimestamps proofs, publish to Kubo/IPFS, integrate with the main menu, or participate in installer/update lifecycle. The official OpenTimestamps CLI adapter is now implemented for `stamp`, `check`, and `upgrade`. CI exercises it with a fake CLI executable, not live calendars or Bitcoin verification. Kubo/IPFS publication now has an adapter using the existing Node Core `ContentManager` and `KuboManager`. It requires explicit confirmation, retrieves the resulting CID, compares bytes, and checks pin state; unit tests use fake runtime objects, so a live Kubo end-to-end test remains pending. Main-menu integration and installer/update lifecycle remain pending and must not be represented as operational.
 
 ## Artifact contract
 
@@ -32,7 +32,7 @@ No encryption is implemented in this stage. The planned published package intent
 2. The CLI adapter invokes only the official OpenTimestamps client for `stamp`, `verify`, and `upgrade`; CI uses a fake executable to test state handling. Live calendar and Bitcoin verification still require integration tests. Never reimplement its cryptographic protocol.
 3. Distinguish pending proofs, network errors, available attestations, and successful verification.
 4. Integrate with the existing `node_core.ipfs.KuboManager` and content registry only after confirming their current contracts. Do not expose Kubo's administrative RPC to applications.
-5. Verify a published CID by retrieving the package and comparing bytes; confirm pin state separately.
+5. The initial publisher adapter now retrieves the CID, compares bytes, and checks pin state. Add a live Kubo end-to-end test before release.
 6. Add a HashPaper launcher/menu integration without weakening the Node Core OS application boundary.
 7. Install application code under the replaceable code tree but keep all user documents, `.ots` files, packages, and application state outside it.
 8. Update installer and updater with preservation tests for existing config, identity, local storage, Kubo repository, and HashPaper records.
