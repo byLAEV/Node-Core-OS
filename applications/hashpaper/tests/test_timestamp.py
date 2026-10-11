@@ -64,6 +64,12 @@ class OpenTimestampsClientTests(unittest.TestCase):
             OpenTimestampsClient().stamp(self.original_path)
         self.assertEqual(Path(str(self.original_path) + ".ots").read_bytes(), b"existing")
 
+    def test_stamp_rejects_terminal_control_characters(self):
+        self.original_path.write_text("# 0\n\n\x1b\n", encoding="utf-8")
+        with self.assertRaisesRegex(TimestampError, "terminal control characters"):
+            OpenTimestampsClient().stamp(self.original_path)
+        self.assertFalse(Path(str(self.original_path) + ".ots").exists())
+
     def test_check_distinguishes_pending_from_verified(self):
         proof = Path(str(self.original_path) + ".ots")
         proof.write_bytes(b"fake-proof")
