@@ -58,7 +58,93 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def run_interactive_menu() -> int:
+    """Run the menu shown when HashPaper is launched without CLI arguments."""
+    actions = {
+        "1": ("create", "Create a local original document"),
+        "2": ("stamp", "Submit the original to OpenTimestamps"),
+        "3": ("check", "Check an OpenTimestamps proof"),
+        "4": ("upgrade", "Upgrade a pending OpenTimestamps proof"),
+        "5": ("package", "Build a transparent package"),
+        "6": ("publish", "Publish a package through IPFS"),
+    }
+    while True:
+        print("\\nHashPaper for Node Core OS\\n")
+        print("1. Create original document")
+        print("2. Submit document to OpenTimestamps")
+        print("3. Check OpenTimestamps proof")
+        print("4. Upgrade OpenTimestamps proof")
+        print("5. Build transparent package")
+        print("6. Publish package to IPFS")
+        print("0. Exit")
+        try:
+            choice = input("\\n> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\\nHashPaper closed.")
+            return 0
+        if choice == "0":
+            return 0
+        if choice not in actions:
+            print("Choose an available option.")
+            continue
+
+        command, description = actions[choice]
+        print(f"\\n{description}\\n")
+        try:
+            if command == "create":
+                output = input("New original document path: ").strip()
+                title = input("Document title: ").strip()
+                body = input("Document body text: ")
+                if not output or not title or not body:
+                    print("Cancelled: path, title, and body are required.")
+                    continue
+                arguments = ["create", "--output", output, "--title", title, "--text", body]
+            elif command in {"stamp", "check", "upgrade"}:
+                source = input("Path to the original document: ").strip()
+                if not source:
+                    print("Cancelled: document path is required.")
+                    continue
+                arguments = [command, "--input", source]
+                report = input("Optional JSON report path (leave blank to skip): ").strip()
+                if report:
+                    arguments.extend(["--report", report])
+            elif command == "package":
+                source = input("Path to the original document: ").strip()
+                output = input("New package output path: ").strip()
+                if not source or not output:
+                    print("Cancelled: input and output paths are required.")
+                    continue
+                arguments = ["package", "--input", source, "--output", output]
+                ots_report = input("Optional OpenTimestamps report path (leave blank to skip): ").strip()
+                if ots_report:
+                    arguments.extend(["--ots-json", ots_report])
+                use_identity = input("Include saved Node Core identity and live Peer ID? [y/N]: ").strip().lower()
+                if use_identity in {"y", "yes"}:
+                    arguments.append("--use-node-profile")
+            else:
+                source = input("Path to the transparent JSON package: ").strip()
+                if not source:
+                    print("Cancelled: package path is required.")
+                    continue
+                arguments = ["publish", "--input", source]
+                report = input("Optional new publication receipt path (leave blank to skip): ").strip()
+                if report:
+                    arguments.extend(["--report", report])
+
+            status = main(arguments)
+            if status:
+                print(f"Command finished with status {status}.")
+        except (EOFError, KeyboardInterrupt):
+            print("\\nOperation cancelled.")
+        try:
+            input("\\nPress Enter to return to HashPaper menu...")
+        except (EOFError, KeyboardInterrupt):
+            return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    if argv is None and len(sys.argv) == 1:
+        return run_interactive_menu()
     args = build_parser().parse_args(argv)
     try:
         if args.command == "create":
