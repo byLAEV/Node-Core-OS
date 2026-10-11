@@ -2,6 +2,13 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Updater regression correction — 2026-10-11
+
+- Fixed updater diagnostics contaminating the stdout value returned by `latest_commit`. Download progress is now sent to stderr, leaving stdout reserved for the validated commit SHA.
+- Kept slash-containing branch refs intact in the GitHub API query parameter and URL-encoded the ref only for the fallback path endpoint.
+- Silenced the expected JSON parser diagnostic when the read-only installer detector classifies deliberately malformed configuration as invalid.
+- The prior CI failure was reproducible: progress text was captured alongside the SHA, then used to build invalid archive URLs. Re-run CI before merging to verify this fix.
+
 ## Official download fallback hardening — 2026-10-11
 
 ### Fixed
