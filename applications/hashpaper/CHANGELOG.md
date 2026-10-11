@@ -7,6 +7,6 @@
 - Added a transparent JSON package model that embeds the complete original text and includes known identity/node fields without inventing missing values.
 - Added tests for byte integrity, no-overwrite behavior, transparent identity inclusion, non-UTF-8 rejection, and package serialization.
 - Encryption status: **NOT IMPLEMENTED**. Identity and document content are not encrypted.
-- OpenTimestamps submission/verification: **NOT IMPLEMENTED**.
+- Added a wrapper around the official `ots` CLI for stamp, check/verify, and upgrade operations. The wrapper does not implement cryptography; tests use a fake CLI executable, so real network timestamping has not yet been verified.
 - Kubo/IPFS publication and retrieval verification: **NOT IMPLEMENTED**.
 - Main installer/updater integration: **NOT IMPLEMENTED**.
