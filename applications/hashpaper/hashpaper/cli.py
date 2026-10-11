@@ -477,6 +477,8 @@ def main(argv: list[str] | None = None) -> int:
             args.ots_json = _expanded_path(args.ots_json)
 
         if args.command == "create":
+            if _SESSION_IDENTITY is None or _SESSION_PEER_ID is None:
+                raise ValueError("Identity-data consent is required to create HashPaper originals. Launch HashPaper interactively and accept the identity-data protocol.")
             if args.output is None:
                 import re
                 slug = re.sub(r"[^A-Za-z0-9_-]+", "-", args.title.strip()).strip("-_") or "HashPaper-document"
