@@ -278,12 +278,12 @@ import sys
 print(quote(sys.argv[1], safe=""))
 PY
   )" || {
-    printf 'Could not encode the update branch name.\\n' >&2
+    printf 'Could not encode the update branch name.\n' >&2
     return 1
   }
 
   temporary_response="$(mktemp "$NODE_CORE_UPDATE_DIR/latest-commit.XXXXXX")" || {
-    printf 'Could not create a temporary update metadata file.\\n' >&2
+    printf 'Could not create a temporary update metadata file.\n' >&2
     return 1
   }
 
@@ -291,7 +291,7 @@ PY
     "https://api.github.com/repos/byLAEV/Node-Core-OS/commits?sha=$encoded_branch&per_page=1" \
     "$temporary_response"; then
     rm -f -- "$temporary_response"
-    printf 'Could not retrieve update metadata from GitHub for branch: %s\\n' "$NODE_CORE_BRANCH" >&2
+    printf 'Could not retrieve update metadata from GitHub for branch: %s\n' "$NODE_CORE_BRANCH" >&2
     return 1
   fi
 
@@ -317,22 +317,17 @@ print(commit.lower())
 PY
   )"; then
     rm -f -- "$temporary_response"
-    printf 'GitHub returned invalid update metadata; refusing to update.\\n' >&2
+    printf 'GitHub returned invalid update metadata; refusing to update.\n' >&2
     return 1
   fi
 
-  # Keep a complete diagnostic/cache copy only after the response is validated.
-  local metadata_temporary="$response.tmp.$$"
-  printf '{"commit":"%s","branch":"%s"}\\n' "$commit" "$NODE_CORE_BRANCH" > "$metadata_temporary" || {
-    rm -f -- "$temporary_response" "$metadata_temporary"
+  # Publish metadata only after the response has been validated.
+  mv -f -- "$temporary_response" "$response" || {
+    rm -f -- "$temporary_response"
+    printf 'Could not save validated update metadata.\n' >&2
     return 1
   }
-  mv -f -- "$metadata_temporary" "$response" || {
-    rm -f -- "$temporary_response" "$metadata_temporary"
-    return 1
-  }
-  rm -f -- "$temporary_response"
-  printf '%s\\n' "$commit"
+  printf '%s\n' "$commit"
 }
 
 backup_app() {
