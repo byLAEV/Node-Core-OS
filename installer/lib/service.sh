@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+
 service_unit_dir() {
   printf '%s/systemd/user\n' "${XDG_CONFIG_HOME:-$HOME/.config}"
 }
