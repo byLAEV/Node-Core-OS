@@ -47,6 +47,8 @@ def read_identity_fields(profile: dict[str, Any]) -> dict[str, Any]:
 
 def write_original(path: Path, content: str) -> dict[str, Any]:
     """Create an original UTF-8 text document without overwriting an existing file."""
+    if any(ord(character) < 32 and character not in "\t\n\r" for character in content):
+        raise ValueError("Document text contains terminal control characters; remove them and try again.")
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     data = content.encode("utf-8")
