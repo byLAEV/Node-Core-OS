@@ -395,9 +395,19 @@ def run_interactive_menu() -> int:
                 if not title or title.lower() in {"0", "q", "quit", "cancel"}:
                     print("Document creation cancelled.")
                     continue
+                if any(ord(character) < 32 and character not in "\t" for character in title):
+                    print("Document creation cancelled: title contains terminal control characters.")
+                    continue
                 body = _read_multiline_body()
                 if body is None or not body.strip():
                     print("Document creation cancelled: body is empty or input was cancelled.")
+                    continue
+                if any(ord(character) < 32 and character not in "\t\n\r" for character in body):
+                    print("Document creation cancelled: body contains terminal control characters.")
+                    continue
+                confirmation = input("Type 1 to CREATE this document, or 0 to cancel: ").strip()
+                if confirmation != "1":
+                    print("Document creation cancelled.")
                     continue
                 if _SESSION_IDENTITY is None or _SESSION_PEER_ID is None:
                     print("Identity session is unavailable. Exiting for safety.")
