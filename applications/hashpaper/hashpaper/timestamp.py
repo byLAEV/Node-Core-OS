@@ -111,6 +111,22 @@ class OpenTimestampsClient:
         match = re.search(r"Bitcoin block\s+(\d+)\s+attests", output, re.IGNORECASE)
         return int(match.group(1)) if match else None
 
+    @staticmethod
+    def _calendar_urls(output: str) -> tuple[str, ...]:
+        """Return only calendar URLs explicitly printed by the official client."""
+        matches = re.findall(r"https?://[^\\s<>\\\"']+", output, re.IGNORECASE)
+        return tuple(dict.fromkeys(value.rstrip(".,);]") for value in matches))
+
+    @staticmethod
+    def _bitcoin_transaction_ids(output: str) -> tuple[str, ...]:
+        """Extract transaction IDs only when the client labels them as transactions."""
+        pattern = (
+            r"(?:bitcoin\\s+)?transaction(?:\\s+id)?\\s*[:=]?\\s*"
+            r"([0-9a-f]{64})\\b"
+        )
+        matches = re.findall(pattern, output, re.IGNORECASE)
+        return tuple(dict.fromkeys(value.lower() for value in matches))
+
     def stamp(self, original_path: Path) -> TimestampResult:
         original = Path(original_path).expanduser()
         if not original.is_file():
