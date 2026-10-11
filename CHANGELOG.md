@@ -2,6 +2,20 @@
 
 All notable changes to Node Core OS are documented here.
 
+## [1.2.6] - 2026-10-11
+
+### Added
+- Bundle HashPaper 0.3.0 as the default application in fresh installations and in every Node Core OS application update.
+- Validate both Node Core OS and HashPaper version metadata before an update is marked successful.
+- Run HashPaper compilation and unit tests during fresh installation as well as application updates.
+- Report the bundled HashPaper version during updates, keeping the application code synchronized with the Node Core OS release.
+- Include safe recovery from interrupted updater cleanup (PR #63), while preserving recovery evidence and user data.
+
+### Validation
+- Add Termux update regression assertions for Node Core OS 1.2.6 and HashPaper 0.3.0.
+- Installer E2E asserts the default HashPaper version is 0.3.0 and exercises its interactive menu and Kubo integration.
+- HashPaper Python matrix and standalone HashPaper updater regression remain part of CI.
+
 ## [1.2.3] - 2026-10-10
 
 ### Added
