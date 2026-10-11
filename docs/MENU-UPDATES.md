@@ -11,6 +11,6 @@ The updater downloads the latest source from the configured branch, verifies Pyt
 
 ## Versioning rule
 
-Whenever a release changes the menu or application, increase the root `VERSION` file before publishing to `main`. The version file is the public contract used by the menu checker. The version introduced with the menu update checker is `1.1.0`.
+Whenever a release changes the menu or application, increase the root `VERSION` file before publishing to `main`. The version file is the public contract used by the menu checker. The version introduced with the menu update checker is `1.1.0`. Release `1.2.3` includes the three-node identity-report integration-test work and the installer/updater version-verification checks. Existing installations detect the release on the next successful menu version check and can update through `Update` or by running `~/.node-core/bin/node-core-update` as the normal user.
 
 The endpoint can be overridden for tests using `NODE_CORE_VERSION_URL`; normal installations use the official repository's `main/VERSION` file.
