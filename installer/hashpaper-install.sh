@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  exit 1
+fi
+
+
 NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
 NODE_CORE_APP_DIR="$NODE_CORE_DATA_DIR/app"
 HASH_PAPER_ENTRY="$NODE_CORE_APP_DIR/applications/hashpaper/main.py"
@@ -27,9 +33,15 @@ require_user_installation() {
     exit 1
   }
 
-  [[ -d "$NODE_CORE_APP_DIR" && -f "$HASH_PAPER_ENTRY" ]] || {
-    printf 'Node Core OS with HashPaper is not installed at: %s\n' "$NODE_CORE_APP_DIR" >&2
+  [[ -d "$NODE_CORE_APP_DIR" && -f "$HASH_PAPER_ENTRY" && -f "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION" ]] || {
+    printf 'Node Core OS with a versioned HashPaper installation is not installed at: %s\n' "$NODE_CORE_APP_DIR" >&2
     printf 'Install or update Node Core OS first, then run this installer again.\n' >&2
+    exit 1
+  }
+  local installed_version
+  installed_version="$(tr -d '\r\n' < "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION")"
+  [[ "$installed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+    printf 'Installed HashPaper version metadata is invalid: %s\n' "$installed_version" >&2
     exit 1
   }
 
@@ -44,12 +56,30 @@ require_user_installation() {
   }
 }
 
-install_hashpaper_launcher() {
-  mkdir -p "$NODE_CORE_BIN_DIR"
-  [[ ! -L "$NODE_CORE_BIN_DIR" && -d "$NODE_CORE_BIN_DIR" ]] || {
-    printf 'Unsafe launcher directory: %s\n' "$NODE_CORE_BIN_DIR" >&2
+ensure_owned_directory() {
+  local directory="$1"
+  if [[ -L "$directory" ]]; then
+    printf 'Refusing to use a symbolic-link directory: %s\n' "$directory" >&2
+    exit 1
+  fi
+  mkdir -p "$directory"
+  [[ -d "$directory" && ! -L "$directory" ]] || {
+    printf 'Required directory is not a real directory: %s\n' "$directory" >&2
     exit 1
   }
+  [[ "$(stat -c '%u' "$directory")" == "$(id -u)" ]] || {
+    printf 'Directory is not owned by the current user: %s\n' "$directory" >&2
+    exit 1
+  }
+  chmod 700 "$directory"
+}
+
+install_hashpaper_launcher() {
+  ensure_owned_directory "$NODE_CORE_BIN_DIR"
+  if [[ -L "$HASH_PAPER_LAUNCHER" ]]; then
+    printf 'Refusing to overwrite a symbolic-link launcher: %s\n' "$HASH_PAPER_LAUNCHER" >&2
+    exit 1
+  fi
 
   cat > "$HASH_PAPER_LAUNCHER" <<'LAUNCHER'
 #!/usr/bin/env bash
@@ -74,10 +104,15 @@ LAUNCHER
 main() {
   require_user_installation
   [[ -f "$OTS_HELPER" ]] || { printf "OpenTimestamps installer helper is missing: %s\n" "$OTS_HELPER" >&2; exit 1; }
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/runtime"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/documents"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/proofs"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/ipfs"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/packages"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/records"
   source "$OTS_HELPER"
   ensure_opentimestamps_client
-  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
-  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   install_hashpaper_launcher
 }
 

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+
 python_version_ok() {
   python3 - <<'PY'
 import sys

@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  exit 1
+fi
+
+
 NODE_CORE_REPOSITORY="${NODE_CORE_REPOSITORY:-https://github.com/byLAEV/Node-Core-OS}"
 NODE_CORE_BRANCH="${NODE_CORE_BRANCH:-main}"
 NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
@@ -261,21 +267,82 @@ PY
 
 latest_commit() {
   local response="$NODE_CORE_UPDATE_DIR/latest-commit.json"
+  local temporary_response encoded_branch commit url downloaded=0
   mkdir -p "$NODE_CORE_UPDATE_DIR"
-  download_file \
-    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$NODE_CORE_BRANCH" \
-    "$response"
-  python3 - "$response" <<'PY'
+
+  # A slash is valid in a query parameter. Keep the ref readable so GitHub's
+  # API can resolve branch names containing slashes without path ambiguity.
+  encoded_branch="$NODE_CORE_BRANCH"
+
+  temporary_response="$(mktemp "$NODE_CORE_UPDATE_DIR/latest-commit.XXXXXX")" || {
+    printf 'Could not create a temporary update metadata file.\n' >&2
+    return 1
+  }
+
+  # The query endpoint accepts a branch ref with slashes. For the path
+  # endpoint, encode slashes so the branch remains a single URL component.
+  local encoded_path_ref
+  encoded_path_ref="$(python3 - "$NODE_CORE_BRANCH" <<'PY'
+from urllib.parse import quote
+import sys
+print(quote(sys.argv[1], safe=""))
+PY
+  )" || {
+    printf 'Could not encode the fallback update ref.\\n' >&2
+    return 1
+  }
+  local urls=(
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits?sha=$encoded_branch&per_page=1"
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$encoded_path_ref"
+  )
+  for url in "${urls[@]}"; do
+    rm -f -- "$temporary_response"
+    printf 'Trying update metadata source: %s\n' "$url" >&2
+    if download_file "$url" "$temporary_response"; then
+      downloaded=1
+      break
+    fi
+    printf 'Update metadata source failed; trying the next official source.\n' >&2
+  done
+  if [[ "$downloaded" != 1 ]]; then
+    rm -f -- "$temporary_response"
+    printf 'Could not retrieve update metadata from any official GitHub API endpoint.\n' >&2
+    return 1
+  fi
+
+  if ! commit="$(python3 - "$temporary_response" <<'PY'
 import json
 import re
 import sys
-with open(sys.argv[1], encoding="utf-8") as handle:
-    data = json.load(handle)
-commit = data.get("sha")
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError) as exc:
+    raise SystemExit(f"GitHub update metadata is unreadable: {exc}")
+
+# /commits?sha=... returns a list; /commits/{ref} returns one object.
+if isinstance(data, list):
+    if not data:
+        raise SystemExit("GitHub returned no commits for the requested branch.")
+    data = data[0]
+commit = data.get("sha") if isinstance(data, dict) else None
 if not isinstance(commit, str) or re.fullmatch(r"[0-9a-fA-F]{40}", commit) is None:
     raise SystemExit("GitHub returned invalid commit metadata; refusing to update.")
 print(commit.lower())
 PY
+  )"; then
+    rm -f -- "$temporary_response"
+    printf 'GitHub returned invalid update metadata; refusing to update.\n' >&2
+    return 1
+  fi
+
+  mv -f -- "$temporary_response" "$response" || {
+    rm -f -- "$temporary_response"
+    printf 'Could not save validated update metadata.\n' >&2
+    return 1
+  }
+  printf '%s\n' "$commit"
 }
 
 backup_app() {
@@ -293,9 +360,29 @@ update_application() (
 
   rm -rf "$extract" || return 1
   mkdir -p "$extract" || return 1
-  download_file \
-    "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz" \
-    "$archive" || return 1
+  local source_url downloaded=0
+  local archive_urls=(
+    "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz"
+    "https://codeload.github.com/byLAEV/Node-Core-OS/tar.gz/$commit"
+  )
+  for source_url in "${archive_urls[@]}"; do
+    rm -f -- "$archive"
+    printf 'Trying Node Core OS source archive: %s\n' "$source_url" >&2
+    if download_file "$source_url" "$archive"; then
+      if tar -tzf "$archive" >/dev/null 2>&1; then
+        downloaded=1
+        break
+      fi
+      printf 'Downloaded archive is invalid; trying the next official GitHub source.\n' >&2
+    else
+      printf 'Source archive download failed; trying the next official GitHub source.\n' >&2
+    fi
+  done
+  [[ "$downloaded" == 1 ]] || {
+    rm -f -- "$archive"
+    printf 'Could not download a valid source archive from any official GitHub endpoint.\n' >&2
+    return 1
+  }
   tar -xzf "$archive" -C "$extract" || return 1
 
   local source

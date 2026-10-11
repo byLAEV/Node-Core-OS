@@ -45,7 +45,7 @@ node_core_detect_installation() {
   [[ -d "$data_dir/storage" ]] && NODE_CORE_DETECT_LOCAL_STORAGE="present"
 
   if [[ -f "$config_file" ]]; then
-    if python3 - "$config_file" <<'PY'
+    if python3 - "$config_file" 2>/dev/null <<'PY'
 import json
 import sys
 with open(sys.argv[1], encoding="utf-8") as stream:

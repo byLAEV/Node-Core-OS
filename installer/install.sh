@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  exit 1
+fi
+
 INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$INSTALLER_DIR/.." && pwd)"
 source "$INSTALLER_DIR/config/defaults"
@@ -55,8 +61,8 @@ print("Installed HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-
 PY
   python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
   (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v)
-  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
-  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
+  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/proofs" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
+  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/proofs" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   install_kubo
   write_config
   create_launcher

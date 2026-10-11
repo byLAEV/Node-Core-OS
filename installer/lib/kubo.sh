@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  return 1 2>/dev/null || exit 1
+fi
+
 kubo_asset() {
   case "$(uname -m)" in
     x86_64|amd64) printf 'linux-amd64\n' ;;
@@ -34,13 +40,14 @@ download_file() {
 }
 download_kubo_release() {
   local version="$1" archive="$2" destination="$3" checksum="$4"
-  local primary="https://dist.ipfs.tech/kubo/v${version}"
-  local fallback="https://github.com/ipfs/kubo/releases/download/v${version}"
+  local primary="https://github.com/ipfs/kubo/releases/download/v${version}"
+  local fallback="https://dist.ipfs.tech/kubo/v${version}"
   local source
   for source in "$primary" "$fallback"; do
-    rm -f "$checksum"
+    # Never resume a partial file from a different host. Each source gets a clean attempt.
+    rm -f "$destination" "$checksum"
     printf 'Trying Kubo source: %s\n' "$source"
-    printf 'Transfer timeout: none (slow connections allowed); partial downloads are resumed.\n'
+    printf 'Transfer timeout: none (slow connections allowed); each source starts with a clean download.\n'
     if download_file "$source/$archive" "$destination" && download_file "$source/$archive.sha512" "$checksum"; then
       if (cd "$(dirname "$destination")" && sha512sum --check "$(basename "$checksum")"); then
         printf 'Kubo download verified from %s\n' "$source"

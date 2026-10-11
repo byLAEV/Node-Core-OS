@@ -2,6 +2,74 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Updater regression correction — 2026-10-11
+
+- Fixed updater diagnostics contaminating the stdout value returned by `latest_commit`. Download progress is now sent to stderr, leaving stdout reserved for the validated commit SHA.
+- Kept slash-containing branch refs intact in the GitHub API query parameter and URL-encoded the ref only for the fallback path endpoint.
+- Silenced the expected JSON parser diagnostic when the read-only installer detector classifies deliberately malformed configuration as invalid.
+- The prior CI failure was reproducible: progress text was captured alongside the SHA, then used to build invalid archive URLs. Re-run CI before merging to verify this fix.
+
+## Official download fallback hardening — 2026-10-11
+
+### Fixed
+- Add a second official GitHub API route for Node Core OS commit metadata and accept the correct JSON shape returned by either the list endpoint or the single-ref endpoint.
+- Add GitHub archive and official codeload fallbacks for Node Core OS updates, validating the archive before replacing the installed application.
+- Pin the OpenTimestamps client to upstream release 0.7.2 and add PyPI, official GitHub tag archive, and official codeload fallback routes.
+- Keep Kubo downloads on the official GitHub Releases and dist.ipfs.tech sources, with the archive and SHA-512 checksum always fetched from the same source.
+- Update updater preservation tests to recognize the official metadata and archive fallback routes.
+
+### Security
+- No third-party mirrors are used.
+- All installation and update work remains strictly user-level; no root, sudo, system package manager, or system-wide Python changes.
+- Existing user data and Kubo/IPFS storage must be preserved if all download sources fail.
+
+### Validation
+- Added `docs/DOWNLOAD-SOURCES.md` describing upstreams, fallback order, integrity checks, and operational limits.
+- CI must pass against this change before the PR is merged.
+
+## User-only installer hardening — 2026-10-11
+
+### Fixed
+- Reject execution as UID 0 at the start of every top-level installer, updater, uninstaller, HashPaper installer, optional OpenTimestamps server installer, and sourced installer helper library.
+- Fix updater metadata retrieval for branch names containing slashes by sending an encoded branch in the GitHub API query instead of treating the branch as a URL path.
+- Validate the API response and commit SHA before publishing update metadata; remove temporary response files and fail with a clear diagnostic when the request or metadata is invalid.
+- Keep update metadata writes atomic and never continue with a missing or invalid `latest-commit.json`.
+
+### User-only contract
+- No `sudo`, root execution, system package installation, or system-wide Python modification is permitted.
+- All application files, virtual environments, metadata, launchers, and optional server source must be owned by the installing user and remain under that user's home directory.
+- The updater's real-install E2E test uses a branch containing slashes, exercising the original failing case.
+
+
+## Node Core OS [1.2.8] / HashPaper [0.3.4] - 2026-10-11
+
+### Added
+- Add an opt-in user-level installer for the official OpenTimestamps calendar-server source and its Python requirements.
+- Document the official Python library, client, HashPaper proof workflow, pending-versus-confirmed semantics, and calendar-server operational prerequisites.
+
+### Fixed
+- Create the persistent HashPaper `proofs/` directory on fresh Node Core OS installs.
+- Include all top-level installer scripts in Bash syntax validation, including the optional calendar-server setup helper.
+- Keep the official OpenTimestamps client in its own private virtual environment; do not alter system Python.
+
+### Safety and limitations
+- The optional server setup only clones the upstream repository and installs its dependencies. It does not start a daemon, expose ports, create or fund a Bitcoin wallet, or claim that a calendar server is operational.
+- A production calendar requires separately configured Bitcoin Core, wallet, calendar URI, secret material, monitoring, and network security.
+- Real Termux installation and live calendar tests must still be executed on target environments before release approval.
+
+
+## HashPaper [0.3.3] - 2026-10-11
+
+### Fixed
+- Validate that both the official `ots` command and its Python `opentimestamps` module are usable in the private user-owned virtual environment.
+- Create the persistent `~/.node-core/hashpaper/proofs/` directory during installation.
+- Reject symbolic-link and foreign-owned HashPaper runtime/data/launcher directories instead of writing through them.
+- Keep HashPaper installation and dependency setup in the normal user context; root execution remains rejected.
+
+### Validation
+- Extend the HashPaper installer regression test to assert that the proofs directory is present and private.
+- Real Termux and live public-calendar execution must be run on the target device; they are not claimed as passed by this change.
+
 ## [1.2.7] - 2026-10-11
 
 ### Added

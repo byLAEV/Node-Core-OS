@@ -84,10 +84,10 @@ done
   exit 2
 }
 case "$url" in
-  */commits/main)
+  */commits?sha=*|*/commits/*)
     cp "$TEST_FIXTURES/latest-commit.json" "$output"
     ;;
-  */archive/*.tar.gz)
+  */archive/*.tar.gz|*/tar.gz/*)
     if [[ "${FAIL_UPDATE_DOWNLOAD:-0}" == "1" ]]; then
       printf 'simulated update archive download failure\\n' >&2
       exit 22
