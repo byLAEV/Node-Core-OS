@@ -106,6 +106,50 @@ jobs:
 
           PY
 
+      - name: Exercise HashPaper proof-info against the real pending or verified .ots file
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/hashpaper-ots-live"
+          original="$work/synthetic-document.md"
+          report="$work/proof-info-report.json"
+
+          python3 applications/hashpaper/main.py proof-info \
+            --input "$original" \
+            --report "$report"
+
+          python3 - "$original" "$report" "$work/check-report.json" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          original = Path(sys.argv[1])
+          proof = Path(str(original) + ".ots")
+          info = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          checked = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+
+          assert info["original_sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
+          assert info["proof_file_sha256"] == hashlib.sha256(proof.read_bytes()).hexdigest()
+          assert info["proof_file_sha256"] == checked["proof_sha256"]
+          assert info["status"] in {"VERIFIED", "WAITING_FOR_BITCOIN"}, info
+          assert info["proof_verification"] in {"VERIFIED", "PENDING", "NOT_VERIFIED"}, info
+          assert "not an official OpenTimestamps-issued identifier" in info["proof_fingerprint_note"]
+          print(json.dumps({
+              "original_sha256": info["original_sha256"],
+              "proof_file_sha256": info["proof_file_sha256"],
+              "status": info["status"],
+              "proof_verification": info["proof_verification"],
+              "bitcoin_block_height": info["bitcoin_block_height"],
+          }, indent=2))
+          with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\\n## HashPaper proof-info real .ots check\\n\\n")
+              summary.write(f"- Original SHA-256: {info['original_sha256']}\\n")
+              summary.write(f"- Local .ots SHA-256 fingerprint: {info['proof_file_sha256']}\\n")
+              summary.write(f"- Official OpenTimestamps status: {info['status']}\\n")
+              summary.write(f"- Proof verification: {info['proof_verification']}\\n")
+              summary.write("- The .ots SHA-256 is a local file fingerprint, not an official OpenTimestamps-issued ID.\\n")
+          PY
+
       - name: Build transparent package containing original and real OTS report
         run: |
           set -euo pipefail
