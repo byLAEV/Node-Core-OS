@@ -27,9 +27,10 @@ chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 
 # Create a deterministic release archive. The fake curl prevents network access.
 release_root="$TEMP_ROOT/release-root"
-mkdir -p "$release_root/Node-Core-OS-fixture/node_core"
+mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity"
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
+printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
 printf '{"sha":"1111111111111111111111111111111111111111"}\n' > "$TEST_FIXTURES/latest-commit.json"
 tar -czf "$TEST_FIXTURES/1111111111111111111111111111111111111111.tar.gz" \
   -C "$release_root" Node-Core-OS-fixture
@@ -94,6 +95,7 @@ printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx 'IDENTITY_PROFILE_RELEASE = "1.2.2"' "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py"
 printf 'Updater happy-path application check passed.\\n'
 grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 printf 'Updater happy-path commit marker check passed.\\n'
