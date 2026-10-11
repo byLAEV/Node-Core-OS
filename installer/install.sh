@@ -18,6 +18,11 @@ main() {
   require_bash
   require_user_installation
   require_linux
+  if [[ -e "$NODE_CORE_DATA_DIR/app" || -L "$NODE_CORE_DATA_DIR/app" ]]; then
+    printf 'A Node Core OS application already exists at %s.\n' "$NODE_CORE_DATA_DIR/app" >&2
+    printf 'Use %s/bin/node-core-update to update an existing installation without reinstalling it.\n' "$NODE_CORE_DATA_DIR" >&2
+    exit 1
+  fi
   ensure_dependencies
   prepare_filesystem
   install_application "$PROJECT_ROOT"
