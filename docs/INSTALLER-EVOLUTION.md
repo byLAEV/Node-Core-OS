@@ -1,80 +1,85 @@
-# Node Core OS — Plan de evolución del instalador
+# Node Core OS Installer and Updater Evolution
 
-## Objetivo
+## Purpose
 
-Unificar progresivamente la instalación, actualización y reparación en un mismo motor que inspeccione el estado real, planifique cambios y verifique el resultado. Todas las operaciones deben ejecutarse como usuario normal, sin root, sin sudo y sin modificaciones globales del sistema.
+This document describes the current safety contract and the remaining work for the Node Core OS installer, updater, and repair flow. All installation and update operations must run as the normal user, without root, sudo, or global system changes.
 
-Este documento describe el diseño y el orden de implementación. Una capacidad solo se considera terminada cuando existe código y una prueba automatizada que la respalde.
+A capability is considered implemented only when code and automated tests support it.
 
-## Reglas de seguridad
+## Safety rules
 
-1. Rechazar UID 0 antes de modificar archivos.
-2. Mantener `NODE_CORE_DATA_DIR` dentro del HOME y comprobar propiedad/rutas seguras.
-3. No reinstalar Kubo si el ejecutable existente funciona y no se solicitó expresamente su actualización.
-4. No borrar ni reconstruir `storage/` o `ipfs/` durante una actualización normal de la aplicación.
-5. No sobrescribir la configuración del usuario sin una migración versionada y validada.
-6. Descargar y validar el código objetivo antes de reemplazar la aplicación.
-7. Crear respaldos de los componentes que serán modificados y ofrecer recuperación si falla la actualización.
-8. No afirmar que está actualizado si no se pudo consultar la versión remota.
-9. Actualizar el inventario únicamente después de superar las verificaciones obligatorias.
-10. Probar el comportamiento en un entorno temporal antes de declarar una fase terminada.
+1. Reject UID 0 before modifying installation files.
+2. Keep `NODE_CORE_DATA_DIR` inside the current user's HOME and validate ownership and path safety.
+3. Do not replace a functioning Kubo binary during a normal application update.
+4. Never delete or rebuild `storage/` or `ipfs/` during an application update.
+5. Preserve `config.json` except for an explicitly required, validated compatibility migration.
+6. Download and validate release code before marking it as installed.
+7. Back up the current application and restore it when an update fails.
+8. Treat network errors as failures; never report an update as successful when the remote commit could not be checked.
+9. Update the installed commit marker only after compilation and application checks pass.
+10. Test clean installation, existing-install updates, rollback, and data preservation in CI.
 
-## Hallazgos de la auditoría inicial
+## Current implementation
 
-- `installer/lib/python.sh` elimina el directorio de aplicación existente en `install_application()`; esta operación no debe usarse indiscriminadamente en futuras ejecuciones idempotentes.
-- `write_config()` genera de nuevo `config.json`; el motor evolutivo debe preservar valores existentes y realizar migraciones explícitas.
-- `installer/update.sh` prepara/recrea los lanzadores antes de comprobar la versión remota; el motor futuro debe separar inspección y planificación de aplicación de cambios.
-- La lógica de instalación y actualización está repartida en scripts distintos; se conservarán inicialmente los puntos de entrada por compatibilidad, pero deberán delegar al mismo motor.
-- `installer/lib/kubo.sh` contempla Termux, mientras que la documentación actual declara que Termux no está soportado. La plataforma admitida debe aclararse y probarse antes de ampliar soporte.
-- La actualización de la aplicación no debe copiar ni eliminar el repositorio IPFS como parte de un respaldo normal de código.
+- The clean installer now refuses to overwrite an existing application directory. Existing users must use `~/.node-core/bin/node-core-update`.
+- The clean installer creates the Node Core OS launcher, updater launcher, and user-level HashPaper launcher.
+- The updater downloads source for the requested commit and retains a backup of the previous application and commit marker for rollback.
+- The updater validates that the new source includes the HashPaper entry point, CLI module, and tests.
+- The updater compiles Node Core OS and HashPaper Python code and runs the HashPaper unit test suite before recording the new commit as installed.
+- A successful application update does not replace Kubo, its repository, local storage, HashPaper documents, OTS proofs, generated packages, publication records, or configuration.
+- The update-preservation test exercises successful update, failure rollback, corrupt archive handling, download failure handling, persistent data preservation, and refusal to overwrite an existing install.
+- The installer verifier checks that HashPaper's entry point and CLI exist and compile, and that its launcher is present.
+- `installer/lib/apply.sh` provides a separate transactional deployment primitive with its own tests. It is not yet the shared implementation used by both the clean installer and network updater.
 
-## Arquitectura objetivo
+## Persistent data layout
 
-1. **Detector**: lectura del estado de archivos, configuración, lanzadores, Kubo, repositorio y almacenamiento.
-2. **Manifiesto**: registro versionado de componentes, versiones conocidas y estado de verificación.
-3. **Planificador**: determina las operaciones necesarias sin ejecutarlas.
-4. **Motor de aplicación**: aplica el plan con respaldos y recuperación.
-5. **Verificador**: comprueba código, lanzadores, configuración e integración con Kubo.
-6. **Interfaces**: instalación, actualización y reparación delegan al mismo motor.
+Application code is installed under:
 
-## Etapas
+```text
+~/.node-core/app/
+```
 
-1. Auditar los efectos de los scripts actuales y establecer pruebas de preservación.
-2. Añadir un detector de estado estrictamente de solo lectura.
-3. Diseñar e implementar el manifiesto, incluyendo validación y escritura atómica.
-4. Implementar el planificador y pruebas de planes sin cambios.
-5. Implementar la aplicación transaccional de cambios y recuperación.
-6. Integrar `install.sh`, `update.sh` y reparación con el motor compartido.
-7. Añadir transición segura entre versiones del instalador.
-8. Incorporar el inventario de componentes y sus dependencias.
-9. Actualizar la documentación según las plataformas realmente probadas.
+Persistent user data is kept outside that replaceable code directory:
 
-## Criterios de aceptación
+```text
+~/.node-core/config.json
+~/.node-core/storage/
+~/.node-core/ipfs/
+~/.node-core/hashpaper/documents/
+~/.node-core/hashpaper/proofs/
+~/.node-core/hashpaper/packages/
+~/.node-core/hashpaper/records/
+```
 
-- La ejecución de detección no crea, elimina ni modifica archivos.
-- La segunda ejecución del instalador no reinstala componentes que estén verificados.
-- Las actualizaciones conservan almacenamiento local, repositorio IPFS y configuración.
-- Los fallos de red se informan como estado desconocido, no como instalación actualizada.
-- Una actualización fallida intenta restaurar el código anterior sin tocar los datos persistentes.
-- Las pruebas se ejecutan como usuario no root en CI.
-- No se usan gestores de paquetes del sistema ni privilegios globales.
+The updater must not include these paths in its application replacement or rollback operations.
 
-## Estado de implementación
+## HashPaper integration
 
-- [x] Detector inicial de instalación de solo lectura.
-- [x] Validación y escritura atómica del manifiesto de esquema 1.
-- [x] Planificador inicial de solo lectura que propone acciones a partir del estado real.
-- [x] Pruebas para detector, manifiesto y planificador añadidas a CI.
-- [ ] Integrar el motor compartido con los puntos de entrada install/update.
-- [x] Primitiva transaccional inicial para desplegar la aplicación, con compilación previa y respaldo conservado (pruebas CI pendientes para el último commit).
-- [ ] Recuperación transaccional completa ante fallos de activación y del registro de versión.
-- [ ] Inventario verificado de versiones y dependencias por componente.
+HashPaper is included in the main Node Core OS application source. A normal update to the latest main-branch commit delivers HashPaper changes alongside the core application. The updater validates the HashPaper files, compiles them, runs `python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v` from the application root, and rolls back if validation fails.
 
-El planificador actual es deliberadamente consultivo: no ejecuta las acciones que enumera. Un componente que falta Kubo o el repositorio IPFS se marca para revisión, no para reemplazo o inicialización automática. La integración con el instalador principal queda pendiente hasta que el plan y el manifiesto estén cubiertos por pruebas adicionales.
+The user-level command is:
 
+```bash
+~/.node-core/bin/hashpaper
+```
 
-### Primitiva transaccional inicial
+OpenTimestamps proof status is not inferred from file existence. A pending proof remains pending until the official client verifies an attestation. HashPaper encryption is **NOT IMPLEMENTED**; generated evidence packages contain the complete original text and included identity fields in cleartext.
 
-`installer/lib/apply.sh` introduce un paso separado de aplicación: prepara una copia de la versión objetivo, compila el código Python antes de sustituir la aplicación, conserva una copia de respaldo bajo `runtime/backups/` y registra el commit después de activar el código. El mecanismo se limita a `app/` y al marcador de commit; no modifica `config.json`, `storage/`, el ejecutable Kubo ni el repositorio IPFS.
+## Remaining work
 
-Esta primitiva todavía no está conectada a `install.sh` ni a `update.sh`. No debe considerarse todavía una actualización completa en producción: primero deben aprobarse sus pruebas automatizadas y después se añadirá la recuperación integral y la integración con el flujo de descarga/verificación de la versión remota.
+- Integrate the shared transactional deployment primitive into both clean installation and network update flows.
+- Complete atomic activation and recovery for failures that occur during commit-marker writes and launcher creation.
+- Add an explicit versioned component inventory and migration plan.
+- Extend clean-install idempotency and repair workflows without overwriting user configuration.
+- Continue running the live OpenTimestamps and Kubo/IPFS workflow and preserve its evidence artifacts. A passing CI run with `WAITING_FOR_BITCOIN` does not establish Bitcoin attestation verification.
+- Do not declare Termux/Android officially supported unless the project adds a documented support contract and dedicated tests.
+
+## Acceptance criteria
+
+- Clean install and existing-install update run as a non-root user.
+- A clean installer invocation cannot erase an existing application.
+- A successful update includes HashPaper and its verified test suite.
+- A failed update restores the previous application and commit marker.
+- Kubo, the IPFS repository, local storage, HashPaper data, and user configuration survive both successful and failed application updates.
+- Missing or corrupt release content is rejected.
+- CI results are checked before a pull request is merged.
