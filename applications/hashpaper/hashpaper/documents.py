@@ -74,6 +74,62 @@ def write_original(path: Path, content: str) -> dict[str, Any]:
     }
 
 
+def validate_ots_metadata(original_path: Path, metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Validate that an OTS report refers to these exact original bytes.
+
+    Reports are user-editable JSON, so their presence is not trusted as proof by
+    itself. This checks the claimed original digest, expected proof filename, and
+    known status vocabulary. A VERIFIED claim is rechecked with the official CLI
+    by the command layer before it is accepted into a generated package.
+    """
+    if metadata is None:
+        return None
+    original = Path(original_path).expanduser()
+    if not original.is_file():
+        raise ValueError(f"Original document does not exist: {original}")
+    expected_digest = sha256_bytes(original.read_bytes())
+    reported_digest = metadata.get("original_sha256")
+    if not isinstance(reported_digest, str) or reported_digest.lower() != expected_digest:
+        raise ValueError(
+            "OpenTimestamps report SHA-256 does not match the current original document."
+        )
+
+    expected_proof_name = original.name + ".ots"
+    supplied_proof = metadata.get("proof_file")
+    if not isinstance(supplied_proof, str) or Path(supplied_proof).name != expected_proof_name:
+        raise ValueError(
+            f"OpenTimestamps report must refer to the expected proof filename: {expected_proof_name}"
+        )
+
+    allowed_statuses = {
+        "WAITING_FOR_BITCOIN",
+        "ANCHOR_AVAILABLE",
+        "VERIFIED",
+        "NETWORK_ERROR",
+        "PROOF_ERROR",
+        "NOT_CHECKED",
+    }
+    status = metadata.get("status")
+    if status not in allowed_statuses:
+        raise ValueError("OpenTimestamps report has an unknown or unsupported status.")
+    verification = metadata.get("proof_verification")
+    if status == "VERIFIED" and verification != "SUCCESS":
+        raise ValueError("OpenTimestamps report has an inconsistent VERIFIED status.")
+    if verification == "SUCCESS" and status != "VERIFIED":
+        raise ValueError("OpenTimestamps report has an inconsistent successful verification result.")
+
+    # Keep output useful but avoid publishing absolute local filesystem paths.
+    sanitized = dict(metadata)
+    sanitized["proof_file"] = expected_proof_name
+    for key in ("stdout", "stderr"):
+        value = sanitized.get(key)
+        if isinstance(value, str):
+            sanitized[key] = value.replace(str(original), original.name).replace(
+                str(Path(str(original) + ".ots")), expected_proof_name
+            )
+    return sanitized
+
+
 def build_transparent_package(
     *,
     original_path: Path,
@@ -94,7 +150,11 @@ def build_transparent_package(
     except UnicodeDecodeError as exc:
         raise ValueError("HashPaper currently packages UTF-8 text/Markdown documents only.") from exc
 
-    metadata = ots_metadata or {}
+    validated_metadata = validate_ots_metadata(original, ots_metadata)
+    metadata = validated_metadata or {}
+    proof_path = Path(str(original) + ".ots")
+    proof_exists = proof_path.is_file() and proof_path.stat().st_size > 0
+    proof_bytes = proof_path.read_bytes() if proof_exists else b""
     return {
         "application": "HashPaper for Node Core OS",
         "schema_version": SCHEMA_VERSION,
@@ -117,7 +177,10 @@ def build_transparent_package(
         },
         "opentimestamps": {
             "client": "official ots client",
-            "proof_file": metadata.get("proof_file"),
+            "proof_file": Path(str(metadata.get("proof_file"))).name if metadata.get("proof_file") else (proof_path.name if proof_exists else None),
+            "proof_exists": proof_exists,
+            "proof_size_bytes": len(proof_bytes) if proof_exists else None,
+            "proof_sha256": sha256_bytes(proof_bytes) if proof_exists else None,
             "status": metadata.get("status", "NOT_SUBMITTED"),
             "proof_verification": metadata.get("proof_verification", "NOT_CHECKED"),
             "operation": metadata.get("operation"),
