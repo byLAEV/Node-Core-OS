@@ -91,7 +91,7 @@ class IdentityPresenceTests(unittest.TestCase):
             "created_at": "2026-01-01T00:00:00+00:00",
         }
         target = self.root / "identity-presence" / "incoming" / "other.json"
-        target.parent.mkdir(parents=True)
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(incoming), encoding="utf-8")
         report = self.service.create_report()
         self.assertEqual(report["protocol"], REPORT_PROTOCOL)
