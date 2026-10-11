@@ -279,11 +279,21 @@ latest_commit() {
     return 1
   }
 
-  # Official GitHub API alternatives. The query form handles branch names
-  # containing slashes; the ref endpoint is a second official API route.
+  # The query endpoint accepts a branch ref with slashes. For the path
+  # endpoint, encode slashes so the branch remains a single URL component.
+  local encoded_path_ref
+  encoded_path_ref="$(python3 - "$NODE_CORE_BRANCH" <<'PY'
+from urllib.parse import quote
+import sys
+print(quote(sys.argv[1], safe=""))
+PY
+  )" || {
+    printf 'Could not encode the fallback update ref.\\n' >&2
+    return 1
+  }
   local urls=(
     "https://api.github.com/repos/byLAEV/Node-Core-OS/commits?sha=$encoded_branch&per_page=1"
-    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$encoded_branch"
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$encoded_path_ref"
   )
   for url in "${urls[@]}"; do
     rm -f -- "$temporary_response"
