@@ -6,7 +6,7 @@ It does not implement cryptography or infer verification from file existence.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import os
 from pathlib import Path
@@ -160,8 +160,6 @@ class OpenTimestampsClient:
             # submit a duplicate request. Verify the existing proof and return
             # its real state through the same structured result contract.
             existing = self.check(original)
-            from dataclasses import replace
-
             return replace(existing, operation="stamp-existing-proof")
 
         before = self._sha256(original)
