@@ -6,6 +6,7 @@ from node_core.evidence import EvidenceManager
 from node_core.external_cids import ExternalCIDLibrary
 from node_core.ipfs import KuboManager
 from node_core.identity.profile import IdentityProfileStore
+from node_core.identity_presence import IdentityPresence
 from node_core.my_life import MyLifeBlog
 from node_core.network import NodeNetwork
 from node_core.storage import StorageManager
@@ -32,6 +33,9 @@ class NodeRuntime:
         )
         self.evidence = EvidenceManager(self.content)
         self.identity_profile = IdentityProfileStore(self.config.data_dir)
+        self.identity_presence = IdentityPresence(
+            self.config.data_dir, self.identity_profile, self.network, self.kubo
+        )
         self.external_cids = ExternalCIDLibrary(self.storage, self.kubo)
         self.my_life = MyLifeBlog(self.storage, self.content)
         self._booted = False
