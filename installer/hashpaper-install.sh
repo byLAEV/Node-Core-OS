@@ -6,6 +6,7 @@ NODE_CORE_APP_DIR="$NODE_CORE_DATA_DIR/app"
 HASH_PAPER_ENTRY="$NODE_CORE_APP_DIR/applications/hashpaper/main.py"
 NODE_CORE_BIN_DIR="$NODE_CORE_DATA_DIR/bin"
 HASH_PAPER_LAUNCHER="$NODE_CORE_BIN_DIR/hashpaper"
+OTS_HELPER="$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh"
 
 require_user_installation() {
   if [[ "$(id -u)" == "0" ]]; then
@@ -54,6 +55,8 @@ install_hashpaper_launcher() {
 #!/usr/bin/env bash
 set -euo pipefail
 NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
+export NODE_CORE_DATA_DIR
+export PATH="$NODE_CORE_DATA_DIR/runtime/opentimestamps-venv/bin:$PATH"
 HASH_PAPER_ENTRY="$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
 if [[ ! -f "$HASH_PAPER_ENTRY" ]]; then
   printf 'HashPaper is missing. Update Node Core OS and try again.\n' >&2
@@ -70,6 +73,9 @@ LAUNCHER
 
 main() {
   require_user_installation
+  [[ -f "$OTS_HELPER" ]] || { printf "OpenTimestamps installer helper is missing: %s\n" "$OTS_HELPER" >&2; exit 1; }
+  source "$OTS_HELPER"
+  ensure_opentimestamps_client
   install_hashpaper_launcher
 }
 
