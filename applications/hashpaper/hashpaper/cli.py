@@ -25,7 +25,7 @@ def _data_dir() -> Path:
 
 
 def _documents_dir() -> Path:
-    return _data_dir() / "storage"
+    return _data_dir() / "hashpaper" / "documents"
 
 
 def _has_terminal_control_characters(path: Path) -> bool:
