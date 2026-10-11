@@ -47,6 +47,10 @@ class NodeConfig:
         hashpaper_root = self.data_dir / "hashpaper"
         for name in ("documents", "ipfs", "packages", "records"):
             (hashpaper_root / name).mkdir(parents=True, exist_ok=True)
+        # New HashPaper originals and their adjacent .ots proofs live in the
+        # Node Core OS local-storage namespace. Existing hashpaper/documents
+        # files remain supported by HashPaper's history reader.
+        (self.local_storage_path / "opentimestamps").mkdir(parents=True, exist_ok=True)
 
     def save(self) -> None:
         self.ensure_directories()
