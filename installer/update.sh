@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$(id -u)" == "0" ]]; then
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  exit 1
+fi
+
+
 NODE_CORE_REPOSITORY="${NODE_CORE_REPOSITORY:-https://github.com/byLAEV/Node-Core-OS}"
 NODE_CORE_BRANCH="${NODE_CORE_BRANCH:-main}"
 NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
