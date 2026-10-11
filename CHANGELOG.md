@@ -2,6 +2,20 @@
 
 All notable changes to Node Core OS are documented here.
 
+## User-only installer hardening — 2026-10-11
+
+### Fixed
+- Reject execution as UID 0 at the start of every top-level installer, updater, uninstaller, HashPaper installer, optional OpenTimestamps server installer, and sourced installer helper library.
+- Fix updater metadata retrieval for branch names containing slashes by sending an encoded branch in the GitHub API query instead of treating the branch as a URL path.
+- Validate the API response and commit SHA before publishing update metadata; remove temporary response files and fail with a clear diagnostic when the request or metadata is invalid.
+- Keep update metadata writes atomic and never continue with a missing or invalid `latest-commit.json`.
+
+### User-only contract
+- No `sudo`, root execution, system package installation, or system-wide Python modification is permitted.
+- All application files, virtual environments, metadata, launchers, and optional server source must be owned by the installing user and remain under that user's home directory.
+- The updater's real-install E2E test uses a branch containing slashes, exercising the original failing case.
+
+
 ## Node Core OS [1.2.8] / HashPaper [0.3.4] - 2026-10-11
 
 ### Added
