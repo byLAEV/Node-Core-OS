@@ -136,4 +136,47 @@ restarted_sha="$(sha256sum "$RESTARTED_CONTENT" | awk '{print $1}')"
 [ "$source_sha" = "$restarted_sha" ] || fail "SHA-256 mismatch after node 0 restart."
 echo "PASS: node 0 restart preserved peer identity and pinned content | PeerID=$RESTARTED_PEER_ID | CID=$RESILIENCE_CID | SHA-256=$restarted_sha"
 
-echo "PASS: three independent Kubo nodes, distinct identities, full-mesh connectivity, six verified transfers, publisher-offline retrieval from two pinned peers, and peer identity/content persistence after process restart."
+# Restart node 2 and explicitly restore connectivity from nodes 0 and 1.
+echo "INFO: restarting node 2 to test peer reconnection."
+kill "${PIDS[2]}" 2>/dev/null || fail "Could not stop node 2."
+wait "${PIDS[2]}" 2>/dev/null || true
+PIDS[2]=""
+sleep 2
+IPFS_PATH="${REPOS[2]}" "$IPFS" daemon >>"${LOGS[2]}" 2>&1 &
+PIDS[2]="$!"
+ready=0
+for attempt in $(seq 1 60); do
+    if node 2 id >/dev/null 2>&1; then ready=1; break; fi
+    sleep 1
+done
+[ "$ready" -eq 1 ] || fail "Node 2 API did not become ready after restart."
+RESTARTED_PEER_2="$(node 2 id --format='<id>')"
+[ "$RESTARTED_PEER_2" = "${PEERS[2]}" ] || fail "Node 2 peer identity changed after restart."
+
+for source_node in 0 1; do
+    port=$((4101 + 2))
+    node "$source_node" swarm connect "/ip4/127.0.0.1/tcp/$port/p2p/${PEERS[2]}" || fail "Node $source_node could not reconnect to node 2."
+done
+
+for source_node in 0 1; do
+    connected=0
+    for attempt in $(seq 1 30); do
+        if node "$source_node" swarm peers | grep -F "${PEERS[2]}" >/dev/null; then connected=1; break; fi
+        sleep 1
+    done
+    [ "$connected" -eq 1 ] || fail "Node $source_node does not see node 2 connected after reconnection."
+done
+
+RECONNECT_SOURCE="$WORK_DIR/reconnection-fixture.txt"
+printf 'Node Core OS reconnection test: content transferred after peer restart.\\n' > "$RECONNECT_SOURCE"
+RECONNECT_CID="$(node 0 add --quiet "$RECONNECT_SOURCE")"
+test -n "$RECONNECT_CID" || fail "Reconnection fixture did not produce a CID."
+RECONNECT_DEST="$WORK_DIR/reconnection-received-by-node-2.txt"
+node 2 cat "$RECONNECT_CID" > "$RECONNECT_DEST" || fail "Node 2 could not retrieve new content from node 0 after reconnection."
+cmp -s "$RECONNECT_SOURCE" "$RECONNECT_DEST" || fail "Reconnection content mismatch."
+reconnect_source_sha="$(sha256sum "$RECONNECT_SOURCE" | awk '{print $1}')"
+reconnect_received_sha="$(sha256sum "$RECONNECT_DEST" | awk '{print $1}')"
+[ "$reconnect_source_sha" = "$reconnect_received_sha" ] || fail "Reconnection SHA-256 mismatch."
+echo "PASS: node 2 restarted with same identity, reconnected to nodes 0 and 1, and retrieved fresh content | CID=$RECONNECT_CID | SHA-256=$reconnect_received_sha"
+
+echo "PASS: three independent Kubo nodes, distinct identities, full-mesh connectivity, six verified transfers, publisher-offline retrieval from pinned peers, identity/content persistence after restart, and content transfer after peer reconnection."
