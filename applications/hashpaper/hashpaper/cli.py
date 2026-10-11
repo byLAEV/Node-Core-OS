@@ -35,8 +35,8 @@ def _default_document_path(*, for_create: bool = False) -> Path:
     if not for_create:
         candidates = [
             path for path in directory.iterdir()
-            if path.is_file() and path.suffix.lower() in {".txt", ".md", ".markdown"}
-            and not path.name.endswith(".ots")
+            if path.is_file() and path.name.startswith("Genesis-HashPaper")
+            and path.suffix.lower() in {".txt", ".md", ".markdown"}
         ]
         if candidates:
             return max(candidates, key=lambda path: path.stat().st_mtime)
