@@ -55,6 +55,18 @@ class IdentityPresence:
         temporary.replace(path)
 
     @staticmethod
+    def _write_bytes(path: Path, content: bytes) -> None:
+        """Replace a file atomically so a failed update preserves the prior copy."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        try:
+            temporary.write_bytes(content)
+            temporary.replace(path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
+
+    @staticmethod
     def _read_json(path: Path) -> dict[str, Any]:
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
@@ -252,16 +264,18 @@ class IdentityPresence:
             raise IdentityPresenceError("Report must declare zero identity documents transmitted.")
         if report.get("personal_identity_fields_transmitted") != 0:
             raise IdentityPresenceError("Report must declare zero personal identity fields transmitted.")
-        target = self.reports_dir / f"{reference_id}.json"
-        target.write_bytes(raw)
-        self.current_report_path.write_bytes(raw)
         try:
             self.kubo.pin_add(value)
             pinned = value in self.kubo.pin_list()
         except Exception as exc:
-            raise IdentityPresenceError(f"Report saved locally but pin verification failed: {exc}") from exc
+            raise IdentityPresenceError(f"Report pin verification failed; the current local report was preserved: {exc}") from exc
         if not pinned:
-            raise IdentityPresenceError(f"Report CID {value} is not pinned on this node.")
+            raise IdentityPresenceError(
+                f"Report CID {value} is not pinned on this node; the current local report was preserved."
+            )
+        target = self.reports_dir / f"{reference_id}.json"
+        self._write_bytes(target, raw)
+        self._write_bytes(self.current_report_path, raw)
         state = {
             "report_reference_id": report["report_reference_id"],
             "report_cid": value,
