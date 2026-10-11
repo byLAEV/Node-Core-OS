@@ -9,6 +9,7 @@ All notable changes to Node Core OS are documented here.
 - Add a local text-only identity profile under the Node Core BIOS, with explicit association to an available Kubo Peer ID.
 - Show all locally saved identity fields in the main menu, including the document number, logical identity ID, and node association, while clearly marking network-consensus verification as not verified.
 - Add optional date of birth, height in centimeters, and self-described gender fields, with input validation and explicit declared-data semantics.
+- Release the identity-profile and updater integration as Node Core OS 1.2.2; require installer verification to find the identity-profile module and test that updates deploy it without replacing persistent data.
 - Display the first-entry and last-updated timestamps for identity data in ISO-8601 UTC format.
 - Add tests for local persistence, stable logical identity, node association, and private file permissions.
 
