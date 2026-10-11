@@ -93,6 +93,7 @@ RESILIENCE_SOURCE="$WORK_DIR/resilience-fixture.txt"
 printf 'Node Core OS resilience test: content must remain available on pinned peers.\n' > "$RESILIENCE_SOURCE"
 RESILIENCE_CID="$(node 0 add --quiet "$RESILIENCE_SOURCE")"
 test -n "$RESILIENCE_CID" || fail "Resilience fixture did not produce a CID."
+node 0 pin add "$RESILIENCE_CID" || fail "Publisher node could not pin the resilience fixture."
 
 for receiver in 1 2; do
     node "$receiver" pin add "$RESILIENCE_CID" || fail "Node $receiver could not pin the resilience fixture."
@@ -115,4 +116,24 @@ for receiver in 1 2; do
     echo "PASS: publisher offline -> node $receiver retrieved pinned content | CID=$RESILIENCE_CID | SHA-256=$received_sha"
 done
 
-echo "PASS: three independent Kubo nodes, distinct identities, full-mesh connectivity, all pairwise pings, six verified transfers, and retrieval from two pinned peers after publisher shutdown."
+# Restart node 0 with the same repository and verify identity and pinned content persist.
+echo "INFO: restarting node 0 with its existing Kubo repository."
+IPFS_PATH="${REPOS[0]}" "$IPFS" daemon >>"${LOGS[0]}" 2>&1 &
+PIDS[0]="$!"
+ready=0
+for attempt in $(seq 1 60); do
+    if node 0 id >/dev/null 2>&1; then ready=1; break; fi
+    sleep 1
+done
+[ "$ready" -eq 1 ] || fail "Node 0 API did not become ready after restart."
+RESTARTED_PEER_ID="$(node 0 id --format='<id>')"
+[ "$RESTARTED_PEER_ID" = "${PEERS[0]}" ] || fail "Node 0 peer identity changed after restart."
+RESTARTED_CONTENT="$WORK_DIR/resilience-retrieved-after-restart.txt"
+node 0 cat "$RESILIENCE_CID" > "$RESTARTED_CONTENT" || fail "Node 0 could not retrieve its pinned content after restart."
+cmp -s "$RESILIENCE_SOURCE" "$RESTARTED_CONTENT" || fail "Node 0 content changed after restart."
+source_sha="$(sha256sum "$RESILIENCE_SOURCE" | awk '{print $1}')"
+restarted_sha="$(sha256sum "$RESTARTED_CONTENT" | awk '{print $1}')"
+[ "$source_sha" = "$restarted_sha" ] || fail "SHA-256 mismatch after node 0 restart."
+echo "PASS: node 0 restart preserved peer identity and pinned content | PeerID=$RESTARTED_PEER_ID | CID=$RESILIENCE_CID | SHA-256=$restarted_sha"
+
+echo "PASS: three independent Kubo nodes, distinct identities, full-mesh connectivity, six verified transfers, publisher-offline retrieval from two pinned peers, and peer identity/content persistence after process restart."
