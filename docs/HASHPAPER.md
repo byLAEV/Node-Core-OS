@@ -1,5 +1,9 @@
 # HashPaper for Node Core OS
 
+## Normative functional manifest
+
+For a detailed menu-by-menu and command-by-command description, source mapping, storage/read/write behavior, expected output, security boundaries, failure handling, and audit test matrix, see the **[HashPaper Functional Manifest and Audit Guide](HASHPAPER-FUNCTIONAL-MANIFEST.md)**. This document remains a higher-level overview; the manifest defines the detailed audit procedure. A documented expectation is not a test result: verify the implementation and the CI run for the exact commit.
+
 ## Purpose
 
 HashPaper is an application included in the Node Core OS repository. It creates a local original, calculates SHA-256 over its exact bytes, delegates timestamp operations to the official OpenTimestamps client, assembles a transparent evidence package, and publishes that package through the existing Kubo/IPFS content layer after explicit confirmation.
