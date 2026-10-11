@@ -186,6 +186,78 @@ jobs:
           cmp -s "$package" "$recovered"
           printf "HashPaper live Kubo CID byte-for-byte retrieval passed: %s\n" "$cid"
 
+      - name: Test HashPaper live identity and Peer ID association
+        env:
+          HOME: ${{ runner.temp }}/node-core-home
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
+          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home/.node-core/config.json
+          PYTHONPATH: ${{ runner.temp }}/node-core-home/.node-core/app
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          documents="$NODE_CORE_DATA_DIR/hashpaper/documents"
+          packages="$NODE_CORE_DATA_DIR/hashpaper/packages"
+          mkdir -p "$documents" "$packages"
+          original="$documents/hashpaper-live-identity-e2e-001.md"
+          package="$packages/hashpaper-live-identity-e2e-001.json"
+
+          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, sys.argv[1])
+          from node_core.runtime import NodeRuntime
+
+          runtime = NodeRuntime()
+          runtime.boot()
+          profile = runtime.identity_profile.save_declared_profile(
+              full_name="Synthetic HashPaper Test Identity",
+              alias="hashpaper-e2e",
+              nationality="Synthetic",
+              issuing_country="ZZ",
+              document_type="TEST",
+              document_number="SYNTHETIC-NOT-A-REAL-DOCUMENT",
+              birth_date="2000-01-01",
+              height_cm=170,
+              gender="not-specified",
+          )
+          assert profile["identity_status"] == "declared"
+          assert profile["node_id"] is None
+          status = runtime.kubo.status()
+          assert status.running and status.peer_id, "Kubo must provide a live Peer ID for this test"
+          print("Synthetic local identity profile created; live Kubo Peer ID is available.")
+          PY
+
+          printf 'Synthetic content for live HashPaper identity association.\n' > "$original"
+          printf 'INCLUDE IDENTITY AND NODE\n' | python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" package \
+            --input "$original" \
+            --output "$package" \
+            --use-node-profile
+
+          python3 - "$NODE_CORE_DATA_DIR/app" "$original" "$package" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, sys.argv[1])
+          from node_core.runtime import NodeRuntime
+
+          original = Path(sys.argv[2]).read_bytes()
+          package = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          runtime = NodeRuntime()
+          profile = runtime.identity_profile.load()
+          status = runtime.kubo.status()
+          assert status.running and status.peer_id
+          assert profile["node_id"] == status.peer_id
+          assert package["node"]["peer_id"] == status.peer_id
+          assert package["identity"]["fields"]["full_name"] == "Synthetic HashPaper Test Identity"
+          assert package["identity"]["fields"]["document_number"] == "SYNTHETIC-NOT-A-REAL-DOCUMENT"
+          assert package["document"]["original_text"] == original.decode("utf-8")
+          assert package["document"]["sha256"] == hashlib.sha256(original).hexdigest()
+          assert package["encryption"]["implemented"] is False
+          print(f"HashPaper live identity association verified against Kubo Peer ID: {status.peer_id}")
+          print("Synthetic identity, complete original text, and exact-byte SHA-256 checks passed.")
+          PY
+
       - name: Test External CID Library against the running Kubo daemon
         env:
           HOME: ${{ runner.temp }}/node-core-home
