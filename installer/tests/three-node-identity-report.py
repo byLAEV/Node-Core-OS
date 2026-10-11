@@ -165,7 +165,7 @@ def main() -> int:
     evidence_dir = Path(args.evidence_dir)
     evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence_path = evidence_dir / "summary.json"
-    evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     for label in labels:
         node_evidence = evidence_dir / f"node-{label.upper()}"
         node_evidence.mkdir(parents=True, exist_ok=True)
