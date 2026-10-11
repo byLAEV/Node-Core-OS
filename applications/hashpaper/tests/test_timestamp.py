@@ -85,6 +85,25 @@ class OpenTimestampsClientTests(unittest.TestCase):
         self.assertTrue(Path(str(proof) + ".before-upgrade").is_file())
         self.assertEqual(proof.read_bytes(), b"fake-proof-verified")
 
+    def test_interrupted_upgrade_keeps_backup_if_proof_changed(self):
+        proof = Path(str(self.original_path) + ".ots")
+        original_proof = b"proof-before-interrupted-upgrade"
+        proof.write_bytes(original_proof)
+        client = OpenTimestampsClient()
+
+        def fail_after_modifying_proof(args):
+            proof.write_bytes(b"partially-upgraded-proof")
+            raise TimestampError("synthetic interrupted upgrade")
+
+        client._run = fail_after_modifying_proof
+        with self.assertRaises(TimestampError):
+            client.check(self.original_path, upgrade=True)
+
+        backup = Path(str(proof) + ".before-upgrade")
+        self.assertTrue(backup.is_file())
+        self.assertEqual(backup.read_bytes(), original_proof)
+        self.assertEqual(proof.read_bytes(), b"partially-upgraded-proof")
+
     def test_missing_client_is_reported(self):
         client = OpenTimestampsClient(executable="hashpaper-ots-does-not-exist")
         with self.assertRaises(TimestampError):
