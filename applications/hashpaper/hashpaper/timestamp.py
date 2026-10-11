@@ -114,18 +114,24 @@ class OpenTimestampsClient:
     @staticmethod
     def _calendar_urls(output: str) -> tuple[str, ...]:
         """Return only calendar URLs explicitly printed by the official client."""
-        matches = re.findall(r"https?://[^\\s<>\\\"']+", output, re.IGNORECASE)
-        return tuple(dict.fromkeys(value.rstrip(".,);]") for value in matches))
+        urls = []
+        for token in output.split():
+            if token.startswith(("http://", "https://")):
+                urls.append(token.rstrip(".,);]"))
+        return tuple(dict.fromkeys(urls))
 
     @staticmethod
     def _bitcoin_transaction_ids(output: str) -> tuple[str, ...]:
         """Extract transaction IDs only when the client labels them as transactions."""
-        pattern = (
-            r"(?:bitcoin\\s+)?transaction(?:\\s+id)?\\s*[:=]?\\s*"
-            r"([0-9a-f]{64})\\b"
-        )
-        matches = re.findall(pattern, output, re.IGNORECASE)
-        return tuple(dict.fromkeys(value.lower() for value in matches))
+        tokens = output.replace(":", " ").replace("=", " ").split()
+        identifiers = []
+        for index, token in enumerate(tokens[:-1]):
+            label = token.lower()
+            if label in {"transaction", "transactionid", "transaction_id"}:
+                candidate = tokens[index + 1].strip(".,;()[]")
+                if len(candidate) == 64 and all(char in "0123456789abcdefABCDEF" for char in candidate):
+                    identifiers.append(candidate.lower())
+        return tuple(dict.fromkeys(identifiers))
 
     def stamp(self, original_path: Path) -> TimestampResult:
         original = Path(original_path).expanduser()
