@@ -117,6 +117,8 @@ jobs:
             python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
 
       - name: Test installed HashPaper interactive menu
+        env:
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
         run: |
           set -euo pipefail
           launcher="$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
