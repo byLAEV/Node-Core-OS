@@ -2,6 +2,24 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Official download fallback hardening — 2026-10-11
+
+### Fixed
+- Add a second official GitHub API route for Node Core OS commit metadata and accept the correct JSON shape returned by either the list endpoint or the single-ref endpoint.
+- Add GitHub archive and official codeload fallbacks for Node Core OS updates, validating the archive before replacing the installed application.
+- Pin the OpenTimestamps client to upstream release 0.7.2 and add PyPI, official GitHub tag archive, and official codeload fallback routes.
+- Keep Kubo downloads on the official GitHub Releases and dist.ipfs.tech sources, with the archive and SHA-512 checksum always fetched from the same source.
+- Update updater preservation tests to recognize the official metadata and archive fallback routes.
+
+### Security
+- No third-party mirrors are used.
+- All installation and update work remains strictly user-level; no root, sudo, system package manager, or system-wide Python changes.
+- Existing user data and Kubo/IPFS storage must be preserved if all download sources fail.
+
+### Validation
+- Added `docs/DOWNLOAD-SOURCES.md` describing upstreams, fallback order, integrity checks, and operational limits.
+- CI must pass against this change before the PR is merged.
+
 ## User-only installer hardening — 2026-10-11
 
 ### Fixed
