@@ -627,9 +627,9 @@ def main(argv: list[str] | None = None) -> int:
                     status, verification = result.status, result.proof_verification
                     block_height, return_code = result.bitcoin_block_height, result.return_code
                     stdout, stderr = result.stdout, result.stderr
-                    calendar_urls = result.calendar_urls
-                    bitcoin_transaction_ids = result.bitcoin_transaction_ids
-                    previous_proof_hash = result.previous_proof_sha256
+                    calendar_urls = getattr(result, "calendar_urls", ())
+                    bitcoin_transaction_ids = getattr(result, "bitcoin_transaction_ids", ())
+                    previous_proof_hash = getattr(result, "previous_proof_sha256", None)
                 else:
                     proof_hash = None
                     status, verification = "NOT_SUBMITTED", "NOT_CHECKED"
