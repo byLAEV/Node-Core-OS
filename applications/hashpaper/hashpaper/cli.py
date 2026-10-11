@@ -71,6 +71,7 @@ def _default_document_path(
     for_create: bool = False,
     require_proof: bool = False,
     require_unstamped: bool = False,
+    require_existing: bool = False,
 ) -> Path | None:
     """Choose a document appropriate to the requested operation."""
     directory = _documents_dir()
@@ -99,7 +100,7 @@ def _default_document_path(
             ]
         if candidates:
             return max(candidates, key=lambda path: path.stat().st_mtime)
-        if require_proof or require_unstamped:
+        if require_proof or require_unstamped or require_existing:
             return None
     base = directory / "Genesis-HashPaper.md"
     if not base.exists():
@@ -610,7 +611,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command in {"stamp", "check", "upgrade", "proof-info"}:
             if args.input is None:
                 if args.command == "stamp":
-                    args.input = _default_document_path()
+                    args.input = _default_document_path(require_existing=True)
                 elif args.command in {"check", "upgrade"}:
                     args.input = _default_document_path(require_proof=True)
                 else:
