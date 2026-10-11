@@ -101,6 +101,10 @@ def validate_ots_metadata(original_path: Path, metadata: dict[str, Any] | None, 
             f"OpenTimestamps report must refer to the expected proof filename: {expected_proof_name}"
         )
 
+    proof_path = Path(str(original) + ".ots")
+    if not proof_path.is_file() or proof_path.stat().st_size == 0:
+        raise ValueError("OpenTimestamps report supplied, but the corresponding .ots proof is missing or empty.")
+
     allowed_statuses = {
         "WAITING_FOR_BITCOIN",
         "ANCHOR_AVAILABLE",
