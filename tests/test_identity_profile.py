@@ -1,7 +1,12 @@
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
+
+from node_core.ui import MainMenu
 
 from node_core.identity.profile import IdentityProfileStore
 
@@ -65,15 +70,20 @@ class IdentityProfileStoreTests(unittest.TestCase):
                 document_number="SYNTHETIC-TEST-0001",
             )
 
-    def test_main_menu_can_avoid_exposing_document_number(self):
-        profile = self.save_sample()
-        summary = (
-            profile["full_name"],
-            profile["alias"],
-            profile["nationality"],
-            profile["node_id"],
-        )
-        self.assertNotIn(profile["document_number"], summary)
+    def test_main_menu_shows_profile_without_document_number(self):
+        self.save_sample()
+        self.store.associate_node("12D3KooWExamplePeerId")
+        menu = MainMenu(SimpleNamespace(identity_profile=self.store))
+        output = StringIO()
+        with redirect_stdout(output):
+            menu._print_identity_summary()
+        displayed = output.getvalue()
+        self.assertIn("Sample Person", displayed)
+        self.assertIn("SAMPLE", displayed)
+        self.assertIn("Costa Rican", displayed)
+        self.assertIn("12D3KooWExamplePeerId", displayed)
+        self.assertIn("Declared (not independently verified)", displayed)
+        self.assertNotIn("SYNTHETIC-TEST-0001", displayed)
 
     def test_profile_file_permissions_are_private_where_supported(self):
         self.save_sample()
