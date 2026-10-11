@@ -18,7 +18,11 @@ main() {
   require_bash
   require_user_installation
   require_linux
-  if [[ -e "$NODE_CORE_DATA_DIR/app" || -L "$NODE_CORE_DATA_DIR/app" ]]; then
+  if [[ -L "$NODE_CORE_DATA_DIR/app" || ( -e "$NODE_CORE_DATA_DIR/app" && ! -d "$NODE_CORE_DATA_DIR/app" ) ]]; then
+    printf 'Unsafe application path: %s is not a real directory.\n' "$NODE_CORE_DATA_DIR/app" >&2
+    exit 1
+  fi
+  if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     printf 'A Node Core OS application already exists at %s.\n' "$NODE_CORE_DATA_DIR/app" >&2
     printf 'Use %s/bin/node-core-update to update an existing installation without reinstalling it.\n' "$NODE_CORE_DATA_DIR" >&2
     exit 1
