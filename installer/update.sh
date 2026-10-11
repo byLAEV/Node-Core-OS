@@ -209,8 +209,12 @@ update_application() (
     printf 'Update is missing HashPaper tests; refusing activation.\n' >&2
     return 1
   }
-  source "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" || return 1
-  ensure_opentimestamps_client || return 1
+  if [[ -f "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" ]]; then
+    source "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" || return 1
+    ensure_opentimestamps_client || return 1
+  else
+    printf '%s\\n' 'Warning: update source does not include the OpenTimestamps installer helper; skipping dependency setup.' >&2
+  fi
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
   if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v); then
     printf 'HashPaper tests failed after update; refusing to mark the update successful.\n' >&2
