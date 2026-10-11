@@ -192,8 +192,11 @@ class MainMenu:
                     status = self.runtime.kubo.status()
                     node_id = status.peer_id
                     if not node_id:
-                        print("No Kubo Peer ID is available for this node yet.")
-                        print("Initialize Kubo, then return here to associate the profile.")
+                        print("No Kubo Peer ID is currently available.")
+                        if status.initialized:
+                            print("Start Kubo and ensure its API is available, then retry.")
+                        else:
+                            print("Initialize and start Kubo, then return here to associate the profile.")
                     else:
                         store.associate_node(node_id)
                         print("Identity profile associated with the current node.")
