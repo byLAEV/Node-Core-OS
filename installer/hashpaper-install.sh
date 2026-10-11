@@ -44,12 +44,26 @@ require_user_installation() {
   }
 }
 
-install_hashpaper_launcher() {
-  mkdir -p "$NODE_CORE_BIN_DIR"
-  [[ ! -L "$NODE_CORE_BIN_DIR" && -d "$NODE_CORE_BIN_DIR" ]] || {
-    printf 'Unsafe launcher directory: %s\n' "$NODE_CORE_BIN_DIR" >&2
+ensure_owned_directory() {
+  local directory="$1"
+  if [[ -L "$directory" ]]; then
+    printf 'Refusing to use a symbolic-link directory: %s\\n' "$directory" >&2
+    exit 1
+  fi
+  mkdir -p "$directory"
+  [[ -d "$directory" && ! -L "$directory" ]] || {
+    printf 'Required directory is not a real directory: %s\\n' "$directory" >&2
     exit 1
   }
+  [[ "$(stat -c '%u' "$directory")" == "$(id -u)" ]] || {
+    printf 'Directory is not owned by the current user: %s\\n' "$directory" >&2
+    exit 1
+  }
+  chmod 700 "$directory"
+}
+
+install_hashpaper_launcher() {
+  ensure_owned_directory "$NODE_CORE_BIN_DIR"
 
   cat > "$HASH_PAPER_LAUNCHER" <<'LAUNCHER'
 #!/usr/bin/env bash
@@ -76,8 +90,13 @@ main() {
   [[ -f "$OTS_HELPER" ]] || { printf "OpenTimestamps installer helper is missing: %s\n" "$OTS_HELPER" >&2; exit 1; }
   source "$OTS_HELPER"
   ensure_opentimestamps_client
-  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
-  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/runtime"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/documents"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/proofs"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/ipfs"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/packages"
+  ensure_owned_directory "$NODE_CORE_DATA_DIR/hashpaper/records"
   install_hashpaper_launcher
 }
 
