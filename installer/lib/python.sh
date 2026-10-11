@@ -2,7 +2,14 @@
 set -euo pipefail
 install_application() {
   local source_dir="$1" target_dir="$NODE_CORE_DATA_DIR/app"
-  rm -rf "$target_dir"
+  if [[ -L "$target_dir" || ( -e "$target_dir" && ! -d "$target_dir" ) ]]; then
+    printf 'Unsafe application path: %s is not a real directory.\n' "$target_dir" >&2
+    return 1
+  fi
+  if [[ -d "$target_dir" ]] && [[ -n "$(find "$target_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    printf 'An application already exists at %s. Use node-core-update to update it safely.\n' "$target_dir" >&2
+    return 1
+  fi
   mkdir -p "$target_dir"
   cp -R "$source_dir"/. "$target_dir"/
   rm -rf "$target_dir/.git"
@@ -22,6 +29,13 @@ set -euo pipefail
 exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+
+  cat > "$NODE_CORE_DATA_DIR/bin/hashpaper" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" "\$@"
+EOF
+  chmod 700 "$NODE_CORE_DATA_DIR/bin/hashpaper"
 }
 write_config() {
   local ipfs_executable
