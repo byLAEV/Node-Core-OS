@@ -203,7 +203,15 @@ update_application() (
     printf 'Update is missing HashPaper CLI; refusing activation.\n' >&2
     return 1
   }
+  [[ -d "$NODE_CORE_APP_DIR/applications/hashpaper/tests" ]] || {
+    printf 'Update is missing HashPaper tests; refusing activation.\n' >&2
+    return 1
+  }
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v); then
+    printf 'HashPaper tests failed after update; refusing to mark the update successful.\n' >&2
+    return 1
+  fi
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
 )
 
