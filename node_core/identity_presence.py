@@ -217,14 +217,24 @@ class IdentityPresence:
             raise IdentityPresenceError("Report is missing required fields.")
         if not isinstance(report["announcements"], list):
             raise IdentityPresenceError("Report announcements must be a list.")
+        allowed_announcement_fields = {
+            "protocol", "message_type", "node_id", "identity_associated",
+            "claim_status", "created_at",
+        }
         for announcement in report["announcements"]:
             if (
                 not isinstance(announcement, dict)
+                or set(announcement) - allowed_announcement_fields
                 or announcement.get("protocol") != PROTOCOL
+                or announcement.get("message_type") != "identity_association"
                 or not isinstance(announcement.get("node_id"), str)
+                or not announcement.get("node_id")
                 or not isinstance(announcement.get("identity_associated"), bool)
+                or announcement.get("claim_status") != "announced_not_verified"
             ):
-                raise IdentityPresenceError("Report contains an invalid announcement.")
+                raise IdentityPresenceError(
+                    "Report contains an invalid announcement or unsupported fields."
+                )
         reference_id = report.get("report_reference_id")
         try:
             UUID(str(reference_id))
