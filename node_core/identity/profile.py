@@ -37,33 +37,46 @@ class IdentityProfileStore:
     def save_declared_profile(
         self,
         *,
-        full_name: str,
-        alias: str,
-        nationality: str,
-        issuing_country: str,
-        document_type: str,
-        document_number: str,
-        birth_date: str = "",
+        full_name: str | None = None,
+        alias: str | None = None,
+        nationality: str | None = None,
+        issuing_country: str | None = None,
+        document_type: str | None = None,
+        document_number: str | None = None,
+        birth_date: str | None = None,
         height_cm: str | int | None = None,
-        gender: str = "",
+        gender: str | None = None,
     ) -> dict[str, Any]:
-        """Save user-declared fields locally; this does not verify their truth."""
-        fields = {
-            "full_name": full_name,
-            "alias": alias,
-            "nationality": nationality,
-            "issuing_country": issuing_country,
-            "document_type": document_type,
-            "document_number": document_number,
-            "birth_date": birth_date,
-            "gender": gender,
+        """Save declared fields locally, preserving values omitted during an edit.
+
+        None means "not supplied; preserve the previous value". An empty string
+        explicitly clears an optional text field. Required fields cannot be empty.
+        This method does not verify the truth of any user-entered value.
+        """
+        previous = self.load()
+        previous = previous or {}
+
+        def text_value(key: str, supplied: str | None) -> str:
+            if supplied is None:
+                value = previous.get(key, "")
+            else:
+                value = supplied.strip()
+            return value
+
+        normalized = {
+            "full_name": text_value("full_name", full_name),
+            "alias": text_value("alias", alias),
+            "nationality": text_value("nationality", nationality),
+            "issuing_country": text_value("issuing_country", issuing_country),
+            "document_type": text_value("document_type", document_type),
+            "document_number": text_value("document_number", document_number),
+            "birth_date": text_value("birth_date", birth_date),
+            "gender": text_value("gender", gender),
         }
-        normalized = {key: value.strip() for key, value in fields.items()}
         for key in ("full_name", "issuing_country", "document_type", "document_number"):
             if not normalized[key]:
                 raise ValueError(f"{key.replace('_', ' ').capitalize()} is required.")
 
-        parsed_birth_date = None
         if normalized["birth_date"]:
             try:
                 parsed_birth_date = date.fromisoformat(normalized["birth_date"])
@@ -74,8 +87,11 @@ class IdentityProfileStore:
             if parsed_birth_date > date.today():
                 raise ValueError("Birth date cannot be in the future.")
 
-        parsed_height = None
-        if height_cm is not None and str(height_cm).strip():
+        if height_cm is None:
+            parsed_height = previous.get("height_cm")
+        elif isinstance(height_cm, str) and not height_cm.strip():
+            parsed_height = None
+        else:
             try:
                 parsed_height = int(str(height_cm).strip())
             except ValueError as exc:
@@ -83,15 +99,10 @@ class IdentityProfileStore:
             if not 1 <= parsed_height <= 300:
                 raise ValueError("Height must be between 1 and 300 centimeters.")
 
-        previous = self.load()
         now = self._now()
         payload: dict[str, Any] = {
             "schema_version": 1,
-            "identity_id": (
-                previous.get("identity_id", str(uuid.uuid4()))
-                if previous
-                else str(uuid.uuid4())
-            ),
+            "identity_id": previous.get("identity_id") or str(uuid.uuid4()),
             "full_name": normalized["full_name"],
             "alias": normalized["alias"],
             "nationality": normalized["nationality"],
@@ -102,8 +113,8 @@ class IdentityProfileStore:
             "height_cm": parsed_height,
             "gender": normalized["gender"],
             "identity_status": "declared",
-            "node_id": previous.get("node_id") if previous else None,
-            "created_at": previous.get("created_at", now) if previous else now,
+            "node_id": previous.get("node_id"),
+            "created_at": previous.get("created_at") or now,
             "updated_at": now,
         }
         self._write_private(payload)
