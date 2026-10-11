@@ -116,6 +116,76 @@ jobs:
           NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" \
             python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
 
+      - name: Test HashPaper package publication against live Kubo
+        env:
+          HOME: ${{ runner.temp }}/node-core-home
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home/.node-core
+          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home/.node-core/config.json
+          PYTHONPATH: ${{ runner.temp }}/node-core-home/.node-core/app
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          documents="$NODE_CORE_DATA_DIR/hashpaper/documents"
+          packages="$NODE_CORE_DATA_DIR/hashpaper/packages"
+          records="$NODE_CORE_DATA_DIR/hashpaper/records"
+          mkdir -p "$documents" "$packages" "$records"
+          original="$documents/hashpaper-live-kubo-e2e-001.md"
+          package="$packages/hashpaper-live-kubo-e2e-001.json"
+          receipt="$records/hashpaper-live-kubo-e2e-001.publication.json"
+
+          python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" create \
+            --output "$original" \
+            --title "Synthetic HashPaper live Kubo test" \
+            --text "Synthetic content for the Node Core OS HashPaper integration test."
+          python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" package \
+            --input "$original" \
+            --output "$package"
+
+          python3 - "$original" "$package" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          original = Path(sys.argv[1])
+          package_path = Path(sys.argv[2])
+          original_bytes = original.read_bytes()
+          package = json.loads(package_path.read_text(encoding="utf-8"))
+          assert package["document"]["original_text"] == original_bytes.decode("utf-8")
+          assert package["document"]["sha256"] == hashlib.sha256(original_bytes).hexdigest()
+          assert package["encryption"]["implemented"] is False
+          assert package["opentimestamps"]["status"] == "NOT_SUBMITTED"
+          print("HashPaper original-byte hash and full-text package checks passed.")
+          PY
+
+          printf 'PUBLISH\n' | python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" publish \
+            --input "$package" \
+            --report "$receipt"
+
+          python3 - "$receipt" "$package" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          receipt = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          package = Path(sys.argv[2]).read_bytes()
+          assert receipt["publication_status"] == "PUBLISHED_AND_RETRIEVED"
+          assert receipt["content_verified"] is True
+          assert receipt["pinned"] is True
+          assert receipt["published"] is True
+          assert receipt["sha256"] == hashlib.sha256(package).hexdigest()
+          print("HashPaper live Kubo publication receipt checks passed.")
+          print(f"HashPaper live Kubo CID: {receipt['cid']}")
+          PY
+
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          cid="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["cid"])' "$receipt")"
+          recovered="$RUNNER_TEMP/hashpaper-live-kubo-recovered.json"
+          "$NODE_CORE_DATA_DIR/bin/ipfs" cat "$cid" > "$recovered"
+          cmp -s "$package" "$recovered"
+          printf "HashPaper live Kubo CID byte-for-byte retrieval passed: %s\n" "$cid"
+
       - name: Test External CID Library against the running Kubo daemon
         env:
           HOME: ${{ runner.temp }}/node-core-home
