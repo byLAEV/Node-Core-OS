@@ -114,6 +114,8 @@ EOF
   cat > "$NODE_CORE_DATA_DIR/bin/hashpaper" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
+export NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR"
+export PATH="$NODE_CORE_DATA_DIR/runtime/opentimestamps-venv/bin:$PATH"
 exec python3 "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" "\$@"
 EOF
   chmod 700 "$NODE_CORE_DATA_DIR/bin/hashpaper"
