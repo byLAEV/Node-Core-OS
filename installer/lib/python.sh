@@ -2,7 +2,11 @@
 set -euo pipefail
 install_application() {
   local source_dir="$1" target_dir="$NODE_CORE_DATA_DIR/app"
-  if [[ -e "$target_dir" || -L "$target_dir" ]]; then
+  if [[ -L "$target_dir" || ( -e "$target_dir" && ! -d "$target_dir" ) ]]; then
+    printf 'Unsafe application path: %s is not a real directory.\n' "$target_dir" >&2
+    return 1
+  fi
+  if [[ -d "$target_dir" ]] && [[ -n "$(find "$target_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     printf 'An application already exists at %s. Use node-core-update to update it safely.\n' "$target_dir" >&2
     return 1
   fi
