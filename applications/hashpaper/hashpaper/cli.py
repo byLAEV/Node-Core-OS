@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -14,8 +15,72 @@ from .publication import PublicationError
 from .identity import IdentityIntegrationError, associate_identity_with_peer, load_identity_and_peer_id
 
 
+def _expanded_path(value: str | Path) -> Path:
+    """Expand home and environment variables in paths supplied by scripts or users."""
+    return Path(os.path.expandvars(str(value))).expanduser()
+
+
+def _data_dir() -> Path:
+    return _expanded_path(os.environ.get("NODE_CORE_DATA_DIR", str(Path.home() / ".node-core")))
+
+
+def _documents_dir() -> Path:
+    return _data_dir() / "storage"
+
+
+def _default_document_path(*, for_create: bool = False) -> Path:
+    """Use the newest local text document; create a new non-overwriting default when requested."""
+    directory = _documents_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    if not for_create:
+        candidates = [
+            path for path in directory.iterdir()
+            if path.is_file() and path.suffix.lower() in {".txt", ".md", ".markdown"}
+            and not path.name.endswith(".ots")
+        ]
+        if candidates:
+            return max(candidates, key=lambda path: path.stat().st_mtime)
+    base = directory / "Genesis-HashPaper.md"
+    if not base.exists():
+        return base
+    index = 2
+    while True:
+        candidate = directory / f"Genesis-HashPaper-{index}.md"
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
+def _default_package_path() -> Path:
+    directory = _data_dir() / "hashpaper" / "packages"
+    directory.mkdir(parents=True, exist_ok=True)
+    base = directory / "Genesis-HashPaper-package.json"
+    if not base.exists():
+        return base
+    index = 2
+    while True:
+        candidate = directory / f"Genesis-HashPaper-package-{index}.json"
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
+def _default_publication_report_path() -> Path:
+    directory = _data_dir() / "hashpaper" / "records"
+    directory.mkdir(parents=True, exist_ok=True)
+    base = directory / "Genesis-HashPaper-publication.json"
+    if not base.exists():
+        return base
+    index = 2
+    while True:
+        candidate = directory / f"Genesis-HashPaper-publication-{index}.json"
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
 def _same_path(first: Path, second: Path) -> bool:
-    return first.expanduser().resolve() == second.expanduser().resolve()
+    return _expanded_path(first).resolve() == _expanded_path(second).resolve()
 
 
 def _read_json_object(path: Path, description: str) -> dict:
@@ -30,13 +95,13 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     create = subparsers.add_parser("create", help="Create a local original text/Markdown document")
-    create.add_argument("--output", required=True, type=Path, help="New output path; existing files are never overwritten")
+    create.add_argument("--output", type=Path, help="Optional output path; defaults to the next available Genesis HashPaper document path")
     create.add_argument("--title", required=True, help="Document title")
     create.add_argument("--text", required=True, help="Document body text")
 
     package = subparsers.add_parser("package", help="Build a transparent JSON package from an existing original")
-    package.add_argument("--input", required=True, type=Path, help="Existing UTF-8 text/Markdown document")
-    package.add_argument("--output", required=True, type=Path, help="Output JSON package path")
+    package.add_argument("--input", type=Path, help="Optional original document path; defaults to the newest local HashPaper text document")
+    package.add_argument("--output", type=Path, help="Optional package output path; defaults to a new local package path")
     identity_group = package.add_mutually_exclusive_group()
     identity_group.add_argument("--identity-json", type=Path, help="Optional local identity profile JSON")
     identity_group.add_argument("--use-node-profile", action="store_true", help="Use the saved Node Core OS profile and current Kubo Peer ID after explicit confirmation")
@@ -50,11 +115,11 @@ def build_parser() -> argparse.ArgumentParser:
         ("proof-info", "Show original hash, .ots fingerprint, and timestamp status"),
     ):
         command = subparsers.add_parser(name, help=help_text)
-        command.add_argument("--input", required=True, type=Path, help="Original UTF-8 text/Markdown document")
+        command.add_argument("--input", type=Path, help="Optional original document path; defaults to the newest local HashPaper text document")
         command.add_argument("--report", type=Path, help="Optional JSON report output path")
 
     publish = subparsers.add_parser("publish", help="Publish a transparent package through Node Core Kubo/IPFS after explicit confirmation")
-    publish.add_argument("--input", required=True, type=Path, help="Transparent JSON package containing the complete original text")
+    publish.add_argument("--input", type=Path, help="Optional package path; defaults to the newest local HashPaper package")
     publish.add_argument("--report", type=Path, help="Optional new JSON receipt path; existing reports are never overwritten")
 
     return parser
@@ -96,44 +161,43 @@ def run_interactive_menu() -> int:
         print(f"\n{description}\n")
         try:
             if command == "create":
-                output = input("New original document path: ").strip()
-                title = input("Document title: ").strip()
-                body = input("Document body text: ")
-                if not output or not title or not body:
-                    print("Cancelled: path, title, and body are required.")
+                title = input("Document title [Genesis HashPaper for Node Core OS]: ").strip()
+                title = title or "Genesis HashPaper for Node Core OS"
+                body = input("Document body text: ").strip()
+                if not body:
+                    print("Cancelled: document body is required.")
                     continue
-                arguments = ["create", "--output", output, "--title", title, "--text", body]
+                arguments = ["create", "--title", title, "--text", body]
             elif command in {"stamp", "check", "upgrade", "proof-info"}:
-                source = input("Path to the original document: ").strip()
-                if not source:
-                    print("Cancelled: document path is required.")
+                source = _default_document_path()
+                if not source.is_file():
+                    print(f"No local original document found. Create one with option 1 first. Default location: {source}")
                     continue
-                arguments = [command, "--input", source]
-                report = input("Optional JSON report path (leave blank to skip): ").strip()
-                if report:
-                    arguments.extend(["--report", report])
+                print(f"Using local document: {source.name}")
+                arguments = [command, "--input", str(source)]
             elif command == "package":
-                source = input("Path to the original document: ").strip()
-                output = input("New package output path: ").strip()
-                if not source or not output:
-                    print("Cancelled: input and output paths are required.")
+                source = _default_document_path()
+                if not source.is_file():
+                    print(f"No local original document found. Create one with option 1 first. Default location: {source}")
                     continue
-                arguments = ["package", "--input", source, "--output", output]
-                ots_report = input("Optional OpenTimestamps report path (leave blank to skip): ").strip()
-                if ots_report:
-                    arguments.extend(["--ots-json", ots_report])
+                output = _default_package_path()
+                print(f"Using local document: {source.name}")
+                print(f"Package will be saved locally as: {output.name}")
+                arguments = ["package", "--input", str(source), "--output", str(output)]
                 use_identity = input("Include saved Node Core identity and live Peer ID? [y/N]: ").strip().lower()
                 if use_identity in {"y", "yes"}:
                     arguments.append("--use-node-profile")
             else:
-                source = input("Path to the transparent JSON package: ").strip()
-                if not source:
-                    print("Cancelled: package path is required.")
+                packages_dir = _data_dir() / "hashpaper" / "packages"
+                packages = sorted(packages_dir.glob("*.json"), key=lambda path: path.stat().st_mtime, reverse=True) if packages_dir.is_dir() else []
+                if not packages:
+                    print("No local HashPaper package found. Build one with option 5 first.")
                     continue
-                arguments = ["publish", "--input", source]
-                report = input("Optional new publication receipt path (leave blank to skip): ").strip()
-                if report:
-                    arguments.extend(["--report", report])
+                source = packages[0]
+                print(f"Using local package: {source.name}")
+                arguments = ["publish", "--input", str(source)]
+                report = _default_publication_report_path()
+                arguments.extend(["--report", str(report)])
 
             status = main(arguments)
             if status:
@@ -151,14 +215,33 @@ def main(argv: list[str] | None = None) -> int:
         return run_interactive_menu()
     args = build_parser().parse_args(argv)
     try:
+        # Resolve paths consistently, including environment variables like $HOME.
+        if getattr(args, "input", None) is not None:
+            args.input = _expanded_path(args.input)
+        if getattr(args, "output", None) is not None:
+            args.output = _expanded_path(args.output)
+        if getattr(args, "report", None) is not None:
+            args.report = _expanded_path(args.report)
+        if getattr(args, "ots_json", None) is not None:
+            args.ots_json = _expanded_path(args.ots_json)
+
         if args.command == "create":
+            args.output = args.output or _default_document_path(for_create=True)
             metadata = write_original(args.output, f"# {args.title}\n\n{args.text}\n")
             print(json.dumps(metadata, ensure_ascii=False, indent=2))
             print("Local original created. Timestamping and IPFS publication are separate steps.")
             return 0
 
         if args.command == "publish":
-            package_path = args.input.expanduser()
+            if args.input is None:
+                packages_dir = _data_dir() / "hashpaper" / "packages"
+                packages = sorted(packages_dir.glob("*.json"), key=lambda path: path.stat().st_mtime, reverse=True) if packages_dir.is_dir() else []
+                if not packages:
+                    raise ValueError("No local HashPaper package found. Build a package first.")
+                args.input = packages[0]
+            if args.report is None:
+                args.report = _default_publication_report_path()
+            package_path = args.input
             if not package_path.is_file():
                 raise ValueError(f"Package file does not exist: {package_path}")
             package_value = _read_json_object(package_path, "HashPaper package")
@@ -201,6 +284,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command in {"stamp", "check", "upgrade", "proof-info"}:
+            if args.input is None:
+                args.input = _default_document_path()
+            if not args.input.is_file():
+                raise ValueError(f"No local original document found: {args.input}. Create one with HashPaper option 1 first.")
             if args.report:
                 proof_path = Path(str(args.input.expanduser()) + ".ots")
                 if _same_path(args.report, args.input) or _same_path(args.report, proof_path):
@@ -270,7 +357,13 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"OpenTimestamps result status: {result.status}")
             return 0 if result.status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
 
-        if args.output.expanduser().resolve() == args.input.expanduser().resolve():
+        if args.input is None:
+            args.input = _default_document_path()
+        if not args.input.is_file():
+            raise ValueError(f"No local original document found: {args.input}. Create one with HashPaper option 1 first.")
+        if args.output is None:
+            args.output = _default_package_path()
+        if args.output.resolve() == args.input.resolve():
             raise ValueError("Package output must be a different file from the immutable original document.")
         if args.use_node_profile and args.node_id:
             raise ValueError("--node-id cannot be combined with --use-node-profile; HashPaper reads the actual Kubo Peer ID.")
