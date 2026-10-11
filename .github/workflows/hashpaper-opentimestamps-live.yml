@@ -66,20 +66,27 @@ jobs:
           digest = hashlib.sha256(original.read_bytes()).hexdigest()
           assert stamp_report["original_sha256"] == digest
           assert check_report["original_sha256"] == digest
+          assert stamp_report["status"] == "WAITING_FOR_BITCOIN"
           assert stamp_report["proof_file"] == str(Path(str(original) + ".ots"))
           assert Path(stamp_report["proof_file"]).is_file()
-          assert check_report["status"] in {
-              "VERIFIED",
-              "WAITING_FOR_BITCOIN",
-              "NETWORK_ERROR",
-              "NOT_CHECKED",
-              "PROOF_ERROR",
-          }
+          assert check_report["status"] in {"VERIFIED", "WAITING_FOR_BITCOIN"}, (
+              "Live OpenTimestamps check was inconclusive or failed: "
+              f"{check_report['status']}; see the uploaded JSON report and client output."
+          )
           print(f"Original SHA-256 preserved: {digest}")
           print(f"Timestamp submission status: {stamp_report['status']}")
           print(f"Immediate proof check status: {check_report['status']}")
-          if check_report["status"] != "VERIFIED":
-              print("No Bitcoin attestation verification is claimed by this run.")
+          import os
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## HashPaper live OpenTimestamps result\n\n")
+              summary.write(f"- Original SHA-256: {digest}\n")
+              summary.write(f"- Submission: {stamp_report['status']}\n")
+              summary.write(f"- Immediate proof check: {check_report['status']}\n")
+              if check_report["status"] == "VERIFIED":
+                  summary.write("- Bitcoin attestation: verified by the official OpenTimestamps client\n")
+              else:
+                  summary.write("- Bitcoin attestation: pending; not claimed as verified\n")
+
           PY
 
       - name: Upload synthetic OpenTimestamps evidence
