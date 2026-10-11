@@ -48,7 +48,7 @@ from pathlib import Path
 for value in sys.argv[1:]:
     path = Path(value)
     version = path.read_text(encoding="utf-8").strip()
-    if re.fullmatch(r"[0-9]+\\.[0-9]+\\.[0-9]+", version) is None:
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
         raise SystemExit(f"Invalid application version in {path}: {version!r}")
 print("Installed Node Core OS version:", Path(sys.argv[1]).read_text(encoding="utf-8").strip())
 print("Installed HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
