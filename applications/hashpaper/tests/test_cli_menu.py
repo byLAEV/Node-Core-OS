@@ -126,7 +126,8 @@ class HashPaperMenuTests(unittest.TestCase):
             with patch.dict(os.environ, {"NODE_CORE_DATA_DIR": temporary}):
                 root = Path(temporary) / "hashpaper"
                 self.assertEqual(cli._hashpaper_dir(), root)
-                self.assertEqual(cli._documents_dir(), root / "documents")
+                self.assertEqual(cli._documents_dir(), Path(temporary) / "storage" / "opentimestamps")
+                self.assertEqual(cli._legacy_documents_dir(), root / "documents")
                 self.assertEqual(cli._ipfs_dir(), root / "ipfs")
                 self.assertEqual(cli._records_dir(), root / "records")
                 self.assertNotEqual(cli._ipfs_dir(), Path(temporary) / "ipfs")
@@ -136,9 +137,8 @@ class HashPaperMenuTests(unittest.TestCase):
             old_dir = os.environ.get("NODE_CORE_DATA_DIR")
             try:
                 os.environ["NODE_CORE_DATA_DIR"] = temporary
-                output = Path(temporary) / "hashpaper" / "documents" / "Synthetic-Title.md"
-                with patch.object(cli, "_default_document_path", return_value=output):
-                    status = cli.main(["create", "--title", "Synthetic Title", "--text", "Synthetic body"])
+                output = Path(temporary) / "storage" / "opentimestamps" / "Synthetic-Title.md"
+                status = cli.main(["create", "--title", "Synthetic Title", "--text", "Synthetic body"])
                 self.assertEqual(status, 0)
                 text = output.read_text(encoding="utf-8")
                 self.assertIn("Synthetic body", text)
