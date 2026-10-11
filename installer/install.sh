@@ -11,6 +11,7 @@ source "$INSTALLER_DIR/lib/python.sh"
 source "$INSTALLER_DIR/lib/kubo.sh"
 source "$INSTALLER_DIR/lib/service.sh"
 source "$INSTALLER_DIR/lib/verify.sh"
+source "$INSTALLER_DIR/lib/opentimestamps.sh"
 main() {
   printf '%s\n' 'Node Core OS installer'
   printf '%s\n' 'GNU/Linux terminal only'
@@ -30,6 +31,7 @@ main() {
   ensure_dependencies
   prepare_filesystem
   install_application "$PROJECT_ROOT"
+  ensure_opentimestamps_client
   install_kubo
   write_config
   create_launcher

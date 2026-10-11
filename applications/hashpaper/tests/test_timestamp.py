@@ -104,6 +104,26 @@ class OpenTimestampsClientTests(unittest.TestCase):
         self.assertEqual(backup.read_bytes(), original_proof)
         self.assertEqual(proof.read_bytes(), b"partially-upgraded-proof")
 
+    def test_private_node_core_environment_is_discovered_without_path_entry(self):
+        private_bin = self.root / "runtime" / "opentimestamps-venv" / "bin"
+        private_bin.mkdir(parents=True)
+        private_ots = private_bin / "ots"
+        private_ots.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+        private_ots.chmod(0o755)
+        old_data_dir = os.environ.get("NODE_CORE_DATA_DIR")
+        old_path = os.environ.get("PATH", "")
+        try:
+            os.environ["NODE_CORE_DATA_DIR"] = str(self.root)
+            os.environ["PATH"] = str(self.root / "empty-path")
+            resolved = OpenTimestampsClient()._executable_path()
+            self.assertEqual(resolved, str(private_ots))
+        finally:
+            os.environ["PATH"] = old_path
+            if old_data_dir is None:
+                os.environ.pop("NODE_CORE_DATA_DIR", None)
+            else:
+                os.environ["NODE_CORE_DATA_DIR"] = old_data_dir
+
     def test_missing_client_is_reported(self):
         client = OpenTimestampsClient(executable="hashpaper-ots-does-not-exist")
         with self.assertRaises(TimestampError):
