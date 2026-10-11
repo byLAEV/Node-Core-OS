@@ -45,6 +45,16 @@ printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixt
 printf '1.2.3\n' > "$release_root/Node-Core-OS-fixture/VERSION"
 printf 'print("updated HashPaper")\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/main.py"
 printf 'VALUE = "updated HashPaper CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper/cli.py"
+cat > "$release_root/Node-Core-OS-fixture/applications/hashpaper/tests/test_smoke.py" <<'PY'
+import unittest
+
+class UpdaterFixtureSmokeTest(unittest.TestCase):
+    def test_fixture_release_is_testable(self):
+        self.assertTrue(True)
+
+if __name__ == "__main__":
+    unittest.main()
+PY
 printf '{"sha":"1111111111111111111111111111111111111111"}\n' > "$TEST_FIXTURES/latest-commit.json"
 tar -czf "$TEST_FIXTURES/1111111111111111111111111111111111111111.tar.gz" \
   -C "$release_root" Node-Core-OS-fixture
