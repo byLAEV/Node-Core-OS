@@ -2,42 +2,61 @@
 
 ## Purpose
 
-HashPaper is the document-evidence application planned for Node Core OS. It is designed to keep a local original, create an OpenTimestamps proof for the exact original bytes, assemble a transparent evidence package, and publish that package through the existing Kubo/IPFS content layer after end-to-end verification.
+HashPaper is an application included in the Node Core OS repository. It creates a local original, calculates SHA-256 over its exact bytes, delegates timestamp operations to the official OpenTimestamps client, assembles a transparent evidence package, and publishes that package through the existing Kubo/IPFS content layer after explicit confirmation.
 
 ## Current implementation status
 
-The first source-tree milestone is `applications/hashpaper/` version `0.1.0`. It provides local UTF-8 document creation, SHA-256 calculation, and transparent JSON package generation with tests. The complete original text is embedded in the package. It does **not** yet submit or verify OpenTimestamps proofs, publish to Kubo/IPFS, integrate with the main menu, or participate in installer/update lifecycle. The official OpenTimestamps CLI adapter is now implemented for `stamp`, `check`, and `upgrade`. CI exercises it with a fake CLI executable, not live calendars or Bitcoin verification. Kubo/IPFS publication now has an adapter using the existing Node Core `ContentManager` and `KuboManager`. It requires explicit confirmation, retrieves the resulting CID, compares bytes, and checks pin state; unit tests use fake runtime objects, so a live Kubo end-to-end test remains pending. The Applications menu entry, installer verification checks, persistent data directory creation, and updater preservation fixtures are now implemented. The app is shipped as part of the main Node Core OS code tree, not through a separate installer. Live installed-menu tests and full data-preservation E2E results are still required before release.
+The application lives in `applications/hashpaper/` and has a CLI, unit tests, an Applications-menu entry, installer verification, persistent data directories, and updater preservation tests.
+
+Verified in GitHub Actions on commit `d953d0732dba587b5a4153aba4b9758d656edf89`:
+
+- GNU/Linux terminal CI passed.
+- Ubuntu 24.04 installer E2E passed in both service modes.
+- Clean installation and installed filesystem checks passed.
+- HashPaper package publication through a live Kubo daemon passed.
+- The package was retrieved by CID and its bytes matched the local package.
+- Identity association against the live Kubo Peer ID passed using synthetic identity data.
+- Uninstall safety and uninstall checks passed.
+
+The OpenTimestamps adapter invokes the official `ots` CLI for `stamp`, `check`, and `upgrade`. Its automated tests use a fake executable. Live calendar submission and later verified Bitcoin attestation have not yet been demonstrated by CI and remain explicit validation work. A separate HashPaper installer has not been implemented; HashPaper ships with Node Core OS.
 
 ## Artifact contract
 
-1. **Original document**: a UTF-8 text or Markdown file. Its exact bytes are hashed with SHA-256 and must not be overwritten in place. An edit creates a new document/version.
-2. **OpenTimestamps proof**: the `.ots` file produced and updated by the official OpenTimestamps client. Proof-file existence is not proof verification. Pending, network failure, attestation available, and verification success are distinct states.
-3. **IPFS package**: a versioned JSON or Markdown record containing the entire original text, transparent identity/node fields, original byte length and SHA-256, proof filename and real OTS status, and Bitcoin details only when actually available and verified. Unknown values remain `null` or explicit pending/not-checked states. The package hash is not the original document hash.
+1. **Original document** — UTF-8 text or Markdown. HashPaper calculates SHA-256 over its exact bytes. Existing originals are not overwritten by document creation; an edit should create a new version.
+2. **OpenTimestamps proof** — the `.ots` file created and updated by the official client. Existence of the file is not proof verification. Pending confirmation, network errors, available attestation, and successful verification are distinct states.
+3. **IPFS package** — versioned transparent JSON containing the complete original text, included identity/node fields, original byte length and SHA-256, and OTS report fields actually provided by the client. The original hash is not the package hash. The publication receipt stores the CID separately because embedding the package's own CID would change the content and CID.
 
-A package changes when timestamp metadata changes. Such changes create a new package version and CID rather than implying that an existing CID is mutable.
+If timestamp metadata changes, create a new package version and CID; do not imply that a CID is mutable.
 
 ## Identity and node semantics
 
-The existing Node Core OS profile schema includes `identity_id`, `full_name`, `alias`, `nationality`, `issuing_country`, `document_type`, `document_number`, `birth_date`, `height_cm`, `gender`, `identity_status`, `node_id`, `created_at`, and `updated_at`. HashPaper must not invent values for missing fields. The profile's current status `declared` is not civil-identity verification. A Kubo Peer ID is a technical node identifier and does not establish who controls it.
+The Node Core OS profile schema includes `identity_id`, `full_name`, `alias`, `nationality`, `issuing_country`, `document_type`, `document_number`, `birth_date`, `height_cm`, `gender`, `identity_status`, `node_id`, `created_at`, and `updated_at`. HashPaper must not invent missing values.
 
-The `package --use-node-profile` flow now requires an existing local identity profile and a live Kubo Peer ID. It displays the complete original text and all known profile fields, requires the exact confirmation `INCLUDE IDENTITY AND NODE`, and only then persists the local association and creates the package. The user can cancel before association or publication. Public publication separately requires typing `PUBLISH` after reviewing the complete package.
+The `package --use-node-profile` flow requires an existing local identity profile and a live Kubo Peer ID. It displays the complete original text and profile fields, requires the exact confirmation `INCLUDE IDENTITY AND NODE`, and then saves the local association and creates the package. Publication is a separate action that requires typing `PUBLISH`.
+
+A profile marked `declared` is not independently verified civil identity. A Peer ID is a technical node identifier and does not establish who controls it.
 
 ## Transparency and encryption
 
-No encryption is implemented in this stage. The planned published package intentionally contains the full original text and the selected identity fields in cleartext. Anyone able to retrieve the public IPFS content can read those fields. Use synthetic data in tests; real identity data must not be published accidentally. Future encryption requires a separately specified and tested policy and key-management model. Documentation for each relevant update must state explicitly whether encryption is implemented; for this milestone it is not.
+Encryption is **NOT IMPLEMENTED**. The package intentionally includes the complete original text and selected identity fields in cleartext. Anyone able to retrieve the public IPFS content can read those fields. Use synthetic data for tests; real identity data must not be published accidentally. Future encryption requires a separately specified policy and key-management model. Relevant documentation and changelog entries must explicitly state encryption status.
 
-## Integration plan
+## Persistent data and updater
 
-1. Complete and test the local record workflow and schema.
-2. The CLI adapter invokes only the official OpenTimestamps client for `stamp`, `verify`, and `upgrade`; CI uses a fake executable to test state handling. Live calendar and Bitcoin verification still require integration tests. Never reimplement its cryptographic protocol.
-3. Distinguish pending proofs, network errors, available attestations, and successful verification.
-4. Integrate with the existing `node_core.ipfs.KuboManager` and content registry only after confirming their current contracts. Do not expose Kubo's administrative RPC to applications.
-5. The initial publisher adapter now retrieves the CID, compares bytes, and checks pin state. Add a live Kubo end-to-end test before release.
-6. Add a HashPaper launcher/menu integration without weakening the Node Core OS application boundary.
-7. HashPaper is launched from the Node Core OS Applications menu. Installer verification checks its entry point and compilation. Its user documents, `.ots` files, packages, and application state live under `~/.node-core/hashpaper/`, outside the replaceable code tree.
-8. Update installer and updater with preservation tests for existing config, identity, local storage, Kubo repository, and HashPaper records.
-9. Add CI coverage for local tests, mocked OTS outcomes, Kubo publication/retrieval, failure paths, clean install, and upgrade from a version without HashPaper.
+Node Core OS creates HashPaper directories outside the replaceable application-code tree:
 
-## Release criteria
+```text
+~/.node-core/hashpaper/
+├── documents/
+├── proofs/
+├── packages/
+└── records/
+```
 
-Do not declare a complete HashPaper release until OpenTimestamps and Kubo/IPFS workflows, installer/update integration, and relevant automated tests pass. The main installer currently has an evolving transaction model; HashPaper must not bypass it or cause application data to be deleted when the replaceable code directory is refreshed.
+The updater preservation test seeds and checks these data categories through successful update and rollback scenarios. HashPaper is launched from the Applications menu and its files are checked by installer verification.
+
+## Remaining release validation
+
+- Test live OpenTimestamps calendar submission with synthetic content.
+- Recheck the resulting proof after an attestation becomes available, and claim `VERIFIED` only after the official client verifies it against the original document.
+- Continue validating updater preservation and failure paths as the updater evolves.
+- Do not claim encryption, civil identity verification, authorship, or truth from a hash, CID, Peer ID, or timestamp alone.
