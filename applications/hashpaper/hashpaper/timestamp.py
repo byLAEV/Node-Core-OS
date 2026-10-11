@@ -6,7 +6,7 @@ It does not implement cryptography or infer verification from file existence.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import os
 from pathlib import Path
@@ -152,7 +152,15 @@ class OpenTimestampsClient:
             raise TimestampError("Original document contains terminal control characters; clean or recreate it before timestamping.")
         proof = Path(str(original) + ".ots")
         if proof.exists():
-            raise TimestampError(f"Proof already exists; refusing to overwrite it: {proof}")
+            if not proof.is_file() or proof.stat().st_size == 0:
+                raise TimestampError(
+                    f"An empty or non-file .ots path already exists; it was preserved: {proof}"
+                )
+            # Repeated stamp requests must not overwrite existing evidence or
+            # submit a duplicate request. Verify the existing proof and return
+            # its real state through the same structured result contract.
+            existing = self.check(original)
+            return replace(existing, operation="stamp-existing-proof")
 
         before = self._sha256(original)
         result = self._run(["stamp", str(original)])

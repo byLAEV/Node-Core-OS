@@ -23,15 +23,24 @@ class NodeConfig:
 
     @classmethod
     def load(cls) -> "NodeConfig":
-        path = Path(os.environ.get("NODE_CORE_CONFIG", str(DEFAULT_DATA_DIR / "config.json")))
+        configured_data_dir = Path(
+            os.environ.get("NODE_CORE_DATA_DIR", str(DEFAULT_DATA_DIR))
+        ).expanduser()
+        path = Path(
+            os.environ.get("NODE_CORE_CONFIG", str(configured_data_dir / "config.json"))
+        ).expanduser()
+        defaults = cls(
+            data_dir=configured_data_dir,
+            local_storage_path=configured_data_dir / "storage",
+            ipfs_repo_path=configured_data_dir / "ipfs",
+        )
         if not path.exists():
-            return cls()
+            return defaults
         data = json.loads(path.read_text(encoding="utf-8"))
-        defaults = cls()
         return cls(
-            data_dir=Path(data.get("data_dir", defaults.data_dir)),
-            local_storage_path=Path(data.get("local_storage_path", defaults.local_storage_path)),
-            ipfs_repo_path=Path(data.get("ipfs_repo_path", defaults.ipfs_repo_path)),
+            data_dir=Path(data.get("data_dir", defaults.data_dir)).expanduser(),
+            local_storage_path=Path(data.get("local_storage_path", defaults.local_storage_path)).expanduser(),
+            ipfs_repo_path=Path(data.get("ipfs_repo_path", defaults.ipfs_repo_path)).expanduser(),
             ipfs_api=data.get("ipfs_api", defaults.ipfs_api),
             ipfs_gateway=data.get("ipfs_gateway", defaults.ipfs_gateway),
             ipfs_executable=data.get("ipfs_executable", defaults.ipfs_executable),
@@ -47,6 +56,10 @@ class NodeConfig:
         hashpaper_root = self.data_dir / "hashpaper"
         for name in ("documents", "ipfs", "packages", "records"):
             (hashpaper_root / name).mkdir(parents=True, exist_ok=True)
+        # New HashPaper originals and their adjacent .ots proofs live in the
+        # Node Core OS local-storage namespace. Existing hashpaper/documents
+        # files remain supported by HashPaper's history reader.
+        (self.local_storage_path / "opentimestamps").mkdir(parents=True, exist_ok=True)
 
     def save(self) -> None:
         self.ensure_directories()

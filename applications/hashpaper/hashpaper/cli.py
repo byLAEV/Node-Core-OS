@@ -35,7 +35,26 @@ def _hashpaper_dir() -> Path:
 
 
 def _documents_dir() -> Path:
+    """Return the canonical directory for new originals and adjacent .ots proofs."""
+    try:
+        from node_core.config import NodeConfig
+
+        storage_root = NodeConfig.load().local_storage_path
+    except ImportError:
+        # Keep standalone HashPaper use possible when the Node Core package
+        # is not importable; the standard installation always uses NodeConfig.
+        storage_root = _data_dir() / "storage"
+    return storage_root / "opentimestamps"
+
+
+def _legacy_documents_dir() -> Path:
+    """Return the pre-migration HashPaper directory for existing originals."""
     return _hashpaper_dir() / "documents"
+
+
+def _document_directories() -> tuple[Path, ...]:
+    """Search canonical and legacy locations without moving existing evidence."""
+    return (_documents_dir(), _legacy_documents_dir())
 
 
 def _ipfs_dir() -> Path:
@@ -60,14 +79,19 @@ def _default_document_path(
     for_create: bool = False,
     require_proof: bool = False,
     require_unstamped: bool = False,
+    require_existing: bool = False,
 ) -> Path | None:
     """Choose a document appropriate to the requested operation."""
     directory = _documents_dir()
     directory.mkdir(parents=True, exist_ok=True)
     if not for_create:
         candidates = [
-            path for path in directory.iterdir()
-            if path.is_file() and path.suffix.lower() in {".txt", ".md", ".markdown"}
+            path
+            for candidate_directory in _document_directories()
+            if candidate_directory.is_dir()
+            for path in candidate_directory.iterdir()
+            if path.is_file()
+            and path.suffix.lower() in {".txt", ".md", ".markdown"}
             and not path.stem.endswith("-ipfs")
         ]
         if require_proof:
@@ -84,7 +108,7 @@ def _default_document_path(
             ]
         if candidates:
             return max(candidates, key=lambda path: path.stat().st_mtime)
-        if require_proof or require_unstamped:
+        if require_proof or require_unstamped or require_existing:
             return None
     base = directory / "Genesis-HashPaper.md"
     if not base.exists():
@@ -243,12 +267,16 @@ def _read_multiline_body() -> str | None:
 
 
 def _document_history() -> list[Path]:
-    directory = _documents_dir()
-    directory.mkdir(parents=True, exist_ok=True)
-    return sorted(
-        [p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in {".md", ".txt", ".markdown"}],
-        key=lambda p: (p.stat().st_mtime_ns, p.name),
-    )
+    """Return documents from the canonical and legacy directories, newest first."""
+    _documents_dir().mkdir(parents=True, exist_ok=True)
+    documents = [
+        path
+        for directory in _document_directories()
+        if directory.is_dir()
+        for path in directory.iterdir()
+        if path.is_file() and path.suffix.lower() in {".md", ".txt", ".markdown"}
+    ]
+    return sorted(documents, key=lambda path: (path.stat().st_mtime_ns, path.name))
 
 
 def _select_document_history(*, require_proof: bool = False, require_unstamped: bool = False, page_size: int = 10) -> Path | None:
@@ -430,9 +458,6 @@ def run_interactive_menu() -> int:
                 source = _select_document_history(require_proof=command in {"check", "upgrade"})
                 if source is None:
                     continue
-                if command == "stamp" and Path(str(source) + ".ots").exists():
-                    print("This document already has an .ots file; select an unstamped original.")
-                    continue
                 print(f"Selected document: {source.name}")
                 arguments = [command, "--input", str(source)]
             elif command == "send-ipfs":
@@ -594,7 +619,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command in {"stamp", "check", "upgrade", "proof-info"}:
             if args.input is None:
                 if args.command == "stamp":
-                    args.input = _default_document_path(require_unstamped=True)
+                    args.input = _default_document_path(require_existing=True)
                 elif args.command in {"check", "upgrade"}:
                     args.input = _default_document_path(require_proof=True)
                 else:
@@ -695,7 +720,9 @@ def main(argv: list[str] | None = None) -> int:
                 print("Bitcoin transaction IDs explicitly reported by the official client:")
                 for transaction_id in result.bitcoin_transaction_ids:
                     print(f"  {transaction_id}")
-            if args.command == "stamp":
+            if result.operation == "stamp-existing-proof":
+                print("An .ots proof already existed. HashPaper preserved it and checked its current status; no duplicate stamp was submitted.")
+            elif args.command == "stamp":
                 print("Timestamp submitted. This does not mean a Bitcoin attestation is already verified.")
             elif result.status == "VERIFIED":
                 print("OpenTimestamps verification succeeded for the original document.")

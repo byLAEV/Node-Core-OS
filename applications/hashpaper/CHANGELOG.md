@@ -1,5 +1,14 @@
 # HashPaper Changelog
 
+## 0.3.2 — OpenTimestamps storage and repeat-operation safety
+
+- Create new HashPaper originals in `storage/opentimestamps/`, keeping each `.ots` proof adjacent to its original.
+- Continue listing and operating on originals already stored in `hashpaper/documents/`; existing documents and proof files are not moved or deleted.
+- When a non-empty `.ots` proof already exists, a repeated `stamp` request verifies the existing proof and reports its actual status instead of submitting a duplicate or overwriting the evidence.
+- Reject empty or non-file proof paths without deleting or replacing them.
+- Add regression tests for existing-proof handling and canonical storage creation.
+
+
 ## 0.3.0 — Independent application updates
 
 - Added a standalone updater that replaces only `applications/hashpaper/`, without reinstalling or replacing the Node Core OS application.

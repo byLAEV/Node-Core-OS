@@ -160,14 +160,19 @@ class KuboManager:
             self.initialize()
 
         self.repo_path.mkdir(parents=True, exist_ok=True)
-        log = self.log_path.open("ab")
-        process = subprocess.Popen(
-            [self.executable, "daemon"],
-            env=self._environment(),
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
+        # Kubo must outlive the interactive Node Core menu. Give it its own
+        # session, detach stdin from the terminal, and send all output to a
+        # persistent log so it can run in the background in Termux/Linux.
+        with self.log_path.open("ab") as log:
+            process = subprocess.Popen(
+                [self.executable, "daemon"],
+                env=self._environment(),
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                close_fds=True,
+                start_new_session=True,
+            )
         self.pid_path.write_text(str(process.pid) + "\n", encoding="utf-8")
 
         deadline = time.monotonic() + wait_seconds
@@ -180,7 +185,11 @@ class KuboManager:
 
         self._clear_pid()
         raise KuboError(
-            f"Kubo daemon did not become ready. See {self.log_path}."
+            "Kubo daemon did not become ready in the background. "
+            f"Review the log at {self.log_path}. If background startup is "
+            "unsupported in this terminal, open a separate Termux/Linux "
+            "session and run the configured Kubo executable with 'daemon' "
+            f"and IPFS_PATH='{self.repo_path}', then return to Node Core OS."
         )
 
     def stop(self) -> None:
