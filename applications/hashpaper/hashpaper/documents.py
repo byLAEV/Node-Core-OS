@@ -152,7 +152,7 @@ def build_transparent_package(
     must pass actual metadata obtained from the official client; absent data stays
     explicitly unknown.
     """
-    original = Path(original_path)
+    original = Path(original_path).expanduser()
     raw = original.read_bytes()
     try:
         original_text = raw.decode("utf-8")
