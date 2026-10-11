@@ -42,12 +42,12 @@ Identity profile data is private local data by default. It must not be automatic
 The initial terminal profile must:
 - store its data under the user's local Node Core OS data directory;
 - restrict local file permissions where the operating system supports them;
-- avoid displaying the full identity-document number in the main menu;
-- keep document numbers out of logs and diagnostics;
+- show the locally saved identity fields in the personal main menu, including the document number, according to the user's stated single-user node model;
+- avoid leaking identity fields into diagnostic logs, crash reports, or unrelated outputs;
 - avoid requiring photos, videos, or document uploads;
-- require a separate, explicit design and authorization before any future external disclosure.
+- keep local display separate from network publication or external disclosure, which require their own explicit design and authorization.
 
-Local file permissions are a baseline, not a complete security solution. Encryption at rest, key management, backup, recovery, retention, and operating-system threat models require separate implementation and testing before the profile should be described as strongly protected.
+The full local display is a user-facing design choice, not permission to publish the same data to IPFS or expose it to other users or applications. Local file permissions are a baseline, not a complete security solution. Encryption at rest, key management, backup, recovery, retention, and operating-system threat models require separate implementation and testing before the profile should be described as strongly protected.
 
 ## 6. Separate identity from node identity
 
@@ -86,8 +86,8 @@ The first identity-profile implementation is acceptable only if tests demonstrat
 - the profile persists across menu sessions;
 - a stable logical identity reference is retained when the profile is edited;
 - node association is explicit and uses a real, available node identifier;
-- the main menu reflects the saved name, alias, nationality, and node-association status;
-- the full document number is not displayed in the main menu;
+- the main menu reflects all saved identity fields, including the document number, logical identity ID, node ID, and the current network-consensus verification status;
+- the main menu clearly says that network-consensus verification has not occurred unless a real verification protocol returns an appropriate result;
 - identity data is stored locally and is not sent to IPFS or another network service;
 - missing node identifiers and incomplete verification are explained without treating them as fraud;
 - tests use synthetic data and do not embed real identity numbers or personal records in the repository.
