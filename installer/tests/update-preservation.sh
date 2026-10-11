@@ -37,7 +37,8 @@ chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 # Create a deterministic release archive. The fake curl prevents network access.
 release_root="$TEMP_ROOT/release-root"
 mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity" \
-  "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper"
+  "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper" \
+  "$release_root/Node-Core-OS-fixture/applications/hashpaper/tests"
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
