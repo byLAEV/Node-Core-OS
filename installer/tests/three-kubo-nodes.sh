@@ -70,6 +70,18 @@ done
 node 0 ping -n 1 "${PEERS[1]}"
 node 0 ping -n 1 "${PEERS[2]}"
 node 1 ping -n 1 "${PEERS[2]}"
+
+# Exercise Node Core OS identity declarations and one canonical report across the
+# three live Kubo repositories, not mocks. The test profiles use synthetic data.
+command -v python3 >/dev/null 2>&1 || fail "Python 3 is required for the identity/report integration test."
+test "$(id -u)" -ne 0 || fail "Three-node integration tests must run as a non-root user."
+python3 installer/tests/three-node-identity-report.py \
+    --kubo "$IPFS" \
+    --work-dir "$WORK_DIR/identity-report" \
+    --repo-a "${REPOS[0]}" --api-a "http://127.0.0.1:5101" \
+    --repo-b "${REPOS[1]}" --api-b "http://127.0.0.1:5102" \
+    --repo-c "${REPOS[2]}" --api-c "http://127.0.0.1:5103"
+
 # Each node publishes unique content; both other nodes retrieve it by CID.
 for publisher in 0 1 2; do
     source="$WORK_DIR/source-node-$publisher.txt"
