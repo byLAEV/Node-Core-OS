@@ -64,6 +64,10 @@ python3 applications/hashpaper/main.py publish \
 
 Timestamp commands require the official `ots` executable in `PATH`. A successful submission is not proof that a Bitcoin attestation is already available. After an upgrade, run `check` to verify the proof against the unchanged original. The adapter retains a backup when the proof changes, including when an upgrade is interrupted.
 
+## Live OpenTimestamps test
+
+To test the real OpenTimestamps client without using personal data, open the repository's Actions tab and run **HashPaper — Live OpenTimestamps Validation** manually. The workflow installs the official client, creates a synthetic document, submits it, checks the proof, verifies that the original SHA-256 is unchanged, and uploads the synthetic proof/report artifacts for seven days. A pending Bitcoin attestation is not considered a verified timestamp.
+
 ## Persistent data
 
 Node Core OS creates these directories under `~/.node-core/hashpaper/`:
@@ -81,4 +85,4 @@ They are outside the replaceable application-code directory so a normal applicat
 
 A profile marked `declared` is not independently verified civil identity. A Kubo Peer ID identifies a technical node, not the person controlling it. An OpenTimestamps proof does not by itself establish authorship, truth, ownership, or civil identity. A CID identifies exact content; it does not alone prove validity, pinning, or permanent availability.
 
-HashPaper is shipped with the main Node Core OS code tree. A separate HashPaper installer has not yet been implemented. Live OpenTimestamps calendar/Bitcoin attestation testing remains separate from the automated tests that use a fake `ots` executable.
+HashPaper is shipped with the main Node Core OS code tree. A separate HashPaper installer has not yet been implemented. A manual GitHub Actions workflow, `.github/workflows/hashpaper-opentimestamps-live.yml`, is available for live testing with synthetic data. It is intentionally opt-in because it requires external network access; an immediate pending result is not reported as Bitcoin verification.
