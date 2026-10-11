@@ -13,6 +13,7 @@ cat > "$NODE_CORE_DATA_DIR/app/installer/lib/opentimestamps.sh" <<'HELPER'
 ensure_opentimestamps_client() { printf 'OTS helper called\\n'; }
 HELPER
 printf '#!/usr/bin/env python3\nprint("synthetic HashPaper entry")\n' > "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
+printf '0.3.3\n' > "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
 printf 'synthetic document\n' > "$NODE_CORE_DATA_DIR/hashpaper/documents/original.md"
 printf 'synthetic proof\n' > "$NODE_CORE_DATA_DIR/hashpaper/proofs/original.md.ots"
 printf 'synthetic package\n' > "$NODE_CORE_DATA_DIR/hashpaper/packages/original.json"
