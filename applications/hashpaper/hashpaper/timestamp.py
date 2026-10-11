@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import hashlib
-import os
 from pathlib import Path
 import re
 import shutil
@@ -134,10 +133,10 @@ class OpenTimestampsClient:
         if upgrade:
             operation = "upgrade"
             backup = Path(str(proof) + ".before-upgrade")
-            if backup.exists():
-                raise TimestampError(
-                    f"Upgrade backup already exists; inspect it before retrying: {backup}"
-                )
+            suffix = 1
+            while backup.exists():
+                backup = Path(str(proof) + f".before-upgrade.{suffix}")
+                suffix += 1
             shutil.copy2(proof, backup)
 
         try:
