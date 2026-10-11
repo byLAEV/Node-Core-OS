@@ -95,14 +95,14 @@ jobs:
           print(f"Immediate proof check status: {check_report['status']}")
           import os
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
-              summary.write("## HashPaper live OpenTimestamps result\\n\\n")
-              summary.write(f"- Original SHA-256: {digest}\\n")
-              summary.write(f"- Submission: {stamp_report['status']}\\n")
-              summary.write(f"- Immediate proof check: {check_report['status']}\\n")
+              summary.write("## HashPaper live OpenTimestamps result\n\n")
+              summary.write(f"- Original SHA-256: {digest}\n")
+              summary.write(f"- Submission: {stamp_report['status']}\n")
+              summary.write(f"- Immediate proof check: {check_report['status']}\n")
               if check_report["status"] == "VERIFIED":
-                  summary.write("- Bitcoin attestation: verified by the official OpenTimestamps client\\n")
+                  summary.write("- Bitcoin attestation: verified by the official OpenTimestamps client\n")
               else:
-                  summary.write("- Bitcoin attestation: pending; not claimed as verified\\n")
+                  summary.write("- Bitcoin attestation: pending; not claimed as verified\n")
 
           PY
 
@@ -113,7 +113,6 @@ jobs:
           original="$work/synthetic-document.md"
           package="$work/synthetic-document.ipfs.json"
           identity="$work/synthetic-identity.json"
-          package_report="$work/package-report.json"
           receipt="$work/ipfs-publication-receipt.json"
 
           cat > "$identity" <<'JSON'
@@ -136,11 +135,11 @@ jobs:
           }
           JSON
 
-          python3 applications/hashpaper/main.py package \\
-            --input "$original" \\
-            --output "$package" \\
-            --identity-json "$identity" \\
-            --node-id "synthetic-node-for-ci" \\
+          python3 applications/hashpaper/main.py package \
+            --input "$original" \
+            --output "$package" \
+            --identity-json "$identity" \
+            --node-id "synthetic-node-for-ci" \
             --ots-json "$work/check-report.json"
 
           python3 - "$original" "$package" "$work/check-report.json" <<'PY'
@@ -166,7 +165,7 @@ jobs:
           package="$work/synthetic-document.ipfs.json"
           receipt="$work/ipfs-publication-receipt.json"
           expected_sha256="$(sha256sum "$package" | awk '{print $1}')"
-          printf 'PUBLISH\\n' | python3 applications/hashpaper/main.py publish --input "$package" --report "$receipt"
+          printf 'PUBLISH\n' | python3 applications/hashpaper/main.py publish --input "$package" --report "$receipt"
 
           python3 - "$package" "$receipt" "$expected_sha256" <<'PY'
           import json
@@ -213,12 +212,3 @@ jobs:
             ${{ runner.temp }}/hashpaper-ots-live/
           if-no-files-found: warn
           retention-days: 14
-      - name: Upload synthetic OpenTimestamps evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hashpaper-live-opentimestamps-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/hashpaper-ots-live/
-          if-no-files-found: warn
-          retention-days: 7
