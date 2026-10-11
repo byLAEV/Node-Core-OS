@@ -1,6 +1,6 @@
 # HashPaper Installation
 
-HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. There is no separate HashPaper installer yet.
+HashPaper is shipped as part of the Node Core OS application code and appears in the Applications menu. Selecting it opens the interactive HashPaper menu. There is no separate HashPaper installer yet.
 
 ## Requirements
 
