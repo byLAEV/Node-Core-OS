@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -46,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("stamp", "Submit the exact original document bytes to the official OpenTimestamps client"),
         ("check", "Check/verify an existing OpenTimestamps proof"),
         ("upgrade", "Ask the official client to upgrade a pending proof"),
+        ("proof-info", "Show original hash, .ots fingerprint, and timestamp status"),
     ):
         command = subparsers.add_parser(name, help=help_text)
         command.add_argument("--input", required=True, type=Path, help="Original UTF-8 text/Markdown document")
@@ -67,6 +69,7 @@ def run_interactive_menu() -> int:
         "4": ("upgrade", "Upgrade a pending OpenTimestamps proof"),
         "5": ("package", "Build a transparent package"),
         "6": ("publish", "Publish a package through IPFS"),
+        "7": ("proof-info", "Show .ots hashes and processing status"),
     }
     while True:
         print("\nHashPaper for Node Core OS\n")
@@ -76,6 +79,7 @@ def run_interactive_menu() -> int:
         print("4. Upgrade OpenTimestamps proof")
         print("5. Build transparent package")
         print("6. Publish package to IPFS")
+        print("7. Show .ots hashes and processing status")
         print("0. Exit")
         try:
             choice = input("\n> ").strip()
@@ -99,7 +103,7 @@ def run_interactive_menu() -> int:
                     print("Cancelled: path, title, and body are required.")
                     continue
                 arguments = ["create", "--output", output, "--title", title, "--text", body]
-            elif command in {"stamp", "check", "upgrade"}:
+            elif command in {"stamp", "check", "upgrade", "proof-info"}:
                 source = input("Path to the original document: ").strip()
                 if not source:
                     print("Cancelled: document path is required.")
@@ -196,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
             print("The CID is recorded in this separate receipt because embedding a file's own CID in itself would change the content and CID.")
             return 0
 
-        if args.command in {"stamp", "check", "upgrade"}:
+        if args.command in {"stamp", "check", "upgrade", "proof-info"}:
             if args.report:
                 proof_path = Path(str(args.input.expanduser()) + ".ots")
                 if _same_path(args.report, args.input) or _same_path(args.report, proof_path):
@@ -206,6 +210,46 @@ def main(argv: list[str] | None = None) -> int:
                         f"OpenTimestamps report already exists; choose a new report path: {args.report}"
                     )
             client = OpenTimestampsClient()
+            if args.command == "proof-info":
+                original = args.input.expanduser()
+                proof = Path(str(original) + ".ots")
+                if not original.is_file():
+                    raise ValueError(f"Original document does not exist: {original}")
+                if not proof.is_file() or proof.stat().st_size == 0:
+                    raise ValueError(f"OpenTimestamps proof is missing or empty: {proof}")
+                original_hash = hashlib.sha256(original.read_bytes()).hexdigest()
+                proof_hash = hashlib.sha256(proof.read_bytes()).hexdigest()
+                result = client.check(original)
+                report = {
+                    "application": "HashPaper for Node Core OS",
+                    "operation": "proof-info",
+                    "original_file": str(original.resolve()),
+                    "original_sha256": original_hash,
+                    "proof_file": str(proof.resolve()),
+                    "proof_file_sha256": proof_hash,
+                    "proof_fingerprint_note": "SHA-256 fingerprint of the local .ots file; not an official OpenTimestamps-issued identifier.",
+                    "status": result.status,
+                    "proof_verification": result.proof_verification,
+                    "bitcoin_block_height": result.bitcoin_block_height,
+                    "verification_return_code": result.return_code,
+                    "verification_stdout": result.stdout,
+                    "verification_stderr": result.stderr,
+                }
+                if args.report:
+                    if _same_path(args.report, original) or _same_path(args.report, proof):
+                        raise ValueError("Proof-info report must not overwrite the original document or .ots proof.")
+                    if args.report.expanduser().exists():
+                        raise FileExistsError(f"Proof-info report already exists; choose another path: {args.report}")
+                    write_package(args.report, report)
+                print(json.dumps(report, ensure_ascii=False, indent=2))
+                if result.status == "WAITING_FOR_BITCOIN":
+                    print("Timestamp proof exists and is processing; no Bitcoin attestation is verified yet.")
+                elif result.status == "VERIFIED":
+                    print("OpenTimestamps verified the proof against the original document.")
+                else:
+                    print(f"Proof status is {result.status}; do not treat it as verified.")
+                return 0 if result.status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
+
             if args.command == "stamp":
                 result = client.stamp(args.input)
             else:
