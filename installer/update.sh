@@ -270,15 +270,9 @@ latest_commit() {
   local temporary_response encoded_branch commit url downloaded=0
   mkdir -p "$NODE_CORE_UPDATE_DIR"
 
-  encoded_branch="$(python3 - "$NODE_CORE_BRANCH" <<'PY'
-from urllib.parse import quote
-import sys
-print(quote(sys.argv[1], safe=""))
-PY
-  )" || {
-    printf 'Could not encode the update branch name.\n' >&2
-    return 1
-  }
+  # A slash is valid in a query parameter. Keep the ref readable so GitHub's
+  # API can resolve branch names containing slashes without path ambiguity.
+  encoded_branch="$NODE_CORE_BRANCH"
 
   temporary_response="$(mktemp "$NODE_CORE_UPDATE_DIR/latest-commit.XXXXXX")" || {
     printf 'Could not create a temporary update metadata file.\n' >&2
@@ -293,7 +287,7 @@ PY
   )
   for url in "${urls[@]}"; do
     rm -f -- "$temporary_response"
-    printf 'Trying update metadata source: %s\n' "$url"
+    printf 'Trying update metadata source: %s\n' "$url" >&2
     if download_file "$url" "$temporary_response"; then
       downloaded=1
       break
@@ -363,7 +357,7 @@ update_application() (
   )
   for source_url in "${archive_urls[@]}"; do
     rm -f -- "$archive"
-    printf 'Trying Node Core OS source archive: %s\n' "$source_url"
+    printf 'Trying Node Core OS source archive: %s\n' "$source_url" >&2
     if download_file "$source_url" "$archive"; then
       if tar -tzf "$archive" >/dev/null 2>&1; then
         downloaded=1
