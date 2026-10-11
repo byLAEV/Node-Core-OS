@@ -18,6 +18,7 @@ mkdir -p "$HOME" "$TEST_FIXTURES" \
 
 # Seed an existing, unprivileged installation and persistent user data.
 printf 'print("old application")\n' > "$NODE_CORE_DATA_DIR/app/main.py"
+printf '1.2.2\n' > "$NODE_CORE_DATA_DIR/app/VERSION"
 printf 'VALUE = "old"\n' > "$NODE_CORE_DATA_DIR/app/node_core/__init__.py"
 printf 'preserve local storage\n' > "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 printf 'preserve IPFS repository\n' > "$NODE_CORE_DATA_DIR/ipfs/config"
@@ -31,6 +32,7 @@ mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity"
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
+printf '1.2.3\n' > "$release_root/Node-Core-OS-fixture/VERSION"
 printf '{"sha":"1111111111111111111111111111111111111111"}\n' > "$TEST_FIXTURES/latest-commit.json"
 tar -czf "$TEST_FIXTURES/1111111111111111111111111111111111111111.tar.gz" \
   -C "$release_root" Node-Core-OS-fixture
