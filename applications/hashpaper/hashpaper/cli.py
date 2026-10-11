@@ -54,8 +54,8 @@ def _default_document_path(
     if not for_create:
         candidates = [
             path for path in directory.iterdir()
-            if path.is_file() and path.name.startswith("Genesis-HashPaper")
-            and path.suffix.lower() in {".txt", ".md", ".markdown"}
+            if path.is_file() and path.suffix.lower() in {".txt", ".md", ".markdown"}
+            and not path.stem.endswith("-ipfs")
         ]
         if require_proof:
             candidates = [
@@ -238,10 +238,12 @@ def _document_history() -> list[Path]:
     )
 
 
-def _select_document_history(*, require_proof: bool = False, page_size: int = 10) -> Path | None:
+def _select_document_history(*, require_proof: bool = False, require_unstamped: bool = False, page_size: int = 10) -> Path | None:
     docs = _document_history()
     if require_proof:
         docs = [p for p in docs if Path(str(p) + ".ots").is_file() and Path(str(p) + ".ots").stat().st_size > 0]
+    elif require_unstamped:
+        docs = [p for p in docs if not Path(str(p) + ".ots").exists() and not _has_terminal_control_characters(p)]
     if not docs:
         print("No matching documents in HashPaper history.")
         return None
