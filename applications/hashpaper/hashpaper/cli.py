@@ -123,6 +123,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"OpenTimestamps result status: {result.status}")
             return 0 if result.status not in {"NETWORK_ERROR", "PROOF_ERROR"} else 2
 
+        if args.output.expanduser().resolve() == args.input.expanduser().resolve():
+            raise ValueError("Package output must be a different file from the immutable original document.")
         identity = _read_json_object(args.identity_json, "Identity profile") if args.identity_json else None
         ots_metadata = _read_json_object(args.ots_json, "OpenTimestamps report") if args.ots_json else None
         package = build_transparent_package(
