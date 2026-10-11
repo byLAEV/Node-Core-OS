@@ -128,7 +128,12 @@ class OpenTimestampsClient:
         for index, token in enumerate(tokens[:-1]):
             label = token.lower()
             if label in {"transaction", "transactionid", "transaction_id"}:
-                candidate = tokens[index + 1].strip(".,;()[]")
+                candidate_index = index + 1
+                if label == "transaction" and tokens[candidate_index].lower() in {"id", "hash"}:
+                    candidate_index += 1
+                if candidate_index >= len(tokens):
+                    continue
+                candidate = tokens[candidate_index].strip(".,;()[]")
                 if len(candidate) == 64 and all(char in "0123456789abcdefABCDEF" for char in candidate):
                     identifiers.append(candidate.lower())
         return tuple(dict.fromkeys(identifiers))
