@@ -4,6 +4,7 @@ from pathlib import Path
 import contextlib
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -22,42 +23,31 @@ class HashPaperMenuTests(unittest.TestCase):
                 self.assertEqual(cli.main(), 0)
         menu.assert_called_once_with()
 
-    def test_create_menu_option_builds_expected_cli_arguments(self):
-        answers = [
-            "1",
-            "/tmp/hashpaper-menu-test.md",
-            "Synthetic title",
-            "Synthetic body",
-            "",
-            "0",
-        ]
+    def test_create_menu_uses_default_path_without_asking_for_it(self):
+        answers = ["1", "Synthetic title", "Synthetic body", "", "0"]
         with patch("builtins.input", side_effect=answers):
             with patch.object(cli, "main", side_effect=[0]) as command:
                 self.assertEqual(cli.run_interactive_menu(), 0)
         command.assert_called_once_with([
-            "create",
-            "--output", "/tmp/hashpaper-menu-test.md",
-            "--title", "Synthetic title",
-            "--text", "Synthetic body",
+            "create", "--title", "Synthetic title", "--text", "Synthetic body"
         ])
 
+    def test_proof_info_menu_uses_default_document_without_path_prompt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            default_document = Path(temporary) / "synthetic-document.md"
+            default_document.write_text("synthetic", encoding="utf-8")
+            answers = ["7", "", "0"]
+            with patch.object(cli, "_default_document_path", return_value=default_document):
+                with patch("builtins.input", side_effect=answers):
+                    with patch.object(cli, "main", side_effect=[0]) as command:
+                        self.assertEqual(cli.run_interactive_menu(), 0)
+            command.assert_called_once_with([
+                "proof-info", "--input", str(default_document)
+            ])
 
-    def test_proof_info_menu_option_builds_expected_cli_arguments(self):
-        answers = [
-            "7",
-            "/tmp/synthetic-document.md",
-            "/tmp/synthetic-proof-info.json",
-            "",
-            "0",
-        ]
-        with patch("builtins.input", side_effect=answers):
-            with patch.object(cli, "main", side_effect=[0]) as command:
-                self.assertEqual(cli.run_interactive_menu(), 0)
-        command.assert_called_once_with([
-            "proof-info",
-            "--input", "/tmp/synthetic-document.md",
-            "--report", "/tmp/synthetic-proof-info.json",
-        ])
+    def test_environment_variables_are_expanded_in_explicit_paths(self):
+        with patch.dict(os.environ, {"HASH_PAPER_TEST_PATH": "/tmp/expanded.md"}):
+            self.assertEqual(cli._expanded_path("$HASH_PAPER_TEST_PATH"), Path("/tmp/expanded.md"))
 
 
     def test_proof_info_reports_original_and_proof_fingerprints_as_pending(self):

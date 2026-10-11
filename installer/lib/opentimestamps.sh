@@ -4,12 +4,26 @@ set -euo pipefail
 # Install the official OpenTimestamps CLI in a private, user-owned virtual
 # environment. This never modifies Termux's system Python or needs root.
 ensure_opentimestamps_client() {
+  if [[ "$(id -u)" == "0" ]]; then
+    printf 'Refusing to install OpenTimestamps as root. Run Node Core OS/HashPaper as the normal user.\\n' >&2
+    return 1
+  fi
   local runtime_dir="${NODE_CORE_DATA_DIR:-$HOME/.node-core}/runtime"
   local venv_dir="$runtime_dir/opentimestamps-venv"
   local venv_python="$venv_dir/bin/python"
   local ots_bin="$venv_dir/bin/ots"
 
   mkdir -p "$runtime_dir"
+  if [[ "$(stat -c '%u' "$runtime_dir")" != "$(id -u)" ]]; then
+    printf 'OpenTimestamps runtime directory is not owned by the current user: %s\\n' "$runtime_dir" >&2
+    printf 'Do not run HashPaper as root; repair this directory ownership before retrying.\\n' >&2
+    return 1
+  fi
+  if [[ -e "$venv_dir" && "$(stat -c '%u' "$venv_dir")" != "$(id -u)" ]]; then
+    printf 'OpenTimestamps environment is not owned by the current user: %s\\n' "$venv_dir" >&2
+    printf 'The installer will not modify a root-owned environment. Inspect it and retry as the normal user.\\n' >&2
+    return 1
+  fi
 
   if [[ ! -x "$venv_python" ]]; then
     printf '%s\n' 'Preparing the private OpenTimestamps Python environment...'

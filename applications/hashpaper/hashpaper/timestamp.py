@@ -44,17 +44,13 @@ class OpenTimestampsClient:
         self.timeout_seconds = timeout_seconds
 
     def _executable_path(self) -> str:
-        # Prefer PATH so users can select an official client; otherwise check
-        # the private environment managed by Node Core OS.
-        path = shutil.which(self.executable)
-        if path is not None:
-            return path
-
+        # Prefer the executable managed by Node Core OS. A globally installed
+        # command may belong to another Python environment or be incompatible.
         if self.executable == "ots":
             configured = os.environ.get("NODE_CORE_OTS_EXECUTABLE")
             candidates = []
             if configured:
-                candidates.append(Path(configured).expanduser())
+                candidates.append(Path(os.path.expandvars(configured)).expanduser())
             data_dir = Path(
                 os.environ.get("NODE_CORE_DATA_DIR", str(Path.home() / ".node-core"))
             ).expanduser()
@@ -63,11 +59,16 @@ class OpenTimestampsClient:
                 if candidate.is_file() and os.access(candidate, os.X_OK):
                     return str(candidate)
 
+        path = shutil.which(self.executable)
+        if path is not None:
+            return path
+
         raise TimestampError(
-            "OpenTimestamps client 'ots' was not found. Node Core OS expects the official "
-            "opentimestamps-client package in its private environment at "
-            "'~/.node-core/runtime/opentimestamps-venv/bin/ots'. "
-            "Run the Node Core OS installer/updater or the HashPaper installer."
+            "OpenTimestamps client 'ots' was not found. The Node Core OS installer, "
+            "updater, or HashPaper installer must install the official "
+            "opentimestamps-client package in the current user's private environment "
+            "under '~/.node-core/runtime/opentimestamps-venv/bin/ots'. "
+            "Do not run HashPaper or its installer as root."
         )
 
     @staticmethod
