@@ -17,7 +17,7 @@ This usability principle does not mean that declared information is automaticall
 
 A profile belongs to a persistent Node Core OS identity reference. Correcting a typographical error, renewing a document, changing an eligible attribute, recovering access, or rotating keys must not silently create a new logical identity.
 
-Updates should preserve the identity reference and relevant history while allowing users to correct legitimate mistakes through an understandable process.
+Updates should preserve the identity reference and relevant history while allowing users to correct legitimate mistakes through an understandable process. When an update omits a field, the implementation must retain that field's existing value. Optional values may be cleared only through an explicit empty value; required fields must remain present.
 
 ## 3. Distinguish declared data from verified evidence
 
