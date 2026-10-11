@@ -8,6 +8,11 @@ import json
 import os
 from pathlib import Path
 import sys
+import termios
+import tty
+
+_SESSION_IDENTITY = None
+_SESSION_PEER_ID = None
 
 from .documents import build_transparent_package, write_original, write_package
 from .timestamp import OpenTimestampsClient, TimestampError
