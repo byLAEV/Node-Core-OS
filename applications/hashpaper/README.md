@@ -85,7 +85,7 @@ They are outside the replaceable application-code directory so a normal applicat
 
 A profile marked `declared` is not independently verified civil identity. A Kubo Peer ID identifies a technical node, not the person controlling it. An OpenTimestamps proof does not by itself establish authorship, truth, ownership, or civil identity. A CID identifies exact content; it does not alone prove validity, pinning, or permanent availability.
 
-HashPaper is shipped with the main Node Core OS code tree. A separate HashPaper installer has not yet been implemented. A manual GitHub Actions workflow, `.github/workflows/hashpaper-opentimestamps-live.yml`, is available for live testing with synthetic data. It is intentionally opt-in because it requires external network access; an immediate pending result is not reported as Bitcoin verification.
+HashPaper is shipped with the main Node Core OS code tree. A standalone HashPaper-only updater is available for existing installations; a separate fresh-install installer for HashPaper without Node Core OS is not implemented. A manual GitHub Actions workflow, `.github/workflows/hashpaper-opentimestamps-live.yml`, is available for live testing with synthetic data. It is intentionally opt-in because it requires external network access; an immediate pending result is not reported as Bitcoin verification.
 
 
 ## Independent HashPaper updates
