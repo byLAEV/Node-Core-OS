@@ -29,8 +29,21 @@ def _data_dir() -> Path:
     return _expanded_path(os.environ.get("NODE_CORE_DATA_DIR", str(Path.home() / ".node-core")))
 
 
+def _hashpaper_dir() -> Path:
+    """Return the private root directory used exclusively by HashPaper."""
+    return _data_dir() / "hashpaper"
+
+
 def _documents_dir() -> Path:
-    return _data_dir() / "hashpaper" / "documents"
+    return _hashpaper_dir() / "documents"
+
+
+def _ipfs_dir() -> Path:
+    return _hashpaper_dir() / "ipfs"
+
+
+def _records_dir() -> Path:
+    return _hashpaper_dir() / "records"
 
 
 def _has_terminal_control_characters(path: Path) -> bool:
