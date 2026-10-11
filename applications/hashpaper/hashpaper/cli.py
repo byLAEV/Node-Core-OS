@@ -43,6 +43,10 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--input", required=True, type=Path, help="Original UTF-8 text/Markdown document")
         command.add_argument("--report", type=Path, help="Optional JSON report output path")
 
+    publish = subparsers.add_parser("publish", help="Publish a transparent package through Node Core Kubo/IPFS after explicit confirmation")
+    publish.add_argument("--input", required=True, type=Path, help="Transparent JSON package containing the complete original text")
+    publish.add_argument("--report", type=Path, help="Optional new JSON receipt path; existing reports are never overwritten")
+
     return parser
 
 
@@ -53,6 +57,47 @@ def main(argv: list[str] | None = None) -> int:
             metadata = write_original(args.output, f"# {args.title}\n\n{args.text}\n")
             print(json.dumps(metadata, ensure_ascii=False, indent=2))
             print("Local original created. Timestamping and IPFS publication are separate steps.")
+            return 0
+
+        if args.command == "publish":
+            package_path = args.input.expanduser()
+            if not package_path.is_file():
+                raise ValueError(f"Package file does not exist: {package_path}")
+            package_value = _read_json_object(package_path, "HashPaper package")
+            document = package_value.get("document")
+            if not isinstance(document, dict) or not isinstance(document.get("original_text"), str):
+                raise ValueError("Refusing publication: package must include the complete original document text.")
+            if args.report and args.report.exists():
+                raise FileExistsError(f"Publication report already exists; choose another path: {args.report}")
+
+            print("PUBLIC DISCLOSURE WARNING")
+            print("The following complete package will be published through IPFS and may be readable by third parties.")
+            print("Encryption is not implemented. The package includes the complete original text and any identity fields present.")
+            print("Review the exact package below. No network operation occurs until you type PUBLISH.")
+            print(json.dumps(package_value, ensure_ascii=False, indent=2))
+            confirmation = input("Type PUBLISH to publish this exact package, or anything else to cancel: ").strip()
+            if confirmation != "PUBLISH":
+                print("Publication cancelled. No content was sent to Kubo by HashPaper.")
+                return 3
+
+            from node_core.runtime import NodeRuntime
+            from .publication import HashPaperPublisher
+
+            runtime = NodeRuntime()
+            runtime.boot()
+            result = HashPaperPublisher(runtime).publish_package(
+                package_path,
+                confirmed_publication=True,
+            )
+            receipt = result.to_dict()
+            receipt["application"] = "HashPaper for Node Core OS"
+            receipt["package_path"] = str(package_path.resolve())
+            receipt["publication_status"] = "PUBLISHED_AND_RETRIEVED"
+            if args.report:
+                write_package(args.report, receipt)
+            print(json.dumps(receipt, ensure_ascii=False, indent=2))
+            print("Publication succeeded: CID retrieval matched the local bytes and pin state was confirmed.")
+            print("The CID is recorded in this separate receipt because embedding a file's own CID in itself would change the content and CID.")
             return 0
 
         if args.command in {"stamp", "check", "upgrade"}:
