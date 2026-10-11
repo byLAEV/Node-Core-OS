@@ -12,6 +12,10 @@ from .timestamp import OpenTimestampsClient, TimestampError
 from .publication import PublicationError
 
 
+def _same_path(first: Path, second: Path) -> bool:
+    return first.expanduser().resolve() == second.expanduser().resolve()
+
+
 def _read_json_object(path: Path, description: str) -> dict:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -68,6 +72,8 @@ def main(argv: list[str] | None = None) -> int:
             document = package_value.get("document")
             if not isinstance(document, dict) or not isinstance(document.get("original_text"), str):
                 raise ValueError("Refusing publication: package must include the complete original document text.")
+            if args.report and _same_path(args.report, package_path):
+                raise ValueError("Publication receipt must be a separate file from the package being published.")
             if args.report and args.report.exists():
                 raise FileExistsError(f"Publication report already exists; choose another path: {args.report}")
 
@@ -102,6 +108,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command in {"stamp", "check", "upgrade"}:
+            if args.report:
+                proof_path = Path(str(args.input.expanduser()) + ".ots")
+                if _same_path(args.report, args.input) or _same_path(args.report, proof_path):
+                    raise ValueError("OpenTimestamps report must not overwrite the original document or its .ots proof.")
             client = OpenTimestampsClient()
             if args.command == "stamp":
                 result = client.stamp(args.input)
