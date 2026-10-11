@@ -31,6 +31,10 @@ class TimestampResult:
     stdout: str
     stderr: str
     bitcoin_block_height: int | None = None
+    proof_sha256: str | None = None
+    previous_proof_sha256: str | None = None
+    calendar_urls: tuple[str, ...] = ()
+    bitcoin_transaction_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -107,6 +111,33 @@ class OpenTimestampsClient:
         match = re.search(r"Bitcoin block\s+(\d+)\s+attests", output, re.IGNORECASE)
         return int(match.group(1)) if match else None
 
+    @staticmethod
+    def _calendar_urls(output: str) -> tuple[str, ...]:
+        """Return only calendar URLs explicitly printed by the official client."""
+        urls = []
+        for token in output.split():
+            if token.startswith(("http://", "https://")):
+                urls.append(token.rstrip(".,);]"))
+        return tuple(dict.fromkeys(urls))
+
+    @staticmethod
+    def _bitcoin_transaction_ids(output: str) -> tuple[str, ...]:
+        """Extract transaction IDs only when the client labels them as transactions."""
+        tokens = output.replace(":", " ").replace("=", " ").split()
+        identifiers = []
+        for index, token in enumerate(tokens[:-1]):
+            label = token.lower()
+            if label in {"transaction", "transactionid", "transaction_id"}:
+                candidate_index = index + 1
+                if label == "transaction" and tokens[candidate_index].lower() in {"id", "hash"}:
+                    candidate_index += 1
+                if candidate_index >= len(tokens):
+                    continue
+                candidate = tokens[candidate_index].strip(".,;()[]")
+                if len(candidate) == 64 and all(char in "0123456789abcdefABCDEF" for char in candidate):
+                    identifiers.append(candidate.lower())
+        return tuple(dict.fromkeys(identifiers))
+
     def stamp(self, original_path: Path) -> TimestampResult:
         original = Path(original_path).expanduser()
         if not original.is_file():
@@ -143,6 +174,9 @@ class OpenTimestampsClient:
             return_code=result.returncode,
             stdout=result.stdout,
             stderr=result.stderr,
+            proof_sha256=self._sha256(proof),
+            calendar_urls=self._calendar_urls(self._combined_output(result)),
+            bitcoin_transaction_ids=self._bitcoin_transaction_ids(self._combined_output(result)),
         )
 
     def check(self, original_path: Path, *, upgrade: bool = False) -> TimestampResult:
@@ -154,6 +188,7 @@ class OpenTimestampsClient:
             raise TimestampError(f"OpenTimestamps proof is missing or empty: {proof}")
 
         original_hash = self._sha256(original)
+        previous_proof_hash = self._sha256(proof)
         backup: Path | None = None
         operation = "verify"
         if upgrade:
@@ -219,4 +254,10 @@ class OpenTimestampsClient:
             stdout=result.stdout,
             stderr=result.stderr,
             bitcoin_block_height=self._block_height(output) if status == "VERIFIED" else None,
+            proof_sha256=self._sha256(proof),
+            previous_proof_sha256=(
+                previous_proof_hash if self._sha256(proof) != previous_proof_hash else None
+            ),
+            calendar_urls=self._calendar_urls(output),
+            bitcoin_transaction_ids=self._bitcoin_transaction_ids(output),
         )

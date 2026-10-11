@@ -627,10 +627,16 @@ def main(argv: list[str] | None = None) -> int:
                     status, verification = result.status, result.proof_verification
                     block_height, return_code = result.bitcoin_block_height, result.return_code
                     stdout, stderr = result.stdout, result.stderr
+                    calendar_urls = getattr(result, "calendar_urls", ())
+                    bitcoin_transaction_ids = getattr(result, "bitcoin_transaction_ids", ())
+                    previous_proof_hash = getattr(result, "previous_proof_sha256", None)
                 else:
                     proof_hash = None
                     status, verification = "NOT_SUBMITTED", "NOT_CHECKED"
                     block_height, return_code, stdout, stderr = None, None, "", ""
+                    calendar_urls = ()
+                    bitcoin_transaction_ids = ()
+                    previous_proof_hash = None
                 report = {
                     "application": "HashPaper for Node Core OS",
                     "operation": "proof-info",
@@ -639,6 +645,10 @@ def main(argv: list[str] | None = None) -> int:
                     "proof_file": str(proof.resolve()),
                     "proof_exists": proof_exists,
                     "proof_file_sha256": proof_hash,
+                    "proof_sha256": proof_hash,
+                    "previous_proof_sha256": previous_proof_hash,
+                    "calendar_urls": calendar_urls,
+                    "bitcoin_transaction_ids": bitcoin_transaction_ids,
                     "proof_fingerprint_note": "SHA-256 fingerprint of the local .ots file; not an official OpenTimestamps-issued identifier.",
                     "status": status,
                     "proof_verification": verification,
