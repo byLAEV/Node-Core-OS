@@ -283,6 +283,16 @@ def main(argv: list[str] | None = None) -> int:
             document = package_value.get("document")
             if not isinstance(document, dict) or not isinstance(document.get("original_text"), str):
                 raise ValueError("Refusing publication: package must include the complete original document text.")
+            original_text = document["original_text"]
+            original_bytes = original_text.encode("utf-8")
+            if any(ord(character) < 32 and character not in "\t\n\r" for character in original_text):
+                raise ValueError("Refusing publication: original text contains terminal control characters.")
+            if (
+                document.get("hash_algorithm") != "sha256"
+                or document.get("sha256") != hashlib.sha256(original_bytes).hexdigest()
+                or document.get("size_bytes") != len(original_bytes)
+            ):
+                raise ValueError("Refusing publication: document size or SHA-256 does not match the exact original text.")
             if args.report and _same_path(args.report, package_path):
                 raise ValueError("Publication receipt must be a separate file from the package being published.")
             if args.report and args.report.exists():
