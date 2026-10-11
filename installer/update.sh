@@ -110,6 +110,13 @@ set -euo pipefail
 exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+
+  cat > "$NODE_CORE_DATA_DIR/bin/hashpaper" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec python3 "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" "$@"
+EOF
+  chmod 700 "$NODE_CORE_DATA_DIR/bin/hashpaper"
 }
 
 migrate_termux_config() {
@@ -188,7 +195,15 @@ update_application() (
   cp -R "$source"/. "$NODE_CORE_APP_DIR"/ || return 1
   rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
 
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" ]] || {
+    printf 'Update is missing HashPaper entry point; refusing activation.\n' >&2
+    return 1
+  }
+  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/hashpaper/cli.py" ]] || {
+    printf 'Update is missing HashPaper CLI; refusing activation.\n' >&2
+    return 1
+  }
+  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
 )
 
