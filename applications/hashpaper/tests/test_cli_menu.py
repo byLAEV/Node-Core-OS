@@ -17,6 +17,21 @@ import hashpaper.cli as cli
 
 
 class HashPaperMenuTests(unittest.TestCase):
+    def setUp(self):
+        self.consent_patch = patch.object(cli, "_authorize_identity_session", return_value=True)
+        self.consent_patch.start()
+        cli._SESSION_IDENTITY = {
+            "identity_id": "synthetic-identity",
+            "full_name": "Synthetic Test Person",
+            "identity_status": "declared",
+        }
+        cli._SESSION_PEER_ID = "12D3KooW-synthetic"
+
+    def tearDown(self):
+        self.consent_patch.stop()
+        cli._SESSION_IDENTITY = None
+        cli._SESSION_PEER_ID = None
+
     def test_launcher_without_arguments_opens_interactive_menu(self):
         with patch.object(sys, "argv", ["main.py"]):
             with patch.object(cli, "run_interactive_menu", return_value=0) as menu:
@@ -104,6 +119,30 @@ class HashPaperMenuTests(unittest.TestCase):
     def test_menu_rejects_unknown_choice_and_can_exit(self):
         with patch("builtins.input", side_effect=["unknown", "0"]):
             self.assertEqual(cli.run_interactive_menu(), 0)
+
+
+    def test_create_embeds_session_identity_and_uses_application_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            old_dir = os.environ.get("NODE_CORE_DATA_DIR")
+            try:
+                os.environ["NODE_CORE_DATA_DIR"] = temporary
+                output = Path(temporary) / "hashpaper" / "documents" / "Synthetic-Title.md"
+                with patch.object(cli, "_default_document_path", return_value=output):
+                    status = cli.main(["create", "--title", "Synthetic Title", "--text", "Synthetic body"])
+                self.assertEqual(status, 0)
+                text = output.read_text(encoding="utf-8")
+                self.assertIn("Synthetic body", text)
+                self.assertIn("synthetic-identity", text)
+                self.assertIn("12D3KooW-synthetic", text)
+            finally:
+                if old_dir is None:
+                    os.environ.pop("NODE_CORE_DATA_DIR", None)
+                else:
+                    os.environ["NODE_CORE_DATA_DIR"] = old_dir
+
+    def test_identity_consent_requires_exact_phrase(self):
+        with patch("builtins.input", return_value="yes"):
+            self.assertFalse(cli._authorize_identity_session())
 
 
 if __name__ == "__main__":
