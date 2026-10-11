@@ -2,6 +2,23 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.2.8] / HashPaper [0.3.4] - 2026-10-11
+
+### Added
+- Add an opt-in user-level installer for the official OpenTimestamps calendar-server source and its Python requirements.
+- Document the official Python library, client, HashPaper proof workflow, pending-versus-confirmed semantics, and calendar-server operational prerequisites.
+
+### Fixed
+- Create the persistent HashPaper `proofs/` directory on fresh Node Core OS installs.
+- Include all top-level installer scripts in Bash syntax validation, including the optional calendar-server setup helper.
+- Keep the official OpenTimestamps client in its own private virtual environment; do not alter system Python.
+
+### Safety and limitations
+- The optional server setup only clones the upstream repository and installs its dependencies. It does not start a daemon, expose ports, create or fund a Bitcoin wallet, or claim that a calendar server is operational.
+- A production calendar requires separately configured Bitcoin Core, wallet, calendar URI, secret material, monitoring, and network security.
+- Real Termux installation and live calendar tests must still be executed on target environments before release approval.
+
+
 ## HashPaper [0.3.3] - 2026-10-11
 
 ### Fixed
