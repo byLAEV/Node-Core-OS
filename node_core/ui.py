@@ -116,6 +116,11 @@ class MainMenu:
         print(f"Issuing country: {profile['issuing_country']}")
         print(f"Document type: {profile['document_type']}")
         print(f"Document number: {profile['document_number']}")
+        print(f"Date of birth: {profile.get('birth_date') or '-'}")
+        print(f"Height: {str(profile.get('height_cm')) + ' cm' if profile.get('height_cm') else '-'}")
+        print(f"Gender: {profile.get('gender') or '-'}")
+        print(f"Identity data first entered (UTC): {profile.get('created_at') or '-'}")
+        print(f"Identity data last updated (UTC): {profile.get('updated_at') or '-'}")
         print(f"Logical identity ID: {profile['identity_id']}")
         print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
         print(f"Identity data status: {profile['identity_status'].capitalize()}")
@@ -137,6 +142,11 @@ class MainMenu:
                 print(f"Name: {profile['full_name']}")
                 print(f"Alias: {profile.get('alias') or '-'}")
                 print(f"Nationality: {profile.get('nationality') or '-'}")
+                print(f"Date of birth: {profile.get('birth_date') or '-'}")
+                print(f"Height: {str(profile.get('height_cm')) + ' cm' if profile.get('height_cm') else '-'}")
+                print(f"Gender: {profile.get('gender') or '-'}")
+                print(f"Identity data first entered (UTC): {profile.get('created_at') or '-'}")
+                print(f"Identity data last updated (UTC): {profile.get('updated_at') or '-'}")
                 print(f"Identity status: {profile['identity_status']}")
                 print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
             else:
@@ -170,6 +180,17 @@ class MainMenu:
                 document_number = input(
                     "Document number (leave blank to keep the saved value): "
                 ).strip() or previous.get("document_number", "")
+                birth_date = input(
+                    f"Date of birth YYYY-MM-DD [{previous.get('birth_date', '')}]: "
+                ).strip() or previous.get("birth_date", "")
+                previous_height = previous.get("height_cm")
+                height_default = str(previous_height) if previous_height else ""
+                height_cm = input(
+                    f"Height in centimeters (optional) [{height_default}]: "
+                ).strip() or height_default
+                gender = input(
+                    f"Gender (optional, self-described) [{previous.get('gender', '')}]: "
+                ).strip() or previous.get("gender", "")
                 try:
                     saved = store.save_declared_profile(
                         full_name=full_name,
@@ -178,6 +199,9 @@ class MainMenu:
                         issuing_country=issuing_country,
                         document_type=document_type,
                         document_number=document_number,
+                        birth_date=birth_date,
+                        height_cm=height_cm,
+                        gender=gender,
                     )
                     print("Identity profile saved locally as declared data.")
                     print("No document photo or video was requested.")
@@ -224,6 +248,11 @@ class MainMenu:
                     print(f"Issuing country: {profile['issuing_country']}")
                     print(f"Document type: {profile['document_type']}")
                     print(f"Document number: {masked_number}")
+                    print(f"Date of birth: {profile.get('birth_date') or '-'}")
+                    print(f"Height: {str(profile.get('height_cm')) + ' cm' if profile.get('height_cm') else '-'}")
+                    print(f"Gender: {profile.get('gender') or '-'}")
+                    print(f"Identity data first entered (UTC): {profile.get('created_at') or '-'}")
+                    print(f"Identity data last updated (UTC): {profile.get('updated_at') or '-'}")
                     print(f"Identity status: {profile['identity_status']}")
                     print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
                     print("Storage: Local only; not published to IPFS.")
