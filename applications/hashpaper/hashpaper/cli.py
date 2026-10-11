@@ -10,6 +10,7 @@ import sys
 from .documents import build_transparent_package, write_original, write_package
 from .timestamp import OpenTimestampsClient, TimestampError
 from .publication import PublicationError
+from .identity import IdentityIntegrationError, associate_identity_with_peer, load_identity_and_peer_id
 
 
 def _same_path(first: Path, second: Path) -> bool:
@@ -35,8 +36,10 @@ def build_parser() -> argparse.ArgumentParser:
     package = subparsers.add_parser("package", help="Build a transparent JSON package from an existing original")
     package.add_argument("--input", required=True, type=Path, help="Existing UTF-8 text/Markdown document")
     package.add_argument("--output", required=True, type=Path, help="Output JSON package path")
-    package.add_argument("--identity-json", type=Path, help="Optional local identity profile JSON")
-    package.add_argument("--node-id", help="Actual technical node ID, if known")
+    identity_group = package.add_mutually_exclusive_group()
+    identity_group.add_argument("--identity-json", type=Path, help="Optional local identity profile JSON")
+    identity_group.add_argument("--use-node-profile", action="store_true", help="Use the saved Node Core OS profile and current Kubo Peer ID after explicit confirmation")
+    package.add_argument("--node-id", help="Actual technical node ID, if known; not used with --use-node-profile")
     package.add_argument("--ots-json", type=Path, help="Optional report produced by an actual OpenTimestamps command")
 
     for name, help_text in (
@@ -135,12 +138,36 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.output.expanduser().resolve() == args.input.expanduser().resolve():
             raise ValueError("Package output must be a different file from the immutable original document.")
+        if args.output.expanduser().exists():
+            raise FileExistsError(f"Package output already exists; create a new versioned filename: {args.output}")
         identity = _read_json_object(args.identity_json, "Identity profile") if args.identity_json else None
+        node_id = args.node_id
+        if args.use_node_profile:
+            from node_core.runtime import NodeRuntime
+
+            runtime = NodeRuntime()
+            identity, peer_id = load_identity_and_peer_id(runtime)
+            original_text = args.input.expanduser().read_text(encoding="utf-8")
+            print("IDENTITY AND NODE ASSOCIATION REVIEW")
+            print("The following full original text and identity fields will be included in the local package.")
+            print("No encryption is implemented. Nothing is published by this command.")
+            print("Original document text:")
+            print(original_text)
+            print("Identity profile fields:")
+            print(json.dumps(identity, ensure_ascii=False, indent=2))
+            print(f"Current Kubo Peer ID: {peer_id}")
+            print(f"Previously associated node ID: {identity.get('node_id')}")
+            confirmation = input("Type INCLUDE IDENTITY AND NODE to confirm local association and include all shown fields: ").strip()
+            if confirmation != "INCLUDE IDENTITY AND NODE":
+                print("Identity inclusion cancelled. No package was created and no association was changed.")
+                return 3
+            identity = associate_identity_with_peer(runtime, identity, peer_id)
+            node_id = peer_id
         ots_metadata = _read_json_object(args.ots_json, "OpenTimestamps report") if args.ots_json else None
         package = build_transparent_package(
             original_path=args.input,
             identity_profile=identity,
-            node_id=args.node_id,
+            node_id=node_id,
             ots_metadata=ots_metadata,
         )
         write_package(args.output, package)
@@ -148,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
         print("WARNING: package includes the complete original text and any supplied identity fields; do not publish real personal data unintentionally.")
         print("To publish this package, run the publish command and review the full public-disclosure warning.")
         return 0
-    except (OSError, ValueError, json.JSONDecodeError, TimestampError, PublicationError) as exc:
+    except (OSError, ValueError, json.JSONDecodeError, TimestampError, PublicationError, IdentityIntegrationError) as exc:
         print(f"HashPaper error: {exc}", file=sys.stderr)
         return 1
 
