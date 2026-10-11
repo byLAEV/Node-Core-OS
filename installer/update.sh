@@ -270,8 +270,8 @@ latest_commit() {
   local temporary_response encoded_branch commit
   mkdir -p "$NODE_CORE_UPDATE_DIR"
 
-  # Branch names often contain slashes. Send the branch as a URL-encoded
-  # query parameter instead of inserting it into the API path.
+  # GitHub's commit endpoint accepts a branch or commit ref as one path
+  # component. URL-encode slashes in branch names before using the endpoint.
   encoded_branch="$(python3 - "$NODE_CORE_BRANCH" <<'PY'
 from urllib.parse import quote
 import sys
@@ -288,7 +288,7 @@ PY
   }
 
   if ! download_file \
-    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits?sha=$encoded_branch&per_page=1" \
+    "https://api.github.com/repos/byLAEV/Node-Core-OS/commits/$encoded_branch" \
     "$temporary_response"; then
     rm -f -- "$temporary_response"
     printf 'Could not retrieve update metadata from GitHub for branch: %s\n' "$NODE_CORE_BRANCH" >&2
