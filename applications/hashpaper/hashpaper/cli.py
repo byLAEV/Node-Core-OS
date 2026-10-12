@@ -164,7 +164,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="hashpaper", description="HashPaper for Node Core OS")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    create = subparsers.add_parser("create", help="Create a local original text/Markdown document")
+    create = subparsers.add_parser("create", help="Create a local original text/Markdown document and submit it to OpenTimestamps")
     create.add_argument("--output", type=Path, help="Optional output path; defaults to the next available Genesis HashPaper document path")
     create.add_argument("--title", required=True, help="Document title")
     create.add_argument("--text", required=True, help="Document body text")
@@ -396,7 +396,7 @@ def run_interactive_menu() -> int:
     if not _authorize_identity_session():
         return 3
     actions = {
-        "1": ("create", "Create original document"),
+        "1": ("create", "Create document and submit it to OpenTimestamps"),
         "2": ("stamp", "Send selected document to OpenTimestamps"),
         "3": ("check", "Check an OpenTimestamps proof"),
         "4": ("upgrade", "Upgrade an OpenTimestamps proof"),
@@ -408,7 +408,7 @@ def run_interactive_menu() -> int:
     }
     while True:
         print("\nHashPaper for Node Core OS\n")
-        print("1. Create original document")
+        print("1. Create document + send to OpenTimestamps")
         print("2. Send selected document to OpenTimestamps")
         print("3. Check an OpenTimestamps proof")
         print("4. Upgrade an OpenTimestamps proof")
@@ -552,8 +552,22 @@ def main(argv: list[str] | None = None) -> int:
             print(f"SHA-256: {metadata['sha256']}")
             print(f"Size: {metadata['size_bytes']} bytes")
             print("Identity embedded: " + ("YES" if _SESSION_IDENTITY is not None else "NO (direct CLI mode)"))
-            print("Timestamping and IPFS publication are separate steps.")
-            return 0
+            print("Submitting the exact saved original to OpenTimestamps...")
+            try:
+                timestamp_result = OpenTimestampsClient().stamp(args.output)
+            except TimestampError:
+                print(
+                    "The original document was saved locally, but timestamp submission failed. "
+                    "The original was preserved; review the error and retry from HashPaper option 2.",
+                    file=sys.stderr,
+                )
+                raise
+            print(json.dumps(timestamp_result.to_dict(), ensure_ascii=False, indent=2))
+            print(f"OpenTimestamps status: {timestamp_result.status}")
+            print(f"Proof file: {timestamp_result.proof_file or 'NOT PRESENT'}")
+            print(f"Proof SHA-256: {timestamp_result.proof_sha256 or 'NOT AVAILABLE'}")
+            print("A submitted timestamp may remain pending; this is not proof of Bitcoin confirmation.")
+            return 1 if timestamp_result.status in {"NETWORK_ERROR", "PROOF_ERROR"} else 0
 
         if args.command == "publish":
             if args.input is None:
