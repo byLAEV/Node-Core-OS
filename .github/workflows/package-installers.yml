@@ -58,7 +58,7 @@ jobs:
           Node Core OS updater package
 
           Run as the normal installation user, never as root:
-            bash installer/update.sh
+            bash update.sh
 
           This package is only for an existing Node Core OS installation.
           It does not perform a fresh installation.
