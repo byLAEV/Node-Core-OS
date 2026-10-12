@@ -1,0 +1,87 @@
+name: Package Node Core OS installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Build downloadable installer packages
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read and validate versions
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node_version="$(tr -d '\r\n' < VERSION)"
+          hashpaper_version="$(tr -d '\r\n' < applications/hashpaper/VERSION)"
+          [[ "$node_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$hashpaper_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "node=$node_version" >> "$GITHUB_OUTPUT"
+          echo "hashpaper=$hashpaper_version" >> "$GITHUB_OUTPUT"
+          echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Validate installer shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash installer/tests/syntax.sh
+          bash installer/tests/user-context.sh
+          python -m compileall -q main.py node_core applications/hashpaper
+
+      - name: Build fresh-install source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="node-core-os-installer-${{ steps.versions.outputs.node }}-hashpaper-${{ steps.versions.outputs.hashpaper }}"
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="$package/" HEAD > "dist/$package.tar.gz"
+          sha512sum "dist/$package.tar.gz" > "dist/$package.tar.gz.sha512"
+
+      - name: Build existing-install updater package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="node-core-os-updater-${{ steps.versions.outputs.node }}-hashpaper-${{ steps.versions.outputs.hashpaper }}"
+          mkdir -p "dist/$package"
+          cp installer/update.sh installer/hashpaper-update.sh "dist/$package/"
+          cat > "dist/$package/README.txt" <<'EOF'
+          Node Core OS updater package
+
+          Run as the normal installation user, never as root:
+            bash installer/update.sh
+
+          This package is only for an existing Node Core OS installation.
+          It does not perform a fresh installation.
+          EOF
+          tar -czf "dist/$package.tar.gz" -C dist "$package"
+          sha512sum "dist/$package.tar.gz" > "dist/$package.tar.gz.sha512"
+
+      - name: Upload downloadable package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-os-installers-${{ steps.versions.outputs.node }}-hashpaper-${{ steps.versions.outputs.hashpaper }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha512
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish assets to GitHub Release for version tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Node Core OS ${{ steps.versions.outputs.node }} / HashPaper ${{ steps.versions.outputs.hashpaper }}" --notes "Downloadable installer source and existing-install updater packages. See package README and checksum files. Termux compatibility must be verified on-device before treating it as supported."
+          gh release upload "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.sha512 --clobber
