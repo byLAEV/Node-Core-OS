@@ -1,5 +1,11 @@
 # HashPaper for Node Core OS
 
+## Development status
+
+**Status: IN CONSTRUCTION / IN DEVELOPMENT — NOT FINALIZED.** HashPaper for Node Core OS remains under development. Its remaining work, completion, and final validation will be carried out in a later phase. Until then, it must not be represented as a finished application.
+
+This notice is informational only. It does not change HashPaper source code, behavior, tests, data formats, installation, update logic, or user data. Before development of Node Core OS P2P Contracts begins, this status is recorded here to make clear that HashPaper remains unfinished and will be completed separately later.
+
 ## Functional manifest and audit manual
 
 The detailed **[HashPaper Functional Manifest and Audit Guide](../../docs/HASHPAPER-FUNCTIONAL-MANIFEST.md)** defines each interactive menu option and CLI command, expected steps, code locations, file/storage effects, observable outputs, security boundaries, failure handling, and the automated/manual tests required to audit conformance. Update the manifest and relevant tests whenever behavior, paths, confirmation prompts, or report schemas change. The manifest describes expected behavior; use the linked source and CI results to verify what actually runs.
