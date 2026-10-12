@@ -151,8 +151,22 @@ class HashPaperMenuTests(unittest.TestCase):
             try:
                 os.environ["NODE_CORE_DATA_DIR"] = temporary
                 output = Path(temporary) / "storage" / "opentimestamps" / "Synthetic-Title.md"
-                status = cli.main(["create", "--title", "Synthetic Title", "--text", "Synthetic body"])
+                timestamp_result = SimpleNamespace(
+                    to_dict=lambda: {
+                        "operation": "stamp",
+                        "status": "WAITING_FOR_BITCOIN",
+                        "proof_file": str(Path(str(output) + ".ots")),
+                        "proof_sha256": "f" * 64,
+                    },
+                    status="WAITING_FOR_BITCOIN",
+                    proof_file=str(Path(str(output) + ".ots")),
+                    proof_sha256="f" * 64,
+                )
+                with patch.object(cli, "OpenTimestampsClient") as client_class:
+                    client_class.return_value.stamp.return_value = timestamp_result
+                    status = cli.main(["create", "--title", "Synthetic Title", "--text", "Synthetic body"])
                 self.assertEqual(status, 0)
+                client_class.return_value.stamp.assert_called_once_with(output)
                 text = output.read_text(encoding="utf-8")
                 self.assertIn("Synthetic body", text)
                 self.assertIn("synthetic-identity", text)

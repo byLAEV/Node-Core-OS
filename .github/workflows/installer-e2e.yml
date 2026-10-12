@@ -162,7 +162,7 @@ jobs:
           grep -Fq "IDENTITY DATA USE — REQUIRED TO ENTER HASHPAPER" <<< "$output"
           grep -Fq "Identity data use accepted for this session." <<< "$output"
           grep -Fq "HashPaper for Node Core OS" <<< "$output"
-          grep -Fq "1. Create original document" <<< "$output"
+          grep -Fq "1. Create document + send to OpenTimestamps" <<< "$output"
           grep -Fq "2. Send selected document to OpenTimestamps" <<< "$output"
           grep -Fq "5. Send selected document copy to IPFS" <<< "$output"
           grep -Fq "6. IPFS publication history and gateways" <<< "$output"

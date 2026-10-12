@@ -123,9 +123,9 @@ After acceptance, the code boots `NodeRuntime`, loads the identity and live Peer
 
 The interactive menu in `cli.py` currently declares the following choices. Confirm the current source before using this table as an operational checklist for a different revision.
 
-### Option 1 — Create original document
+### Option 1 — Create document and submit to OpenTimestamps
 
-**Intent:** create a new local UTF-8 Markdown original, with the session's accepted identity/node fields where the interactive flow requires them.
+**Intent:** create a new local UTF-8 Markdown original, embed session identity/node fields only after the interactive consent flow, and submit the exact saved original to the official OpenTimestamps client as one operation.
 
 **Expected steps**
 1. The user selects option 1.
@@ -133,13 +133,13 @@ The interactive menu in `cli.py` currently declares the following choices. Confi
 3. The body editor accepts multiline text in a TTY; Enter inserts a newline, Ctrl-D finishes, and ESC cancels. Non-interactive input uses a one-line fallback.
 4. HashPaper rejects cancelled/empty input and disallowed terminal-control characters.
 5. It selects the next free canonical output path.
-6. The document writer creates the original without overwriting an existing file.
-7. The application displays the resulting path and metadata, including SHA-256 and size.
+6. The document writer creates the original without overwriting an existing file and calculates SHA-256 over its exact UTF-8 bytes.
+7. In the same create command, HashPaper invokes the official OpenTimestamps client against that saved path, then displays the `.ots` path, proof fingerprint, and returned processing status.
+8. If timestamp submission fails, the local original is retained and the failure is reported; the application MUST NOT claim that a proof was submitted or verified. The user can retry via option 2 without recreating or overwriting the original.
 
-**Expected observable result:** one new original file at the chosen path and a metadata result with the exact-byte SHA-256 and size. Timestamp submission and IPFS publication are separate operations; creating a document MUST NOT itself imply either operation succeeded.
+**Expected observable result:** one new original and, on successful submission, a non-empty adjacent `.ots` proof. A successful stamp normally remains pending Bitcoin confirmation; it MUST NOT be described as verified until the official verifier confirms it. IPFS publication remains a separate operation and is never triggered by document creation.
 
-**Audit points:** `_read_multiline_body()`, `_default_document_path(for_create=True)`, `write_original()`, option-1 branch of the menu, and tests for cancellation, control characters, identity inclusion, and no-overwrite behavior.
-
+**Audit points:** `_read_multiline_body()`, `_default_document_path(for_create=True)`, `write_original()`, `OpenTimestampsClient.stamp()`, option-1 branch of the menu, and tests for cancellation, control characters, identity inclusion, no-overwrite behavior, successful combined creation/stamping, and stamping failure with original preservation.
 ### Option 2 — Send selected document to OpenTimestamps
 
 **Intent:** submit the exact original file to the official OpenTimestamps client, or inspect an existing proof without submitting a duplicate.
