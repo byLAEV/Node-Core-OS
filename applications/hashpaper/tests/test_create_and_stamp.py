@@ -21,15 +21,15 @@ class HashPaperCreateAndStampTests(unittest.TestCase):
         self.bin_dir.mkdir()
         self.fake_ots = self.bin_dir / "ots"
         self.fake_ots.write_text(
-            "#!/usr/bin/env python3\\n"
-            "import os, pathlib, sys\\n"
-            "args = sys.argv[1:]\\n"
-            "if not args or args[0] != 'stamp': sys.exit(2)\\n"
-            "if os.environ.get('FAKE_OTS_FAIL') == '1':\\n"
-            "    print('synthetic calendar unavailable', file=sys.stderr)\\n"
-            "    sys.exit(7)\\n"
-            "pathlib.Path(args[1] + '.ots').write_bytes(b'synthetic proof')\\n"
-            "print('Submitting to remote calendar https://calendar.example')\\n"
+            "#!/usr/bin/env python3\n"
+            "import os, pathlib, sys\n"
+            "args = sys.argv[1:]\n"
+            "if not args or args[0] != 'stamp': sys.exit(2)\n"
+            "if os.environ.get('FAKE_OTS_FAIL') == '1':\n"
+            "    print('synthetic calendar unavailable', file=sys.stderr)\n"
+            "    sys.exit(7)\n"
+            "pathlib.Path(args[1] + '.ots').write_bytes(b'synthetic proof')\n"
+            "print('Submitting to remote calendar https://calendar.example')\n"
             ,
             encoding="utf-8",
         )
@@ -60,7 +60,7 @@ class HashPaperCreateAndStampTests(unittest.TestCase):
             status = main(["create", "--output", str(original), "--title", "Synthetic", "--text", "Synthetic body"])
         proof = Path(str(original) + ".ots")
         self.assertEqual(status, 0)
-        self.assertEqual(original.read_text(encoding="utf-8"), "# Synthetic\\n\\nSynthetic body\\n")
+        self.assertEqual(original.read_text(encoding="utf-8"), "# Synthetic\n\nSynthetic body\n")
         self.assertEqual(proof.read_bytes(), b"synthetic proof")
         self.assertIn("OpenTimestamps status: WAITING_FOR_BITCOIN", stdout.getvalue())
         self.assertIn("not proof of Bitcoin confirmation", stdout.getvalue())
