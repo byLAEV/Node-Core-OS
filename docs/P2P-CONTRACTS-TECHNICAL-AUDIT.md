@@ -173,7 +173,7 @@ No elegir el manifiesto más reciente únicamente por timestamp. Usar secuencia 
 
 ## 6. Límites y decisiones pendientes
 
-Antes de escribir la aplicación, la siguiente tarea es cerrar la Fase 0 y luego aprobar los esquemas de la Fase 1. En particular, falta comprobar en el código y las pruebas actuales cómo se inicializan las clases de contenido desde el runtime y cuáles son las firmas completas de los métodos que utilizará la aplicación.
+Antes de escribir la aplicación, la siguiente tarea es cerrar la Fase 0 y luego aprobar los esquemas de la Fase 1. Se completó una revisión adicional de `node_core/runtime.py`, `node_core/config.py`, `node_core/evidence.py` y las pruebas `tests/test_runtime.py`, `tests/test_network.py`, `tests/test_ipfs_daemon.py` y `tests/test_identity_profile.py`. `NodeRuntime` inicializa y expone `config`, `storage`, `kubo`, `network`, `content`, `evidence` e interfaces de identidad; `ContentManager` se construye con `KuboManager`, `StorageManager` y la gateway configurada. Hay pruebas unitarias con Kubo simulado para contenido y evidencia, pruebas de red con Kubo simulado y pruebas de almacenamiento del perfil. La aplicación deberá obtener las interfaces desde la integración de runtime prevista, sin crear otra instancia independiente de Kubo ni acceder directamente al RPC administrativo.
 
 No se afirma que P2P Contracts, sus manifiestos, OpenPGP ni su sincronización ya existan. Este documento fija la auditoría inicial y el orden de trabajo para construirlos mediante cambios pequeños y verificables.
 
