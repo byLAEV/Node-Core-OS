@@ -2,6 +2,15 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.2.9] / HashPaper [0.3.5] - 2026-10-11
+
+- Release the combined HashPaper create-and-timestamp operation as a versioned update so existing installations can receive it through the Node Core OS updater or the HashPaper-only updater.
+- HashPaper option 1 now saves the original and immediately submits that exact file to the official OpenTimestamps client.
+- Preserve the local original and report the failure if timestamp submission fails; do not claim submission or verification without evidence.
+- Show the actual timestamp processing status and proof-file fingerprint, while distinguishing a pending Bitcoin attestation from a verified timestamp.
+- Update installer end-to-end assertions and regression tests to cover the new workflow.
+- Keep all installation and update operations in the normal user's account; preserve identity, configuration, local documents, .ots proofs, packages, records, and Kubo/IPFS data.
+
 ## Updater regression correction — 2026-10-11
 
 - Fixed updater diagnostics contaminating the stdout value returned by `latest_commit`. Download progress is now sent to stderr, leaving stdout reserved for the validated commit SHA.
