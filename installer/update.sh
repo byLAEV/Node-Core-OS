@@ -302,6 +302,19 @@ latest_commit() {
     return 1
   }
 
+  # Prefer Git's remote-ref protocol for commit discovery. It does not consume
+  # the unauthenticated GitHub REST API rate limit, which can return HTTP 403
+  # in otherwise healthy user-level installations and CI runners.
+  if command -v git >/dev/null 2>&1; then
+    local remote_commit
+    if remote_commit="$(git ls-remote "$NODE_CORE_REPOSITORY" "refs/heads/$NODE_CORE_BRANCH" 2>/dev/null | awk 'NR == 1 { print $1 }')" &&
+       [[ "$remote_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+      printf '%s\\n' "${remote_commit,,}"
+      return 0
+    fi
+    printf 'Git remote-ref lookup failed; trying official GitHub API metadata.\\n' >&2
+  fi
+
   # The query endpoint accepts a branch ref with slashes. For the path
   # endpoint, encode slashes so the branch remains a single URL component.
   local encoded_path_ref
