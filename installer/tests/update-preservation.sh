@@ -175,7 +175,8 @@ grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
 printf '{"sha":"2222222222222222222222222222222222222222"}\n' > "$TEST_FIXTURES/latest-commit.json"
-mkdir -p "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core"
+mkdir -p "$TEMP_ROOT/bad-release"
+cp -R "$release_root/Node-Core-OS-fixture" "$TEMP_ROOT/bad-release/Node-Core-OS-bad"
 printf 'def broken(:\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/main.py"
 printf 'VALUE = "bad"\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core/__init__.py"
 tar -czf "$TEST_FIXTURES/2222222222222222222222222222222222222222.tar.gz" \
