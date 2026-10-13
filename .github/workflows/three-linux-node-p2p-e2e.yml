@@ -1,10 +1,8 @@
-name: Three independent Linux installs — Node Core P2P Contracts
+name: Three independent Linux nodes — Node Core P2P Contracts
 
 on:
   push:
-    branches:
-      - main
-      - test/three-independent-linux-nodes-p2p-e2e
+    branches: [main, test/three-independent-linux-nodes-p2p-e2e]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -12,298 +10,129 @@ on:
 permissions:
   contents: read
 
+# Strict user-only acceptance test. No Docker, sudo, su, apt-get, useradd, or
+# root-level setup is used. Three pre-provisioned independent Linux runners are
+# required, plus a private/overlay network with TCP 4001 reachable between them.
+#
+# Required runner labels:
+#   self-hosted, linux, node-core-p2p-node-a
+#   self-hosted, linux, node-core-p2p-node-b
+#   self-hosted, linux, node-core-p2p-node-c
+#
+# Required repository Actions variables must be IPv4 addresses reachable by
+# all three runners:
+#   NODE_CORE_P2P_NODE_A_HOST
+#   NODE_CORE_P2P_NODE_B_HOST
+#   NODE_CORE_P2P_NODE_C_HOST
+#
+# Each runner must already have Bash, Python >= 3.10, curl, tar, sha512sum and
+# timeout. The installer downloads Kubo and installs only inside that runner
+# user's home directory.
+
 jobs:
-  three-linux-node-e2e:
-    name: Install, identity, connect, and exercise P2P Contracts
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
+  node-a:
+    name: First boot, identity and P2P Contracts on Linux system A
+    uses: ./.github/workflows/three-node-user-install.yml
+    with:
+      node_name: node-a
+      runner_label: node-core-p2p-node-a
+      full_name: Synthetic QA Node A
+      alias_name: qa-node-a
+      document_number: TEST-DOC-A-001
+
+  node-b:
+    name: First boot, identity and P2P Contracts on Linux system B
+    uses: ./.github/workflows/three-node-user-install.yml
+    with:
+      node_name: node-b
+      runner_label: node-core-p2p-node-b
+      full_name: Synthetic QA Node B
+      alias_name: qa-node-b
+      document_number: TEST-DOC-B-002
+
+  node-c:
+    name: First boot, identity and P2P Contracts on Linux system C
+    uses: ./.github/workflows/three-node-user-install.yml
+    with:
+      node_name: node-c
+      runner_label: node-core-p2p-node-c
+      full_name: Synthetic QA Node C
+      alias_name: qa-node-c
+      document_number: TEST-DOC-C-003
+
+  connect-node-a:
+    name: Connect node A to B and C
+    needs: [node-a, node-b, node-c]
+    runs-on: [self-hosted, linux, node-core-p2p-node-a]
+    timeout-minutes: 10
     steps:
-      - name: Check out the exact version under test
-        uses: actions/checkout@v4
-
-      - name: Verify Docker is available
+      - uses: actions/checkout@v4
+      - name: Verify both real peers from the installed Kubo daemon
+        shell: bash
+        env:
+          NODE_CORE_P2P_NODE_B_HOST: ${{ vars.NODE_CORE_P2P_NODE_B_HOST }}
+          NODE_CORE_P2P_NODE_C_HOST: ${{ vars.NODE_CORE_P2P_NODE_C_HOST }}
         run: |
           set -euo pipefail
-          docker version
-          docker info
+          test -n "$NODE_CORE_P2P_NODE_B_HOST" || { echo "Missing NODE_CORE_P2P_NODE_B_HOST repository variable"; exit 1; }
+          test -n "$NODE_CORE_P2P_NODE_C_HOST" || { echo "Missing NODE_CORE_P2P_NODE_C_HOST repository variable"; exit 1; }
+          bash applications/p2p_contracts/tests/ci_user_connect_node.sh \
+            node-a "$NODE_CORE_P2P_NODE_B_HOST" "${{ needs.node-b.outputs.peer_id }}" \
+            "$NODE_CORE_P2P_NODE_C_HOST" "${{ needs.node-c.outputs.peer_id }}"
 
-      - name: Create three isolated Linux user-space environments
+  connect-node-b:
+    name: Connect node B to A and C
+    needs: [node-a, node-b, node-c]
+    runs-on: [self-hosted, linux, node-core-p2p-node-b]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify both real peers from the installed Kubo daemon
+        shell: bash
+        env:
+          NODE_CORE_P2P_NODE_A_HOST: ${{ vars.NODE_CORE_P2P_NODE_A_HOST }}
+          NODE_CORE_P2P_NODE_C_HOST: ${{ vars.NODE_CORE_P2P_NODE_C_HOST }}
         run: |
           set -euo pipefail
-          docker network create node-core-p2p-e2e
-          for node in node-a node-b node-c; do
-            docker run --detach \
-              --name "$node" \
-              --network node-core-p2p-e2e \
-              --network-alias "$node" \
-              --volume "$GITHUB_WORKSPACE:/src:ro" \
-              ubuntu:24.04 sleep infinity
-          done
+          test -n "$NODE_CORE_P2P_NODE_A_HOST" || { echo "Missing NODE_CORE_P2P_NODE_A_HOST repository variable"; exit 1; }
+          test -n "$NODE_CORE_P2P_NODE_C_HOST" || { echo "Missing NODE_CORE_P2P_NODE_C_HOST repository variable"; exit 1; }
+          bash applications/p2p_contracts/tests/ci_user_connect_node.sh \
+            node-b "$NODE_CORE_P2P_NODE_A_HOST" "${{ needs.node-a.outputs.peer_id }}" \
+            "$NODE_CORE_P2P_NODE_C_HOST" "${{ needs.node-c.outputs.peer_id }}"
 
-      - name: Prepare ordinary users and installer dependencies
+  connect-node-c:
+    name: Connect node C to A and B
+    needs: [node-a, node-b, node-c]
+    runs-on: [self-hosted, linux, node-core-p2p-node-c]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify both real peers from the installed Kubo daemon
+        shell: bash
+        env:
+          NODE_CORE_P2P_NODE_A_HOST: ${{ vars.NODE_CORE_P2P_NODE_A_HOST }}
+          NODE_CORE_P2P_NODE_B_HOST: ${{ vars.NODE_CORE_P2P_NODE_B_HOST }}
         run: |
           set -euo pipefail
-          for node in node-a node-b node-c; do
-            docker exec "$node" bash -lc '
-              set -euo pipefail
-              apt-get update
-              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-                bash ca-certificates coreutils curl findutils gawk git python3 \
-                python3-venv tar util-linux
-              useradd --create-home --shell /bin/bash nodeuser
-              install -d -o nodeuser -g nodeuser /home/nodeuser/.cache
-              test "$(id -u nodeuser)" -ne 0
-            '
-          done
+          test -n "$NODE_CORE_P2P_NODE_A_HOST" || { echo "Missing NODE_CORE_P2P_NODE_A_HOST repository variable"; exit 1; }
+          test -n "$NODE_CORE_P2P_NODE_B_HOST" || { echo "Missing NODE_CORE_P2P_NODE_B_HOST repository variable"; exit 1; }
+          bash applications/p2p_contracts/tests/ci_user_connect_node.sh \
+            node-c "$NODE_CORE_P2P_NODE_A_HOST" "${{ needs.node-a.outputs.peer_id }}" \
+            "$NODE_CORE_P2P_NODE_B_HOST" "${{ needs.node-b.outputs.peer_id }}"
 
-      - name: Install Node Core OS independently on all three systems as user
+  p2p-contracts-real-kubo-regression:
+    name: Run the shipped three-daemon P2P Contracts scenario suite as user
+    needs: [connect-node-a, connect-node-b, connect-node-c]
+    runs-on: [self-hosted, linux, node-core-p2p-node-a]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute P2P Contracts proposal, request, manifest, evidence and search regression
+        shell: bash
         run: |
           set -euo pipefail
-          install_node() {
-            local node="$1"
-            docker exec "$node" su - nodeuser -c '
-              set -euo pipefail
-              test "$(id -u)" -ne 0
-              cd /src
-              bash installer/install.sh
-              test -x "$HOME/.node-core/bin/node-core"
-              test -f "$HOME/.node-core/app/applications/p2p_contracts/main.py"
-              test -f "$HOME/.node-core/app/applications/p2p_contracts/p2p_contracts/cli.py"
-              test -x "$HOME/.node-core/bin/ipfs"
-              test -f "$HOME/.node-core/config.json"
-              printf "INSTALL_OK user=%s uid=%s\n" "$USER" "$(id -u)"
-            '
-          }
-          install_node node-a > "$RUNNER_TEMP/node-a-install.log" 2>&1 &
-          pid_a=$!
-          install_node node-b > "$RUNNER_TEMP/node-b-install.log" 2>&1 &
-          pid_b=$!
-          install_node node-c > "$RUNNER_TEMP/node-c-install.log" 2>&1 &
-          pid_c=$!
-          status=0
-          wait "$pid_a" || status=1
-          wait "$pid_b" || status=1
-          wait "$pid_c" || status=1
-          cat "$RUNNER_TEMP/node-a-install.log"
-          cat "$RUNNER_TEMP/node-b-install.log"
-          cat "$RUNNER_TEMP/node-c-install.log"
-          test "$status" -eq 0
-
-      - name: Initialize and verify Kubo runs as each ordinary user
-        run: |
-          set -euo pipefail
-          for node in node-a node-b node-c; do
-            docker exec "$node" su - nodeuser -c '
-              set -euo pipefail
-              test "$(id -u)" -ne 0
-              export IPFS_PATH="$HOME/.node-core/ipfs"
-              "$HOME/.node-core/bin/ipfs" id > "$HOME/ipfs-id.json"
-              grep -q '"ID"' "$HOME/ipfs-id.json"
-              printf "KUBO_OK "
-              grep '"ID"' "$HOME/ipfs-id.json"
-              test "$("$HOME/.node-core/bin/ipfs" config Pubsub.Enabled)" = "true"
-              test -f "$HOME/.node-core/ipfs/config"
-              test -f "$HOME/.node-core/runtime/kubo.pid"
-              test -s "$HOME/.node-core/logs/kubo.log" || true
-            '
-          done
-
-      - name: Complete identity form, associate each identity, and accept P2P Contracts consent
-        run: |
-          set -euo pipefail
-          run_first_boot() {
-            local node="$1" name="$2" alias="$3" document="$4"
-            printf '1\n10\n1\n%s\n%s\nSynthetic QA\nCosta Rica\nSynthetic identity document\n%s\n1990-01-01\n170\nnot specified\n\n2\n\n0\n0\n4\n2\ny\n0\n0\n0\n' \
-              "$name" "$alias" "$document" |
-              timeout 90 docker exec -i --user nodeuser \
-                --env HOME=/home/nodeuser --env USER=nodeuser \
-                "$node" /home/nodeuser/.node-core/bin/node-core
-          }
-          run_first_boot node-a "Synthetic QA Node A" "qa-node-a" "TEST-DOC-A-001" > "$RUNNER_TEMP/node-a-first-boot.log" 2>&1
-          run_first_boot node-b "Synthetic QA Node B" "qa-node-b" "TEST-DOC-B-002" > "$RUNNER_TEMP/node-b-first-boot.log" 2>&1
-          run_first_boot node-c "Synthetic QA Node C" "qa-node-c" "TEST-DOC-C-003" > "$RUNNER_TEMP/node-c-first-boot.log" 2>&1
-          for node in node-a node-b node-c; do
-            log="$RUNNER_TEMP/$node-first-boot.log"
-            grep -q 'Identity profile saved locally as declared data' "$log"
-            grep -q 'Identity profile associated with the current node' "$log"
-            grep -q 'Node Core OS' "$log"
-            grep -q 'P2P CONTRACTS' "$log"
-            ! grep -q 'Identity consent was not granted' "$log"
-            cat "$log"
-          done
-
-      - name: Verify identities are unique, private, persistent, and associated with each Kubo peer
-        run: |
-          set -euo pipefail
-          ids_file="$RUNNER_TEMP/expected-node-ids.txt"
-          debug_log="$RUNNER_TEMP/ids-debug.log"
-          : > "$ids_file"
-          : > "$debug_log"
-
-          for node in node-a node-b node-c; do
-            {
-              printf '\n==== %s ====\n' "$node"
-              docker exec "$node" su - nodeuser -c '
-                set +e
-                id
-                printf "\\n-- identity directory --\\n"
-                ls -ld "$HOME/.node-core/identity" 2>&1
-                printf "\\n-- profile metadata --\\n"
-                ls -l "$HOME/.node-core/identity/profile.json" 2>&1
-                printf "\\n-- profile fields (synthetic test data only) --\\n"
-                if [ -r "$HOME/.node-core/identity/profile.json" ]; then
-                  cat "$HOME/.node-core/identity/profile.json"
-                else
-                  echo PROFILE_MISSING_OR_UNREADABLE
-                fi
-                printf "\\n-- saved Kubo peer ID --\\n"
-                cat "$HOME/ipfs-id.json" 2>&1
-              '
-            } >> "$debug_log" 2>&1 || true
-
-            docker exec "$node" su - nodeuser -c 'python3 -' <<'PY' | tee -a "$ids_file"
-          import json
-          import sys
-          import traceback
-          from pathlib import Path
-
-          try:
-              home = Path.home()
-              profile_path = home / ".node-core" / "identity" / "profile.json"
-              ipfs_path = home / "ipfs-id.json"
-              if not profile_path.is_file():
-                  raise FileNotFoundError(f"profile missing: {profile_path}")
-              if not ipfs_path.is_file():
-                  raise FileNotFoundError(f"Kubo peer ID file missing: {ipfs_path}")
-
-              profile = json.loads(profile_path.read_text(encoding="utf-8"))
-              ipfs = json.loads(ipfs_path.read_text(encoding="utf-8"))
-              identity_id = str(profile.get("identity_id", "")).strip()
-              node_id = str(profile.get("node_id", "")).strip()
-              document_number = str(profile.get("document_number", "")).strip()
-              expected_peer_id = str(ipfs.get("ID", "")).strip()
-
-              if profile.get("identity_status") != "declared":
-                  raise ValueError(f"identity_status expected 'declared', got {profile.get('identity_status')!r}")
-              if not identity_id:
-                  raise ValueError("identity_id is missing or empty")
-              if not expected_peer_id:
-                  raise ValueError("Kubo ID is missing or empty")
-              if node_id != expected_peer_id:
-                  raise ValueError(f"node_id does not match Kubo peer ID (node_id={node_id!r})")
-              if not str(profile.get("full_name", "")).startswith("Synthetic QA Node "):
-                  raise ValueError("full_name does not match expected synthetic test identity")
-              if not document_number.startswith("TEST-DOC-"):
-                  raise ValueError("document_number does not match expected synthetic test document")
-              if profile_path.stat().st_mode & 0o077:
-                  raise PermissionError(f"profile permissions are too broad: {oct(profile_path.stat().st_mode & 0o777)}")
-              print(f"OK {identity_id} {node_id} {document_number}")
-          except Exception as exc:
-              print(f"ERROR {type(exc).__name__}: {exc}")
-              traceback.print_exc(file=sys.stderr)
-              sys.exit(1)
-          PY
-          done
-
-          echo "---- identity verification output ----"
-          cat "$ids_file" || true
-          echo "---- per-node identity diagnostics ----"
-          cat "$debug_log" || true
-
-          # Only successful records are counted; ERROR lines never count as identities.
-          good_lines="$(grep -E '^OK [^ ]+ [^ ]+ TEST-DOC-[^ ]+$' "$ids_file" || true)"
-          printf '%s\n' "$good_lines"
-          good_count="$(printf '%s\n' "$good_lines" | awk 'NF {print $2}' | sort -u | wc -l)"
-          good_count_nodes="$(printf '%s\n' "$good_lines" | awk 'NF {print $3}' | sort -u | wc -l)"
-          good_count_docs="$(printf '%s\n' "$good_lines" | awk 'NF {print $4}' | sort -u | wc -l)"
-          echo "unique_identity_ids=$good_count unique_node_ids=$good_count_nodes unique_document_numbers=$good_count_docs"
-          test "$good_count" -eq 3
-          test "$good_count_nodes" -eq 3
-          test "$good_count_docs" -eq 3
-
-      - name: Connect the three installed Kubo nodes over the Docker network
-        run: |
-          set -euo pipefail
-          get_peer_id() {
-            docker exec "$1" su - nodeuser -c 'cat "$HOME/ipfs-id.json"' | python3 -c 'import json,sys; print(json.load(sys.stdin)["ID"])'
-          }
-          get_ip() {
-            docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$1"
-          }
-          peer_a="$(get_peer_id node-a)"
-          peer_b="$(get_peer_id node-b)"
-          peer_c="$(get_peer_id node-c)"
-          ip_a="$(get_ip node-a)"
-          ip_b="$(get_ip node-b)"
-          ip_c="$(get_ip node-c)"
-          connect_peer() {
-            local source="$1" address="$2"
-            docker exec "$source" su - nodeuser -c "export IPFS_PATH=\$HOME/.node-core/ipfs; \$HOME/.node-core/bin/ipfs swarm connect '$address'"
-          }
-          connect_peer node-a "/ip4/$ip_b/tcp/4001/p2p/$peer_b"
-          connect_peer node-a "/ip4/$ip_c/tcp/4001/p2p/$peer_c"
-          connect_peer node-b "/ip4/$ip_c/tcp/4001/p2p/$peer_c"
-          for node in node-a node-b node-c; do
-            docker exec "$node" su - nodeuser -c '
-              set -euo pipefail
-              export IPFS_PATH="$HOME/.node-core/ipfs"
-              for attempt in $(seq 1 30); do
-                peers="$("$HOME/.node-core/bin/ipfs" swarm peers)"
-                count="$(printf "%s\n" "$peers" | grep -c "/p2p/" || true)"
-                if [ "$count" -ge 2 ]; then
-                  printf "PEERS_OK count=%s\n" "$count"
-                  exit 0
-                fi
-                sleep 1
-              done
-              "$HOME/.node-core/bin/ipfs" swarm peers
-              exit 1
-            '
-          done
-
-      - name: Run the shipped P2P Contracts end-to-end suite against real Kubo daemons
-        run: |
-          set -euo pipefail
-          docker exec node-a su - nodeuser -c '
-            set -euo pipefail
-            cd "$HOME/.node-core/app"
-            test "$(id -u)" -ne 0
-            IPFS_BIN="$HOME/.node-core/bin/ipfs" \
-              python3 applications/p2p_contracts/tests/three_node_real_kubo.py
-          '
-
-      - name: Verify no test used root and upload per-node diagnostic logs
-        if: always()
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/node-core-e2e-logs"
-          for node in node-a node-b node-c; do
-            if docker inspect "$node" >/dev/null 2>&1; then
-              docker logs "$node" > "$RUNNER_TEMP/node-core-e2e-logs/$node-container.log" 2>&1 || true
-              docker exec "$node" bash -lc '
-                for path in /home/nodeuser/.node-core/logs/kubo.log /home/nodeuser/.node-core/ipfs/node-core-daemon.log; do
-                  if [ -f "$path" ]; then cat "$path"; fi
-                done
-              ' > "$RUNNER_TEMP/node-core-e2e-logs/$node-kubo.log" 2>&1 || true
-            fi
-          done
-          cp "$RUNNER_TEMP"/node-*-install.log "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
-          cp "$RUNNER_TEMP"/node-*-first-boot.log "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
-          cp "$RUNNER_TEMP/ids-debug.log" "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
-          cp "$RUNNER_TEMP/expected-node-ids.txt" "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
-
-      - name: Upload three-node test evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-core-three-linux-node-e2e
-          path: ${{ runner.temp }}/node-core-e2e-logs/
-          if-no-files-found: warn
-          retention-days: 14
-
-      - name: Clean up containers and network
-        if: always()
-        run: |
-          set +e
-          docker rm --force node-a node-b node-c
-          docker network rm node-core-p2p-e2e
+          test "$(id -u)" -ne 0 || { echo "ERROR: runner must not be root"; exit 1; }
+          export NODE_CORE_DATA_DIR="$HOME/.node-core-p2p-e2e/$GITHUB_RUN_ID/node-a"
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
+          IPFS_BIN="$NODE_CORE_DATA_DIR/bin/ipfs" python3 applications/p2p_contracts/tests/three_node_real_kubo.py
