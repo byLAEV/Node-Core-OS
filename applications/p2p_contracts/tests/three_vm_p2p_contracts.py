@@ -71,7 +71,7 @@ def received_event(protocol, event_type):
         return next((item for item in reversed(protocol._received) if item.get("type") == event_type), None)
 
 
-def wait_for_peer_readiness(protocol, role, peer_id, timeout=60.0, soak_seconds=10.0):
+def wait_for_peer_readiness(protocol, role, peer_id, timeout=60.0):
     expected_roles = {"node-a", "node-b", "node-c"} - {role}
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -83,36 +83,11 @@ def wait_for_peer_readiness(protocol, role, peer_id, timeout=60.0, soak_seconds=
                 if item.get("type") == "TEST_NODE_READY"
             }
         if expected_roles.issubset(ready_roles):
-            # Keep announcing during a short soak so late subscribers have a live listener
-            # before the proposer starts the request-window timer.
-            soak_deadline = time.monotonic() + soak_seconds
-            while time.monotonic() < soak_deadline:
-                protocol._publish("TEST_NODE_READY", node_role=role, peer_id=peer_id)
-                time.sleep(1.0)
+            protocol._publish("TEST_NODE_READY", node_role=role, peer_id=peer_id)
+            time.sleep(1.0)
             return
         time.sleep(1.0)
     raise AssertionError(f"{role} did not observe readiness announcements from {sorted(expected_roles)}.")
-
-
-def wait_for_manifest_readiness(protocol, role, manifest_hash, event_type, timeout=60.0):
-    expected_roles = {"node-a", "node-b", "node-c"}
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        protocol._publish(event_type, node_role=role, manifest_hash=manifest_hash)
-        with protocol._lock:
-            ready_roles = {role} | {
-                item.get("node_role")
-                for item in protocol._received
-                if item.get("type") == event_type and item.get("manifest_hash") == manifest_hash
-            }
-        if expected_roles.issubset(ready_roles):
-            # A short final announcement window reduces asymmetric PubSub timing races.
-            for _ in range(3):
-                protocol._publish(event_type, node_role=role, manifest_hash=manifest_hash)
-                time.sleep(0.5)
-            return
-        time.sleep(0.75)
-    raise AssertionError(f"{role} did not observe all three acknowledgements for manifest {manifest_hash}.")
 
 
 def wait_for_request(service, request_id, timeout=60.0, evidence=False):
@@ -229,6 +204,19 @@ def main():
                 service, "node-a", "0.025", "EUR", "700", "SEPA"
             )
             finalized = protocol.finalize_propagation(request_a_doc)
+            batch_ack_peer_ids = {
+                item.get("sender_node_id")
+                for item in finalized.get("peer_acknowledgements", [])
+                if item.get("manifest_hash") == finalized.get("manifest_hash")
+            }
+            if finalized.get("missing_peer_ids") or not expected_peer_ids.issubset(batch_ack_peer_ids):
+                print_protocol_diagnostics(role, protocol, service, "initial batch acknowledgement failure")
+                raise AssertionError(
+                    f"Node A did not receive batch acknowledgements from B and C: "
+                    f"acks={sorted(batch_ack_peer_ids)}, missing={finalized.get('missing_peer_ids')}, "
+                    f"errors={finalized.get('peer_errors')}"
+                )
+            summary["batch_ack_peer_ids"] = sorted(batch_ack_peer_ids)
             manifest = service.current_manifest()
             if not manifest or len(manifest.get("requests", [])) != 2:
                 raise AssertionError("Node A did not finalize both requests into one manifest.")
@@ -308,7 +296,13 @@ def main():
             if (
                 manifest
                 and len(manifest.get("requests", [])) == 2
-                and manifest.get("manifest_hash") == summary["initial_manifest_hash"]
+                and (
+                    manifest.get("manifest_hash") == summary["initial_manifest_hash"]
+                    or (
+                        manifest.get("previous_manifest_hash") == summary["initial_manifest_hash"]
+                        and len(manifest.get("evidence", [])) >= 1
+                    )
+                )
             ):
                 return manifest
             return False
@@ -320,9 +314,6 @@ def main():
         )
         if len(initial_manifest.get("requests", [])) != 2:
             raise AssertionError(f"{role} did not import exactly two requests.")
-        wait_for_manifest_readiness(
-            protocol, role, summary["initial_manifest_hash"], "TEST_INITIAL_MANIFEST_READY"
-        )
 
         if role == "node-c":
             evidence = service.create_request_evidence(
@@ -414,6 +405,19 @@ def main():
                 service, "node-b-round-2", "0.010", "ETH", "2", "ETHEREUM"
             )
             finalized2 = protocol.finalize_propagation(request_b2_doc)
+            batch_ack_peer_ids2 = {
+                item.get("sender_node_id")
+                for item in finalized2.get("peer_acknowledgements", [])
+                if item.get("manifest_hash") == finalized2.get("manifest_hash")
+            }
+            if finalized2.get("missing_peer_ids") or not expected_peer_ids.issubset(batch_ack_peer_ids2):
+                print_protocol_diagnostics(role, protocol, service, "scenario 2 batch acknowledgement failure")
+                raise AssertionError(
+                    f"Node B did not receive batch acknowledgements from A and C: "
+                    f"acks={sorted(batch_ack_peer_ids2)}, missing={finalized2.get('missing_peer_ids')}, "
+                    f"errors={finalized2.get('peer_errors')}"
+                )
+            summary["scenario2_batch_ack_peer_ids"] = sorted(batch_ack_peer_ids2)
             manifest2 = service.current_manifest()
             request_ids2 = [item.get("request_id") for item in manifest2.get("requests", [])]
             if (
@@ -488,7 +492,13 @@ def main():
             if (
                 manifest
                 and len(manifest.get("requests", [])) == 4
-                and manifest.get("manifest_hash") == summary["scenario2_initial_manifest_hash"]
+                and (
+                    manifest.get("manifest_hash") == summary["scenario2_initial_manifest_hash"]
+                    or (
+                        manifest.get("previous_manifest_hash") == summary["scenario2_initial_manifest_hash"]
+                        and len(manifest.get("evidence", [])) >= 2
+                    )
+                )
             ):
                 return manifest
             return False
@@ -500,9 +510,6 @@ def main():
         )
         if len(second_manifest.get("requests", [])) != 4:
             raise AssertionError(f"{role} did not import the four-request manifest for scenario 2.")
-        wait_for_manifest_readiness(
-            protocol, role, summary["scenario2_initial_manifest_hash"], "TEST_SCENARIO2_MANIFEST_READY"
-        )
 
         if role == "node-a":
             evidence2 = service.create_request_evidence(
