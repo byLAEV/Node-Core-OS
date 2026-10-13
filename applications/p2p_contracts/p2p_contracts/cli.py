@@ -93,7 +93,7 @@ class P2PContractsCLI:
             print("1. Check Propagation Hash Status")
             print("2. Accept a New Propagation Hash")
             print("3. View Propagation Status")
-            enabled = bool(state and state.get("status") == "READY_TO_SUBMIT")
+            enabled = bool(state and state.get("status") == "READY_TO_SUBMIT" and not state.get("require_owner_request") and not state.get("owner_request_sent"))
             own_status = "AUTOMATICALLY SENT" if state and state.get("owner_request_sent") else ("ENABLED" if enabled else "LOCKED")
             print(f"4. Create This Node's BTC Exchange Request ({own_status})")
             print("5. Submit a BTC Exchange Request to the Active Propagation")
@@ -109,8 +109,8 @@ class P2PContractsCLI:
                 self.show_propagation_status()
             elif choice == "4":
                 state = self.propagation.current_state()
-                if not state or state.get("status") != "READY_TO_SUBMIT":
-                    print("Submission is locked. This node's own request is enabled after its ten-minute propagation window.")
+                if not state or state.get("status") != "READY_TO_SUBMIT" or state.get("require_owner_request") or state.get("owner_request_sent"):
+                    print("This propagation's owner request is prepared and submitted automatically with the peer batch; a second owner request is not enabled in the same propagation.")
                 else:
                     self.create_request_form()
             elif choice == "5":
@@ -154,6 +154,10 @@ class P2PContractsCLI:
         if not self.create_request_form(draft_only=True):
             print("Propagation acceptance cancelled because the owner request draft was not saved.")
             return
+        recheck = self.propagation.query_status()
+        if recheck["active_proposals"]:
+            print("Another active propagation appeared while this node's request was being prepared. This node will not open a competing window.")
+            return
         state = self.propagation.accept_new_propagation(parent_hash, require_owner_request=True)
         print("\nPROPAGATION ACCEPTED")
         print(f"Propagation hash: {state['proposal_hash']}")
@@ -178,7 +182,11 @@ class P2PContractsCLI:
             print(f"Time remaining: {remaining // 60:02d}:{remaining % 60:02d}")
             print("The request form remains locked until the timestamp.")
         elif state["status"] == "READY_TO_SUBMIT":
-            print("The local timer has elapsed. Queued incoming requests are imported as a batch when the state is checked.")
+            print("The local timer has elapsed.")
+            print(f"Queued/owner batch finalized: {bool(state.get('batch_flushed'))}")
+            print(f"Owner request automatically submitted: {bool(state.get('owner_request_sent'))}")
+            if not state.get("batch_flushed") and state.get("require_owner_request"):
+                print("The owner request draft and incoming peer requests are waiting for automatic batch submission.")
         elif state["status"] == "CANCELLED":
             print(f"Cancellation reason: {state.get('cancel_reason', 'Not specified')}")
 
