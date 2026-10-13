@@ -56,6 +56,26 @@ class P2PContractsServiceTests(unittest.TestCase):
                 publish_identity=False,
             )
 
+    def test_genesis_is_in_manifest_directory_and_anchors_block_one(self):
+        genesis_path = self.root / "storage" / "p2p_contracts" / "manifests" / "genesis-manifest.json"
+        self.assertTrue(genesis_path.is_file())
+        genesis = json.loads(genesis_path.read_text(encoding="utf-8"))
+        root_hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+        self.assertEqual(genesis["genesis_hash"], root_hash)
+        self.assertEqual(genesis["references"]["bitcoin_genesis_block"]["block_hash"], root_hash)
+
+        result = self.service.create_btc_exchange_request(
+            btc_amount="0.025", receive_asset="USDT", receive_amount="1500",
+            receive_network="TRON", description="Genesis reference test",
+            contacts=[{"type": "email", "value": "test@example.invalid"}],
+            publish_identity=True,
+        )
+        manifest = result["manifest_document"]
+        self.assertEqual(manifest["sequence"], 1)
+        self.assertEqual(manifest["genesis_hash"], root_hash)
+        self.assertEqual(manifest["previous_manifest_hash"], root_hash)
+        self.assertEqual(Path(result["manifest_path"]).parent, genesis_path.parent)
+
     def test_create_request_and_find_request(self):
         result = self.service.create_btc_exchange_request(
             btc_amount="0.025", receive_asset="USDT", receive_amount="1500",
@@ -188,7 +208,8 @@ class P2PContractsServiceTests(unittest.TestCase):
             "application_version": "0.1.0-dev",
             "protocol_version": "0.1.0",
             "sequence": 1,
-            "previous_manifest_hash": None,
+            "genesis_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+            "previous_manifest_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
             "created_at": "2026-01-01T00:00:00Z",
             "requests": [None],
             "evidence": [],
