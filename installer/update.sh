@@ -235,6 +235,17 @@ exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
+  cat > "$NODE_CORE_DATA_DIR/bin/node-core-kubo-daemon" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+ipfs="$NODE_CORE_DATA_DIR/bin/ipfs"
+if "\$ipfs" daemon --help 2>&1 | grep -q -- '--enable-pubsub-experiment'; then
+  exec "\$ipfs" daemon --enable-pubsub-experiment
+fi
+exec "\$ipfs" daemon
+EOF
+  chmod 700 "$NODE_CORE_DATA_DIR/bin/node-core-kubo-daemon"
+
   cat > "$NODE_CORE_DATA_DIR/bin/hashpaper" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
@@ -243,6 +254,20 @@ export PATH="$NODE_CORE_DATA_DIR/runtime/opentimestamps-venv/bin:$PATH"
 exec python3 "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" "\$@"
 EOF
   chmod 700 "$NODE_CORE_DATA_DIR/bin/hashpaper"
+}
+
+refresh_kubo_service_unit_if_present() {
+  local unit_path="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/node-core-kubo.service"
+  [[ -f "$unit_path" ]] || return 0
+  [[ -f "$NODE_CORE_APP_DIR/installer/lib/service.sh" ]] || return 0
+  # Refresh only the Node Core-managed user unit. Do not restart a running Kubo daemon.
+  source "$NODE_CORE_APP_DIR/installer/lib/service.sh"
+  write_kubo_service_unit
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user daemon-reload >/dev/null 2>&1; then
+    printf 'Updated the Node Core Kubo service launcher. Restart Kubo from Node Core OS to activate PubSub support.\n'
+  else
+    printf 'Updated the Kubo service launcher, but user systemd could not reload it.\n' >&2
+  fi
 }
 
 migrate_termux_config() {
@@ -511,6 +536,7 @@ main() {
   require_installation
   migrate_termux_config
   ensure_launchers
+  refresh_kubo_service_unit_if_present
 
   local remote_commit local_commit
   remote_commit="$(latest_commit)"
