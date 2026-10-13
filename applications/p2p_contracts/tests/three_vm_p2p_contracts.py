@@ -126,6 +126,37 @@ def wait_for_request(service, request_id, timeout=60.0, evidence=False):
     return wait_until(f"request {request_id}" + (" and evidence" if evidence else ""), ready, timeout=timeout)
 
 
+def print_protocol_diagnostics(role, protocol, service, context):
+    manifest = service.current_manifest()
+    with protocol._lock:
+        received = list(protocol._received)
+        listener_errors = list(protocol._listener_errors)
+    relevant = [
+        {
+            "type": item.get("type"),
+            "sender_node_id": item.get("sender_node_id"),
+            "reply_to": item.get("reply_to"),
+            "manifest_hash": item.get("manifest_hash"),
+            "imported_count": item.get("imported_count"),
+            "error": item.get("error"),
+            "reason": item.get("reason"),
+        }
+        for item in received
+        if item.get("type") in {"REQUEST_BATCH", "BATCH_ACK", "REQUEST_ACK", "TEST_REQUEST_PUBLISHED",
+                                "TEST_INITIAL_MANIFEST_READY", "TEST_EVIDENCE_EXPECTED"}
+    ][-40:]
+    print(json.dumps({
+        "diagnostic": context,
+        "node": role,
+        "manifest_hash": manifest.get("manifest_hash") if manifest else None,
+        "manifest_sequence": manifest.get("sequence") if manifest else None,
+        "manifest_request_count": len(manifest.get("requests", [])) if manifest else 0,
+        "received_message_types": [item.get("type") for item in received[-60:]],
+        "relevant_messages": relevant,
+        "listener_errors": listener_errors[-20:],
+    }, indent=2, sort_keys=True, default=str))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--role", choices=("node-a", "node-b", "node-c"), required=True)
@@ -266,8 +297,12 @@ def main():
         request_b_id = summary["request_b_id"]
 
         # Every remote node must import the same two-request manifest before proceeding.
-        wait_for_request(service, request_a_id, timeout=75.0)
-        wait_for_request(service, request_b_id, timeout=75.0)
+        try:
+            wait_for_request(service, request_a_id, timeout=75.0)
+            wait_for_request(service, request_b_id, timeout=75.0)
+        except AssertionError:
+            print_protocol_diagnostics(role, protocol, service, "initial request batch failed to import")
+            raise
         def matching_initial_manifest():
             manifest = service.current_manifest()
             if (
