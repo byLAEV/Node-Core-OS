@@ -39,6 +39,32 @@ class PropagationTests(unittest.TestCase):
         self.protocol = PropagationProtocol(FakeStorage(temp.name), FakeNetwork(), self.kubo)
         self.protocol.start = lambda: None
 
+    def test_kubo_json_base64_payload_is_decoded_without_stripping_first_character(self):
+        import base64
+        payload = b"message payload"
+        encoded = base64.b64encode(payload).decode("ascii")
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(encoded), payload)
+
+    def test_pending_request_is_accepted_only_for_matching_active_proposal(self):
+        from applications.p2p_contracts.p2p_contracts.service import document_hash, REQUEST_SCHEMA
+        state = self.protocol.accept_new_propagation("a" * 64)
+        payload = {
+            "schema": REQUEST_SCHEMA,
+            "request_id": "request-12345678-1234-1234-1234-123456789abc",
+            "request_type": "btc_exchange",
+            "requester": {"node_id": "QmFakeNodeIdentity012345678901234567890123456789"},
+        }
+        document = {**payload, "document_hash": document_hash(payload)}
+        message = {
+            "message_id": "test-message", "sender_node_id": "QmFakeNodeIdentity012345678901234567890123456789",
+            "proposal_id": state["proposal_id"], "proposal_hash": state["proposal_hash"],
+            "request_document": document,
+        }
+        self.assertEqual(self.protocol._queue_request(message), payload["request_id"])
+        self.assertEqual(len(self.protocol._pending_requests), 1)
+        self.assertEqual(self.protocol._queue_request(message), payload["request_id"])
+        self.assertEqual(len(self.protocol._pending_requests), 1)
+
     def test_ten_minute_window_is_exact(self):
         self.assertEqual(WINDOW_SECONDS, 600)
         now = utc_now().replace(microsecond=0)
