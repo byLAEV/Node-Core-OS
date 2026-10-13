@@ -1,6 +1,10 @@
 name: Three independent Linux installs — Node Core P2P Contracts
 
 on:
+  push:
+    branches:
+      - main
+      - test/three-independent-linux-nodes-p2p-e2e
   pull_request:
     branches: [main]
   workflow_dispatch:
