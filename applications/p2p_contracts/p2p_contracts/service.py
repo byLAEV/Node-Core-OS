@@ -191,6 +191,7 @@ class P2PContractsService:
         self, *, btc_amount: str, receive_asset: str, receive_amount: str,
         receive_network: str, description: str, contacts: list[dict[str, str]],
         publish_identity: bool, identity_fields: set[str] | None = None,
+        defer_manifest: bool = False,
     ) -> dict[str, Any]:
         """Persist a BTC-for-asset request and append it to the local manifest."""
         self._ensure_directories()
@@ -258,6 +259,16 @@ class P2PContractsService:
         digest = document_hash(payload)
         relative_path = f"p2p_contracts/requests/{request_id}.json"
         self._write_json(self.storage.path(relative_path), {**payload, "document_hash": digest})
+        if defer_manifest:
+            previous = self._load_head()
+            return {
+                "request_id": request_id, "request_hash": digest,
+                "manifest_hash": previous.get("manifest_hash") if previous else None,
+                "manifest_sequence": previous.get("sequence") if previous else 0,
+                "node_id": node_id, "request_path": str(self.storage.path(relative_path)),
+                "manifest_path": None, "identity_fields_published": sorted(identity),
+                "status": "PENDING_PROPAGATION",
+            }
         previous = self._load_head()
         requests = list(previous.get("requests", [])) if previous else []
         evidence = list(previous.get("evidence", [])) if previous else []
