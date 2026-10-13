@@ -90,16 +90,21 @@ validate_installed_application_for_recovery() {
   [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/hashpaper/cli.py" ]] || return 1
   [[ -d "$NODE_CORE_APP_DIR/applications/hashpaper/tests" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || return 1
+  [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || return 1
 
   python3 -m compileall -q \
     "$NODE_CORE_APP_DIR/main.py" \
     "$NODE_CORE_APP_DIR/node_core" \
-    "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+    "$NODE_CORE_APP_DIR/applications/hashpaper" \
+    "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
 
   (
     cd "$NODE_CORE_APP_DIR"
     python3 -m unittest discover \
       -s applications/hashpaper/tests -p 'test_*.py' -v
+    python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
   )
 }
 
@@ -409,6 +414,18 @@ update_application() (
     printf 'Update is missing HashPaper tests; refusing activation.\n' >&2
     return 1
   }
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
+    printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
+    return 1
+  }
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
+    printf 'Update is missing P2P Contracts CLI; refusing activation.\n' >&2
+    return 1
+  }
+  [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || {
+    printf 'Update is missing P2P Contracts tests; refusing activation.\n' >&2
+    return 1
+  }
   python3 - "$NODE_CORE_APP_DIR/VERSION" "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION" <<'PY'
 import re
 import sys
@@ -432,9 +449,13 @@ PY
   fi
   mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records" || return 1
   chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records" || return 1
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
   if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v); then
     printf 'HashPaper tests failed after update; refusing to mark the update successful.\n' >&2
+    return 1
+  fi
+  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v); then
+    printf 'P2P Contracts tests failed after update; refusing to mark the update successful.\n' >&2
     return 1
   fi
   printf '✓ Node Core OS and bundled HashPaper versions validated.\n'
