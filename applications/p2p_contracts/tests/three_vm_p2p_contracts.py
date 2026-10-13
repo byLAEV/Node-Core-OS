@@ -359,34 +359,56 @@ def main():
             raise AssertionError(f"{role} did not import exactly two requests.")
 
         if role == "node-c":
-            evidence = service.create_request_evidence(
-                request_id=request_a_id,
-                outcome="exchange_completed",
-                evidence_type="exchange_result",
-                description="Synthetic evidence created by independent Ubuntu node C.",
-                reporter_statement="Node C verified the cross-VM test scenario.",
-                target_node_id=next(item["peer_id"] for item in load_peer_endpoints(args.peer_file, role)
-                                    if item["node"] == "node-a"),
-                rating=5,
+            # Exercise the same closure/reputation form used by a person at the terminal.
+            cli_c = P2PContractsCLI(runtime)
+            cli_c.service = service
+            cli_c.propagation = protocol
+            target_node_id = next(
+                item["peer_id"] for item in load_peer_endpoints(args.peer_file, role)
+                if item["node"] == "node-a"
             )
-            evidence_path = runtime.storage.path("p2p_contracts/evidence") / f"{evidence['evidence_id']}.json"
-            evidence_document = json.loads(evidence_path.read_text(encoding="utf-8"))
-            published = protocol.publish_evidence(evidence_document, service.current_manifest(), wait_seconds=5.0)
-            accepted = {
-                item.get("sender_node_id")
-                for item in published.get("peer_acknowledgements", [])
-                if item.get("accepted") is True
-            }
-            if not expected_peer_ids.issubset(accepted):
-                raise AssertionError(f"Node C did not receive positive evidence acknowledgements from A and B: {published!r}")
+            closure_answers = iter([
+                request_a_id,
+                target_node_id,
+                "5",
+                "exchange_completed",
+                "Synthetic evidence created by independent Ubuntu node C.",
+                "Node C submitted this self-reported cross-VM test result.",
+                "y",
+            ])
+            closure_output = io.StringIO()
+            with patch("builtins.input", side_effect=closure_answers), redirect_stdout(closure_output):
+                cli_c.create_closure_form()
+            closure_text = closure_output.getvalue()
+            evidence_line = next(
+                (line for line in closure_text.splitlines() if line.startswith("Evidence ID: ")),
+                None,
+            )
+            if evidence_line is None:
+                raise AssertionError(f"Node C closure form did not create evidence: {closure_text}")
+            evidence_id = evidence_line.split(":", 1)[1].strip()
+            ack_line = next(
+                (line for line in closure_text.splitlines()
+                 if line.startswith("Evidence broadcast acknowledgements: ")),
+                None,
+            )
+            if ack_line is None or int(ack_line.rsplit(" ", 1)[1]) < 2:
+                raise AssertionError(f"Node C closure form did not report acknowledgements from peers: {closure_text}")
+            found_after_closure = service.find_request(request_a_id)
+            if not found_after_closure or not any(
+                item.get("evidence_id") == evidence_id
+                and item.get("verification_status") == "self_reported_unverified"
+                for item in found_after_closure.get("evidence", [])
+            ):
+                raise AssertionError("Node C closure form evidence is not present in its local request view.")
             final_manifest = service.current_manifest()
             protocol._publish(
                 "TEST_EVIDENCE_EXPECTED",
                 request_a_id=request_a_id,
-                evidence_id=evidence["evidence_id"],
+                evidence_id=evidence_id,
                 manifest_hash=final_manifest["manifest_hash"],
             )
-            summary["evidence_id"] = evidence["evidence_id"]
+            summary["evidence_id"] = evidence_id
             summary["final_manifest_hash"] = final_manifest["manifest_hash"]
 
         else:
@@ -426,6 +448,27 @@ def main():
         summary["final_manifest_sequence"] = final_manifest["sequence"]
         summary["request_status"] = service.find_request(request_a_id)["request_status"]
         summary["evidence_verified"] = True
+
+        # Verify the public search form from each independently installed node.
+        cli_search = P2PContractsCLI(runtime)
+        cli_search.service = service
+        cli_search.propagation = protocol
+        search_output = io.StringIO()
+        with patch("builtins.input", side_effect=[request_a_id]), redirect_stdout(search_output):
+            cli_search.search_request_form()
+        search_text = search_output.getvalue()
+        for expected_text in (
+            request_a_id,
+            "BTC offered: 0.025 BTC",
+            "Asset requested: 700 EUR",
+            "Derived state: exchange_completed",
+            summary["evidence_id"],
+            "self_reported_unverified",
+        ):
+            if expected_text not in search_text:
+                raise AssertionError(
+                    f"{role} search form did not display {expected_text!r}. Output: {search_text}"
+                )
 
         # Scenario 2 rotates roles: B proposes, C submits, and A records closure evidence.
         propagation_module.WINDOW_SECONDS = 45
