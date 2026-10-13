@@ -110,8 +110,11 @@ def main():
     def connected():
         current = set(runtime.network.connected_peers())
         return expected_peer_ids.issubset(current)
-    connected_peer_ids = wait_until(f"{role} connects to the other two independent Kubo nodes",
-                                    connected, timeout=75.0)
+    wait_until(f"{role} connects to the other two independent Kubo nodes",
+               connected, timeout=75.0)
+    connected_peer_ids = set(runtime.network.connected_peers())
+    if not expected_peer_ids.issubset(connected_peer_ids):
+        raise AssertionError(f"{role} lost a peer connection after the wait: {connected_peer_ids!r}")
 
     service = P2PContractsService(runtime.storage, runtime.identity_profile, runtime.network)
     protocol = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo, service=service)
