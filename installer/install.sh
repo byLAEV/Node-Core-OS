@@ -38,6 +38,11 @@ main() {
   install_application "$PROJECT_ROOT"
   # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
   rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+  rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
+  rm -f "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-update.sh"
+  rm -f "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER.md" "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
+  rm -f "$NODE_CORE_DATA_DIR/app/tests/test_hashpaper_storage_layout.py"
+  rm -f "$NODE_CORE_DATA_DIR/app/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_DATA_DIR/app/.github/workflows/hashpaper-python-matrix.yml"
   [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || {
     printf 'Installed Node Core OS version file is missing.\n' >&2
     exit 1
