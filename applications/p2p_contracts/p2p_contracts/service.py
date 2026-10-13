@@ -284,6 +284,7 @@ class P2PContractsService:
             "node_id": node_id, "request_path": str(self.storage.path(relative_path)),
             "manifest_path": str(self.storage.path(head["manifest_path"])),
             "identity_fields_published": sorted(identity), "status": "LOCAL_ONLY",
+            "manifest_document": manifest,
         }
 
     @_synchronized
@@ -521,12 +522,12 @@ class P2PContractsService:
         return {
             "evidence_id": payload["evidence_id"], "request_id": request_id,
             "evidence_hash": digest, "manifest_hash": manifest["manifest_hash"],
-            "manifest_sequence": manifest["sequence"], "outcome": outcome,
+            "manifest_sequence": manifest["sequence"], "manifest_document": manifest, "outcome": outcome,
             "verification_status": payload["verification_status"],
         }
 
     @_synchronized
-    def import_remote_evidence(self, evidence_document: dict[str, Any]) -> dict[str, Any]:
+    def import_remote_evidence(self, evidence_document: dict[str, Any], manifest_document: dict[str, Any] | None = None) -> dict[str, Any]:
         """Validate and append a public self-reported evidence record received from a peer."""
         self._ensure_directories()
         if not isinstance(evidence_document, dict):
@@ -552,6 +553,11 @@ class P2PContractsService:
             or not 1 <= payload["rating"] <= 5
         ):
             raise ValueError("Remote evidence rating must be an integer from 1 to 5.")
+        if manifest_document is not None:
+            imported = self.import_remote_manifest(manifest_document, evidence_documents=[evidence_document])
+            return {"imported": imported.get("imported", False), "evidence_id": evidence_id,
+                    "manifest_hash": imported.get("manifest_hash"),
+                    "manifest_sequence": imported.get("manifest_sequence")}
         previous = self._load_head()
         requests = list(previous.get("requests", [])) if previous else []
         evidence = list(previous.get("evidence", [])) if previous else []
