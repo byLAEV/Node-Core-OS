@@ -183,12 +183,12 @@ class PropagationProtocol:
             return None
         now = utc_now()
         if state.get("status") == "ACCEPTED":
-            if now >= parse_timestamp(state["send_enabled_at"]):
-                state["status"] = "READY_TO_SUBMIT"
-                self._save_state(state)
-            elif now >= parse_timestamp(state["lease_expires_at"]):
+            if now >= parse_timestamp(state["lease_expires_at"]):
                 state["status"] = "CANCELLED"
-                state["cancel_reason"] = "Lease expired."
+                state["cancel_reason"] = "Propagation lease expired before submission was completed."
+                self._save_state(state)
+            elif now >= parse_timestamp(state["send_enabled_at"]):
+                state["status"] = "READY_TO_SUBMIT"
                 self._save_state(state)
         return state
 
