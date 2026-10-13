@@ -273,25 +273,33 @@ class PropagationProtocol:
         process = self._listener
         if process is None or process.stdout is None:
             return
-        for line in process.stdout:
-            try:
-                envelope = json.loads(line)
-                data = envelope.get("data", envelope.get("Data"))
-                message = json.loads(self._decode_pubsub_data(data).decode("utf-8"))
-                if message.get("schema") != MESSAGE_SCHEMA or not message.get("message_id") or not message.get("sender_node_id"):
+        try:
+            for line in process.stdout:
+                try:
+                    envelope = json.loads(line)
+                    data = envelope.get("data", envelope.get("Data"))
+                    message = json.loads(self._decode_pubsub_data(data).decode("utf-8"))
+                    if message.get("schema") != MESSAGE_SCHEMA or not message.get("message_id") or not message.get("sender_node_id"):
+                        continue
+                    if message.get("sender_node_id") == self.network.identity().peer_id:
+                        continue
+                    if not self._remember(message):
+                        continue
+                    self._handle_message(message)
+                except Exception as exc:
+                    # PubSub data is untrusted. A malformed message or validation bug must
+                    # be recorded and skipped, not terminate the long-lived listener thread.
+                    with self._lock:
+                        self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
+                        self._listener_errors = self._listener_errors[-20:]
                     continue
-                if message.get("sender_node_id") == self.network.identity().peer_id:
-                    continue
-                if not self._remember(message):
-                    continue
-                self._handle_message(message)
-            except Exception as exc:
-                # PubSub data is untrusted. A malformed message or validation bug must
-                # be recorded and skipped, not terminate the long-lived listener thread.
+        except (ValueError, OSError) as exc:
+            # stop() may close stdout while this thread is blocked reading it.
+            # Treat that shutdown race as a listener event instead of leaking a traceback.
+            if process.poll() is None:
                 with self._lock:
-                    self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
+                    self._listener_errors.append(f"{type(exc).__name__}: {exc}; listener stdout closed unexpectedly")
                     self._listener_errors = self._listener_errors[-20:]
-                continue
 
     def query_status(self, wait_seconds=3.0):
         self.start()
