@@ -74,6 +74,7 @@ jobs:
   three-kubo-node-integration:
     name: Three independent Kubo nodes — P2P Contracts end-to-end
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     defaults:
       run:
         shell: bash
@@ -89,9 +90,13 @@ jobs:
       - name: Download pinned Kubo CLI
         run: |
           set -euo pipefail
-          curl --fail --location --silent --show-error \
+          if ! curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 --retry 1 --retry-delay 2 \
             https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
-            --output "$RUNNER_TEMP/kubo.tar.gz"
+            --output "$RUNNER_TEMP/kubo.tar.gz"; then
+            curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 \
+              https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
+              --output "$RUNNER_TEMP/kubo.tar.gz"
+          fi
           mkdir -p "$RUNNER_TEMP/kubo-unpack"
           tar -xzf "$RUNNER_TEMP/kubo.tar.gz" -C "$RUNNER_TEMP/kubo-unpack"
           test -x "$RUNNER_TEMP/kubo-unpack/kubo/ipfs"
