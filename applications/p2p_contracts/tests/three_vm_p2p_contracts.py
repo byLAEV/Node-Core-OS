@@ -94,6 +94,27 @@ def wait_for_peer_readiness(protocol, role, peer_id, timeout=60.0, soak_seconds=
     raise AssertionError(f"{role} did not observe readiness announcements from {sorted(expected_roles)}.")
 
 
+def wait_for_manifest_readiness(protocol, role, manifest_hash, event_type, timeout=60.0):
+    expected_roles = {"node-a", "node-b", "node-c"}
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        protocol._publish(event_type, node_role=role, manifest_hash=manifest_hash)
+        with protocol._lock:
+            ready_roles = {role} | {
+                item.get("node_role")
+                for item in protocol._received
+                if item.get("type") == event_type and item.get("manifest_hash") == manifest_hash
+            }
+        if expected_roles.issubset(ready_roles):
+            # A short final announcement window reduces asymmetric PubSub timing races.
+            for _ in range(3):
+                protocol._publish(event_type, node_role=role, manifest_hash=manifest_hash)
+                time.sleep(0.5)
+            return
+        time.sleep(0.75)
+    raise AssertionError(f"{role} did not observe all three acknowledgements for manifest {manifest_hash}.")
+
+
 def wait_for_request(service, request_id, timeout=60.0, evidence=False):
     def ready():
         item = service.find_request(request_id)
@@ -264,6 +285,9 @@ def main():
         )
         if len(initial_manifest.get("requests", [])) != 2:
             raise AssertionError(f"{role} did not import exactly two requests.")
+        wait_for_manifest_readiness(
+            protocol, role, summary["initial_manifest_hash"], "TEST_INITIAL_MANIFEST_READY"
+        )
 
         if role == "node-c":
             evidence = service.create_request_evidence(
@@ -441,6 +465,9 @@ def main():
         )
         if len(second_manifest.get("requests", [])) != 4:
             raise AssertionError(f"{role} did not import the four-request manifest for scenario 2.")
+        wait_for_manifest_readiness(
+            protocol, role, summary["scenario2_initial_manifest_hash"], "TEST_SCENARIO2_MANIFEST_READY"
+        )
 
         if role == "node-a":
             evidence2 = service.create_request_evidence(
