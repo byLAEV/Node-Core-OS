@@ -94,6 +94,7 @@ install_kubo() {
   fi
   "$executable" config Addresses.API "$NODE_CORE_KUBO_API_MULTIADDR"
   "$executable" config Addresses.Gateway "$NODE_CORE_KUBO_GATEWAY_MULTIADDR"
+  "$executable" config --json Pubsub.Enabled true
 }
 start_kubo() {
   local executable="${NODE_CORE_KUBO_EXECUTABLE:-$(resolve_kubo_executable)}"
