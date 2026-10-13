@@ -57,6 +57,10 @@ class P2PContractsServiceTests(unittest.TestCase):
             )
 
     def test_genesis_is_in_manifest_directory_and_anchors_block_one(self):
+        expected_bundled_path = Path(__file__).resolve().parents[1] / "genesis-manifest.json"
+        self.assertEqual(self.service.bundled_genesis_path, expected_bundled_path)
+        self.assertTrue(expected_bundled_path.is_file())
+
         genesis_path = self.root / "storage" / "p2p_contracts" / "manifests" / "genesis-manifest.json"
         self.assertTrue(genesis_path.is_file())
         genesis = json.loads(genesis_path.read_text(encoding="utf-8"))
