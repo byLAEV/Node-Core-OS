@@ -284,7 +284,7 @@ class P2PContractsService:
         previous = self._load_head()
         requests = list(previous.get("requests", [])) if previous else []
         evidence = list(previous.get("evidence", [])) if previous else []
-        known = {entry.get("request_id") for entry in requests}
+        known = {entry.get("request_id"): entry.get("document_hash") for entry in requests}
         imported = []
         for document in request_documents:
             if not isinstance(document, dict):
@@ -321,6 +321,8 @@ class P2PContractsService:
                     raise ValueError("Remote request contains an unsupported contact method.")
                 _clean_text(str(contact.get("value", "")), "Remote contact value", 1000)
             if request_id in known:
+                if known[request_id] != digest:
+                    raise P2PContractsError(f"Conflicting content was received for existing request ID: {request_id}")
                 continue
             relative_path = f"p2p_contracts/requests/{request_id}.json"
             destination = self.storage.path(relative_path)
@@ -335,7 +337,7 @@ class P2PContractsService:
                 "document_hash": digest, "status": "open",
                 "created_at": payload.get("created_at"),
             })
-            known.add(request_id)
+            known[request_id] = digest
             imported.append(request_id)
         if not imported:
             current = self._load_head()
@@ -432,7 +434,10 @@ class P2PContractsService:
         previous = self._load_head()
         requests = list(previous.get("requests", [])) if previous else []
         evidence = list(previous.get("evidence", [])) if previous else []
-        if any(item.get("evidence_id") == evidence_id for item in evidence):
+        existing_evidence = next((item for item in evidence if item.get("evidence_id") == evidence_id), None)
+        if existing_evidence is not None:
+            if existing_evidence.get("document_hash") != digest:
+                raise P2PContractsError(f"Conflicting content was received for existing evidence ID: {evidence_id}")
             return {"imported": False, "evidence_id": evidence_id,
                     "manifest_hash": previous.get("manifest_hash") if previous else None}
         relative_path = f"p2p_contracts/evidence/{evidence_id}.json"
