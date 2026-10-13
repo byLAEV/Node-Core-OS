@@ -27,7 +27,19 @@ A node prepares its own public BTC exchange request as a local draft before it a
 
 Kubo PubSub topic: node-core-os/p2p-contracts/propagation/v1.
 
-Kubo PubSub must be enabled in each node's Kubo configuration (Pubsub.Enabled=true) and Kubo must be restarted. The application does not alter Kubo configuration automatically.
+Kubo PubSub must be enabled in each node's Kubo configuration (Pubsub.Enabled=true) and Kubo must be restarted. The application does not silently change an existing node's Kubo configuration.
+
+For an existing installation, set the correct Node Core Kubo repository before enabling PubSub:
+
+    export IPFS_PATH="$HOME/.node-core/ipfs"
+    if [ -x "$HOME/.node-core/bin/ipfs" ]; then
+      KUBO="$HOME/.node-core/bin/ipfs"
+    else
+      KUBO="${PREFIX:?Termux PREFIX is required}/bin/ipfs"
+    fi
+    "$KUBO" config --json Pubsub.Enabled true
+
+Then stop and start the Kubo daemon from Node Core OS. The daemon launcher detects whether the installed Kubo version requires the --enable-pubsub-experiment flag and uses it only when that flag is supported. Do not run a second daemon against the same IPFS_PATH.
 
 ## Local tests
 
