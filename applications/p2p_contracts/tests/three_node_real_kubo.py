@@ -236,6 +236,33 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             shared_hashes = {services[index].current_manifest()["manifest_hash"] for index in range(3)}
             self.assertEqual(len(shared_hashes), 1, "All three nodes must accept the exact same batch manifest hash.")
 
+            # Verify the actual BTC exchange fields, not only request IDs, on every node.
+            expected_exchanges = {
+                request_a["request_id"]: {
+                    "give_asset": "BTC",
+                    "give_amount": "0.025",
+                    "receive_asset": "EUR",
+                    "receive_amount": "700",
+                    "receive_network": "SEPA",
+                },
+                request_b["request_id"]: {
+                    "give_asset": "BTC",
+                    "give_amount": "0.015",
+                    "receive_asset": "USDT",
+                    "receive_amount": "1000",
+                    "receive_network": "TRON",
+                },
+            }
+            for index in range(3):
+                for request_id, expected_exchange in expected_exchanges.items():
+                    found = services[index].find_request(request_id)
+                    self.assertIsNotNone(found, f"Node {index + 1} cannot retrieve BTC exchange request {request_id}.")
+                    request_doc = found["request"]
+                    self.assertEqual(request_doc["request_type"], "btc_exchange")
+                    self.assertEqual(request_doc["exchange"], expected_exchange,
+                                     f"Node {index + 1} changed or failed to synchronize exchange fields for {request_id}.")
+                    self.assertEqual(found["manifest_hash"], next(iter(shared_hashes)))
+
             evidence = services[2].create_request_evidence(
                 request_id=request_a["request_id"], outcome="exchange_completed",
                 evidence_type="exchange_result", description="Integration closure evidence.",
