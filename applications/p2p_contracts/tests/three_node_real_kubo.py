@@ -196,6 +196,9 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             cli_a = P2PContractsCLI(runtime_a)
             cli_a.service = services[0]
             cli_a.propagation = protocols[0]
+            # Keep the timer-driven worker deterministic; invoke its normal submission
+            # function explicitly after advancing the isolated test clock.
+            cli_a._start_owner_auto_submit = lambda: None
             owner_answers = iter([
                 "y",  # Accept a local propagation window.
                 "n",  # Do not publish personal identity fields.
