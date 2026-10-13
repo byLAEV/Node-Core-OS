@@ -168,3 +168,85 @@ Orden de implementación recomendado:
 7. Probar sincronización, conflictos y recuperación.
 8. Mantener OpenPGP privado aplazado.
 
+## 13. Ventana pública de propagación y receptor temporal (diseño actualizado)
+
+Esta sección concreta el flujo previsto para la primera versión pública. Donde las secciones anteriores describan una única solicitud nueva por manifiesto, se entiende que el **manifiesto de lote puede agrupar varias solicitudes recibidas durante una misma ventana**. La secuencia identifica la etapa o lote de propagación, no una solicitud individual.
+
+### 13.1 Principio de funcionamiento
+
+Un nodo anuncia que necesita publicar una solicitud propia y, por ese motivo, se ofrece a recibir durante un intervalo las solicitudes de otros nodos. No es un coordinador permanente ni recibe autoridad general sobre la aplicación: su función corresponde únicamente a la ventana identificada por el preestado vigente.
+
+El mensaje pequeño de propagación informa como mínimo:
+
+- versión del protocolo;
+- hash/CID del estado aceptado anterior;
+- hash del preestado de la ventana;
+- identificador técnico del nodo receptor propuesto;
+- referencia a la identidad de Node Core OS asociada, sin afirmar que un perfil declarado sea una identidad criptográficamente verificada;
+- inicio de la ventana y momento mínimo en que se habilita el envío de la solicitud propia;
+- duración de ventana según las reglas del protocolo;
+- identificador único del anuncio y estado de su aceptación.
+
+El anuncio se propaga a los nodos activos. Los nodos comparan el anuncio con su manifiesto sincronizado y consultan a otros pares conocidos para confirmar que el mismo preestado y receptor están reconocidos. La aplicación solo muestra la ventana como aceptada cuando dispone de la evidencia de aceptación definida por el protocolo; conectarse a un nodo o recibir su anuncio no basta por sí solo.
+
+### 13.2 Tiempo mínimo de propagación
+
+Para el prototipo se propone una ventana mínima inicial de **600 segundos (10 minutos)**, configurable por versión del protocolo y usada como valor de prueba, no como constante criptográfica ni garantía de sincronización global.
+
+Cuando el nodo receptor acepta el preestado, registra el inicio de la ventana y calcula `send_enabled_at = window_started_at + minimum_propagation_seconds`. Antes de ese momento, la interfaz mantiene deshabilitado el botón para enviar la solicitud propia. El temporizador no impide que el nodo reciba solicitudes de otros participantes durante la ventana.
+
+La interfaz debe mostrar el tiempo restante y explicar por qué el botón está deshabilitado. Al alcanzar el momento mínimo, habilita el envío de la solicitud propia y permite cerrar la ventana conforme a la transición de estado del protocolo.
+
+El timestamp sirve para controlar la experiencia y la regla temporal del protocolo, pero no prueba por sí solo el orden real de llegada ni que todos los nodos hayan recibido el anuncio. Las reglas deben definir la fuente del tiempo, la tolerancia de reloj y qué ocurre si el nodo se reinicia o queda desconectado. El cierre debe conservar la hora declarada y el estado previo para poder verificarlos.
+
+### 13.3 Envío de solicitudes durante la ventana
+
+Mientras la ventana está abierta, un nodo que desea enviar una solicitud:
+
+1. lee el manifiesto local sincronizado;
+2. comprueba que el preestado y el receptor anunciados siguen siendo los reconocidos;
+3. consulta a otros nodos activos si dispone de fuentes adicionales;
+4. crea su solicitud usando el formulario público preestablecido;
+5. envía la solicitud al receptor de la ventana vigente;
+6. guarda el recibo de recepción y la referencia de la solicitud.
+
+El contenido del mensaje de propagación debe ser pequeño. Las solicitudes se transmiten por separado y se agrupan por referencia en el lote; no se requiere retransmitir el historial completo en cada mensaje. La solicitud incluye su propio identificador, el preestado al que pertenece y los campos públicos que el usuario autorizó.
+
+### 13.4 Lote y cierre
+
+El receptor conserva las solicitudes recibidas durante la ventana y sus recibos. Al habilitarse y enviar su propia solicitud, esta también se incorpora al lote. El receptor crea un manifiesto inmutable de lote con:
+
+- hash/CID del estado padre y del preestado;
+- identificador del receptor de la ventana;
+- inicio y cierre declarados de la ventana;
+- referencias ordenadas a las solicitudes recibidas y a la solicitud propia;
+- cantidad de solicitudes;
+- referencias a los recibos disponibles;
+- versión del protocolo y hash del contenido canónico.
+
+El manifiesto se calcula sobre una serialización canónica y se publica mediante la capa de contenido existente. Los nodos que lo verifican comprueban las referencias y recalculan el hash. La lista ordenada del lote no debe sobrescribir manifiestos anteriores.
+
+Para mantener el primer prototipo simple, la ventana se cierra cuando vence el mínimo temporal y el nodo envía su propia solicitud; después publica el manifiesto candidato del lote. El siguiente preestado no se considera vigente hasta que el manifiesto de transición que cierra el lote ha sido aceptado conforme a la regla pública definida. Las solicitudes tardías se asignan a la ventana siguiente, no se añaden retroactivamente al lote cerrado.
+
+### 13.5 Siguiente receptor
+
+Tras cerrar y aceptar el lote, otro nodo que también necesite enviar una solicitud puede anunciar el siguiente preestado desde el nuevo estado aceptado. La red repite el mismo procedimiento con un receptor temporal distinto. El nodo anterior no conserva el rol para ventanas futuras salvo que vuelva a participar y su propuesta sea aceptada de nuevo.
+
+Los nodos generales conservan los manifiestos de propagación y de lote necesarios para descubrir el receptor vigente y las solicitudes públicas. Pueden recuperar los documentos completos bajo demanda según la política de almacenamiento, sin tener que descargar todos los expedientes operativos de P2P Contracts.
+
+### 13.6 Pruebas específicas
+
+Antes de integrar la ventana en la red, probar localmente:
+
+- el botón de envío propio permanece deshabilitado antes de los 600 segundos;
+- las solicitudes entrantes se reciben mientras el botón propio está deshabilitado;
+- al vencer el intervalo, el botón se habilita y la solicitud del receptor entra en el mismo lote;
+- el manifiesto del lote contiene las referencias esperadas, en orden determinista;
+- un nodo remitente recibe un recibo con identificador de solicitud y preestado;
+- una solicitud enviada después del cierre se asigna a la siguiente ventana;
+- reiniciar la aplicación conserva o reconstruye el estado del temporizador de forma explícita y comprobable;
+- los nodos verifican el manifiesto del lote sin confiar únicamente en la palabra del receptor;
+- la transición al siguiente preestado solo ocurre después de aceptar el cierre del lote;
+- el flujo utiliza identidades de prueba y no modifica HashPaper ni habilita funciones privadas.
+
+Esta sección describe el comportamiento previsto; todavía no es una implementación funcional. Antes de codificar, deben confirmarse las interfaces reales de red, almacenamiento y contenido de Node Core OS, y concretarse una regla mínima de aceptación compatible con las capacidades criptográficas que realmente existen.
