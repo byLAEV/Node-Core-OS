@@ -51,6 +51,8 @@ printf 'print("fixture P2P Contracts")\n' > "$release_root/Node-Core-OS-fixture/
 printf 'VALUE = "fixture P2P CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/cli.py"
 printf 'VALUE = "fixture P2P service"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/service.py"
 printf 'VALUE = "fixture P2P propagation"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/propagation.py"
+cp "$REPOSITORY_ROOT/applications/p2p_contracts/genesis-manifest.json" \
+  "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/genesis-manifest.json"
 cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_service.py" <<'PY'
 import unittest
 class P2PServiceFixtureTest(unittest.TestCase):
