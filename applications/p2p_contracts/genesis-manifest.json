@@ -30,7 +30,7 @@
       "root_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
     },
     "initial_acceptance": {
-      "required_hash": "000000000019d6689c085ae165831e934ff763ae46a2a172b3f1b60a8ce26f",
+      "required_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
       "status": "PENDING_ACCEPTANCE",
       "rule": "The application must locate and verify this genesis manifest. An authenticated identity must accept the initial propagation reference before the application enables the creation of the first request in logical block 1."
     },
