@@ -214,6 +214,11 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             self.assertTrue(all(services[index].find_request(request_a["request_id"]) is not None for index in (1, 2)),
                             "Node A's public request did not synchronize to B and C.")
 
+            self.assertEqual(services[1].current_manifest()["sequence"], 2)
+            self.assertEqual(len(services[1].current_manifest()["requests"]), 2)
+            self.assertEqual(services[2].current_manifest()["sequence"], 1)
+            self.assertEqual(len(services[2].current_manifest()["requests"]), 2)
+
             evidence = services[2].create_request_evidence(
                 request_id=request_a["request_id"], outcome="exchange_completed",
                 evidence_type="exchange_result", description="Integration closure evidence.",
