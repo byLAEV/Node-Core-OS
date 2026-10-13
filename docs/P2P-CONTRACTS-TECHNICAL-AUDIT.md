@@ -177,7 +177,19 @@ Antes de escribir la aplicación, la siguiente tarea es cerrar la Fase 0 y luego
 
 No se afirma que P2P Contracts, sus manifiestos, OpenPGP ni su sincronización ya existan. Este documento fija la auditoría inicial y el orden de trabajo para construirlos mediante cambios pequeños y verificables.
 
-## 7. Regla de no regresión de HashPaper
+## 8. Requisito OpenPGP acordado: claves existentes y modo privado cifrado
+
+P2P Contracts no generará claves privadas OpenPGP nuevas, ni durante la instalación ni durante el uso de la aplicación. El usuario importará explícitamente una clave privada existente, que permanecerá local y no se publicará ni se incluirá en documentos, manifiestos, logs o contenido de IPFS.
+
+El usuario podrá registrar contactos importando sus claves públicas OpenPGP. La aplicación calculará y mostrará el fingerprint, validará el formato y permitirá compararlo por un canal independiente. Los contactos se conservarán localmente por defecto.
+
+Cuando el usuario seleccione **Privado**, el contenido de comunicación se cifrará mediante OpenPGP para las claves públicas de los destinatarios antes de salir del almacenamiento privado o publicarse en IPFS. No se permite fallback a texto claro: si faltan claves o falla el cifrado, el envío se detiene. La firma, cuando sea necesaria para acreditar autoría, se realiza con la clave privada existente que el remitente haya importado; cifrado y firma se validan por separado.
+
+La primera versión transparente seguirá publicando abiertamente solo el contenido marcado como público. El modo privado no debe colocar el texto en claro en manifiestos generales, índices, logs ni publicaciones IPFS. Los metadatos y los CIDs de paquetes cifrados también requieren minimización.
+
+Este requisito se especifica en `docs/P2P-CONTRACTS-SCHEMAS.md`. Antes de implementar se evaluará una biblioteca OpenPGP compatible con la plataforma objetivo. No se incorporará generación automática de claves ni se añadirá una dependencia criptográfica sin evaluación.
+
+## 9. Regla de no regresión de HashPaper
 
 Durante el desarrollo de P2P Contracts:
 
