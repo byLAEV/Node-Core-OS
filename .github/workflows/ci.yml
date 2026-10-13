@@ -78,7 +78,7 @@ jobs:
       - name: Run P2P Contracts unit tests
         run: |
           set -euo pipefail
-          python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+          python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v
 
   three-kubo-node-integration:
     name: Three independent Kubo nodes — P2P Contracts end-to-end
