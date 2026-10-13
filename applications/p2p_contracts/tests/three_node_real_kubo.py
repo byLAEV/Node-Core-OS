@@ -169,7 +169,7 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             for protocol in protocols:
                 protocol.start()
             time.sleep(1.0)
-            proposal = protocols[0].accept_new_propagation(None)
+            proposal = protocols[0].accept_new_propagation(None, require_owner_request=True)
             status = protocols[1].query_status(wait_seconds=2.0)
             self.assertTrue(status["responses"], "Node B did not receive any peer status responses.")
             self.assertTrue(any(item.get("proposal_hash") == proposal["proposal_hash"]
@@ -186,22 +186,25 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             acknowledgement = protocols[1].submit_request(proposal, request_b_doc, wait_seconds=5.0)
             self.assertTrue(acknowledgement.get("accepted"), acknowledgement.get("reason"))
 
+            request_a = services[0].create_btc_exchange_request(
+                btc_amount="0.025", receive_asset="EUR", receive_amount="700",
+                receive_network="SEPA", description="Three-node integration request from A",
+                contacts=[{"type": "email", "value": "node-a@example.invalid"}],
+                publish_identity=False, defer_manifest=True,
+            )
+            request_a_doc = json.loads(Path(request_a["request_path"]).read_text(encoding="utf-8"))
             state = protocols[0]._state()
             from datetime import timedelta
             state["send_enabled_at"] = timestamp(utc_now() - timedelta(seconds=1))
             state["lease_expires_at"] = timestamp(utc_now() + timedelta(seconds=30))
             protocols[0]._save_state(state)
             self.assertEqual(protocols[0].current_state()["status"], "READY_TO_SUBMIT")
+            finalized = protocols[0].finalize_propagation(request_a_doc)
+            self.assertEqual(finalized["batch_request_count"], 2)
+            self.assertTrue(finalized["owner_request_sent"])
+            self.assertEqual(services[0].current_manifest()["sequence"], 1)
+            self.assertEqual(len(services[0].current_manifest()["requests"]), 2)
             self.assertIsNotNone(services[0].find_request(request_b["request_id"]))
-
-            request_a = services[0].create_btc_exchange_request(
-                btc_amount="0.025", receive_asset="EUR", receive_amount="700",
-                receive_network="SEPA", description="Three-node integration request from A",
-                contacts=[{"type": "email", "value": "node-a@example.invalid"}],
-                publish_identity=False,
-            )
-            request_a_doc = json.loads(Path(request_a["request_path"]).read_text(encoding="utf-8"))
-            protocols[0].publish_request(request_a_doc)
 
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
