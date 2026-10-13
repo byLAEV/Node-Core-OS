@@ -98,7 +98,7 @@ validate_installed_application_for_recovery() {
 
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+    python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v
   )
 }
 
@@ -466,7 +466,7 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
 print("Node Core OS version:", version)
 PY
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
-  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v); then
+  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v); then
     printf 'P2P Contracts tests failed after update; refusing to mark the update successful.\n' >&2
     return 1
   fi
