@@ -533,9 +533,9 @@ jobs:
             alias: synthetic-node-c
             document_number: TEST-UBUNTU-C-3003
     env:
-      NODE_CORE_HOME: ${{ github.workspace }}/.node-core-e2e-${{ matrix.node }}
-      NODE_CORE_DATA_DIR: ${{ github.workspace }}/.node-core-e2e-${{ matrix.node }}/.node-core
-      NODE_CORE_CONFIG: ${{ github.workspace }}/.node-core-e2e-${{ matrix.node }}/.node-core/config.json
+      NODE_CORE_HOME: ${{ github.workspace }}/../node-core-e2e-${{ matrix.node }}
+      NODE_CORE_DATA_DIR: ${{ github.workspace }}/../node-core-e2e-${{ matrix.node }}/.node-core
+      NODE_CORE_CONFIG: ${{ github.workspace }}/../node-core-e2e-${{ matrix.node }}/.node-core/config.json
 
     steps:
       - name: Checkout release source
