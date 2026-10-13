@@ -136,26 +136,101 @@ jobs:
         run: |
           set -euo pipefail
           ids_file="$RUNNER_TEMP/expected-node-ids.txt"
+          debug_log="$RUNNER_TEMP/ids-debug.log"
           : > "$ids_file"
+          : > "$debug_log"
+
           for node in node-a node-b node-c; do
+            {
+              printf '\n==== %s ====\n' "$node"
+              docker exec "$node" su - nodeuser -c '
+                set +e
+                id
+                printf "\\n-- identity directory --\\n"
+                ls -ld "$HOME/.node-core/identity" 2>&1
+                printf "\\n-- profile metadata --\\n"
+                ls -l "$HOME/.node-core/identity/profile.json" 2>&1
+                printf "\\n-- profile fields (synthetic test data only) --\\n"
+                if [ -r "$HOME/.node-core/identity/profile.json" ]; then
+                  python3 - "$HOME/.node-core/identity/profile.json" <<'"'"'PY'"'"'
+          import json, sys
+          from pathlib import Path
+          p = Path(sys.argv[1])
+          try:
+              d = json.loads(p.read_text(encoding="utf-8"))
+              for key in ("schema_version", "identity_id", "identity_status", "full_name",
+                          "alias", "document_type", "document_number", "node_id"):
+                  print(f"{key}={d.get(key)!r}")
+          except Exception as exc:
+              print(f"PROFILE_DIAGNOSTIC_ERROR={type(exc).__name__}: {exc}")
+          PY
+                else
+                  echo PROFILE_MISSING_OR_UNREADABLE
+                fi
+                printf "\\n-- saved Kubo peer ID --\\n"
+                cat "$HOME/ipfs-id.json" 2>&1
+              '
+            } >> "$debug_log" 2>&1 || true
+
             docker exec "$node" su - nodeuser -c 'python3 -' <<'PY' | tee -a "$ids_file"
           import json
+          import sys
+          import traceback
           from pathlib import Path
-          home = Path.home()
-          profile_path = home / ".node-core/identity/profile.json"
-          profile = json.loads(profile_path.read_text())
-          ipfs = json.loads((home / "ipfs-id.json").read_text())
-          assert profile["identity_status"] == "declared"
-          assert profile["node_id"] == ipfs["ID"], "identity is not associated with this Kubo node"
-          assert profile["full_name"].startswith("Synthetic QA Node ")
-          assert profile["document_number"].startswith("TEST-DOC-")
-          assert profile_path.stat().st_mode & 0o077 == 0, "identity profile permissions are too broad"
-          print(profile["identity_id"] + " " + profile["node_id"] + " " + profile["document_number"])
+
+          try:
+              home = Path.home()
+              profile_path = home / ".node-core" / "identity" / "profile.json"
+              ipfs_path = home / "ipfs-id.json"
+              if not profile_path.is_file():
+                  raise FileNotFoundError(f"profile missing: {profile_path}")
+              if not ipfs_path.is_file():
+                  raise FileNotFoundError(f"Kubo peer ID file missing: {ipfs_path}")
+
+              profile = json.loads(profile_path.read_text(encoding="utf-8"))
+              ipfs = json.loads(ipfs_path.read_text(encoding="utf-8"))
+              identity_id = str(profile.get("identity_id", "")).strip()
+              node_id = str(profile.get("node_id", "")).strip()
+              document_number = str(profile.get("document_number", "")).strip()
+              expected_peer_id = str(ipfs.get("ID", "")).strip()
+
+              if profile.get("identity_status") != "declared":
+                  raise ValueError(f"identity_status expected 'declared', got {profile.get('identity_status')!r}")
+              if not identity_id:
+                  raise ValueError("identity_id is missing or empty")
+              if not expected_peer_id:
+                  raise ValueError("Kubo ID is missing or empty")
+              if node_id != expected_peer_id:
+                  raise ValueError(f"node_id does not match Kubo peer ID (node_id={node_id!r})")
+              if not str(profile.get("full_name", "")).startswith("Synthetic QA Node "):
+                  raise ValueError("full_name does not match expected synthetic test identity")
+              if not document_number.startswith("TEST-DOC-"):
+                  raise ValueError("document_number does not match expected synthetic test document")
+              if profile_path.stat().st_mode & 0o077:
+                  raise PermissionError(f"profile permissions are too broad: {oct(profile_path.stat().st_mode & 0o777)}")
+              print(f"OK {identity_id} {node_id} {document_number}")
+          except Exception as exc:
+              print(f"ERROR {type(exc).__name__}: {exc}")
+              traceback.print_exc(file=sys.stderr)
+              sys.exit(1)
           PY
           done
-          test "$(awk '{print $1}' "$ids_file" | sort -u | wc -l)" -eq 3
-          test "$(awk '{print $2}' "$ids_file" | sort -u | wc -l)" -eq 3
-          test "$(awk '{print $3}' "$ids_file" | sort -u | wc -l)" -eq 3
+
+          echo "---- identity verification output ----"
+          cat "$ids_file" || true
+          echo "---- per-node identity diagnostics ----"
+          cat "$debug_log" || true
+
+          # Only successful records are counted; ERROR lines never count as identities.
+          good_lines="$(grep -E '^OK [^ ]+ [^ ]+ TEST-DOC-[^ ]+$' "$ids_file" || true)"
+          printf '%s\n' "$good_lines"
+          good_count="$(printf '%s\n' "$good_lines" | awk 'NF {print $2}' | sort -u | wc -l)"
+          good_count_nodes="$(printf '%s\n' "$good_lines" | awk 'NF {print $3}' | sort -u | wc -l)"
+          good_count_docs="$(printf '%s\n' "$good_lines" | awk 'NF {print $4}' | sort -u | wc -l)"
+          echo "unique_identity_ids=$good_count unique_node_ids=$good_count_nodes unique_document_numbers=$good_count_docs"
+          test "$good_count" -eq 3
+          test "$good_count_nodes" -eq 3
+          test "$good_count_docs" -eq 3
 
       - name: Connect the three installed Kubo nodes over the Docker network
         run: |
