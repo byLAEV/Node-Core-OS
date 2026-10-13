@@ -300,6 +300,8 @@ jobs:
           done
           cp "$RUNNER_TEMP"/node-*-install.log "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
           cp "$RUNNER_TEMP"/node-*-first-boot.log "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/ids-debug.log" "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/expected-node-ids.txt" "$RUNNER_TEMP/node-core-e2e-logs/" 2>/dev/null || true
 
       - name: Upload three-node test evidence
         if: always()
