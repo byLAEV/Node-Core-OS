@@ -163,6 +163,20 @@ class PropagationTests(unittest.TestCase):
         self.assertEqual(self.protocol._pending_requests, [])
         self.assertEqual(service.import_calls, 1, "Retry must reuse the saved manifest, not create another one.")
 
+    def test_listener_stdout_closed_during_shutdown_does_not_raise(self):
+        class ClosedStdout:
+            def __iter__(self):
+                raise ValueError("I/O operation on closed file")
+
+        class StoppedListener:
+            stdout = ClosedStdout()
+            def poll(self):
+                return 0
+
+        self.protocol._listener = StoppedListener()
+        self.protocol._read_loop()
+        self.assertEqual(self.protocol._listener_errors, [])
+
     def test_ten_minute_window_is_exact(self):
         self.assertEqual(WINDOW_SECONDS, 600)
         now = utc_now().replace(microsecond=0)
