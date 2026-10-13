@@ -596,38 +596,58 @@ def main():
             raise AssertionError(f"{role} did not import the four-request manifest for scenario 2.")
 
         if role == "node-a":
-            evidence2 = service.create_request_evidence(
-                request_id=request_b2_id,
-                outcome="exchange_completed",
-                evidence_type="exchange_result",
-                description="Synthetic evidence created by independent Ubuntu node A in scenario 2.",
-                reporter_statement="Node A verified the rotated-proposer cross-VM scenario.",
-                target_node_id=next(item["peer_id"] for item in load_peer_endpoints(args.peer_file, role)
-                                    if item["node"] == "node-b"),
-                rating=5,
+            # Exercise the same closure/reputation form in the rotated-role scenario.
+            cli_a = P2PContractsCLI(runtime)
+            cli_a.service = service
+            cli_a.propagation = protocol
+            target_node_id = next(
+                item["peer_id"] for item in load_peer_endpoints(args.peer_file, role)
+                if item["node"] == "node-b"
             )
-            evidence_path2 = runtime.storage.path("p2p_contracts/evidence") / f"{evidence2['evidence_id']}.json"
-            evidence_document2 = json.loads(evidence_path2.read_text(encoding="utf-8"))
-            published2 = protocol.publish_evidence(
-                evidence_document2, service.current_manifest(), wait_seconds=5.0
+            closure_answers2 = iter([
+                request_b2_id,
+                target_node_id,
+                "5",
+                "exchange_completed",
+                "Synthetic evidence created by independent Ubuntu node A in scenario 2.",
+                "Node A verified the rotated-proposer cross-VM scenario.",
+                "y",
+            ])
+            closure_output2 = io.StringIO()
+            with patch("builtins.input", side_effect=closure_answers2), redirect_stdout(closure_output2):
+                cli_a.create_closure_form()
+            closure_text2 = closure_output2.getvalue()
+            evidence_line2 = next(
+                (line for line in closure_text2.splitlines() if line.startswith("Evidence ID: ")),
+                None,
             )
-            accepted2 = {
-                item.get("sender_node_id")
-                for item in published2.get("peer_acknowledgements", [])
-                if item.get("accepted") is True
-            }
-            if not expected_peer_ids.issubset(accepted2):
+            if evidence_line2 is None:
+                raise AssertionError(f"Node A second closure form did not create evidence: {closure_text2}")
+            evidence_id2 = evidence_line2.split(":", 1)[1].strip()
+            ack_line2 = next(
+                (line for line in closure_text2.splitlines()
+                 if line.startswith("Evidence broadcast acknowledgements: ")),
+                None,
+            )
+            if ack_line2 is None or int(ack_line2.rsplit(" ", 1)[1]) < 2:
                 raise AssertionError(
-                    f"Node A did not receive positive evidence acknowledgements from B and C: {published2!r}"
+                    f"Node A second closure form did not report acknowledgements from peers: {closure_text2}"
                 )
+            found_after_closure2 = service.find_request(request_b2_id)
+            if not found_after_closure2 or not any(
+                item.get("evidence_id") == evidence_id2
+                and item.get("verification_status") == "self_reported_unverified"
+                for item in found_after_closure2.get("evidence", [])
+            ):
+                raise AssertionError("Node A second closure form evidence is not present in its local request view.")
             final_manifest2 = service.current_manifest()
             protocol._publish(
                 "TEST_EVIDENCE_EXPECTED_2",
                 request_b2_id=request_b2_id,
-                evidence_id=evidence2["evidence_id"],
+                evidence_id=evidence_id2,
                 manifest_hash=final_manifest2["manifest_hash"],
             )
-            summary["scenario2_evidence_id"] = evidence2["evidence_id"]
+            summary["scenario2_evidence_id"] = evidence_id2
             summary["scenario2_final_manifest_hash"] = final_manifest2["manifest_hash"]
         else:
             event_evidence2 = wait_until(
