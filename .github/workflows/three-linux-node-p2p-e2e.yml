@@ -84,7 +84,7 @@ jobs:
           test -n "$ID_A" && test -n "$ID_B" && test -n "$ID_C"
           test -n "$PEER_A" && test -n "$PEER_B" && test -n "$PEER_C"
           test -n "$MACHINE_A" && test -n "$MACHINE_B" && test -n "$MACHINE_C"
-          test "$(printf '%s\\n' "$MACHINE_A" "$MACHINE_B" "$MACHINE_C" | sort -u | wc -l)" -eq 3 || {
+          test "$(printf '%s\n' "$MACHINE_A" "$MACHINE_B" "$MACHINE_C" | sort -u | wc -l)" -eq 3 || {
             echo "ERROR: runners are not three distinct Ubuntu operating systems (machine fingerprints duplicate)." >&2
             exit 1
           }
