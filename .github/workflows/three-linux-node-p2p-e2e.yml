@@ -152,18 +152,7 @@ jobs:
                 ls -l "$HOME/.node-core/identity/profile.json" 2>&1
                 printf "\\n-- profile fields (synthetic test data only) --\\n"
                 if [ -r "$HOME/.node-core/identity/profile.json" ]; then
-                  python3 - "$HOME/.node-core/identity/profile.json" <<'"'"'PY'"'"'
-          import json, sys
-          from pathlib import Path
-          p = Path(sys.argv[1])
-          try:
-              d = json.loads(p.read_text(encoding="utf-8"))
-              for key in ("schema_version", "identity_id", "identity_status", "full_name",
-                          "alias", "document_type", "document_number", "node_id"):
-                  print(f"{key}={d.get(key)!r}")
-          except Exception as exc:
-              print(f"PROFILE_DIAGNOSTIC_ERROR={type(exc).__name__}: {exc}")
-          PY
+                  cat "$HOME/.node-core/identity/profile.json"
                 else
                   echo PROFILE_MISSING_OR_UNREADABLE
                 fi
