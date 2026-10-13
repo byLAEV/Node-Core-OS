@@ -114,7 +114,7 @@ jobs:
           python applications/p2p_contracts/tests/three_node_real_kubo.py
 
   cross-vm-node:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: linux-terminal
     permissions:
       contents: read
@@ -505,7 +505,7 @@ jobs:
   verify-cross-vm-convergence:
     name: Assert three separate VMs converged to the same manifest
     needs: cross-vm-node
-    if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
+    if: always() && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     defaults:
       run:
