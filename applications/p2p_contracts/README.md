@@ -1,31 +1,45 @@
-# Node Core OS P2P Contracts
+# Node Core OS P2P Contracts — Version 0.1 (development)
 
-## Estado
+## Status
 
-Primera prueba local en desarrollo. Incluye un formulario de solicitud pública de intercambio BTC por otro activo, documentos JSON con hashes, manifiesto local encadenado, registro local de evidencias y consulta por ID. Todavía no transmite mensajes entre nodos ni publica documentos en IPFS.
+This is an experimental development version. The terminal interface is in English. It supports local BTC-for-asset request records, request evidence with reputation ratings, local ID search, and an experimental Kubo PubSub propagation status/ten-minute timer.
 
-## Primera función
+## Main menu
 
-El formulario permite indicar la cantidad de BTC ofrecida, el activo y la cantidad que se desea recibir, la red correspondiente, la descripción de condiciones y uno o varios métodos de contacto. Los tipos de contacto admitidos son correo electrónico, teléfono, clave pública PGP, oficina, protocolo externo u otro.
+1. Create Public Request
+2. Create Private Request (disabled; OpenPGP is not implemented)
+3. Create Request Closure
+4. Search Request ID
 
-El identificador técnico del nodo se obtiene de la identidad de Kubo. Si existe un perfil de identidad local, sus campos se muestran para que el usuario seleccione cuáles autoriza a incluir. La solicitud no debe publicarse ni compartirse sin consentimiento explícito sobre los datos que contiene.
+The application requires the operator to consent to local use of the existing Node Core OS identity profile before entering the menu. Each public request separately asks which identity fields may be included. No private key is requested or generated.
 
-Esta versión guarda los documentos y el manifiesto únicamente en el almacenamiento local de Node Core OS. No está visible para otros nodos todavía.
+## Public request flow
 
-## Evidencia y consulta
+The submenu offers:
+- Check Propagation Hash Status
+- Accept a New Propagation Hash
+- View Propagation Status
+- Create BTC Exchange Request (locked until the local ten-minute timestamp)
 
-La aplicación permite agregar un registro de respuesta o resultado vinculado por el ID de solicitud. La consulta por ID busca en el manifiesto local, verifica los hashes de la solicitud y de las evidencias relacionadas y muestra si la solicitud sigue abierta o tiene un resultado final registrado.
+The propagation module uses Kubo PubSub topic node-core-os/p2p-contracts/propagation/v1. PubSub is experimental and must already be enabled in the user's Kubo configuration (Pubsub.Enabled=true), then Kubo must be restarted. This app does not modify Kubo configuration automatically.
 
-Los resultados son declaraciones no verificadas. Un resultado marcado como intercambio completado significa que alguien registró esa declaración; no prueba por sí solo que se haya liquidado una transferencia de BTC u otro activo.
+## Critical limitations
 
-## Almacenamiento
+This version is not a production consensus protocol. PubSub messages are untrusted claims, not signed consensus certificates. There is no global validator membership, quorum, authenticated authorization, complete lease recovery, or proof that every network node observed the same proposal. No peer responses are not proof that a proposal is absent.
 
-Los documentos se guardan bajo la raíz de almacenamiento de Node Core OS, en los directorios p2p_contracts/requests, p2p_contracts/evidence y p2p_contracts/manifests. No se guardan dentro del árbol de código que reemplaza el actualizador.
+The timer unlocks local form creation after ten minutes. This version does NOT yet route submitted requests to the currently active remote proposer, automatically merge remote requests into the trusted local manifest, or guarantee that a node is globally exclusive. Requests created in this version are marked LOCAL_ONLY. Do not use this prototype to coordinate financial settlement or to assert verified reputation.
 
-## Ejecutar las pruebas
+## Closure evidence and search
 
-Desde la raíz del repositorio:
+Closure records include request ID, reporter node ID, evaluated counterparty node ID, rating (1–5), declared final state, description and timestamp. Evidence is self-reported and unverified. The search checks the local manifest and validates the stored request/evidence hashes.
+
+## Storage and tests
+
+Data is stored under the configured Node Core OS local storage path in p2p_contracts/.
+
+Run from the repository root:
 
     python -m unittest applications.p2p_contracts.tests.test_service
+    python -m unittest applications.p2p_contracts.tests.test_propagation
 
-Las pruebas deben ejecutarse en el entorno real de desarrollo antes de afirmar que pasan. La publicación IPFS, la propagación entre nodos y los instaladores quedan para fases posteriores.
+No BTC or other asset transaction is executed. HashPaper is unchanged. Installer integration is not included in this PR.

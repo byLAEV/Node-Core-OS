@@ -769,7 +769,7 @@ class MainMenu:
             print("\nApplications\nbyLAEV\n")
             print("0. Back")
             print("1. HashPaper for Node Core OS")
-            print("2. P2P Contracts — BTC exchange request (local prototype)")
+            print("2. P2P Contracts — BTC Exchange and Reputation (development prototype)")
             choice = input("\n> ").strip()
             if choice == "0":
                 return

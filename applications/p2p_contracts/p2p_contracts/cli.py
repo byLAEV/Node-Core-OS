@@ -1,6 +1,11 @@
-"""Terminal forms for the initial local BTC exchange request prototype."""
+""""English terminal interface for Node Core OS P2P Contracts v0.1."""
+from datetime import datetime, timezone
+import time
 from typing import Any
 
+from applications.p2p_contracts.p2p_contracts.propagation import (
+    PropagationProtocol, PubSubUnavailable, parse_timestamp,
+)
 from applications.p2p_contracts.p2p_contracts.service import P2PContractsError, P2PContractsService
 
 
@@ -8,6 +13,7 @@ class P2PContractsCLI:
     def __init__(self, runtime: Any) -> None:
         self.runtime = runtime
         self.service = P2PContractsService(runtime.storage, runtime.identity_profile, runtime.network)
+        self.propagation = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo)
 
     @staticmethod
     def _ask(label: str, optional: bool = False) -> str:
@@ -16,163 +22,240 @@ class P2PContractsCLI:
             raise ValueError(f"{label} is required.")
         return value
 
-    def run(self) -> None:
-        while True:
-            print("\nNode Core OS — P2P Contracts (prototipo local)\n")
-            print("1. Crear solicitud pública de intercambio BTC")
-            print("2. Añadir evidencia o resultado a una solicitud")
-            print("3. Buscar solicitud por ID")
-            print("4. Ver manifiesto local actual")
-            print("0. Volver")
-            choice = input("\n> ").strip()
-            if choice == "0":
-                return
-            try:
-                if choice == "1":
-                    self.create_request_form()
-                elif choice == "2":
-                    self.create_evidence_form()
-                elif choice == "3":
-                    self.search_request_form()
-                elif choice == "4":
-                    self.show_manifest()
-                else:
-                    print("Elige una opción disponible.")
-                    continue
-            except (ValueError, P2PContractsError, OSError, RuntimeError) as exc:
-                print(f"Operación no completada: {exc}")
-            input("\nPulsa Enter para continuar...")
+    @staticmethod
+    def _yes(prompt: str) -> bool:
+        return input(f"{prompt} [y/N]: ").strip().lower() in {"y", "yes"}
 
-    def create_request_form(self) -> None:
+    def run(self) -> None:
+        print("\nNODE CORE OS — P2P CONTRACTS")
         profile = self.runtime.identity_profile.load()
         node = self.runtime.network.identity()
-        print("\nSOLICITUD PÚBLICA: INTERCAMBIO BTC")
-        print(f"ID técnico del nodo: {node.peer_id}")
-        if node.addresses:
-            print("Direcciones técnicas del nodo que se guardarán en la solicitud:")
-            for address in node.addresses:
-                print(f"  {address}")
-        available_keys = []
-        if profile:
-            print("Perfil de identidad local encontrado. Campos disponibles para publicar:")
-            for key in ("identity_id", "full_name", "alias", "nationality", "issuing_country",
-                        "document_type", "document_number", "birth_date", "height_cm", "gender"):
-                if profile.get(key) not in (None, ""):
-                    available_keys.append(key)
-                    print(f"  {key}: {profile[key]}")
-        else:
-            print("No hay perfil de identidad local; se usará únicamente el ID técnico del nodo.")
+        print(f"Node ID: {node.peer_id}")
+        if not profile:
+            print("No local identity profile was found. Create one in Node Core OS first.")
+            input("Press Enter to return...")
+            return
+        print("\nIdentity fields available to this application:")
+        for key in ("identity_id", "full_name", "alias"):
+            if profile.get(key):
+                print(f"  {key}: {profile[key]}")
+        if not self._yes("Do you accept that P2P Contracts may use your existing Node Core OS identity locally?"):
+            print("Identity consent was not granted. Returning to Node Core OS.")
+            return
+        try:
+            while True:
+                print("\n========================================")
+                print("       NODE CORE OS P2P CONTRACTS")
+                print("========================================")
+                print("1. Create Public Request")
+                print("2. Create Private Request (not available yet)")
+                print("3. Create Request Closure")
+                print("4. Search Request ID")
+                print("0. Exit P2P Contracts")
+                choice = input("\nSelect an option: ").strip()
+                try:
+                    if choice == "0":
+                        return
+                    if choice == "1":
+                        self.public_request_menu()
+                    elif choice == "2":
+                        print("Private requests are disabled until OpenPGP encryption is implemented and tested.")
+                    elif choice == "3":
+                        self.create_closure_form()
+                    elif choice == "4":
+                        self.search_request_form()
+                    else:
+                        print("Choose an available option.")
+                except (ValueError, P2PContractsError, PubSubUnavailable, OSError, RuntimeError) as exc:
+                    print(f"Operation not completed: {exc}")
+                input("\nPress Enter to continue...")
+        finally:
+            self.propagation.stop()
 
-        publish_identity = False
-        identity_fields = set()
-        if profile and available_keys:
-            consent = input(
-                "¿Autorizas incluir en la solicitud los campos de identidad que selecciones? [s/N]: "
-            ).strip().lower()
-            publish_identity = consent in {"s", "si", "sí", "y", "yes"}
-            if publish_identity:
-                selected = input("Campos a publicar separados por coma (Enter = todos los mostrados): ").strip()
-                identity_fields = set(available_keys) if not selected else {
-                    item.strip() for item in selected.split(",") if item.strip()
-                }
-                unknown = identity_fields - set(available_keys)
-                if unknown:
-                    raise ValueError(f"Campos de identidad no disponibles: {', '.join(sorted(unknown))}")
-
-        print("\nContacto público: añade al menos un método. Estos valores se guardarán en la solicitud.")
-        contacts = []
+    def public_request_menu(self) -> None:
         while True:
-            print("Tipos: email, phone, pgp_public_key, office, external_protocol, other")
-            kind = self._ask("Tipo de contacto (Enter para terminar)", optional=True).lower()
+            state = self.propagation.current_state()
+            print("\n--- CREATE PUBLIC REQUEST ---")
+            print("1. Check Propagation Hash Status")
+            print("2. Accept a New Propagation Hash")
+            print("3. View Propagation Status")
+            enabled = bool(state and state.get("status") == "READY_TO_SUBMIT")
+            print(f"4. Create BTC Exchange Request ({'ENABLED' if enabled else 'LOCKED'})")
+            print("0. Back")
+            choice = input("\nSelect an option: ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self.check_propagation_status()
+            elif choice == "2":
+                self.accept_propagation()
+            elif choice == "3":
+                self.show_propagation_status()
+            elif choice == "4":
+                state = self.propagation.current_state()
+                if not state or state.get("status") != "READY_TO_SUBMIT":
+                    print("Submission is locked. A locally accepted propagation must reach its enabled timestamp first.")
+                else:
+                    self.create_request_form()
+            else:
+                print("Choose an available option.")
+
+    def check_propagation_status(self) -> None:
+        print("\nChecking local state and requesting status from PubSub peers...")
+        result = self.propagation.query_status()
+        print(f"Status: {result['status']}")
+        print(f"Peer responses: {len(result['responses'])}")
+        if result["active_proposals"]:
+            for proposal in result["active_proposals"]:
+                print(f"Proposal hash: {proposal.get('proposal_hash')}")
+                print(f"Proposing node: {proposal.get('proposer_node_id')}")
+                print(f"Proposal state: {proposal.get('status')}")
+            print("Remote claims are UNVERIFIED. This prototype cannot establish global consensus.")
+        elif result["status"] == "NO_NODE_RESPONSES":
+            print("No peer responded. Do not treat this as proof that no proposal exists.")
+        else:
+            print("No active proposal was reported by the responding peers. This is not a global consensus certificate.")
+
+    def accept_propagation(self) -> None:
+        result = self.propagation.query_status()
+        if result["active_proposals"]:
+            print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
+            print("Verify the proposal manually; remote acceptance and request routing are not implemented yet.")
+            return
+        if not result["responses"]:
+            print("Cannot safely accept a propagation: no peer responded. A local timeout is not proof of network-wide availability.")
+            return
+        manifest = self.service.current_manifest()
+        parent_hash = manifest.get("manifest_hash") if manifest else None
+        print("No active proposal was reported by the responding peers.")
+        print("WARNING: this experimental version cannot prove global absence or enforce a network-wide exclusive lease.")
+        if not self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?"):
+            print("Propagation acceptance cancelled.")
+            return
+        state = self.propagation.accept_new_propagation(parent_hash)
+        print("\nPROPAGATION ACCEPTED")
+        print(f"Propagation hash: {state['proposal_hash']}")
+        print(f"Accepted at: {state['accepted_at']}")
+        print(f"Request submission enabled at: {state['send_enabled_at']}")
+        print("The ten-minute waiting period has started.")
+        print("Keep Node Core OS and Kubo running. This is a prototype lease, not global consensus.")
+
+    def show_propagation_status(self) -> None:
+        state = self.propagation.current_state()
+        if not state:
+            print("No local propagation has been accepted.")
+            return
+        print(f"Propagation hash: {state['proposal_hash']}")
+        print(f"Proposer node: {state['proposer_node_id']}")
+        print(f"Status: {state['status']}")
+        print(f"Accepted at: {state['accepted_at']}")
+        print(f"Submission enabled at: {state['send_enabled_at']}")
+        if state["status"] == "ACCEPTED":
+            remaining = max(0, int((parse_timestamp(state["send_enabled_at"]) - datetime.now(timezone.utc)).total_seconds()))
+            print(f"Time remaining: {remaining // 60:02d}:{remaining % 60:02d}")
+            print("The request form remains locked until the timestamp.")
+        elif state["status"] == "READY_TO_SUBMIT":
+            print("The local timer has elapsed. The form is enabled, but distributed submission/remote manifest merging is not implemented yet.")
+        elif state["status"] == "CANCELLED":
+            print(f"Cancellation reason: {state.get('cancel_reason', 'Not specified')}")
+
+    def create_request_form(self) -> None:
+        profile = self.runtime.identity_profile.load() or {}
+        node = self.runtime.network.identity()
+        print("\n--- PUBLIC BTC EXCHANGE REQUEST ---")
+        print(f"Node ID: {node.peer_id}")
+        for address in node.addresses:
+            print(f"Node address: {address}")
+        available = [key for key in ("identity_id", "full_name", "alias", "nationality", "issuing_country",
+                                     "document_type", "document_number") if profile.get(key) not in (None, "")]
+        selected = set()
+        if available and self._yes("Include selected personal identity fields in this PUBLIC request?"):
+            print("Available fields: " + ", ".join(available))
+            raw = self._ask("Fields to publish (comma-separated; Enter selects none)", optional=True)
+            selected = {item.strip() for item in raw.split(",") if item.strip()}
+            unknown = selected - set(available)
+            if unknown:
+                raise ValueError("Unknown identity fields: " + ", ".join(sorted(unknown)))
+        contacts = []
+        print("Contact types: email, phone, pgp_public_key, office, external_protocol, other")
+        while True:
+            kind = self._ask("Contact type (Enter to finish)", optional=True).lower()
             if not kind:
                 break
-            contacts.append({"type": kind, "value": self._ask("Dato de contacto")})
-            more = input("¿Añadir otro método de contacto? [s/N]: ").strip().lower()
-            if more not in {"s", "si", "sí", "y", "yes"}:
+            contacts.append({"type": kind, "value": self._ask("Contact value")})
+            if not self._yes("Add another contact method?"):
                 break
         if not contacts:
-            raise ValueError("Debes añadir al menos un método de contacto.")
-        btc_amount = self._ask("Cantidad de BTC que ofreces")
-        receive_asset = self._ask("Moneda o activo que deseas recibir (por ejemplo USDT, EUR, ETH)")
-        receive_amount = self._ask("Cantidad del activo que solicitas")
-        receive_network = self._ask("Red del activo, si corresponde (Enter si no aplica)", optional=True)
-        description = self._ask("Condiciones y descripción de la solicitud")
-        print("\nRESUMEN")
-        print(f"BTC ofrecido: {btc_amount}")
-        print(f"Activo solicitado: {receive_amount} {receive_asset.upper()}")
-        print(f"Red: {receive_network or 'No especificada'}")
-        print(f"Métodos de contacto: {len(contacts)}")
-        print(f"Campos de identidad a incluir: {', '.join(sorted(identity_fields)) if publish_identity else 'ninguno'}")
-        print("La solicitud se guardará localmente. Esta versión aún no la propaga a otros nodos.")
-        confirm = input("¿Crear la solicitud y actualizar el manifiesto local? [s/N]: ").strip().lower()
-        if confirm not in {"s", "si", "sí", "y", "yes"}:
-            print("Operación cancelada; no se creó la solicitud.")
+            raise ValueError("At least one contact method is required.")
+        btc_amount = self._ask("BTC amount offered")
+        asset = self._ask("Asset to receive (e.g. USDT, EUR, ETH)")
+        receive_amount = self._ask("Amount of asset requested")
+        receive_network = self._ask("Asset network, if applicable", optional=True)
+        description = self._ask("Public exchange conditions")
+        print("\nSUMMARY")
+        print(f"Offer: {btc_amount} BTC")
+        print(f"Request: {receive_amount} {asset.upper()}")
+        print(f"Contact methods: {len(contacts)}")
+        print("Identity fields to publish: " + (", ".join(sorted(selected)) if selected else "none"))
+        if not self._yes("Create this request in the local append-only manifest?"):
+            print("Request creation cancelled.")
             return
         result = self.service.create_btc_exchange_request(
-            btc_amount=btc_amount, receive_asset=receive_asset, receive_amount=receive_amount,
+            btc_amount=btc_amount, receive_asset=asset, receive_amount=receive_amount,
             receive_network=receive_network, description=description, contacts=contacts,
-            publish_identity=publish_identity, identity_fields=identity_fields,
+            publish_identity=bool(selected), identity_fields=selected,
         )
-        print("\nSolicitud creada y guardada localmente.")
-        print(f"ID de solicitud: {result['request_id']}")
-        print(f"Hash de la solicitud: {result['request_hash']}")
-        print(f"Hash del manifiesto: {result['manifest_hash']}")
-        print(f"Secuencia del manifiesto: {result['manifest_sequence']}")
-        print(f"Ruta del manifiesto: {result['manifest_path']}")
-        print("Estado: LOCAL_ONLY — todavía no visible para otros nodos.")
+        print("Request saved locally.")
+        print(f"Request ID: {result['request_id']}")
+        print(f"Request hash: {result['request_hash']}")
+        print(f"Manifest hash: {result['manifest_hash']}")
+        print("Status: LOCAL_ONLY. Network request delivery and remote manifest merging are not implemented in v0.1.")
 
-    def create_evidence_form(self) -> None:
-        print("\nEVIDENCIA / RESULTADO DE SOLICITUD")
-        request_id = self._ask("ID de la solicitud")
-        print("Tipos: response, exchange_result, follow_up")
-        evidence_type = self._ask("Tipo de evidencia").lower()
-        print("Resultados: response_received, offer_received, no_response, exchange_completed, not_completed, cancelled, disputed")
-        outcome = self._ask("Resultado").lower()
-        description = self._ask("Descripción de lo ocurrido")
-        statement = self._ask("Declaración del informante")
-        reference = self._ask("Referencia externa opcional (CID, identificador o URL)", optional=True)
-        print("La evidencia se guardará como declaración propia no verificada.")
-        confirm = input("¿Añadir evidencia y actualizar el manifiesto local? [s/N]: ").strip().lower()
-        if confirm not in {"s", "si", "sí", "y", "yes"}:
-            print("Operación cancelada.")
+    def create_closure_form(self) -> None:
+        print("\n--- CREATE REQUEST CLOSURE / REPUTATION EVIDENCE ---")
+        request_id = self._ask("Request ID")
+        existing = self.service.find_request(request_id)
+        if existing is None:
+            raise ValueError("Request ID was not found in the local application manifest.")
+        target_node = self._ask("Evaluated counterparty node ID")
+        rating_text = self._ask("Rating from 1 to 5")
+        if not rating_text.isdigit() or not 1 <= int(rating_text) <= 5:
+            raise ValueError("Rating must be an integer from 1 to 5.")
+        print("Closure states: exchange_completed, not_completed, cancelled, disputed")
+        outcome = self._ask("Final request state").lower()
+        description = self._ask("Closure description")
+        statement = self._ask("Reporter statement")
+        print(f"Reporter node ID: {self.runtime.network.identity().peer_id}")
+        print(f"Evaluated node ID: {target_node}")
+        print(f"Rating: {rating_text}/5")
+        print(f"State: {outcome}")
+        if not self._yes("Record this self-reported closure evidence?"):
+            print("Closure cancelled.")
             return
         result = self.service.create_request_evidence(
-            request_id=request_id, outcome=outcome, evidence_type=evidence_type,
-            description=description, reporter_statement=statement, external_reference=reference,
+            request_id=request_id, outcome=outcome, evidence_type="exchange_result",
+            description=description, reporter_statement=statement,
+            target_node_id=target_node, rating=int(rating_text),
         )
-        print(f"Evidencia creada: {result['evidence_id']}")
-        print(f"Hash de evidencia: {result['evidence_hash']}")
-        print(f"Hash de manifiesto: {result['manifest_hash']}")
-        print(f"Resultado registrado: {result['outcome']} (no verificado)")
+        print(f"Evidence ID: {result['evidence_id']}")
+        print(f"Evidence hash: {result['evidence_hash']}")
+        print("Verification status: self_reported_unverified")
 
     def search_request_form(self) -> None:
-        request_id = self._ask("ID de la solicitud que deseas consultar")
+        request_id = self._ask("Request ID to search")
         result = self.service.find_request(request_id)
         if result is None:
-            print("No se encontró ese ID en el manifiesto local.")
-            print("Esta consulta todavía no busca en otros nodos.")
+            print("Request ID was not found in the local manifest. Remote search is not implemented yet.")
             return
         request = result["request"]
         exchange = request.get("exchange", {})
-        print("\nRESULTADO DE CONSULTA")
-        print(f"ID: {request['request_id']}")
-        print(f"Creada: {request.get('created_at')}")
-        print(f"BTC ofrecido: {exchange.get('give_amount')} BTC")
-        print(f"Activo solicitado: {exchange.get('receive_amount')} {exchange.get('receive_asset')}")
-        print(f"Estado derivado: {result['request_status']}")
-        print(f"Registros de evidencia: {len(result['evidence'])}")
-        for item in result["evidence"]:
-            print(f"- {item['evidence_id']}: {item['outcome']} | {item['verification_status']} | {item['created_at']}")
-        print(f"Hash del manifiesto: {result['manifest_hash']}")
-
-    def show_manifest(self) -> None:
-        manifest = self.service.current_manifest()
-        if manifest is None:
-            print("Todavía no existe un manifiesto local de P2P Contracts.")
-            return
-        print(f"Secuencia: {manifest['sequence']}")
-        print(f"Hash: {manifest['manifest_hash']}")
-        print(f"Hash anterior: {manifest['previous_manifest_hash']}")
-        print(f"Solicitudes: {len(manifest['requests'])}")
-        print(f"Registros de evidencia: {len(manifest['evidence'])}")
-        print("Este es el manifiesto local; no se ha sincronizado con la red.")
+        print("\n--- REQUEST SEARCH RESULT ---")
+        print(f"Request ID: {request['request_id']}")
+        print(f"Node ID: {request.get('node_id')}")
+        print(f"BTC offered: {exchange.get('give_amount')} BTC")
+        print(f"Asset requested: {exchange.get('receive_amount')} {exchange.get('receive_asset')}")
+        print(f"Derived state: {result['request_status']}")
+        print(f"Evidence records: {len(result['evidence'])}")
+        for evidence in result["evidence"]:
+            print(f"- {evidence['evidence_id']} | state={evidence['outcome']} | reporter={evidence.get('reporter_node_id')} | target={evidence.get('target_node_id')} | rating={evidence.get('rating')} | {evidence['verification_status']}")
+        print(f"Manifest hash: {result['manifest_hash']}")
