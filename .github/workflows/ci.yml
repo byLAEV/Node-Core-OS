@@ -500,6 +500,7 @@ jobs:
           if [[ -f "$NODE_CORE_DATA_DIR/runtime/kubo-cross-vm.pid" ]]; then
             kill "$(cat "$NODE_CORE_DATA_DIR/runtime/kubo-cross-vm.pid")" 2>/dev/null
           fi
+          exit 0
 
   verify-cross-vm-convergence:
     name: Assert three separate VMs converged to the same manifest
