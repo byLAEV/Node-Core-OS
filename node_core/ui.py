@@ -764,27 +764,31 @@ class MainMenu:
         """Launch applications shipped with the current Node Core OS code tree."""
         application_root = Path(__file__).resolve().parents[1]
         hashpaper_entry = application_root / "applications" / "hashpaper" / "main.py"
+        p2p_contracts_entry = application_root / "applications" / "p2p_contracts" / "main.py"
         while True:
             print("\nApplications\nbyLAEV\n")
             print("0. Back")
             print("1. HashPaper for Node Core OS")
+            print("2. P2P Contracts — BTC exchange request (local prototype)")
             choice = input("\n> ").strip()
             if choice == "0":
                 return
-            if choice != "1":
+            if choice not in {"1", "2"}:
                 print("Choose an available application.")
                 continue
-            if not hashpaper_entry.is_file():
-                print("HashPaper is not installed in this Node Core OS application tree.")
+            entry = hashpaper_entry if choice == "1" else p2p_contracts_entry
+            application_name = "HashPaper" if choice == "1" else "P2P Contracts"
+            if not entry.is_file():
+                print(f"{application_name} is not installed in this Node Core OS application tree.")
                 input("\n> ")
                 continue
             result = subprocess.run(
-                [sys.executable, str(hashpaper_entry)],
+                [sys.executable, str(entry)],
                 cwd=str(application_root),
                 check=False,
             )
             if result.returncode != 0:
-                print(f"HashPaper exited with status {result.returncode}.")
+                print(f"{application_name} exited with status {result.returncode}.")
                 input("\n> ")
 
     def network_nodes(self) -> None:
