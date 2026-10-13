@@ -2,6 +2,15 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.3.0] / Node Core P2P Contracts [1.0.0] - 2026-10-12
+
+- Include Node Core P2P Contracts in the default Node Core OS installation package.
+- Version P2P Contracts as 1.0.0 and Node Core OS as 1.3.0.
+- Make the installer fail clearly if the P2P Contracts entry point, CLI, version file, or tests are missing.
+- Validate the installed P2P Contracts version during installation.
+- Extend the Ubuntu 24.04 installer E2E workflow to verify that P2P Contracts 1.0.0 and its real-Kubo integration test are present in every clean installation.
+- Keep all install steps in the ordinary user's home directory; root and sudo are not used.
+
 ## Node Core OS [1.2.9] / HashPaper [0.3.5] - 2026-10-11
 
 - Release the combined HashPaper create-and-timestamp operation as a versioned update so existing installations can receive it through the Node Core OS updater or the HashPaper-only updater.

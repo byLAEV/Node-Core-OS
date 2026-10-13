@@ -1,8 +1,8 @@
-# Node Core OS P2P Contracts — Version 0.1 (development)
+# Node Core OS P2P Contracts — Version 1.0.0
 
 ## Status
 
-This is an experimental development version with an English terminal interface. It supports public BTC-for-asset requests, request closure/reputation evidence, local request search, and experimental Kubo PubSub synchronization between connected nodes.
+This is Node Core OS P2P Contracts version 1.0.0, bundled by default in Node Core OS 1.3.0. It has an English terminal interface. Some protocol capabilities remain experimental and are documented below. It supports public BTC-for-asset requests, request closure/reputation evidence, local request search, and experimental Kubo PubSub synchronization between connected nodes.
 
 ## Main menu
 
@@ -67,7 +67,7 @@ Run it with an installed Kubo CLI:
 
     IPFS_BIN="$(command -v ipfs)" python applications/p2p_contracts/tests/three_node_real_kubo.py
 
-GitHub Actions also runs this integration test using a pinned Kubo CLI version. Three local daemons on one machine prove application-level peer synchronization in that environment, but are not a substitute for testing three physically separate, already-installed Node Core OS devices.
+GitHub Actions also runs this integration test using a pinned Kubo CLI version. Three local daemons on one machine prove application-level peer synchronization in that environment, but are not a substitute for testing three physically separate, already-installed Node Core OS devices. The Node Core OS 1.3.0 installer includes this application, its CLI, version file and tests by default and rejects installation if the P2P Contracts 1.0.0 files are missing.
 
 ## Important limitations
 
