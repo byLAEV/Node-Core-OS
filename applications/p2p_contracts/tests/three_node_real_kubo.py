@@ -9,10 +9,13 @@ from pathlib import Path
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
 from types import SimpleNamespace
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from node_core.storage import StorageManager
 from applications.p2p_contracts.p2p_contracts.propagation import (
