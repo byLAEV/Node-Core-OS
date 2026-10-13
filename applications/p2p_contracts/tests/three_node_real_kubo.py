@@ -50,6 +50,13 @@ class RealKuboAdapter:
             capture_output=True, text=True, timeout=20,
         )
 
+    def pubsub_publish(self, topic, encoded):
+        subprocess.run(
+            [self.executable, "pubsub", "pub", topic, "-"],
+            env=self.env, input=encoded, text=True, capture_output=True,
+            check=True, timeout=15,
+        )
+
     def status(self):
         self._run("swarm", "peers")
         return SimpleNamespace(running=True)
