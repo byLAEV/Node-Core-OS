@@ -281,6 +281,7 @@ class P2PContractsCLI:
             btc_amount=btc_amount, receive_asset=asset, receive_amount=receive_amount,
             receive_network=receive_network, description=description, contacts=contacts,
             publish_identity=bool(selected), identity_fields=selected,
+            defer_manifest=remote_proposal is not None,
         )
         print("Request saved locally.")
         print(f"Request ID: {result['request_id']}")
@@ -296,7 +297,7 @@ class P2PContractsCLI:
                 print("Request remains saved locally but was NOT acknowledged by the propagation node.")
                 print(f"Reason: {acknowledgement.get('reason', 'No reason provided.')}")
         else:
-            broadcast = self.propagation.publish_request(request_document)
+            broadcast = self.propagation.publish_request(request_document, result["manifest_document"])
             print(f"Network acknowledgements received: {len(broadcast['peer_acknowledgements'])}")
             print("Request broadcast attempted. Peers without acknowledgements may not have imported it.")
         return True
@@ -389,7 +390,7 @@ class P2PContractsCLI:
         print("Verification status: self_reported_unverified")
         evidence_path = self.runtime.storage.path(f"p2p_contracts/evidence/{result['evidence_id']}.json")
         evidence_document = json.loads(evidence_path.read_text(encoding="utf-8"))
-        broadcast = self.propagation.publish_evidence(evidence_document)
+        broadcast = self.propagation.publish_evidence(evidence_document, result["manifest_document"])
         print(f"Evidence broadcast acknowledgements: {len(broadcast['peer_acknowledgements'])}")
         print("Remote nodes verify the evidence hash and import it only if the referenced request is already present.")
 
