@@ -48,6 +48,7 @@ class PropagationProtocol:
         self.pending_path = self.directory / "pending-requests.json"
         self._lock = threading.RLock()
         self._received = []
+        self._listener_errors = []
         self._pending_requests = []
         self._listener = None
         if self.messages_path.is_file():
@@ -117,7 +118,7 @@ class PropagationProtocol:
             self._listener = subprocess.Popen(
                 [self.kubo.executable, "--enc=json", "pubsub", "sub", TOPIC],
                 env=self.kubo._environment(), stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         except OSError as exc:
             raise PubSubUnavailable(f"Could not start PubSub listener: {exc}") from exc
         threading.Thread(target=self._read_loop, daemon=True, name="p2p-contracts-pubsub").start()
@@ -276,7 +277,10 @@ class PropagationProtocol:
                 if not self._remember(message):
                     continue
                 self._handle_message(message)
-            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError, RuntimeError):
+            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError, RuntimeError) as exc:
+                with self._lock:
+                    self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
+                    self._listener_errors = self._listener_errors[-20:]
                 continue
 
     def query_status(self, wait_seconds=3.0):
