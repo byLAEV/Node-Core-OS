@@ -6,9 +6,6 @@ on:
       node_name:
         required: true
         type: string
-      runner_label:
-        required: true
-        type: string
       full_name:
         required: true
         type: string
@@ -34,7 +31,7 @@ permissions:
 
 jobs:
   prepare:
-    runs-on: [self-hosted, linux, "${{ inputs.runner_label }}"]
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
       peer_id: ${{ steps.boot.outputs.peer_id }}
@@ -54,6 +51,16 @@ jobs:
           set -euo pipefail
           bash applications/p2p_contracts/tests/ci_user_node_boot.sh \
             "$NODE_NAME" "$FULL_NAME" "$ALIAS_NAME" "$DOCUMENT_NUMBER"
+      - name: Run shipped P2P Contracts regression with three real Kubo daemons
+        shell: bash
+        env:
+          IPFS_BIN: ${{ env.NODE_CORE_DATA_DIR }}/bin/ipfs
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          export NODE_CORE_DATA_DIR="$HOME/.node-core-p2p-e2e/$GITHUB_RUN_ID/${{ inputs.node_name }}"
+          test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
+          IPFS_BIN="$NODE_CORE_DATA_DIR/bin/ipfs" python3 applications/p2p_contracts/tests/three_node_real_kubo.py
       - name: Preserve per-node first-boot and application diagnostics
         if: always()
         uses: actions/upload-artifact@v4
