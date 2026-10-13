@@ -25,6 +25,9 @@ on:
       identity_id:
         description: Logical identity ID created in the BIOS form
         value: ${{ jobs.prepare.outputs.identity_id }}
+      machine_fingerprint:
+        description: SHA-256 fingerprint of the Ubuntu system machine ID
+        value: ${{ jobs.prepare.outputs.machine_fingerprint }}
 
 permissions:
   contents: read
@@ -36,6 +39,7 @@ jobs:
     outputs:
       peer_id: ${{ steps.boot.outputs.peer_id }}
       identity_id: ${{ steps.boot.outputs.identity_id }}
+      machine_fingerprint: ${{ steps.boot.outputs.machine_fingerprint }}
     steps:
       - uses: actions/checkout@v4
       - name: Install, start Kubo, complete BIOS identity, and open P2P Contracts as user
