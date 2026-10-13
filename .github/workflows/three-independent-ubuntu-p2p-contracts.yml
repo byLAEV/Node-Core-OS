@@ -561,10 +561,9 @@ jobs:
           fi
 
   verify-cross-vm-convergence:
-    if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
     name: Assert three separate VMs converged to the same manifest
     needs: cross-vm-node
-    if: always()
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     defaults:
       run:
