@@ -44,7 +44,7 @@ mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity" \
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
-printf '1.2.3\n' > "$release_root/Node-Core-OS-fixture/VERSION"
+printf '1.4.0\n' > "$release_root/Node-Core-OS-fixture/VERSION"
 printf 'print("updated HashPaper")\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/main.py"
 printf 'VALUE = "updated HashPaper CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper/cli.py"
 printf 'print("fixture P2P Contracts")\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/main.py"
@@ -138,13 +138,12 @@ printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
-grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
+grep -qx '1.4.0' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx 'IDENTITY_PROFILE_RELEASE = "1.2.2"' "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py"
 printf 'Updater happy-path application check passed.\\n'
 grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
-test -x "$NODE_CORE_DATA_DIR/bin/hashpaper"
-grep -q 'updated HashPaper' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
-grep -q 'updated HashPaper CLI' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/hashpaper/cli.py"
+test ! -e "$NODE_CORE_DATA_DIR/bin/hashpaper"
+test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
 printf 'Updater happy-path commit marker check passed.\\n'
 
 # Verify Kubo, its repository, local storage, and configuration remain untouched.
@@ -187,7 +186,7 @@ set -e
 test "$update_status" -ne 0
 grep -q 'Rolling back Node Core application' "$TEMP_ROOT/rollback.log"
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
-grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
+grep -qx '1.4.0' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 
 # A failed update must also preserve all persistent user data and Kubo assets.
