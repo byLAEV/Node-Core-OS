@@ -113,12 +113,15 @@ class PropagationTests(unittest.TestCase):
         })
 
         clock = {"value": 0.0}
-        def fast_monotonic():
-            clock["value"] += 0.1
-            return clock["value"]
+        def mocked_sleep(seconds):
+            clock["value"] += seconds
 
-        with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic", side_effect=fast_monotonic), \
-             patch("applications.p2p_contracts.p2p_contracts.propagation.time.sleep", return_value=None):
+        # Advance simulated time only when the protocol sleeps. This keeps deadline
+        # checks deterministic and allows an ACK appended during publish to be read.
+        with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic",
+                   side_effect=lambda: clock["value"]), \
+             patch("applications.p2p_contracts.p2p_contracts.propagation.time.sleep",
+                   side_effect=mocked_sleep):
             first = self.protocol.finalize_propagation()
 
         self.assertEqual(first["missing_peer_ids"], [remote_peer])
@@ -143,8 +146,10 @@ class PropagationTests(unittest.TestCase):
             return message
         self.protocol._publish = publish_with_ack
 
-        with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic", side_effect=fast_monotonic), \
-             patch("applications.p2p_contracts.p2p_contracts.propagation.time.sleep", return_value=None):
+        with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic",
+                   side_effect=lambda: clock["value"]), \
+             patch("applications.p2p_contracts.p2p_contracts.propagation.time.sleep",
+                   side_effect=mocked_sleep):
             second = self.protocol.finalize_propagation()
 
         self.assertEqual(second["missing_peer_ids"], [])
