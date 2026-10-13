@@ -154,10 +154,11 @@ jobs:
             exit 1
           }
 
-      - name: Checkout Node Core OS candidate
+      - name: Checkout Node Core OS candidate without persisted Git credentials
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.pr_head_sha }}
+          persist-credentials: false
 
       - name: Verify this is an independent Ubuntu VM and never root
         run: |
