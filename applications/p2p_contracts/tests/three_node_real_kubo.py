@@ -194,18 +194,23 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                                 for item in status["active_proposals"]),
                             "Node B did not discover Node A's active proposal.")
 
-            # Exercise the real interactive BTC exchange form, not only the service API.
-            # The input stream is synthetic, while the request is sent through the real
-            # PropagationProtocol and the three real Kubo daemons started by this test.
+            # Exercise the same status check shown in the application menu.
             runtime_b = SimpleNamespace(
-                storage=storages[1],
-                identity_profile=Profile(),
-                network=networks[1],
-                kubo=adapters[1],
+                storage=storages[1], identity_profile=Profile(),
+                network=networks[1], kubo=adapters[1],
             )
             cli_b = P2PContractsCLI(runtime_b)
             cli_b.service = services[1]
             cli_b.propagation = protocols[1]
+            status_output = io.StringIO()
+            with redirect_stdout(status_output):
+                cli_b.check_propagation_status()
+            self.assertIn(proposal["proposal_hash"], status_output.getvalue())
+            self.assertIn("Remote claims are UNVERIFIED", status_output.getvalue())
+
+            # Exercise the real interactive BTC exchange form, not only the service API.
+            # The input stream is synthetic, while the request is sent through the real
+            # PropagationProtocol and the three real Kubo daemons started by this test.
             created_request = {}
             original_create = services[1].create_btc_exchange_request
 
@@ -302,15 +307,29 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                                      f"Node {index + 1} changed or failed to synchronize exchange fields for {request_id}.")
                     self.assertEqual(found["manifest_hash"], next(iter(shared_hashes)))
 
-            evidence = services[2].create_request_evidence(
-                request_id=request_a["request_id"], outcome="exchange_completed",
-                evidence_type="exchange_result", description="Integration closure evidence.",
-                reporter_statement="Node C recorded the test result.", target_node_id=networks[0].identity().peer_id,
-                rating=5,
+            # Node C now uses the actual application closure form, just as an identity
+            # would. The form writes and broadcasts the evidence through the real protocol.
+            runtime_c = SimpleNamespace(
+                storage=storages[2], identity_profile=Profile(),
+                network=networks[2], kubo=adapters[2],
             )
-            evidence_path = self.root / "app-storage-3" / "p2p_contracts" / "evidence" / f"{evidence['evidence_id']}.json"
-            evidence_doc = json.loads(evidence_path.read_text(encoding="utf-8"))
-            protocols[2].publish_evidence(evidence_doc, services[2].current_manifest())
+            cli_c = P2PContractsCLI(runtime_c)
+            cli_c.service = services[2]
+            cli_c.propagation = protocols[2]
+            closure_answers = iter([
+                request_a["request_id"], networks[0].identity().peer_id, "5",
+                "exchange_completed", "Synthetic integration closure evidence.",
+                "Node C recorded the synthetic test result.", "y",
+            ])
+            closure_output = io.StringIO()
+            with patch("builtins.input", side_effect=closure_answers), redirect_stdout(closure_output):
+                cli_c.create_closure_form()
+            self.assertIn("Verification status: self_reported_unverified", closure_output.getvalue())
+            self.assertIn("Evidence ID:", closure_output.getvalue())
+            evidence_files = list((self.root / "app-storage-3" / "p2p_contracts" / "evidence").glob("*.json"))
+            self.assertEqual(len(evidence_files), 1)
+            evidence_doc = json.loads(evidence_files[0].read_text(encoding="utf-8"))
+            evidence = {"evidence_id": evidence_doc["evidence_id"]}
 
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
@@ -325,6 +344,18 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                 self.assertEqual(found["request_status"], "exchange_completed")
                 self.assertTrue(found["evidence"], f"Node {index + 1} did not synchronize closure evidence.")
                 self.assertEqual(found["evidence"][0]["rating"], 5)
+
+            # Node B uses the actual Search Request ID menu and must display the
+            # synchronized BTC offer, final state, evidence, and shared manifest hash.
+            search_output = io.StringIO()
+            with patch("builtins.input", return_value=request_a["request_id"]), redirect_stdout(search_output):
+                cli_b.search_request_form()
+            self.assertIn(request_a["request_id"], search_output.getvalue())
+            self.assertIn("BTC offered: 0.025 BTC", search_output.getvalue())
+            self.assertIn("Asset requested: 700 EUR", search_output.getvalue())
+            self.assertIn("Derived state: exchange_completed", search_output.getvalue())
+            self.assertIn("Evidence records: 1", search_output.getvalue())
+
             evidence_hashes = {services[index].current_manifest()["manifest_hash"] for index in range(3)}
             self.assertEqual(len(evidence_hashes), 1, "All three nodes must converge to the same closure-evidence manifest hash.")
         finally:
