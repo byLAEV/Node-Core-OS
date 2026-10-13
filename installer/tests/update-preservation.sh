@@ -65,6 +65,18 @@ class P2PPropagationFixtureTest(unittest.TestCase):
     def test_fixture(self):
         self.assertTrue(True)
 PY
+cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_cli_bootstrap.py" <<'PY'
+import unittest
+class P2PBootstrapFixtureTest(unittest.TestCase):
+    def test_fixture(self):
+        self.assertTrue(True)
+PY
+cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_cli_local_manifest.py" <<'PY'
+import unittest
+class P2PLocalManifestFixtureTest(unittest.TestCase):
+    def test_fixture(self):
+        self.assertTrue(True)
+PY
 
 cat > "$release_root/Node-Core-OS-fixture/applications/hashpaper/tests/test_smoke.py" <<'PY'
 import unittest
