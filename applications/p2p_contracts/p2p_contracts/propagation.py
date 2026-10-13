@@ -153,7 +153,11 @@ class PropagationProtocol:
         if requester.get("node_id") != message.get("sender_node_id"):
             raise ValueError("Requesting node ID does not match the message's claimed sender.")
         with self._lock:
-            if not any(item.get("request_id") == request_id for item in self._pending_requests):
+            existing = next((item for item in self._pending_requests if item.get("request_id") == request_id), None)
+            if existing is not None:
+                if existing.get("document_hash") != document.get("document_hash"):
+                    raise ValueError("A conflicting request document reused an ID already in the pending batch.")
+            else:
                 self._pending_requests.append(document)
                 self._save_pending()
         return request_id
