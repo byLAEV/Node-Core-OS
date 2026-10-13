@@ -185,7 +185,7 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             time.sleep(1.0)
             proposal = protocols[0].accept_new_propagation(None, require_owner_request=True)
             status = protocols[1].query_status(wait_seconds=2.0)
-            self.assertTrue(status["responses"], "Node B did not receive any peer status responses.")
+            self.assertTrue(status["responses"], f"Node B received no peer status responses; received types={[item.get('type') for item in protocols[1]._received]}; listener errors={protocols[1]._listener_errors}; peers={adapters[1]._run('swarm', 'peers').stdout}")
             self.assertTrue(any(item.get("proposal_hash") == proposal["proposal_hash"]
                                 for item in status["active_proposals"]),
                             "Node B did not discover Node A's active proposal.")
