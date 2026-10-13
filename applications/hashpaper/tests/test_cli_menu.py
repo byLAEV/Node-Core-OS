@@ -40,9 +40,14 @@ class HashPaperMenuTests(unittest.TestCase):
 
     def test_create_menu_uses_default_path_without_asking_for_it(self):
         answers = ["1", "Synthetic title", "Synthetic body", "1", "", "0"]
-        with patch("builtins.input", side_effect=answers):
-            with patch.object(cli, "main", side_effect=[0]) as command:
-                self.assertEqual(cli.run_interactive_menu(), 0)
+        # The menu uses raw terminal input for multiline text only when stdin
+        # is a TTY. This unit test supplies the body through mocked input(),
+        # so force the non-interactive path regardless of whether the test
+        # suite itself was launched from a terminal (e.g. Termux).
+        with patch.object(sys.stdin, "isatty", return_value=False):
+            with patch("builtins.input", side_effect=answers):
+                with patch.object(cli, "main", side_effect=[0]) as command:
+                    self.assertEqual(cli.run_interactive_menu(), 0)
         command.assert_called_once_with([
             "create", "--title", "Synthetic title", "--text", "Synthetic body"
         ])
