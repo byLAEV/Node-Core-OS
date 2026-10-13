@@ -25,18 +25,14 @@ verify_installation() {
   [[ -f "$NODE_CORE_DATA_DIR/app/node_core/evidence.py" ]] || failures=1
   [[ -f "$NODE_CORE_DATA_DIR/app/node_core/my_life.py" ]] || failures=1
   [[ -f "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/hashpaper/cli.py" ]] || failures=1
   [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || failures=1
   if [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]]; then
     local app_version
     app_version="$(cat "$NODE_CORE_DATA_DIR/app/VERSION")"
     [[ "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || failures=1
   fi
-  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core" "$NODE_CORE_DATA_DIR/app/applications/hashpaper" || failures=1
+  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts" || failures=1
   [[ -x "$NODE_CORE_DATA_DIR/bin/node-core" ]] || failures=1
-  [[ -x "$NODE_CORE_DATA_DIR/bin/hashpaper" ]] || failures=1
-  python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" --help >/dev/null 2>&1 || failures=1
   [[ -x "$executable" ]] || failures=1
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
   [[ -f "$IPFS_PATH/config" ]] || failures=1
