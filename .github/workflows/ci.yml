@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - test/three-ubuntu-p2p-contracts-independent-install-20261012
   pull_request:
     branches:
       - main
@@ -119,7 +118,7 @@ jobs:
           python applications/p2p_contracts/tests/three_node_real_kubo.py
 
   cross-vm-node:
-    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/test/three-ubuntu-p2p-contracts-independent-install-20261012')
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     needs: linux-terminal
     permissions:
       contents: read
@@ -137,8 +136,8 @@ jobs:
       NODE_CORE_DATA_DIR: /home/runner/.node-core-cross-vm-${{ matrix.node }}/.node-core
       NODE_CORE_CONFIG: /home/runner/.node-core-cross-vm-${{ matrix.node }}/.node-core/config.json
       NODE_ROLE: ${{ matrix.node }}
-      PR_NUMBER: ${{ inputs.pr_number }}
-      PR_HEAD_SHA: ${{ inputs.pr_head_sha || github.sha }}
+      PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number }}
+      PR_HEAD_SHA: ${{ inputs.pr_head_sha || github.event.pull_request.head.sha || github.sha }}
       PYTHONUNBUFFERED: "1"
     defaults:
       run:
@@ -147,7 +146,7 @@ jobs:
     steps:
       - name: Validate and checkout the exact candidate commit
         env:
-          PR_HEAD_SHA: ${{ inputs.pr_head_sha || github.sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha || github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           [[ "$PR_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || {
@@ -158,7 +157,7 @@ jobs:
       - name: Checkout Node Core OS candidate without persisted Git credentials
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.pr_head_sha || github.sha }}
+          ref: ${{ inputs.pr_head_sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Verify this is an independent Ubuntu VM and never root
@@ -553,7 +552,7 @@ jobs:
   verify-cross-vm-convergence:
     name: Assert three separate VMs converged to the same manifest
     needs: cross-vm-node
-    if: always() && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'push' && github.ref == 'refs/heads/test/three-ubuntu-p2p-contracts-independent-install-20261012'))
+    if: always() && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-24.04
     defaults:
       run:
