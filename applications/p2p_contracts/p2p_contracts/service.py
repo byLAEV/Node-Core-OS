@@ -303,6 +303,23 @@ class P2PContractsService:
             requester = payload.get("requester")
             if not isinstance(requester, dict) or not isinstance(requester.get("node_id"), str):
                 raise ValueError("Remote request does not identify its requesting node.")
+            exchange = payload.get("exchange")
+            if not isinstance(exchange, dict) or exchange.get("give_asset") != "BTC":
+                raise ValueError("Remote request must offer BTC.")
+            validate_btc_amount(str(exchange.get("give_amount", "")))
+            validate_asset_code(str(exchange.get("receive_asset", "")))
+            receive_amount = exchange.get("receive_amount")
+            if not isinstance(receive_amount, str) or not re.fullmatch(r"[0-9]+(?:\\.[0-9]+)?", receive_amount):
+                raise ValueError("Remote requested asset amount is malformed.")
+            if Decimal(receive_amount) <= 0:
+                raise ValueError("Remote requested asset amount must be greater than zero.")
+            contacts = payload.get("contact_methods")
+            if not isinstance(contacts, list) or not contacts:
+                raise ValueError("Remote public request must include at least one contact method.")
+            for contact in contacts:
+                if not isinstance(contact, dict) or contact.get("type") not in CONTACT_TYPES:
+                    raise ValueError("Remote request contains an unsupported contact method.")
+                _clean_text(str(contact.get("value", "")), "Remote contact value", 1000)
             if request_id in known:
                 continue
             relative_path = f"p2p_contracts/requests/{request_id}.json"
