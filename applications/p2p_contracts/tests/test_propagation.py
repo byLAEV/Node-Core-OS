@@ -46,9 +46,13 @@ class PropagationTests(unittest.TestCase):
 
     def test_kubo_json_base64_payload_is_decoded_without_stripping_first_character(self):
         import base64
-        payload = b"message payload"
+        payload = b'{"type":"TEST"}'
         encoded = base64.b64encode(payload).decode("ascii")
         self.assertEqual(PropagationProtocol._decode_pubsub_data(encoded), payload)
+        urlsafe = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(urlsafe), payload)
+        multibase = "m" + base64.b64encode(payload).decode("ascii")
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase), payload)
 
     def test_pending_request_is_accepted_only_for_matching_active_proposal(self):
         from applications.p2p_contracts.p2p_contracts.service import document_hash, REQUEST_SCHEMA
