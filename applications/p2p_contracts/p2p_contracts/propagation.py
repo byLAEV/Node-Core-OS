@@ -290,7 +290,7 @@ class PropagationProtocol:
         return {"responses": list(responses.values()), "active_proposals": list(unique.values()),
                 "status": "UNVERIFIED" if unique else ("NO_ACTIVE_PROPOSAL" if responses else "NO_NODE_RESPONSES")}
 
-    def accept_new_propagation(self, parent_manifest_hash):
+    def accept_new_propagation(self, parent_manifest_hash, require_owner_request=False):
         self.start()
         now = utc_now()
         node_id = self.network.identity().peer_id
@@ -303,6 +303,7 @@ class PropagationProtocol:
                  "accepted_at": timestamp(now), "send_enabled_at": timestamp(now + timedelta(seconds=WINDOW_SECONDS)),
                  "lease_expires_at": timestamp(now + timedelta(seconds=WINDOW_SECONDS + 60)),
                  "window_seconds": WINDOW_SECONDS, "status": "ACCEPTED", "batch_flushed": False,
+                 "require_owner_request": bool(require_owner_request), "owner_request_sent": False,
                  "warning": "Local proposal state; not a global consensus certificate."}
         self._save_state(state)
         try:
@@ -359,20 +360,48 @@ class PropagationProtocol:
             time.sleep(0.1)
         return {"message_id": message["message_id"], "peer_acknowledgements": []}
 
+    def finalize_propagation(self, owner_request_document=None):
+        """Commit all queued peer requests and the owner's prepared request in one manifest."""
+        state = self.current_state()
+        if not state or state.get("status") != "READY_TO_SUBMIT":
+            raise PubSubUnavailable("The propagation window is not ready to finalize.")
+        if utc_now() >= parse_timestamp(state["lease_expires_at"]):
+            state["status"] = "CANCELLED"
+            state["cancel_reason"] = "Propagation lease expired before finalization."
+            self._save_state(state)
+            raise PubSubUnavailable("The propagation lease expired before finalization.")
+        if state.get("batch_flushed"):
+            return {"imported_count": 0, "manifest_hash": (self.service.current_manifest() or {}).get("manifest_hash"),
+                    "owner_request_sent": bool(state.get("owner_request_sent"))}
+        with self._lock:
+            pending = list(self._pending_requests)
+        documents = list(pending)
+        if owner_request_document is not None:
+            documents.append(owner_request_document)
+        imported = {"imported_count": 0, "manifest_hash": None}
+        if documents:
+            if self.service is None:
+                raise PubSubUnavailable("Request service is not connected to the propagation protocol.")
+            imported = self.service.import_remote_requests(documents)
+            self._publish("REQUEST_BATCH", proposal_id=state.get("proposal_id"),
+                          proposal_hash=state.get("proposal_hash"), request_documents=documents,
+                          manifest_hash=imported.get("manifest_hash"))
+        with self._lock:
+            self._pending_requests = []
+            self._save_pending()
+        state["batch_flushed"] = True
+        state["owner_request_sent"] = owner_request_document is not None
+        state["batch_request_count"] = len(documents)
+        state["final_manifest_hash"] = imported.get("manifest_hash")
+        state["finalized_at"] = timestamp(utc_now())
+        self._save_state(state)
+        return {**imported, "batch_request_count": len(documents),
+                "owner_request_sent": state["owner_request_sent"]}
+
     def _flush_pending_requests(self, state):
         if state.get("batch_flushed"):
             return
-        with self._lock:
-            pending = list(self._pending_requests)
-        if pending and self.service is not None:
-            self.service.import_remote_requests(pending)
-            self._publish("REQUEST_BATCH", proposal_id=state.get("proposal_id"),
-                          proposal_hash=state.get("proposal_hash"), request_documents=pending)
-            with self._lock:
-                self._pending_requests = []
-                self._save_pending()
-        state["batch_flushed"] = True
-        self._save_state(state)
+        self.finalize_propagation()
 
     def current_state(self):
         state = self._state()
@@ -387,7 +416,8 @@ class PropagationProtocol:
             elif state.get("status") == "ACCEPTED" and now >= parse_timestamp(state["send_enabled_at"]):
                 state["status"] = "READY_TO_SUBMIT"
                 self._save_state(state)
-                self._flush_pending_requests(state)
+                if not state.get("require_owner_request"):
+                    self._flush_pending_requests(state)
         return state
 
     def stop(self):
