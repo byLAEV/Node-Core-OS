@@ -159,10 +159,15 @@ jobs:
           sys.path.insert(0, sys.argv[1])
           from node_core.runtime import NodeRuntime
 
+          answers = iter(["4", "2", "yes", "0", "0", "0"])
+          def scripted_input(prompt=""):
+              print(prompt, end="", flush=True)
+              return next(answers)
+
           runtime = NodeRuntime()
           runtime.boot()
           # Main menu > Applications > P2P Contracts > consent > exit app > exit menus.
-          with patch("builtins.input", side_effect=["4", "2", "yes", "0", "0", "0"]):
+          with patch("builtins.input", side_effect=scripted_input):
               runtime.menu()
           PY
           cat "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
