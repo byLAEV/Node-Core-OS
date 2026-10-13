@@ -512,6 +512,7 @@ jobs:
           printf 'REMOVE\n' | ./installer/uninstall.sh
           test ! -e "$NODE_CORE_DATA_DIR"
 
+  # Separate GitHub-hosted Ubuntu VMs; synthetic profiles only, never real identity data.
   three-independent-ubuntu-p2p-e2e:
     name: ${{ matrix.node }} — independent Ubuntu install and P2P Contracts E2E
     runs-on: ubuntu-24.04
