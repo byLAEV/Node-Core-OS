@@ -48,6 +48,10 @@ class P2PContractsCLI:
         node = self.runtime.network.identity()
         print("\nSOLICITUD PÚBLICA: INTERCAMBIO BTC")
         print(f"ID técnico del nodo: {node.peer_id}")
+        if node.addresses:
+            print("Direcciones técnicas del nodo que se guardarán en la solicitud:")
+            for address in node.addresses:
+                print(f"  {address}")
         available_keys = []
         if profile:
             print("Perfil de identidad local encontrado. Campos disponibles para publicar:")
