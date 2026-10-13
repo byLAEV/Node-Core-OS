@@ -114,7 +114,7 @@ class PropagationTests(unittest.TestCase):
 
         clock = {"value": 0.0}
         def fast_monotonic():
-            clock["value"] += 10.0
+            clock["value"] += 1.0
             return clock["value"]
 
         with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic", side_effect=fast_monotonic), \
