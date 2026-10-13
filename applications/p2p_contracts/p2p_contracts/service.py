@@ -99,6 +99,7 @@ class P2PContractsService:
         self.manifests_dir = self.root / "manifests"
         self.head_path = self.root / "head.json"
         self.genesis_path = self.root / "genesis-manifest.json"
+        self.initial_acceptance_path = self.root / "initial-acceptance.json"
         self._manifest_lock = threading.RLock()
 
     def _ensure_directories(self) -> None:
@@ -116,6 +117,42 @@ class P2PContractsService:
             return local
         self._write_json(self.genesis_path, bundled)
         return bundled
+
+    def accept_initial_genesis_reference(self, *, accepted_by_node_id: str) -> dict[str, Any]:
+        """Record explicit local acceptance of the genesis reference for this node."""
+        self._ensure_directories()
+        local_node_id = self.network.identity().peer_id
+        if not isinstance(accepted_by_node_id, str) or accepted_by_node_id != local_node_id:
+            raise P2PContractsError("Genesis acceptance must be made by this node's current local identity.")
+        if self.initial_acceptance_path.is_file():
+            existing = self._read_json(self.initial_acceptance_path)
+            if existing.get("accepted_hash") != GENESIS_HASH or existing.get("accepted_by_node_id") != local_node_id:
+                raise P2PContractsError("Stored initial genesis acceptance does not match this node and genesis reference.")
+            return existing
+        acceptance = {
+            "schema": "node-core-os-p2p-contracts/genesis-acceptance/v1",
+            "accepted_hash": GENESIS_HASH,
+            "accepted_by_node_id": local_node_id,
+            "accepted_at": _now(),
+            "status": "LOCAL_NODE_ACCEPTANCE",
+            "verification_note": "Records an explicit local operator action bound to the current Kubo node ID; it is not a cryptographic signature or network consensus certificate.",
+        }
+        self._write_json(self.initial_acceptance_path, acceptance)
+        return acceptance
+
+    def _require_initial_genesis_acceptance(self) -> None:
+        if self._load_head() is not None:
+            return
+        if not self.initial_acceptance_path.is_file():
+            raise P2PContractsError(
+                "The Bitcoin genesis reference must be explicitly accepted on this node before creating the first request. "
+                "Use the genesis acceptance / propagation workflow first."
+            )
+        acceptance = self._read_json(self.initial_acceptance_path)
+        if (acceptance.get("schema") != "node-core-os-p2p-contracts/genesis-acceptance/v1"
+                or acceptance.get("accepted_hash") != GENESIS_HASH
+                or acceptance.get("accepted_by_node_id") != self.network.identity().peer_id):
+            raise P2PContractsError("The stored genesis acceptance is invalid for this node.")
 
     @staticmethod
     def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -246,6 +283,7 @@ class P2PContractsService:
     ) -> dict[str, Any]:
         """Persist a BTC-for-asset request and append it to the local manifest."""
         self._ensure_directories()
+        self._require_initial_genesis_acceptance()
         amount = validate_btc_amount(btc_amount)
         asset = validate_asset_code(receive_asset)
         wanted_amount = _clean_text(receive_amount, "Amount of asset requested", 128)
