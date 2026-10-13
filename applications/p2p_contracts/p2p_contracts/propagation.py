@@ -206,6 +206,17 @@ class PropagationProtocol:
                 except (ValueError, RuntimeError, OSError) as exc:
                     self._publish("REQUEST_ACK", reply_to=message["message_id"],
                                   request_id=document.get("request_id"), accepted=False, reason=str(exc))
+        elif kind == "EVIDENCE_BROADCAST":
+            document = message.get("evidence_document")
+            if self.service is not None and isinstance(document, dict):
+                try:
+                    result = self.service.import_remote_evidence(document)
+                    self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
+                                  evidence_id=document.get("evidence_id"), accepted=True,
+                                  imported=result.get("imported", False), reason="Evidence verified and imported.")
+                except (ValueError, RuntimeError, OSError) as exc:
+                    self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
+                                  evidence_id=document.get("evidence_id"), accepted=False, reason=str(exc))
         elif kind == "REQUEST_BATCH":
             documents = message.get("request_documents")
             if self.service is not None and isinstance(documents, list) and documents:
@@ -313,6 +324,19 @@ class PropagationProtocol:
             with self._lock:
                 replies = [item for item in self._received
                            if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]]
+            if replies:
+                return {"message_id": message["message_id"], "peer_acknowledgements": replies}
+            time.sleep(0.1)
+        return {"message_id": message["message_id"], "peer_acknowledgements": []}
+
+    def publish_evidence(self, evidence_document, wait_seconds=1.5):
+        self.start()
+        message = self._publish("EVIDENCE_BROADCAST", evidence_document=evidence_document)
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
+        while time.monotonic() < deadline:
+            with self._lock:
+                replies = [item for item in self._received
+                           if item.get("type") == "EVIDENCE_ACK" and item.get("reply_to") == message["message_id"]]
             if replies:
                 return {"message_id": message["message_id"], "peer_acknowledgements": replies}
             time.sleep(0.1)
