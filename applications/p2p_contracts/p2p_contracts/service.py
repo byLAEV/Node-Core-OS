@@ -265,6 +265,7 @@ class P2PContractsService:
     def create_request_evidence(
         self, *, request_id: str, outcome: str, evidence_type: str,
         description: str, reporter_statement: str, external_reference: str = "",
+        target_node_id: str = "", rating: int | None = None,
     ) -> dict[str, Any]:
         """Append a self-reported evidence record linked to an existing request."""
         self._ensure_directories()
@@ -281,9 +282,15 @@ class P2PContractsService:
         if len(reference) > 1000:
             raise ValueError("External reference must be 1000 characters or fewer.")
         node_id = self.network.identity().peer_id
+        if rating is not None and (isinstance(rating, bool) or not isinstance(rating, int) or not 1 <= rating <= 5):
+            raise ValueError("Rating must be an integer from 1 to 5.")
+        target = target_node_id.strip()
+        if len(target) > 200:
+            raise ValueError("Target node ID must be 200 characters or fewer.")
         payload = {
             "schema": EVIDENCE_SCHEMA, "evidence_id": f"evidence-{uuid4()}",
             "request_id": request_id, "created_at": _now(), "reporter_node_id": node_id,
+            "target_node_id": target or None, "rating": rating,
             "evidence_type": evidence_type, "outcome": outcome,
             "description": description_text, "reporter_statement": statement,
             "external_reference": reference or None,
