@@ -398,7 +398,12 @@ class PropagationProtocol:
         state = self.current_state()
         if not state or state.get("status") not in {"READY_TO_SUBMIT", "PENDING_ACKS"}:
             raise PubSubUnavailable("The propagation window is not ready to finalize.")
-        if utc_now() >= parse_timestamp(state["lease_expires_at"]):
+        retryable_batch = (
+            state.get("status") == "PENDING_ACKS"
+            and isinstance(state.get("final_manifest_document"), dict)
+            and isinstance(state.get("finalized_batch_documents"), list)
+        )
+        if utc_now() >= parse_timestamp(state["lease_expires_at"]) and not retryable_batch:
             state["status"] = "CANCELLED"
             state["cancel_reason"] = "Propagation lease expired before finalization."
             self._save_state(state)
