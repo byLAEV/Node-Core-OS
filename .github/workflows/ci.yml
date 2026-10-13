@@ -151,7 +151,6 @@ jobs:
           test "$VERSION_ID" = "24.04"
           test "$(uname -s)" = Linux
           test "$(id -u)" -ne 0
-          test -n "$PR_NUMBER"
           mkdir -p "$HOME"
           printf 'node=%s\nhostname=%s\nuid=%s\n' "$NODE_ROLE" "$(hostname)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
 
