@@ -2,6 +2,15 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.4.2] - 2026-10-13
+
+- Allow the first P2P Contracts propagation to bootstrap from the validated genesis hash on a single node when no peer responds.
+- Ask the operator to explicitly accept the genesis root hash before initializing logical block 1.
+- Keep active-proposal conflict checks and require peer responses for later propagations when a local manifest already exists.
+- Add regression tests for single-node genesis bootstrap, later propagation without peers, and active-proposal blocking.
+- Preserve ordinary-user-only operation; root and sudo are not required.
+
+
 ## Node Core OS [1.4.1] - 2026-10-13
 
 - Anchor the first Node Core P2P Contracts manifest to the bundled genesis reference.
