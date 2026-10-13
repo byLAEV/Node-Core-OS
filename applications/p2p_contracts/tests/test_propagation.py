@@ -26,6 +26,11 @@ class FakeKubo:
         class Status: running = True
         return Status()
     def _environment(self): return {}
+    def pubsub_publish(self, topic, encoded):
+        if topic != "node-core-os/p2p-contracts/propagation/v1":
+            raise RuntimeError("Unexpected PubSub topic.")
+        self.published.append(json.loads(encoded))
+
     def _run(self, *args):
         if args[:2] == ("pubsub", "pub"):
             self.published.append(json.loads(args[3]))
