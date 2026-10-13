@@ -421,6 +421,11 @@ update_application() (
   rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
   # HashPaper is a separate application and is not part of Node Core OS 1.4.0.
   rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+  rm -f "$NODE_CORE_APP_DIR/installer/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/hashpaper-update.sh"
+  rm -f "$NODE_CORE_APP_DIR/installer/tests/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/tests/hashpaper-update.sh"
+  rm -f "$NODE_CORE_APP_DIR/docs/HASHPAPER.md" "$NODE_CORE_APP_DIR/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
+  rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
+  rm -f "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-python-matrix.yml"
 
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
     printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
