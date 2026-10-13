@@ -3,8 +3,10 @@
 Run with IPFS_BIN=/path/to/ipfs python applications/p2p_contracts/tests/three_node_real_kubo.py.
 The test creates three temporary Kubo repositories and never touches the user's installed repo.
 """
+import io
 import json
 import os
+from contextlib import redirect_stdout
 from pathlib import Path
 import shutil
 import socket
@@ -14,6 +16,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
@@ -22,6 +25,7 @@ from applications.p2p_contracts.p2p_contracts.propagation import (
     PropagationProtocol, timestamp, utc_now,
 )
 from applications.p2p_contracts.p2p_contracts.service import P2PContractsService
+from applications.p2p_contracts.p2p_contracts.cli import P2PContractsCLI
 
 
 def free_ports(count):
@@ -190,16 +194,51 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                                 for item in status["active_proposals"]),
                             "Node B did not discover Node A's active proposal.")
 
-            request_b = services[1].create_btc_exchange_request(
-                btc_amount="0.015", receive_asset="USDT", receive_amount="1000",
-                receive_network="TRON", description="Three-node integration request from B",
-                contacts=[{"type": "email", "value": "node-b@example.invalid"}],
-                publish_identity=False, defer_manifest=True,
+            # Exercise the real interactive BTC exchange form, not only the service API.
+            # The input stream is synthetic, while the request is sent through the real
+            # PropagationProtocol and the three real Kubo daemons started by this test.
+            runtime_b = SimpleNamespace(
+                storage=storages[1],
+                identity_profile=Profile(),
+                network=networks[1],
+                kubo=adapters[1],
             )
+            cli_b = P2PContractsCLI(runtime_b)
+            cli_b.service = services[1]
+            cli_b.propagation = protocols[1]
+            created_request = {}
+            original_create = services[1].create_btc_exchange_request
+
+            def capture_request_result(*args, **kwargs):
+                result = original_create(*args, **kwargs)
+                created_request.update(result)
+                return result
+
+            services[1].create_btc_exchange_request = capture_request_result
+            form_answers = iter([
+                "n",  # Do not publish identity fields in this public synthetic request.
+                "email", "node-b@example.invalid", "n",
+                "0.015", "USDT", "1000", "TRON",
+                "Three-node integration request from B", "y",
+            ])
+            try:
+                with patch("builtins.input", side_effect=form_answers), redirect_stdout(io.StringIO()):
+                    self.assertTrue(cli_b.create_request_form(remote_proposal=proposal))
+            finally:
+                services[1].create_btc_exchange_request = original_create
+
+            request_b = created_request
+            self.assertTrue(request_b.get("request_id"), "The BTC exchange form did not create a request.")
             request_b_doc = json.loads(Path(request_b["request_path"]).read_text(encoding="utf-8"))
+            self.assertEqual(request_b_doc["exchange"]["give_amount"], "0.015")
+            self.assertEqual(request_b_doc["exchange"]["receive_asset"], "USDT")
+            self.assertEqual(request_b_doc["exchange"]["receive_amount"], "1000")
+            self.assertEqual(request_b_doc["exchange"]["receive_network"], "TRON")
             self.assertIsNone(services[1].current_manifest(), "A peer request must remain uncommitted until the proposer publishes the batch.")
-            acknowledgement = protocols[1].submit_request(proposal, request_b_doc, wait_seconds=5.0)
-            self.assertTrue(acknowledgement.get("accepted"), acknowledgement.get("reason"))
+            self.assertTrue(
+                any(item.get("request_id") == request_b["request_id"] for item in protocols[0]._pending_requests),
+                "The form-submitted request was not queued by the proposing node after its network acknowledgement.",
+            )
 
             request_a = services[0].create_btc_exchange_request(
                 btc_amount="0.025", receive_asset="EUR", receive_amount="700",
