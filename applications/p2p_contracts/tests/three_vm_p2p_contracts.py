@@ -8,11 +8,14 @@ the workflow exposes only the libp2p swarm TCP port through a temporary TCP tunn
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
+from contextlib import redirect_stdout
 from pathlib import Path
 import sys
 import time
+from unittest.mock import patch
 
 if os.getuid() == 0:
     raise SystemExit("ERROR: this test must run as a normal user, never root.")
@@ -22,6 +25,7 @@ sys.path.insert(0, str(APP_ROOT))
 
 from node_core.runtime import NodeRuntime
 from applications.p2p_contracts.p2p_contracts.service import P2PContractsService
+from applications.p2p_contracts.p2p_contracts.cli import P2PContractsCLI
 from applications.p2p_contracts.p2p_contracts.propagation import (
     PropagationProtocol,
 )
@@ -64,6 +68,47 @@ def create_request(service, node_label: str, btc_amount: str, asset: str, amount
     )
     document = json.loads(Path(result["request_path"]).read_text(encoding="utf-8"))
     return result, document
+
+
+def create_request_through_form(runtime, service, protocol, proposal, node_label, btc_amount, asset, amount, network):
+    """Drive the public BTC request form and submit through the real peer protocol."""
+    cli = P2PContractsCLI(runtime)
+    cli.service = service
+    cli.propagation = protocol
+    captured = {}
+    original_create = service.create_btc_exchange_request
+
+    def capture_result(*args, **kwargs):
+        result = original_create(*args, **kwargs)
+        captured.update(result)
+        return result
+
+    service.create_btc_exchange_request = capture_result
+    answers = iter([
+        "n",  # Keep personal identity fields private in this synthetic public request.
+        "email", f"{node_label}@example.invalid", "n",
+        btc_amount, asset, amount, network,
+        f"Synthetic three-Ubuntu P2P acceptance request from {node_label}.", "y",
+    ])
+    output = io.StringIO()
+    try:
+        with patch("builtins.input", side_effect=answers), redirect_stdout(output):
+            created = cli.create_request_form(remote_proposal=proposal)
+    finally:
+        service.create_btc_exchange_request = original_create
+
+    if not created or not captured.get("request_id"):
+        raise AssertionError(f"{node_label}: public BTC request form did not create a request.")
+    if "acknowledged the request for inclusion" not in output.getvalue():
+        raise AssertionError(
+            f"{node_label}: the real form did not receive an acceptance ACK. Output: {output.getvalue()}"
+        )
+    document = json.loads(Path(captured["request_path"]).read_text(encoding="utf-8"))
+    if document.get("exchange", {}).get("give_amount") != btc_amount:
+        raise AssertionError(f"{node_label}: BTC amount in saved form request does not match the input.")
+    if document.get("exchange", {}).get("receive_asset") != asset.upper():
+        raise AssertionError(f"{node_label}: requested asset in saved form request does not match the input.")
+    return captured, document
 
 
 def received_event(protocol, event_type):
@@ -253,12 +298,10 @@ def main():
             )
             if proposal.get("proposer_node_id") == local_identity.peer_id:
                 raise AssertionError("Node B unexpectedly discovered its own proposal as remote.")
-            request_b, request_b_doc = create_request(
-                service, "node-b", "0.015", "USDT", "1000", "TRON"
+            request_b, request_b_doc = create_request_through_form(
+                runtime, service, protocol, proposal,
+                "node-b", "0.015", "USDT", "1000", "TRON",
             )
-            acknowledgement = protocol.submit_request(proposal, request_b_doc, wait_seconds=12.0)
-            if not acknowledgement.get("accepted"):
-                raise AssertionError(f"Node A rejected node B's request: {acknowledgement!r}")
             summary["submitted_request_id"] = request_b["request_id"]
             event = wait_until(
                 "node A's committed batch announcement",
@@ -455,12 +498,10 @@ def main():
             )
             if proposal2.get("proposer_node_id") == local_identity.peer_id:
                 raise AssertionError("Node C unexpectedly discovered its own second proposal as remote.")
-            request_c2, request_c2_doc = create_request(
-                service, "node-c-round-2", "0.008", "USDC", "300", "POLYGON"
+            request_c2, request_c2_doc = create_request_through_form(
+                runtime, service, protocol, proposal2,
+                "node-c-round-2", "0.008", "USDC", "300", "POLYGON",
             )
-            acknowledgement2 = protocol.submit_request(proposal2, request_c2_doc, wait_seconds=12.0)
-            if not acknowledgement2.get("accepted"):
-                raise AssertionError(f"Node B rejected node C's second request: {acknowledgement2!r}")
             event2 = wait_until(
                 "node B's committed second batch announcement",
                 lambda: received_event(protocol, "TEST_REQUEST_PUBLISHED_2"),
