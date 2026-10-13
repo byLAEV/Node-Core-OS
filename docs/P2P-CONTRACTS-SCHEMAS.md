@@ -213,70 +213,76 @@ La implementación debe probar al menos:
 11. Comprobar que el contenido publicado no contiene claves privadas ni credenciales.
 12. Verificar que las operaciones fallidas de Kubo no se presentan como publicación exitosa.
 
-## 11. Política OpenPGP: importar claves existentes; no generar claves
+## 11. Alcance de la versión inicial y política OpenPGP futura
 
-**Requisito obligatorio de diseño:** la primera versión de P2P Contracts no generará claves privadas OpenPGP nuevas, ni Node Core OS ni la aplicación las crearán automáticamente.
+### 11.1 Versión inicial: solo modo público
 
-### 11.1 Clave privada del usuario
+**La primera versión funcional de P2P Contracts implementará únicamente la modalidad pública y transparente.** Primero debe funcionar y superar pruebas la creación de solicitudes, respuestas, propuestas, aceptaciones, evidencias, publicación mediante las interfaces existentes de Node Core OS y trazabilidad entre nodos.
 
-- El usuario podrá importar una clave privada OpenPGP que ya posea.
-- La importación debe ser una acción explícita del usuario, nunca automática.
-- La clave privada y cualquier material secreto asociado se conservarán únicamente en el almacenamiento privado local con permisos restrictivos.
-- La clave privada no se publicará en IPFS, manifiestos, solicitudes, registros, exportaciones de contactos ni mensajes.
-- No se escribirá la clave privada en logs, mensajes de error ni archivos temporales sin protección.
-- La aplicación no debe exigir que la clave privada se cargue o se guarde en texto claro persistente. Se debe evaluar el formato de importación, el descifrado de claves protegidas por contraseña y el almacenamiento seguro antes de implementar.
-- Si el usuario no ha importado una clave privada, la aplicación no debe generar una en su lugar. Las funciones privadas que necesiten esa clave deben permanecer deshabilitadas y explicar cómo importar una clave existente.
-- La exportación de una clave privada, si se ofrece en el futuro, requerirá una acción explícita y no forma parte de v0.1.
+- No habrá selector funcional de modo privado en esta primera versión.
+- No se integrará OpenPGP como función de comunicación en la primera versión.
+- No se solicitará ni se importará una clave privada para utilizar las funciones públicas.
+- No se generarán claves OpenPGP nuevas.
+- La opción privada solo se diseñará e implementará en una fase posterior, después de validar la modalidad pública y con autorización explícita para comenzar esa fase.
 
-### 11.2 Contactos OpenPGP
+La modalidad pública debe mostrar claramente que los documentos y datos incluidos se publicarán abiertamente. Usar datos ficticios de prueba y no publicar secretos, credenciales ni datos personales reales.
 
-El usuario podrá añadir contactos importando o pegando su **clave pública OpenPGP** existente. Cada contacto debe conservar como mínimo la clave pública original, su fingerprint calculado por la biblioteca OpenPGP seleccionada, una etiqueta local elegida por el usuario y la fecha de incorporación.
+### 11.2 Requisito para una futura modalidad privada
 
-- La etiqueta del contacto es solo una etiqueta local, no una identidad civil verificada.
-- La aplicación debe calcular y mostrar el fingerprint, y permitir que el usuario lo compare con el contacto por un canal independiente antes de confiar en él.
-- Validar el formato de la clave y rechazar entradas inválidas. No confiar únicamente en el nombre, correo electrónico o etiqueta declarados dentro de la clave.
-- El almacén de contactos es local por defecto. No publicar automáticamente claves públicas de contactos en manifiestos o en IPFS.
-- El usuario podrá eliminar o marcar como no confiable un contacto. Las claves públicas conocidas no deben sustituirse silenciosamente.
+Cuando el usuario autorice desarrollar la modalidad privada, P2P Contracts **no generará claves privadas OpenPGP**, ni durante la instalación ni durante el uso. El usuario aportará las claves que ya posee.
 
-### 11.3 Modo privado: cifrado OpenPGP obligatorio
+La opción preferida para la primera iteración privada será pedir al usuario que introduzca o cargue su clave privada existente cada vez que una operación requiera usarla, sin conservarla de forma persistente. El material secreto deberá mantenerse en memoria solo durante el tiempo estrictamente necesario y liberarse al terminar la operación, en la medida que lo permita el runtime. No debe copiarse a logs, archivos temporales, manifiestos, contactos ni almacenamiento distribuido.
 
-Cuando el usuario elija **Privado**, el contenido de comunicación de P2P Contracts debe usar OpenPGP de extremo a extremo. No se permitirá un fallback silencioso a texto claro.
+Antes de adoptar ese método, se verificará si la biblioteca OpenPGP elegida puede procesar una clave importada de forma temporal, cómo gestiona las copias en memoria y cómo solicita la contraseña de una clave privada protegida. No se prometerá borrado perfecto de memoria que el lenguaje o la biblioteca no puedan garantizar.
 
-1. El usuario selecciona uno o más contactos destinatarios cuyas claves públicas ya se hayan importado y validado.
-2. La aplicación construye el documento de comunicación privado.
-3. El documento se cifra para la clave pública de cada destinatario previsto antes de cualquier publicación o transmisión.
-4. Si se requiere acreditar la autoría, la aplicación firma el contenido con la clave privada previamente importada por el remitente. La firma se valida separadamente del cifrado.
-5. Solo el paquete OpenPGP cifrado puede salir del almacenamiento privado hacia el transporte o el almacenamiento distribuido.
-6. Si falta una clave pública de destinatario, el formato no es válido, el cifrado falla o la política de firma no se cumple, la operación se detiene y muestra un error. No enviar el contenido en claro.
-7. Las respuestas privadas se cifran para las claves públicas de los destinatarios previstos. El remitente debe tener una clave privada importada si la política del mensaje requiere firma.
-8. El destinatario debe descifrar localmente con una clave privada que ya controle. La aplicación no puede leer ni recuperar el contenido sin la clave correspondiente.
+Si una clave privada está protegida por contraseña, la contraseña también se solicitará de forma segura y no se almacenará en logs ni en configuración. Si la clave no se puede importar o desbloquear, la operación se detiene.
 
-El cifrado a un destinatario utiliza su clave pública; la clave privada del remitente no sustituye la clave pública del destinatario. La firma de autoría, cuando se aplique, requiere la clave privada importada del remitente. Cifrado y firma son propiedades distintas y la interfaz debe indicarlas por separado.
+Un fingerprint o hash de una clave privada **no sustituye la clave privada** y no permite firmar ni descifrar. El fingerprint sirve para identificar o comparar una clave; almacenar únicamente ese valor no habilita ninguna operación criptográfica.
 
-### 11.4 Transporte y metadatos
+No se implementará almacenamiento persistente de claves privadas en la primera versión privada sin una decisión de diseño posterior y explícita. La aplicación tampoco impondrá un mecanismo de permisos de exportación como garantía absoluta: en un dispositivo controlado por el usuario no se puede asegurar que una clave que se ha introducido sea técnicamente imposible de copiar. El objetivo inicial es no almacenarla y reducir su exposición.
 
-- No guardar el texto en claro de mensajes privados en el manifiesto general, índices públicos, logs ni registros de depuración.
-- No publicar el CID del texto en claro ni crear primero una copia pública del documento original.
-- Cualquier documento enviado por IPFS debe cifrarse antes de añadirse a IPFS; el CID que se publique debe corresponder al paquete cifrado.
-- Un manifiesto general puede anunciar solo la existencia de actividad privada mediante un identificador opaco y datos mínimos, si el usuario lo autoriza. No debe revelar el contenido, participantes, asunto ni referencias que permitan recuperar el texto en claro.
-- Incluso el CID de un paquete cifrado y sus metadatos pueden filtrar correlaciones. Reducir esos datos y documentar la limitación.
-- La opción pública sigue siendo deliberadamente transparente y no usa cifrado para ocultar su contenido. La selección de visibilidad debe mostrarse antes de publicar y confirmarse claramente.
+### 11.3 Contactos OpenPGP en la futura modalidad privada
 
-### 11.5 Reglas de aceptación y pruebas
+Cuando se autorice esa fase, el usuario podrá importar las claves públicas OpenPGP existentes de sus contactos. Cada contacto conservará localmente, por defecto, la clave pública, el fingerprint calculado por la biblioteca, una etiqueta local y la fecha de incorporación.
 
-La implementación no se acepta si:
+- Validar el formato de la clave pública y mostrar su fingerprint.
+- Permitir al usuario compararlo por un canal independiente antes de confiar en el contacto.
+- No publicar automáticamente claves públicas de contactos en manifiestos o en IPFS.
+- No confiar únicamente en el nombre, correo electrónico o etiqueta declarados en la clave.
+- No sustituir silenciosamente una clave ya registrada.
 
-1. Genera una clave privada de forma automática o durante la instalación.
-2. Envía en texto claro cualquier mensaje seleccionado como privado.
-3. Sube contenido privado a IPFS antes de cifrarlo.
-4. Guarda texto en claro privado en logs, manifiestos o índices públicos.
-5. Envía un mensaje privado sin una clave pública válida para cada destinatario.
-6. Sustituye silenciosamente una clave pública de contacto.
-7. Presenta una etiqueta o un nombre de clave como identidad verificada.
-8. Confunde cifrado con firma o con verificación de identidad.
-9. Falla el cifrado y continúa el envío por una ruta pública.
+La etiqueta del contacto no es una identidad civil verificada.
 
-Las pruebas deben usar claves de prueba creadas fuera de Node Core OS y almacenadas en fixtures de test no productivos. La aplicación de producción no generará claves nuevas. Las pruebas deben comprobar que solo se publica el paquete cifrado, que el texto original no aparece en archivos de salida ni logs y que una operación de cifrado fallida no transmite nada.
+### 11.4 Reglas de la futura modalidad privada
+
+Cuando esa fase sea autorizada, seleccionar **Privado** deberá significar cifrado OpenPGP obligatorio de extremo a extremo, sin fallback a texto claro:
+
+1. Seleccionar destinatarios con claves públicas importadas y validadas.
+2. Construir el documento privado.
+3. Cifrarlo para las claves públicas de los destinatarios antes de transmitirlo o añadirlo a IPFS.
+4. Si se exige acreditar la autoría, firmar usando la clave privada existente que el remitente aporte para esa operación.
+5. Enviar únicamente el paquete cifrado. Si falta una clave, la clave no puede usarse o el cifrado falla, detener el envío.
+6. El destinatario descifra localmente con su propia clave privada existente.
+
+El cifrado para el destinatario usa su clave pública. La firma del remitente usa la clave privada del remitente. Son operaciones distintas; una no reemplaza a la otra.
+
+El texto en claro no debe aparecer en manifiestos generales, índices públicos, logs, archivos temporales sin protección ni contenido publicado en IPFS. Los metadatos y los CIDs cifrados también pueden revelar correlaciones y deberán minimizarse.
+
+### 11.5 Pruebas obligatorias antes de habilitar la modalidad privada
+
+La futura implementación privada no se aceptará si:
+
+1. Genera claves privadas automáticamente.
+2. Persiste la clave privada del usuario cuando se haya elegido el diseño de uso temporal.
+3. Usa un fingerprint/hash como si fuera una clave privada operativa.
+4. Envía contenido en claro cuando el usuario ha seleccionado privado.
+5. Publica el documento original en IPFS antes de cifrarlo.
+6. Continúa enviando si falla la importación, el desbloqueo, la firma requerida o el cifrado.
+7. Guarda claves o contenido privado en logs, manifiestos o índices públicos.
+8. Sustituye silenciosamente una clave pública de contacto.
+9. Confunde cifrado, firma e identidad verificada.
+
+Las pruebas usarán claves de prueba creadas fuera de Node Core OS y solo en fixtures no productivos. La aplicación de producción no generará claves. Se verificará que el envío fallido no transmite nada y que el contenido en claro no aparece en los archivos de salida.
 
 ## 12. Decisiones que siguen pendientes
 
