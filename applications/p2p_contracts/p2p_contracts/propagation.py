@@ -95,7 +95,7 @@ class PropagationProtocol:
             subprocess.run(
                 [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
                 env=self.kubo._environment(), input=encoded, text=True,
-                stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 check=True, timeout=15,
             )
         except (subprocess.CalledProcessError, RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
