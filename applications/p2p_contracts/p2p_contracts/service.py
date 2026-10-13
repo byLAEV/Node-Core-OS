@@ -309,7 +309,7 @@ class P2PContractsService:
             validate_btc_amount(str(exchange.get("give_amount", "")))
             validate_asset_code(str(exchange.get("receive_asset", "")))
             receive_amount = exchange.get("receive_amount")
-            if not isinstance(receive_amount, str) or not re.fullmatch(r"[0-9]+(?:\\.[0-9]+)?", receive_amount):
+            if not isinstance(receive_amount, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", receive_amount):
                 raise ValueError("Remote requested asset amount is malformed.")
             if Decimal(receive_amount) <= 0:
                 raise ValueError("Remote requested asset amount must be greater than zero.")
