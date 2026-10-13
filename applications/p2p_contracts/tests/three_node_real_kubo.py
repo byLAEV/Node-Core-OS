@@ -180,7 +180,7 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                 btc_amount="0.015", receive_asset="USDT", receive_amount="1000",
                 receive_network="TRON", description="Three-node integration request from B",
                 contacts=[{"type": "email", "value": "node-b@example.invalid"}],
-                publish_identity=False,
+                publish_identity=False, defer_manifest=True,
             )
             request_b_doc = json.loads(Path(request_b["request_path"]).read_text(encoding="utf-8"))
             acknowledgement = protocols[1].submit_request(proposal, request_b_doc, wait_seconds=5.0)
@@ -214,10 +214,12 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             self.assertTrue(all(services[index].find_request(request_a["request_id"]) is not None for index in (1, 2)),
                             "Node A's public request did not synchronize to B and C.")
 
-            self.assertEqual(services[1].current_manifest()["sequence"], 2)
+            self.assertEqual(services[1].current_manifest()["sequence"], 1)
             self.assertEqual(len(services[1].current_manifest()["requests"]), 2)
             self.assertEqual(services[2].current_manifest()["sequence"], 1)
             self.assertEqual(len(services[2].current_manifest()["requests"]), 2)
+            shared_hashes = {services[index].current_manifest()["manifest_hash"] for index in range(3)}
+            self.assertEqual(len(shared_hashes), 1, "All three nodes must accept the exact same batch manifest hash.")
 
             evidence = services[2].create_request_evidence(
                 request_id=request_a["request_id"], outcome="exchange_completed",
@@ -227,7 +229,7 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             )
             evidence_path = self.root / "app-storage-3" / "p2p_contracts" / "evidence" / f"{evidence['evidence_id']}.json"
             evidence_doc = json.loads(evidence_path.read_text(encoding="utf-8"))
-            protocols[2].publish_evidence(evidence_doc)
+            protocols[2].publish_evidence(evidence_doc, services[2].current_manifest())
 
             deadline = time.monotonic() + 10
             while time.monotonic() < deadline:
@@ -242,6 +244,8 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                 self.assertEqual(found["request_status"], "exchange_completed")
                 self.assertTrue(found["evidence"], f"Node {index + 1} did not synchronize closure evidence.")
                 self.assertEqual(found["evidence"][0]["rating"], 5)
+            evidence_hashes = {services[index].current_manifest()["manifest_hash"] for index in range(3)}
+            self.assertEqual(len(evidence_hashes), 1, "All three nodes must converge to the same closure-evidence manifest hash.")
         finally:
             for protocol in protocols:
                 protocol.stop()
