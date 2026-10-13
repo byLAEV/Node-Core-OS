@@ -328,8 +328,20 @@ PY
     printf 'Update metadata source failed; trying the next official source.\n' >&2
   done
   if [[ "$downloaded" != 1 ]]; then
+    # GitHub REST API requests can be rate-limited for unauthenticated users.
+    # Fall back to the public Git remote-ref protocol without requiring root.
+    if command -v git >/dev/null 2>&1; then
+      local remote_commit
+      if remote_commit="$(git ls-remote "$NODE_CORE_REPOSITORY" "refs/heads/$NODE_CORE_BRANCH" 2>/dev/null | awk 'NR == 1 { print $1 }')" &&
+         [[ "$remote_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+        rm -f -- "$temporary_response"
+        printf '%s\n' "${remote_commit,,}"
+        return 0
+      fi
+      printf 'Git remote-ref fallback failed.\n' >&2
+    fi
     rm -f -- "$temporary_response"
-    printf 'Could not retrieve update metadata from any official GitHub API endpoint.\n' >&2
+    printf 'Could not retrieve update metadata from any official GitHub source.\n' >&2
     return 1
   fi
 
