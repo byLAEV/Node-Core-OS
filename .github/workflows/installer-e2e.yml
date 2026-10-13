@@ -640,27 +640,12 @@ jobs:
           export HOME="$NODE_CORE_HOME"
           export NODE_CORE_CONFIG
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
-          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY' > "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
-          import sys
-          from unittest.mock import patch
-          sys.path.insert(0, sys.argv[1])
-          from node_core.runtime import NodeRuntime
-
-          answers = iter(["4", "2", "yes", "0", "0", "0"])
-          def scripted_input(prompt=""):
-              print(prompt, end="", flush=True)
-              return next(answers)
-
-          runtime = NodeRuntime()
-          runtime.boot()
-          with patch("builtins.input", side_effect=scripted_input):
-              runtime.menu()
-          PY
+          # Use a real subprocess and stdin, because the Applications menu launches P2P Contracts as a child process.
+          printf '%s\\n' 4 2 yes 0 0 0 | python3 "$NODE_CORE_DATA_DIR/app/main.py" > "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq '1. Create Public Request' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq '4. Search Request ID' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
-
       - name: Test requests, validation, manifests and closure evidence
         shell: bash
         run: |
