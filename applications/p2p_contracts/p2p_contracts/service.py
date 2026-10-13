@@ -357,8 +357,10 @@ class P2PContractsService:
             raise P2PContractsError("Remote manifest transition does not match the supplied new request/evidence documents.")
         for entry in new_request_entries:
             request_id = entry.get("request_id")
+            if not isinstance(request_id, str) or not re.fullmatch(r"request-[0-9a-fA-F-]{36}", request_id):
+                raise ValueError("Remote manifest contains a malformed request ID.")
             document = request_by_id.get(request_id)
-            if not document or entry.get("document_hash") != document.get("document_hash"):
+            if not document or document.get("request_id") != request_id or entry.get("document_hash") != document.get("document_hash"):
                 raise P2PContractsError("Remote manifest request index does not match its supplied documents.")
             if entry.get("document_path") != f"p2p_contracts/requests/{request_id}.json":
                 raise ValueError("Remote manifest contains an unsafe request document path.")
@@ -378,13 +380,15 @@ class P2PContractsService:
                 self._write_json(destination, document)
         for entry in new_evidence_entries:
             evidence_id = entry.get("evidence_id")
+            if not isinstance(evidence_id, str) or not re.fullmatch(r"evidence-[0-9a-fA-F-]{36}", evidence_id):
+                raise ValueError("Remote manifest contains a malformed evidence ID.")
             document = evidence_by_id.get(evidence_id)
-            if not document or entry.get("document_hash") != document.get("document_hash"):
+            if not document or document.get("evidence_id") != evidence_id or entry.get("document_hash") != document.get("document_hash"):
                 raise P2PContractsError("Remote manifest evidence index does not match its supplied documents.")
             if entry.get("document_path") != f"p2p_contracts/evidence/{evidence_id}.json":
                 raise ValueError("Remote manifest contains an unsafe evidence document path.")
-            if entry.get("request_id") not in {item.get("request_id") for item in requests}:
-                raise P2PContractsError("Remote evidence refers to a request absent from the manifest.")
+            if entry.get("request_id") not in {item.get("request_id") for item in requests} or document.get("request_id") != entry.get("request_id"):
+                raise P2PContractsError("Remote evidence refers to a request absent from or inconsistent with the manifest.")
             destination = self.storage.path(entry["document_path"])
             if destination.exists():
                 if self._read_json(destination).get("document_hash") != document.get("document_hash"):
