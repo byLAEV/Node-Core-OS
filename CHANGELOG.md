@@ -2,6 +2,15 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.4.1] - 2026-10-13
+
+- Anchor the first Node Core P2P Contracts manifest to the bundled genesis reference.
+- Validate the synchronized genesis manifest and require block 1 to reference the configured Bitcoin Mainnet genesis hash.
+- Reject first remote manifests that do not reference the expected genesis.
+- Require the genesis manifest in installation and update packages.
+- Extend real-Kubo three-node tests to verify block-1 genesis references and manifest convergence.
+- Keep installation, update, and runtime operations in the ordinary user's account; root and sudo are not required.
+
 ## Node Core OS [1.3.0] / Node Core P2P Contracts [1.0.0] - 2026-10-12
 
 - Include Node Core P2P Contracts in the default Node Core OS installation package.
