@@ -9,6 +9,24 @@ from node_core.ipfs import KuboManager, KuboStatus
 
 
 class KuboBackgroundLaunchTests(unittest.TestCase):
+    def test_daemon_command_enables_pubsub_flag_when_kubo_advertises_it(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = KuboManager("ipfs", Path(temporary) / "ipfs", "http://127.0.0.1:5001")
+            with patch("node_core.ipfs.subprocess.run", return_value=SimpleNamespace(
+                stdout="Options: --enable-pubsub-experiment", returncode=0
+            )):
+                self.assertEqual(manager._daemon_command(), ["ipfs", "daemon", "--enable-pubsub-experiment"])
+
+    def test_daemon_command_keeps_default_when_kubo_does_not_advertise_flag(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = KuboManager("ipfs", Path(temporary) / "ipfs", "http://127.0.0.1:5001")
+            with patch("node_core.ipfs.subprocess.run", return_value=SimpleNamespace(
+                stdout="Kubo daemon help", returncode=0
+            )):
+                self.assertEqual(manager._daemon_command(), ["ipfs", "daemon"])
+
     def test_start_detaches_daemon_and_redirects_terminal_streams(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary) / "ipfs"
@@ -24,6 +42,7 @@ class KuboBackgroundLaunchTests(unittest.TestCase):
                     KuboStatus(True, True, True, peer_id="peer-test"),
                 ]),
                 patch.object(manager, "is_initialized", return_value=True),
+                patch.object(manager, "_daemon_command", return_value=["ipfs", "daemon"]),
                 patch("node_core.ipfs.subprocess.Popen", return_value=process) as popen,
             ):
                 manager.start(wait_seconds=0.5)
