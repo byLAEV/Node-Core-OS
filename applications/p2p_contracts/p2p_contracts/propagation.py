@@ -351,26 +351,22 @@ class PropagationProtocol:
         message = self._publish("REQUEST_BROADCAST", request_document=request_document, manifest_document=manifest_document)
         deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
         while time.monotonic() < deadline:
-            with self._lock:
-                replies = [item for item in self._received
-                           if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]]
-            if replies:
-                return {"message_id": message["message_id"], "peer_acknowledgements": replies}
             time.sleep(0.1)
-        return {"message_id": message["message_id"], "peer_acknowledgements": []}
+        with self._lock:
+            replies = [item for item in self._received
+                       if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]]
+        return {"message_id": message["message_id"], "peer_acknowledgements": replies}
 
     def publish_evidence(self, evidence_document, manifest_document=None, wait_seconds=1.5):
         self.start()
         message = self._publish("EVIDENCE_BROADCAST", evidence_document=evidence_document, manifest_document=manifest_document)
         deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
         while time.monotonic() < deadline:
-            with self._lock:
-                replies = [item for item in self._received
-                           if item.get("type") == "EVIDENCE_ACK" and item.get("reply_to") == message["message_id"]]
-            if replies:
-                return {"message_id": message["message_id"], "peer_acknowledgements": replies}
             time.sleep(0.1)
-        return {"message_id": message["message_id"], "peer_acknowledgements": []}
+        with self._lock:
+            replies = [item for item in self._received
+                       if item.get("type") == "EVIDENCE_ACK" and item.get("reply_to") == message["message_id"]]
+        return {"message_id": message["message_id"], "peer_acknowledgements": replies}
 
     def finalize_propagation(self, owner_request_document=None):
         """Commit all queued peer requests and the owner's prepared request in one manifest."""
