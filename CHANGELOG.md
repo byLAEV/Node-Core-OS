@@ -8,6 +8,11 @@ All notable changes to Node Core OS are documented here.
 - Ask the operator to explicitly accept the genesis root hash before initializing logical block 1.
 - Keep active-proposal conflict checks and require peer responses for later propagations when a local manifest already exists.
 - Add regression tests for single-node genesis bootstrap, later propagation without peers, and active-proposal blocking.
+- Add a dedicated local-only request and manifest creation path that does not query PubSub or require peer responses.
+- Label single-node manifests as local and uncorroborated until other nodes verify them.
+- Keep the bundled genesis manifest path anchored to the application module and verify its local storage copy.
+- Add regression tests for multiple offline manifest sequences and CLI creation without peer discovery.
+- Run the new P2P CLI regression tests in CI and as part of updater validation.
 - Preserve ordinary-user-only operation; root and sudo are not required.
 
 
