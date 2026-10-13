@@ -59,7 +59,7 @@ class PropagationProtocol:
 
     def _save_state(self, state):
         temp = self.state_path.with_suffix(".tmp")
-        temp.write_text(json.dumps(state, ensure_ascii=False, sort_keys=True, indent=2) + "\\n", encoding="utf-8")
+        temp.write_text(json.dumps(state, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
         os.replace(temp, self.state_path)
 
     def _new_message(self, kind, **fields):
@@ -118,7 +118,7 @@ class PropagationProtocol:
                         continue
                     self._received.append(message)
                     temp = self.messages_path.with_suffix(".tmp")
-                    temp.write_text(json.dumps(self._received[-1000:], ensure_ascii=False, sort_keys=True, indent=2) + "\\n", encoding="utf-8")
+                    temp.write_text(json.dumps(self._received[-1000:], ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
                     os.replace(temp, self.messages_path)
                 if message.get("type") == "STATUS_QUERY":
                     state = self.current_state()
