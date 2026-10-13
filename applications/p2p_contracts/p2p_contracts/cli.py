@@ -97,6 +97,7 @@ class P2PContractsCLI:
             own_status = "AUTOMATICALLY SENT" if state and state.get("owner_request_sent") else ("ENABLED" if enabled else "LOCKED")
             print(f"4. Create This Node's BTC Exchange Request ({own_status})")
             print("5. Submit a BTC Exchange Request to the Active Propagation")
+            print("6. Create a Local Request and Manifest (works without peers)")
             print("0. Back")
             choice = input("\nSelect an option: ").strip()
             if choice == "0":
@@ -115,6 +116,8 @@ class P2PContractsCLI:
                     self.create_request_form()
             elif choice == "5":
                 self.submit_to_active_propagation()
+            elif choice == "6":
+                self.create_request_form(local_only=True)
             else:
                 print("Choose an available option.")
 
@@ -251,7 +254,7 @@ class P2PContractsCLI:
             return
         self.create_request_form(remote_proposal=proposal)
 
-    def create_request_form(self, remote_proposal: dict[str, Any] | None = None, draft_only: bool = False) -> bool:
+    def create_request_form(self, remote_proposal: dict[str, Any] | None = None, draft_only: bool = False, local_only: bool = False) -> bool:
         profile = self.runtime.identity_profile.load() or {}
         node = self.runtime.network.identity()
         print("\n--- PUBLIC BTC EXCHANGE REQUEST ---")
@@ -289,8 +292,12 @@ class P2PContractsCLI:
         print(f"Request: {receive_amount} {asset.upper()}")
         print(f"Contact methods: {len(contacts)}")
         print("Identity fields to publish: " + (", ".join(sorted(selected)) if selected else "none"))
-        confirm_text = ("Save this request as a local draft for automatic propagation submission?"
-                        if draft_only else "Create this request in the local append-only manifest?")
+        if draft_only:
+            confirm_text = "Save this request as a local draft for automatic propagation submission?"
+        elif local_only:
+            confirm_text = "Create and save this request in a local manifest without requiring peer responses?"
+        else:
+            confirm_text = "Create this request in the local append-only manifest?"
         if not self._yes(confirm_text):
             print("Request creation cancelled.")
             return False
@@ -327,6 +334,10 @@ class P2PContractsCLI:
             else:
                 print("Request remains saved locally but was NOT acknowledged by the propagation node.")
                 print(f"Reason: {acknowledgement.get('reason', 'No reason provided.')}")
+        elif local_only:
+            print("Local manifest created successfully. No peer discovery or PubSub response was required.")
+            print("Status: LOCAL_ONLY_UNCORROBORATED")
+            print("The manifest can be shared and corroborated when other nodes join.")
         else:
             broadcast = self.propagation.publish_request(request_document, result["manifest_document"])
             print(f"Network acknowledgements received: {len(broadcast['peer_acknowledgements'])}")
