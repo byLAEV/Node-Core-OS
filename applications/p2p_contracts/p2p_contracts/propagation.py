@@ -199,6 +199,9 @@ class PropagationProtocol:
             document = message.get("request_document")
             if self.service is not None and isinstance(document, dict):
                 try:
+                    requester = document.get("requester") or {}
+                    if requester.get("node_id") != sender:
+                        raise ValueError("Request sender ID does not match the request's claimed node ID.")
                     result = self.service.import_remote_requests([document])
                     self._publish("REQUEST_ACK", reply_to=message["message_id"],
                                   request_id=document.get("request_id"), accepted=True,
@@ -210,6 +213,8 @@ class PropagationProtocol:
             document = message.get("evidence_document")
             if self.service is not None and isinstance(document, dict):
                 try:
+                    if document.get("reporter_node_id") != sender:
+                        raise ValueError("Evidence reporter ID does not match the message's claimed sender ID.")
                     result = self.service.import_remote_evidence(document)
                     self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
                                   evidence_id=document.get("evidence_id"), accepted=True,
