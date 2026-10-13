@@ -152,6 +152,23 @@ class KuboManager:
         except KuboError:
             return KuboStatus(True, True, False)
 
+    def _daemon_command(self) -> list[str]:
+        """Enable Kubo's PubSub experiment flag only on versions that advertise it."""
+        command = [self.executable, "daemon"]
+        try:
+            help_result = subprocess.run(
+                [self.executable, "daemon", "--help"],
+                env=self._environment(), stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, timeout=5, check=False,
+            )
+            if "--enable-pubsub-experiment" in (help_result.stdout or ""):
+                command.append("--enable-pubsub-experiment")
+        except (OSError, subprocess.TimeoutExpired):
+            # Preserve the normal Kubo start path if help output is unavailable.
+            pass
+        return command
+
     def start(self, wait_seconds: float = 8.0) -> None:
         status = self.status()
         if status.running:
@@ -165,7 +182,7 @@ class KuboManager:
         # persistent log so it can run in the background in Termux/Linux.
         with self.log_path.open("ab") as log:
             process = subprocess.Popen(
-                [self.executable, "daemon"],
+                self._daemon_command(),
                 env=self._environment(),
                 stdin=subprocess.DEVNULL,
                 stdout=log,
