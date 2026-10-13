@@ -24,10 +24,15 @@ from applications.p2p_contracts.p2p_contracts.propagation import (
 from applications.p2p_contracts.p2p_contracts.service import P2PContractsService
 
 
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+def free_ports(count):
+    sockets = [socket.socket() for _ in range(count)]
+    try:
+        for sock in sockets:
+            sock.bind(("127.0.0.1", 0))
+        return [sock.getsockname()[1] for sock in sockets]
+    finally:
+        for sock in sockets:
+            sock.close()
 
 
 class RealKuboAdapter:
@@ -74,7 +79,7 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             env = {**os.environ, "IPFS_PATH": str(repo)}
             subprocess.run([cls.ipfs, "init", "--profile=test"], env=env, check=True,
                            capture_output=True, text=True, timeout=30)
-            api_port, gateway_port, swarm_port = free_port(), free_port(), free_port()
+            api_port, gateway_port, swarm_port = free_ports(3)
             commands = [
                 ("config", "Addresses.API", f"/ip4/127.0.0.1/tcp/{api_port}"),
                 ("config", "Addresses.Gateway", f"/ip4/127.0.0.1/tcp/{gateway_port}"),
