@@ -353,7 +353,8 @@ class P2PContractsService:
             body = {key: value for key, value in document.items() if key != "document_hash"}
             if body.get("schema") != EVIDENCE_SCHEMA or not isinstance(digest, str) or document_hash(body) != digest:
                 raise P2PContractsError(f"Remote evidence hash verification failed: {evidence_id}")
-        if len(new_request_entries) != len(request_by_id) or len(new_evidence_entries) != len(evidence_by_id):
+        if (len(new_request_entries) != len(request_by_id) or len(new_evidence_entries) != len(evidence_by_id)
+                or len(request_documents) != len(request_by_id) or len(evidence_documents) != len(evidence_by_id)):
             raise P2PContractsError("Remote manifest transition does not match the supplied new request/evidence documents.")
         for entry in new_request_entries:
             request_id = entry.get("request_id")
