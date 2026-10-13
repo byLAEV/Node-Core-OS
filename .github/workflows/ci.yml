@@ -543,16 +543,22 @@ jobs:
           assert all(item["result"] == "PASS" for item in records)
           assert all(item["evidence_verified"] is True for item in records)
           assert all(item["request_status"] == "exchange_completed" for item in records)
+          assert all(item["scenario2_evidence_verified"] is True for item in records)
+          assert all(item["scenario2_request_status"] == "exchange_completed" for item in records)
           assert len({item["initial_manifest_hash"] for item in records}) == 1, "Initial request manifests differ between VMs"
           assert len({item["final_manifest_hash"] for item in records}) == 1, "Final evidence manifests differ between VMs"
+          assert len({item["scenario2_initial_manifest_hash"] for item in records}) == 1, "Scenario 2 request manifests differ between VMs"
+          assert len({item["scenario2_final_manifest_hash"] for item in records}) == 1, "Scenario 2 final evidence manifests differ between VMs"
           for item in records:
               expected_peers = {record["peer_id"] for record in records if record["node"] != item["node"]}
               assert expected_peers.issubset(set(item["connected_peer_ids"])), f'{item["node"]} did not connect to both remote nodes'
               print(
                   f'{item["node"]}: peer={item["peer_id"]} '
-                  f'initial_manifest={item["initial_manifest_hash"]} '
-                  f'final_manifest={item["final_manifest_hash"]} '
-                  f'request_status={item["request_status"]} evidence={item["evidence_id"]}'
+                  f'round1_initial={item["initial_manifest_hash"]} '
+                  f'round1_final={item["final_manifest_hash"]} '
+                  f'round2_initial={item["scenario2_initial_manifest_hash"]} '
+                  f'round2_final={item["scenario2_final_manifest_hash"]} '
+                  f'round2_status={item["scenario2_request_status"]}'
               )
-          print("PASS: three separate Ubuntu VMs received the same request manifest and closure evidence over Kubo PubSub.")
+          print("PASS: three separate Ubuntu VMs completed two role-rotated request/manifest/evidence rounds over Kubo PubSub.")
           PY
