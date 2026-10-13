@@ -388,6 +388,9 @@ class PropagationProtocol:
             state["status"] = "CANCELLED"
             state["cancel_reason"] = "Propagation lease expired before finalization."
             self._save_state(state)
+            with self._lock:
+                self._pending_requests = []
+                self._save_pending()
             raise PubSubUnavailable("The propagation lease expired before finalization.")
         if state.get("batch_flushed"):
             return {"imported_count": 0, "manifest_hash": (self.service.current_manifest() or {}).get("manifest_hash"),
@@ -432,6 +435,9 @@ class PropagationProtocol:
                 state["status"] = "CANCELLED"
                 state["cancel_reason"] = "Propagation lease expired before the request batch was completed."
                 self._save_state(state)
+                with self._lock:
+                    self._pending_requests = []
+                    self._save_pending()
             elif state.get("status") == "ACCEPTED" and now >= parse_timestamp(state["send_enabled_at"]):
                 state["status"] = "READY_TO_SUBMIT"
                 self._save_state(state)
