@@ -514,16 +514,16 @@ jobs:
 
 
   three-independent-p2p-nodes:
-    name: Independent Ubuntu 24.04 node \${{ matrix.node }}
+    name: Independent Ubuntu 24.04 node ${{ matrix.node }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         node: [node-a, node-b, node-c]
     env:
-      HOME: \${{ runner.temp }}/p2p-\${{ matrix.node }}-\${{ github.run_id }}
-      NODE_CORE_DATA_DIR: \${{ runner.temp }}/p2p-\${{ matrix.node }}-\${{ github.run_id }}/.node-core
-      NODE_CORE_CONFIG: \${{ runner.temp }}/p2p-\${{ matrix.node }}-\${{ github.run_id }}/.node-core/config.json
+      HOME: ${{ runner.temp }}/p2p-${{ matrix.node }}-${{ github.run_id }}
+      NODE_CORE_DATA_DIR: ${{ runner.temp }}/p2p-${{ matrix.node }}-${{ github.run_id }}/.node-core
+      NODE_CORE_CONFIG: ${{ runner.temp }}/p2p-${{ matrix.node }}-${{ github.run_id }}/.node-core/config.json
       PYTHONUNBUFFERED: "1"
     defaults:
       run:
@@ -547,7 +547,7 @@ jobs:
           test "$(id -u)" -ne 0
           mkdir -p "$HOME"
           printf 'Node: %s\nHostname: %s\nUID: %s\n' \
-            "\${{ matrix.node }}" "$(hostname)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
+            "${{ matrix.node }}" "$(hostname)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate installer scripts are user-only
         run: |
@@ -607,7 +607,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
-          python3 - "$NODE_CORE_DATA_DIR/app" "\${{ matrix.node }}" <<'PY'
+          python3 - "$NODE_CORE_DATA_DIR/app" "${{ matrix.node }}" <<'PY'
           import json
           import os
           import sys
@@ -700,6 +700,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: \${{ matrix.node }}-p2p-identity-summary
-          path: \${{ runner.temp }}/\${{ matrix.node }}-identity-summary.json
+          name: ${{ matrix.node }}-p2p-identity-summary
+          path: ${{ runner.temp }}/${{ matrix.node }}-identity-summary.json
           if-no-files-found: warn
