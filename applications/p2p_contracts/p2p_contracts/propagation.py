@@ -49,8 +49,6 @@ class PropagationProtocol:
         self._lock = threading.RLock()
         self._received = []
         self._pending_requests = []
-        if self._listener and self._listener.stdout:
-            self._listener.stdout.close()
         self._listener = None
         if self.messages_path.is_file():
             try:
