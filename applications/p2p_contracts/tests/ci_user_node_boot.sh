@@ -2,10 +2,10 @@
 # First-boot acceptance helper. Must run as the ordinary self-hosted runner user.
 set -euo pipefail
 
-node_name="\${1:?node name required: node-a, node-b, or node-c}"
-full_name="\${2:?synthetic full name required}"
-alias_name="\${3:?synthetic alias required}"
-document_number="\${4:?synthetic document number required}"
+node_name="${1:?node name required: node-a, node-b, or node-c}"
+full_name="${2:?synthetic full name required}"
+alias_name="${3:?synthetic alias required}"
+document_number="${4:?synthetic document number required}"
 
 case "$node_name" in
   node-a|node-b|node-c) ;;
@@ -29,9 +29,9 @@ for command in bash python3 curl tar sha512sum timeout; do
     exit 1
   }
 done
-: "\${GITHUB_RUN_ID:?GitHub Actions run ID is required}"
-: "\${GITHUB_OUTPUT:?GitHub Actions output file is required}"
-: "\${RUNNER_TEMP:?GitHub Actions runner temp directory is required}"
+: "${GITHUB_RUN_ID:?GitHub Actions run ID is required}"
+: "${GITHUB_OUTPUT:?GitHub Actions output file is required}"
+: "${RUNNER_TEMP:?GitHub Actions runner temp directory is required}"
 
 export NODE_CORE_DATA_DIR="$HOME/.node-core-p2p-e2e/$GITHUB_RUN_ID/$node_name"
 export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
