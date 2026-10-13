@@ -323,6 +323,10 @@ class P2PContractsService:
         evidence = payload.get("evidence")
         if not isinstance(requests, list) or not isinstance(evidence, list):
             raise ValueError("Remote manifest request and evidence indexes must be lists.")
+        if any(not isinstance(entry, dict) for entry in requests):
+            raise ValueError("Remote manifest request index entries must be JSON objects.")
+        if any(not isinstance(entry, dict) for entry in evidence):
+            raise ValueError("Remote manifest evidence index entries must be JSON objects.")
         if requests[:len(previous_requests)] != previous_requests:
             raise P2PContractsError("Remote manifest modified or reordered the existing request index.")
         if evidence[:len(previous_evidence)] != previous_evidence:
