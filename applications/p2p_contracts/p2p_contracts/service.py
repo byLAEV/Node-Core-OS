@@ -287,6 +287,119 @@ class P2PContractsService:
         }
 
     @_synchronized
+    def import_remote_manifest(
+        self, manifest_document: dict[str, Any], *,
+        request_documents: list[dict[str, Any]] | None = None,
+        evidence_documents: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Verify and install the exact same append-only manifest received from a peer."""
+        self._ensure_directories()
+        if not isinstance(manifest_document, dict):
+            raise ValueError("Remote manifest must be a JSON object.")
+        declared_hash = manifest_document.get("manifest_hash")
+        payload = {key: value for key, value in manifest_document.items() if key != "manifest_hash"}
+        if payload.get("schema") != MANIFEST_SCHEMA:
+            raise ValueError("Remote document is not a supported application manifest.")
+        if not isinstance(declared_hash, str) or document_hash(payload) != declared_hash:
+            raise P2PContractsError("Remote manifest hash verification failed.")
+        sequence = payload.get("sequence")
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1:
+            raise ValueError("Remote manifest sequence is invalid.")
+        previous = self._load_head()
+        if previous and previous.get("manifest_hash") == declared_hash:
+            return {"imported": False, "manifest_hash": declared_hash, "manifest_sequence": sequence}
+        parent_hash = payload.get("previous_manifest_hash")
+        if previous is None:
+            if sequence != 1 or parent_hash is not None:
+                raise P2PContractsError("Cannot import a later manifest without its trusted parent manifest.")
+            previous_requests, previous_evidence = [], []
+        else:
+            if parent_hash != previous.get("manifest_hash") or sequence != previous.get("sequence", 0) + 1:
+                raise P2PContractsError("Remote manifest does not extend the current local manifest head.")
+            previous_requests = list(previous.get("requests", []))
+            previous_evidence = list(previous.get("evidence", []))
+        requests = payload.get("requests")
+        evidence = payload.get("evidence")
+        if not isinstance(requests, list) or not isinstance(evidence, list):
+            raise ValueError("Remote manifest request and evidence indexes must be lists.")
+        if requests[:len(previous_requests)] != previous_requests:
+            raise P2PContractsError("Remote manifest modified or reordered the existing request index.")
+        if evidence[:len(previous_evidence)] != previous_evidence:
+            raise P2PContractsError("Remote manifest modified or reordered the existing evidence index.")
+        new_request_entries = requests[len(previous_requests):]
+        new_evidence_entries = evidence[len(previous_evidence):]
+        request_documents = request_documents or []
+        evidence_documents = evidence_documents or []
+        request_by_id = {}
+        for document in request_documents:
+            if not isinstance(document, dict):
+                raise ValueError("Remote request document must be a JSON object.")
+            request_id = document.get("request_id")
+            digest = document.get("document_hash")
+            request_by_id[request_id] = document
+            body = {key: value for key, value in document.items() if key != "document_hash"}
+            if body.get("schema") != REQUEST_SCHEMA or body.get("request_type") != "btc_exchange" or body.get("visibility") != "public":
+                raise ValueError("Remote manifest contains an unsupported public request.")
+            if not isinstance(digest, str) or document_hash(body) != digest:
+                raise P2PContractsError(f"Remote request hash verification failed: {request_id}")
+        evidence_by_id = {}
+        for document in evidence_documents:
+            if not isinstance(document, dict):
+                raise ValueError("Remote evidence document must be a JSON object.")
+            evidence_id = document.get("evidence_id")
+            digest = document.get("document_hash")
+            evidence_by_id[evidence_id] = document
+            body = {key: value for key, value in document.items() if key != "document_hash"}
+            if body.get("schema") != EVIDENCE_SCHEMA or not isinstance(digest, str) or document_hash(body) != digest:
+                raise P2PContractsError(f"Remote evidence hash verification failed: {evidence_id}")
+        if len(new_request_entries) != len(request_by_id) or len(new_evidence_entries) != len(evidence_by_id):
+            raise P2PContractsError("Remote manifest transition does not match the supplied new request/evidence documents.")
+        for entry in new_request_entries:
+            request_id = entry.get("request_id")
+            document = request_by_id.get(request_id)
+            if not document or entry.get("document_hash") != document.get("document_hash"):
+                raise P2PContractsError("Remote manifest request index does not match its supplied documents.")
+            if entry.get("document_path") != f"p2p_contracts/requests/{request_id}.json":
+                raise ValueError("Remote manifest contains an unsafe request document path.")
+            exchange = document.get("exchange")
+            requester = document.get("requester")
+            if not isinstance(exchange, dict) or exchange.get("give_asset") != "BTC":
+                raise ValueError("Remote request must offer BTC.")
+            validate_btc_amount(str(exchange.get("give_amount", "")))
+            validate_asset_code(str(exchange.get("receive_asset", "")))
+            if not isinstance(requester, dict) or not isinstance(requester.get("node_id"), str):
+                raise ValueError("Remote request does not identify its requesting node.")
+            destination = self.storage.path(entry["document_path"])
+            if destination.exists():
+                if self._read_json(destination).get("document_hash") != document.get("document_hash"):
+                    raise P2PContractsError(f"Conflicting request content already exists: {request_id}")
+            else:
+                self._write_json(destination, document)
+        for entry in new_evidence_entries:
+            evidence_id = entry.get("evidence_id")
+            document = evidence_by_id.get(evidence_id)
+            if not document or entry.get("document_hash") != document.get("document_hash"):
+                raise P2PContractsError("Remote manifest evidence index does not match its supplied documents.")
+            if entry.get("document_path") != f"p2p_contracts/evidence/{evidence_id}.json":
+                raise ValueError("Remote manifest contains an unsafe evidence document path.")
+            if entry.get("request_id") not in {item.get("request_id") for item in requests}:
+                raise P2PContractsError("Remote evidence refers to a request absent from the manifest.")
+            destination = self.storage.path(entry["document_path"])
+            if destination.exists():
+                if self._read_json(destination).get("document_hash") != document.get("document_hash"):
+                    raise P2PContractsError(f"Conflicting evidence content already exists: {evidence_id}")
+            else:
+                self._write_json(destination, document)
+        relative_path = f"p2p_contracts/manifests/manifest-{sequence:08d}-{declared_hash[:12]}.json"
+        self._write_json(self.storage.path(relative_path), manifest_document)
+        self._write_json(self.head_path, {
+            "manifest_path": relative_path, "manifest_hash": declared_hash, "sequence": sequence,
+        })
+        return {"imported": True, "manifest_hash": declared_hash, "manifest_sequence": sequence,
+                "imported_request_count": len(new_request_entries),
+                "imported_evidence_count": len(new_evidence_entries)}
+
+    @_synchronized
     def import_remote_requests(self, request_documents: list[dict[str, Any]]) -> dict[str, Any]:
         """Validate and append a batch of public requests received from a peer."""
         self._ensure_directories()
@@ -356,7 +469,7 @@ class P2PContractsService:
                     "manifest_hash": current.get("manifest_hash") if current else None}
         manifest = self._publish_new_manifest(requests=requests, evidence=evidence)
         return {"imported_request_ids": imported, "imported_count": len(imported),
-                "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"]}
+                "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"], "manifest_document": manifest}
 
     @_synchronized
     def create_request_evidence(
@@ -404,9 +517,6 @@ class P2PContractsService:
             "document_path": relative_path, "document_hash": digest,
             "outcome": outcome, "created_at": payload["created_at"],
         })
-        for entry in requests:
-            if entry["request_id"] == request_id and outcome in FINAL_OUTCOMES:
-                entry["status"] = outcome
         manifest = self._publish_new_manifest(requests=requests, evidence=evidence)
         return {
             "evidence_id": payload["evidence_id"], "request_id": request_id,
@@ -462,10 +572,6 @@ class P2PContractsService:
             "document_path": relative_path, "document_hash": digest,
             "outcome": payload["outcome"], "created_at": payload.get("created_at"),
         })
-        if payload["outcome"] in FINAL_OUTCOMES:
-            for entry in requests:
-                if entry.get("request_id") == request_id:
-                    entry["status"] = payload["outcome"]
         manifest = self._publish_new_manifest(requests=requests, evidence=evidence)
         return {"imported": True, "evidence_id": evidence_id,
                 "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"]}
