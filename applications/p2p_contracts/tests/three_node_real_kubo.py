@@ -187,7 +187,29 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             for protocol in protocols:
                 protocol.start()
             time.sleep(1.0)
-            proposal = protocols[0].accept_new_propagation(None, require_owner_request=True)
+            # Node A acts through the real application menu: it accepts a
+            # propagation window and fills the owner BTC request form as a draft.
+            runtime_a = SimpleNamespace(
+                storage=storages[0], identity_profile=Profile(),
+                network=networks[0], kubo=adapters[0],
+            )
+            cli_a = P2PContractsCLI(runtime_a)
+            cli_a.service = services[0]
+            cli_a.propagation = protocols[0]
+            owner_answers = iter([
+                "y",  # Accept a local propagation window.
+                "n",  # Do not publish personal identity fields.
+                "email", "node-a@example.invalid", "n",
+                "0.025", "EUR", "700", "SEPA",
+                "Three-node integration request from A", "y",
+            ])
+            owner_form_output = io.StringIO()
+            with patch("builtins.input", side_effect=owner_answers), redirect_stdout(owner_form_output):
+                cli_a.accept_propagation()
+            proposal = protocols[0].current_state()
+            self.assertIsNotNone(proposal, "Node A's application menu did not create a propagation.")
+            self.assertEqual(proposal["status"], "ACCEPTED")
+            self.assertTrue((storages[0].path("p2p_contracts/propagation/owner-request-draft.json")).is_file())
             status = protocols[1].query_status(wait_seconds=2.0)
             self.assertTrue(status["responses"], f"Node B received no peer status responses; received types={[item.get('type') for item in protocols[1]._received]}; listener errors={protocols[1]._listener_errors}; peers={adapters[1]._run('swarm', 'peers').stdout}")
             self.assertTrue(any(item.get("proposal_hash") == proposal["proposal_hash"]
@@ -245,22 +267,30 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                 "The form-submitted request was not queued by the proposing node after its network acknowledgement.",
             )
 
-            request_a = services[0].create_btc_exchange_request(
-                btc_amount="0.025", receive_asset="EUR", receive_amount="700",
-                receive_network="SEPA", description="Three-node integration request from A",
-                contacts=[{"type": "email", "value": "node-a@example.invalid"}],
-                publish_identity=False, defer_manifest=True,
-            )
-            request_a_doc = json.loads(Path(request_a["request_path"]).read_text(encoding="utf-8"))
-            state = protocols[0]._state()
+            # Fast-forward the ten-minute timer only inside this isolated test
+            # and run the application's normal owner-draft submission function.
             from datetime import timedelta
+            state = protocols[0]._state()
             state["send_enabled_at"] = timestamp(utc_now() - timedelta(seconds=1))
             state["lease_expires_at"] = timestamp(utc_now() + timedelta(seconds=30))
             protocols[0]._save_state(state)
             self.assertEqual(protocols[0].current_state()["status"], "READY_TO_SUBMIT")
-            finalized = protocols[0].finalize_propagation(request_a_doc)
-            self.assertEqual(finalized["batch_request_count"], 2)
-            self.assertTrue(finalized["owner_request_sent"])
+            owner_submit_output = io.StringIO()
+            with redirect_stdout(owner_submit_output):
+                cli_a.submit_owner_draft_if_ready(protocols[0].current_state())
+            self.assertIn("PROPAGATION BATCH SUBMITTED", owner_submit_output.getvalue())
+            self.assertIn("Requests included in the manifest transition: 2", owner_submit_output.getvalue())
+            owner_id_line = next(
+                line for line in owner_submit_output.getvalue().splitlines()
+                if line.startswith("Owner request ID: ")
+            )
+            request_a = {"request_id": owner_id_line.split(":", 1)[1].strip()}
+            request_a_found = services[0].find_request(request_a["request_id"])
+            self.assertIsNotNone(request_a_found, "Node A's owner request form was not committed.")
+            request_a_doc = request_a_found["request"]
+            finalized_state = protocols[0].current_state()
+            self.assertEqual(finalized_state["status"], "FINALIZED")
+            self.assertTrue(finalized_state["owner_request_sent"])
             self.assertEqual(services[0].current_manifest()["sequence"], 1)
             self.assertEqual(len(services[0].current_manifest()["requests"]), 2)
             self.assertIsNotNone(services[0].find_request(request_b["request_id"]))
