@@ -51,6 +51,8 @@ printf 'print("fixture P2P Contracts")\n' > "$release_root/Node-Core-OS-fixture/
 printf 'VALUE = "fixture P2P CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/cli.py"
 printf 'VALUE = "fixture P2P service"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/service.py"
 printf 'VALUE = "fixture P2P propagation"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/propagation.py"
+cp "$REPOSITORY_ROOT/applications/p2p_contracts/genesis-manifest.json" \
+  "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/genesis-manifest.json"
 cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_service.py" <<'PY'
 import unittest
 class P2PServiceFixtureTest(unittest.TestCase):
@@ -173,7 +175,8 @@ grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
 printf '{"sha":"2222222222222222222222222222222222222222"}\n' > "$TEST_FIXTURES/latest-commit.json"
-mkdir -p "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core"
+mkdir -p "$TEMP_ROOT/bad-release"
+cp -R "$release_root/Node-Core-OS-fixture" "$TEMP_ROOT/bad-release/Node-Core-OS-bad"
 printf 'def broken(:\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/main.py"
 printf 'VALUE = "bad"\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core/__init__.py"
 tar -czf "$TEST_FIXTURES/2222222222222222222222222222222222222222.tar.gz" \

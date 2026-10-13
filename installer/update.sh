@@ -435,6 +435,10 @@ update_application() (
     printf 'Update is missing P2P Contracts CLI; refusing activation.\n' >&2
     return 1
   }
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || {
+    printf 'Update is missing the P2P Contracts genesis manifest; refusing activation.\n' >&2
+    return 1
+  }
   [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || {
     printf 'Update is missing P2P Contracts tests; refusing activation.\n' >&2
     return 1
