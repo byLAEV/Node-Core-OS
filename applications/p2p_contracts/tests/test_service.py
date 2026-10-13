@@ -86,6 +86,35 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.assertEqual(found["evidence"][0]["evidence_id"], evidence["evidence_id"])
         self.assertEqual(self.service.current_manifest()["sequence"], 2)
 
+    def test_closure_records_counterparty_and_rating(self):
+        request = self.service.create_btc_exchange_request(
+            btc_amount="0.02", receive_asset="EUR", receive_amount="600",
+            receive_network="", description="Test closure request",
+            contacts=[{"type": "email", "value": "test@example.invalid"}], publish_identity=False,
+        )
+        evidence = self.service.create_request_evidence(
+            request_id=request["request_id"], outcome="exchange_completed",
+            evidence_type="exchange_result", description="Exchange reported complete.",
+            reporter_statement="Test reporter statement.", target_node_id="peer-counterparty", rating=5,
+        )
+        found = self.service.find_request(request["request_id"])
+        self.assertEqual(found["evidence"][0]["target_node_id"], "peer-counterparty")
+        self.assertEqual(found["evidence"][0]["rating"], 5)
+        self.assertEqual(evidence["verification_status"], "self_reported_unverified")
+
+    def test_invalid_reputation_rating_is_rejected(self):
+        request = self.service.create_btc_exchange_request(
+            btc_amount="0.02", receive_asset="EUR", receive_amount="600",
+            receive_network="", description="Test closure request",
+            contacts=[{"type": "email", "value": "test@example.invalid"}], publish_identity=False,
+        )
+        with self.assertRaises(ValueError):
+            self.service.create_request_evidence(
+                request_id=request["request_id"], outcome="exchange_completed",
+                evidence_type="exchange_result", description="Exchange reported complete.",
+                reporter_statement="Test reporter statement.", target_node_id="peer-counterparty", rating=6,
+            )
+
     def test_manifest_tampering_is_detected(self):
         self.service.create_btc_exchange_request(
             btc_amount="0.1", receive_asset="ETH", receive_amount="1",
