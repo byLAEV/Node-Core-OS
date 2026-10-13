@@ -1,6 +1,7 @@
-""""English terminal interface for Node Core OS P2P Contracts v0.1."""
+"""English terminal interface for Node Core OS P2P Contracts v0.1."""
 from datetime import datetime, timezone
-import time
+import json
+from pathlib import Path
 from typing import Any
 
 from applications.p2p_contracts.p2p_contracts.propagation import (
@@ -13,7 +14,7 @@ class P2PContractsCLI:
     def __init__(self, runtime: Any) -> None:
         self.runtime = runtime
         self.service = P2PContractsService(runtime.storage, runtime.identity_profile, runtime.network)
-        self.propagation = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo)
+        self.propagation = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo, service=self.service)
 
     @staticmethod
     def _ask(label: str, optional: bool = False) -> str:
@@ -72,6 +73,7 @@ class P2PContractsCLI:
         finally:
             self.propagation.stop()
 
+
     def public_request_menu(self) -> None:
         while True:
             state = self.propagation.current_state()
@@ -80,7 +82,8 @@ class P2PContractsCLI:
             print("2. Accept a New Propagation Hash")
             print("3. View Propagation Status")
             enabled = bool(state and state.get("status") == "READY_TO_SUBMIT")
-            print(f"4. Create BTC Exchange Request ({'ENABLED' if enabled else 'LOCKED'})")
+            print(f"4. Create This Node's BTC Exchange Request ({'ENABLED' if enabled else 'LOCKED'})")
+            print("5. Submit a BTC Exchange Request to the Active Propagation")
             print("0. Back")
             choice = input("\nSelect an option: ").strip()
             if choice == "0":
@@ -94,9 +97,11 @@ class P2PContractsCLI:
             elif choice == "4":
                 state = self.propagation.current_state()
                 if not state or state.get("status") != "READY_TO_SUBMIT":
-                    print("Submission is locked. A locally accepted propagation must reach its enabled timestamp first.")
+                    print("Submission is locked. This node's own request is enabled after its ten-minute propagation window.")
                 else:
                     self.create_request_form()
+            elif choice == "5":
+                self.submit_to_active_propagation()
             else:
                 print("Choose an available option.")
 
@@ -120,7 +125,7 @@ class P2PContractsCLI:
         result = self.propagation.query_status()
         if result["active_proposals"]:
             print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
-            print("Verify the proposal manually; remote acceptance and request routing are not implemented yet.")
+            print("Submit to the currently active proposal instead of opening a competing propagation window.")
             return
         if not result["responses"]:
             print("Cannot safely accept a propagation: no peer responded. A local timeout is not proof of network-wide availability.")
@@ -155,11 +160,41 @@ class P2PContractsCLI:
             print(f"Time remaining: {remaining // 60:02d}:{remaining % 60:02d}")
             print("The request form remains locked until the timestamp.")
         elif state["status"] == "READY_TO_SUBMIT":
-            print("The local timer has elapsed. The form is enabled, but distributed submission/remote manifest merging is not implemented yet.")
+            print("The local timer has elapsed. Queued incoming requests are imported as a batch when the state is checked.")
         elif state["status"] == "CANCELLED":
             print(f"Cancellation reason: {state.get('cancel_reason', 'Not specified')}")
 
-    def create_request_form(self) -> None:
+
+    def submit_to_active_propagation(self) -> None:
+        print("\nChecking for an active propagation proposal from connected peers...")
+        result = self.propagation.query_status()
+        if not result["responses"]:
+            print("No peer responded. A new submission cannot be safely routed.")
+            return
+        proposals = result["active_proposals"]
+        if not proposals:
+            print("No active propagation proposal was reported by responding peers.")
+            print("If this node needs to create a new propagation, use option 2 only after checking network status.")
+            return
+        unique = {item.get("proposal_hash"): item for item in proposals if item.get("proposal_hash")}
+        if len(unique) != 1:
+            print("Conflicting active propagation hashes were reported. Submission is blocked.")
+            for item in unique.values():
+                print(f"- {item.get('proposal_hash')} from {item.get('proposer_node_id')}")
+            return
+        proposal = next(iter(unique.values()))
+        if proposal.get("proposer_node_id") == self.runtime.network.identity().peer_id:
+            print("This node owns the active propagation. Use option 4 after the timer unlocks.")
+            return
+        print(f"Active propagation hash: {proposal.get('proposal_hash')}")
+        print(f"Receiving node ID: {proposal.get('proposer_node_id')}")
+        print(f"Submission window closes at: {proposal.get('send_enabled_at')}")
+        if not self._yes("Prepare a public BTC exchange request for this propagation node?"):
+            print("Request submission cancelled.")
+            return
+        self.create_request_form(remote_proposal=proposal)
+
+    def create_request_form(self, remote_proposal: dict[str, Any] | None = None) -> None:
         profile = self.runtime.identity_profile.load() or {}
         node = self.runtime.network.identity()
         print("\n--- PUBLIC BTC EXCHANGE REQUEST ---")
@@ -209,7 +244,19 @@ class P2PContractsCLI:
         print(f"Request ID: {result['request_id']}")
         print(f"Request hash: {result['request_hash']}")
         print(f"Manifest hash: {result['manifest_hash']}")
-        print("Status: LOCAL_ONLY. Network request delivery and remote manifest merging are not implemented in v0.1.")
+        request_document = json.loads(Path(result["request_path"]).read_text(encoding="utf-8"))
+        if remote_proposal is not None:
+            acknowledgement = self.propagation.submit_request(remote_proposal, request_document)
+            if acknowledgement.get("accepted"):
+                print("Propagation node acknowledged the request for inclusion in its pending batch.")
+                print(f"Target node: {remote_proposal.get('proposer_node_id')}")
+            else:
+                print("Request remains saved locally but was NOT acknowledged by the propagation node.")
+                print(f"Reason: {acknowledgement.get('reason', 'No reason provided.')}")
+        else:
+            broadcast = self.propagation.publish_request(request_document)
+            print(f"Network acknowledgements received: {len(broadcast['peer_acknowledgements'])}")
+            print("Request broadcast attempted. Peers without acknowledgements may not have imported it.")
 
     def create_closure_form(self) -> None:
         print("\n--- CREATE REQUEST CLOSURE / REPUTATION EVIDENCE ---")
@@ -240,12 +287,17 @@ class P2PContractsCLI:
         print(f"Evidence ID: {result['evidence_id']}")
         print(f"Evidence hash: {result['evidence_hash']}")
         print("Verification status: self_reported_unverified")
+        evidence_path = self.runtime.storage.path(f"p2p_contracts/evidence/{result['evidence_id']}.json")
+        evidence_document = json.loads(evidence_path.read_text(encoding="utf-8"))
+        broadcast = self.propagation.publish_evidence(evidence_document)
+        print(f"Evidence broadcast acknowledgements: {len(broadcast['peer_acknowledgements'])}")
+        print("Remote nodes verify the evidence hash and import it only if the referenced request is already present.")
 
     def search_request_form(self) -> None:
         request_id = self._ask("Request ID to search")
         result = self.service.find_request(request_id)
         if result is None:
-            print("Request ID was not found in the local manifest. Remote search is not implemented yet.")
+            print("Request ID was not found in this node's synchronized local manifest.")
             return
         request = result["request"]
         exchange = request.get("exchange", {})
