@@ -92,12 +92,16 @@ class PropagationProtocol:
         message = self._new_message(kind, **fields)
         encoded = json.dumps(message, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         try:
-            subprocess.run(
-                [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
-                env=self.kubo._environment(), input=encoded, text=True,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                check=True, timeout=15,
-            )
+            publisher = getattr(self.kubo, "pubsub_publish", None)
+            if callable(publisher):
+                publisher(TOPIC, encoded)
+            else:
+                subprocess.run(
+                    [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
+                    env=self.kubo._environment(), input=encoded, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=True, timeout=15,
+                )
         except (subprocess.CalledProcessError, RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
             detail = getattr(exc, "stderr", None) or str(exc)
             detail = detail.strip() if isinstance(detail, str) else str(detail)
