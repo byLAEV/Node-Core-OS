@@ -413,13 +413,62 @@ class PropagationProtocol:
         if owner_request_document is not None:
             documents.append(owner_request_document)
         imported = {"imported_count": 0, "manifest_hash": None}
+        expected_peer_ids = set()
+        with self._lock:
+            expected_peer_ids = {
+                item.get("sender_node_id")
+                for item in self._received
+                if item.get("type") == "PROPOSAL_STATUS"
+                and item.get("proposal_id") == state.get("proposal_id")
+                and isinstance(item.get("sender_node_id"), str)
+                and item.get("sender_node_id") != state.get("proposer_node_id")
+            }
+        peer_acknowledgements = {}
+        peer_errors = {}
+        batch_message_ids = set()
         if documents:
             if self.service is None:
                 raise PubSubUnavailable("Request service is not connected to the propagation protocol.")
             imported = self.service.import_remote_requests(documents)
-            self._publish("REQUEST_BATCH", proposal_id=state.get("proposal_id"),
-                          proposal_hash=state.get("proposal_hash"), request_documents=documents,
-                          manifest_document=imported.get("manifest_document"), manifest_hash=imported.get("manifest_hash"))
+            # Re-broadcast the exact same immutable batch until every peer that observed the
+            # proposal confirms importing this manifest. Replays are idempotent by manifest hash.
+            for attempt in range(3):
+                batch_message = self._publish(
+                    "REQUEST_BATCH",
+                    proposal_id=state.get("proposal_id"),
+                    proposal_hash=state.get("proposal_hash"),
+                    request_documents=documents,
+                    manifest_document=imported.get("manifest_document"),
+                    manifest_hash=imported.get("manifest_hash"),
+                )
+                batch_message_ids.add(batch_message["message_id"])
+                if not expected_peer_ids:
+                    break
+                deadline = time.monotonic() + 3.0
+                while time.monotonic() < deadline:
+                    with self._lock:
+                        replies = [
+                            item for item in self._received
+                            if item.get("type") == "BATCH_ACK"
+                            and item.get("reply_to") in batch_message_ids
+                        ]
+                    for reply in replies:
+                        sender_id = reply.get("sender_node_id")
+                        if sender_id not in expected_peer_ids:
+                            continue
+                        if reply.get("error"):
+                            peer_errors[sender_id] = str(reply["error"])
+                        elif reply.get("manifest_hash") == imported.get("manifest_hash"):
+                            peer_acknowledgements[sender_id] = reply
+                            peer_errors.pop(sender_id, None)
+                    if expected_peer_ids.issubset(peer_acknowledgements):
+                        break
+                    time.sleep(0.1)
+                if expected_peer_ids.issubset(peer_acknowledgements):
+                    break
+                if attempt < 2:
+                    time.sleep(0.5)
+        missing_peer_ids = sorted(expected_peer_ids - set(peer_acknowledgements))
         with self._lock:
             self._pending_requests = []
             self._save_pending()
@@ -427,10 +476,19 @@ class PropagationProtocol:
         state["owner_request_sent"] = owner_request_document is not None
         state["batch_request_count"] = len(documents)
         state["final_manifest_hash"] = imported.get("manifest_hash")
+        state["batch_acknowledgements"] = sorted(peer_acknowledgements)
+        state["missing_peer_ids"] = missing_peer_ids
+        state["batch_peer_errors"] = peer_errors
         state["finalized_at"] = timestamp(utc_now())
         self._save_state(state)
-        return {**imported, "batch_request_count": len(documents),
-                "owner_request_sent": state["owner_request_sent"]}
+        return {
+            **imported,
+            "batch_request_count": len(documents),
+            "owner_request_sent": state["owner_request_sent"],
+            "peer_acknowledgements": list(peer_acknowledgements.values()),
+            "missing_peer_ids": missing_peer_ids,
+            "peer_errors": peer_errors,
+        }
 
     def _flush_pending_requests(self, state):
         if state.get("batch_flushed"):
