@@ -17,6 +17,7 @@ class FakeIdentityProfile:
 
 class FakeNodeIdentity:
     peer_id = "QmTestPeerId012345678901234567890123456789"
+    addresses = ("/ip4/127.0.0.1/tcp/4001/p2p/QmTestPeerId012345678901234567890123456789",)
 
 
 class FakeNetwork:
@@ -44,6 +45,15 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.assertEqual(validate_asset_code("usdt"), "USDT")
         with self.assertRaises(ValueError):
             validate_asset_code("BTC")
+
+    def test_private_pgp_key_is_not_accepted_as_contact(self):
+        with self.assertRaises(ValueError):
+            self.service.create_btc_exchange_request(
+                btc_amount="0.1", receive_asset="USDT", receive_amount="1",
+                receive_network="", description="Test request",
+                contacts=[{"type": "pgp_public_key", "value": "-----BEGIN PGP PRIVATE KEY BLOCK-----"}],
+                publish_identity=False,
+            )
 
     def test_create_request_and_find_request(self):
         result = self.service.create_btc_exchange_request(
