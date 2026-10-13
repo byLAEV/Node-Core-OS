@@ -109,16 +109,6 @@ jobs:
           # The installer starts the user's Kubo daemon. Confirm it is live before first menu use.
           "$NODE_CORE_DATA_DIR/bin/ipfs" id > "$RUNNER_TEMP/${{ matrix.node }}-ipfs-id.json"
           export NODE_CORE_CONFIG
-          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY' > "$RUNNER_TEMP/${{ matrix.node }}-bios-output.txt"
-          import os
-          import sys
-          sys.path.insert(0, sys.argv[1])
-          from node_core.runtime import NodeRuntime
-
-          runtime = NodeRuntime()
-          runtime.boot()
-          runtime.menu()
-          PY
           # Drive the actual BIOS menu: Main menu -> BIOS -> Identity Profile ->
           # enter synthetic document fields -> associate with this Kubo Peer ID -> exit.
           python3 - "$NODE_CORE_DATA_DIR/app" <<'PY' > "$RUNNER_TEMP/${{ matrix.node }}-identity-menu.txt"
@@ -177,7 +167,7 @@ jobs:
           PY
           cat "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq 'NODE CORE OS P2P CONTRACTS' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
-          grep -Fq 'Identity data use' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
+          grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '1. Create Public Request' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '4. Search Request ID' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
