@@ -77,6 +77,7 @@ print(f"IDENTITY_OK identity_id={profile['identity_id']} peer_id={peer}")
 with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
     output.write(f"peer_id={peer}\n")
     output.write(f"identity_id={profile['identity_id']}\n")
+    output.write(f"machine_fingerprint={os.environ['NODE_CORE_MACHINE_FINGERPRINT']}\\n")
 PY
 
 # Launch P2P Contracts through the actual Node Core OS Applications menu and
