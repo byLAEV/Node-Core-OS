@@ -91,9 +91,16 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             for command in commands:
                 subprocess.run([cls.ipfs, *command], env=env, check=True,
                                capture_output=True, text=True, timeout=15)
+            daemon_help = subprocess.run(
+                [cls.ipfs, "daemon", "--help"], env=env, check=False,
+                capture_output=True, text=True, timeout=10,
+            )
+            daemon_command = [cls.ipfs, "daemon"]
+            if "--enable-pubsub-experiment" in (daemon_help.stdout or "") + (daemon_help.stderr or ""):
+                daemon_command.append("--enable-pubsub-experiment")
             log_path = cls.root / f"kubo-{index + 1}.log"
             log_handle = log_path.open("w", encoding="utf-8")
-            process = subprocess.Popen([cls.ipfs, "daemon"], env=env, stdout=log_handle,
+            process = subprocess.Popen(daemon_command, env=env, stdout=log_handle,
                                        stderr=subprocess.STDOUT, text=True)
             cls.nodes.append({"repo": repo, "env": env, "process": process,
                               "log_handle": log_handle, "log_path": log_path,
