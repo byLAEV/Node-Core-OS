@@ -99,6 +99,7 @@ class P2PContractsService:
         self.bundled_genesis_path = Path(__file__).resolve().parents[1] / "genesis-manifest.json"
         self.head_path = self.root / "head.json"
         self._manifest_lock = threading.RLock()
+        self._ensure_directories()
 
     def _ensure_directories(self) -> None:
         for directory in (self.requests_dir, self.evidence_dir, self.manifests_dir):
