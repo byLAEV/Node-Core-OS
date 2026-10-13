@@ -89,6 +89,7 @@ validate_installed_application_for_recovery() {
   [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || return 1
   [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || return 1
 
   python3 -m compileall -q \
