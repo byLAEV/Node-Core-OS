@@ -10,6 +10,8 @@ import subprocess
 import threading
 import time
 from typing import Any
+
+from .genesis import GENESIS_HASH
 from uuid import uuid4
 
 TOPIC = "node-core-os/p2p-contracts/propagation/v1"
@@ -360,20 +362,40 @@ class PropagationProtocol:
                 "status": "UNVERIFIED" if unique else ("NO_ACTIVE_PROPOSAL" if responses else "NO_NODE_RESPONSES")}
 
     def accept_new_propagation(self, parent_manifest_hash, require_owner_request=False):
+        """Accept the genesis root or the current manifest's propagation hash locally."""
         self.start()
         now = utc_now()
         node_id = self.network.identity().peer_id
+        if self.service is not None:
+            current_manifest = self.service.current_manifest()
+            if current_manifest is None:
+                if parent_manifest_hash not in (None, GENESIS_HASH):
+                    raise PubSubUnavailable("The first propagation must reference the configured genesis hash.")
+                parent_propagation_hash = GENESIS_HASH
+                accept_genesis = getattr(self.service, "accept_initial_genesis_reference", None)
+                if callable(accept_genesis):
+                    accept_genesis(accepted_by_node_id=node_id)
+            else:
+                parent_propagation_hash = current_manifest.get("propagation_hash")
+                if not isinstance(parent_propagation_hash, str):
+                    raise PubSubUnavailable("The current manifest has no verified propagation hash.")
+                if parent_manifest_hash != parent_propagation_hash:
+                    raise PubSubUnavailable("The accepted propagation hash must match the current manifest's propagation hash.")
+        else:
+            parent_propagation_hash = parent_manifest_hash or GENESIS_HASH
         proposal_id = str(uuid4())
-        candidate = json.dumps({"parent_manifest_hash": parent_manifest_hash or "GENESIS",
+        candidate = json.dumps({"parent_propagation_hash": parent_propagation_hash,
                                 "proposer_node_id": node_id, "proposal_id": proposal_id},
                                sort_keys=True, separators=(",", ":")).encode("utf-8")
         state = {"proposal_id": proposal_id, "proposal_hash": hashlib.sha256(candidate).hexdigest(),
-                 "parent_manifest_hash": parent_manifest_hash, "proposer_node_id": node_id,
+                 "parent_manifest_hash": parent_propagation_hash,
+                 "parent_propagation_hash": parent_propagation_hash,
+                 "proposer_node_id": node_id,
                  "accepted_at": timestamp(now), "send_enabled_at": timestamp(now + timedelta(seconds=WINDOW_SECONDS)),
                  "lease_expires_at": timestamp(now + timedelta(seconds=WINDOW_SECONDS + 60)),
                  "window_seconds": WINDOW_SECONDS, "status": "ACCEPTED", "batch_flushed": False,
                  "require_owner_request": bool(require_owner_request), "owner_request_sent": False,
-                 "warning": "Local proposal state; not a global consensus certificate."}
+                 "warning": "Local node acceptance and proposal coordination; not a global consensus certificate."}
         self._save_state(state)
         try:
             self._publish("PROPOSAL_ANNOUNCE", proposal=state)
