@@ -309,7 +309,8 @@ class PropagationProtocol:
         while time.monotonic() < deadline:
             with self._lock:
                 replies = [item for item in self._received
-                           if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]]
+                           if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]
+                           and item.get("sender_node_id") == proposal.get("proposer_node_id")]
             if replies:
                 return replies[-1]
             time.sleep(0.1)
