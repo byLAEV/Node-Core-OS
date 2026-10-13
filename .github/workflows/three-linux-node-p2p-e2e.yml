@@ -1,4 +1,4 @@
-name: Three independent Linux nodes — Node Core P2P Contracts
+name: Three independent Ubuntu 24.04 systems — Node Core P2P Contracts
 
 on:
   push:
@@ -10,14 +10,15 @@ on:
 permissions:
   contents: read
 
-# Strict user-only acceptance test. No Docker, sudo, su, apt-get, useradd, or
-# root-level setup is used. Three pre-provisioned independent Linux runners are
-# required, plus a private/overlay network with TCP 4001 reachable between them.
+# Strict user-only acceptance test on three distinct Ubuntu 24.04 systems.
+# No Docker, sudo, su, apt-get, useradd, or root-level setup is used. Each
+# runner must be a separate physical/virtual Ubuntu OS and share a private
+# network with TCP 4001 reachable between the systems.
 #
 # Required runner labels:
-#   self-hosted, linux, node-core-p2p-node-a
-#   self-hosted, linux, node-core-p2p-node-b
-#   self-hosted, linux, node-core-p2p-node-c
+#   self-hosted, linux, node-core-p2p-node-a (Ubuntu 24.04 system A)
+#   self-hosted, linux, node-core-p2p-node-b (Ubuntu 24.04 system B)
+#   self-hosted, linux, node-core-p2p-node-c (Ubuntu 24.04 system C)
 #
 # Required repository Actions variables must be IPv4 addresses reachable by
 # all three runners:
@@ -74,11 +75,19 @@ jobs:
           PEER_A: ${{ needs.node-a.outputs.peer_id }}
           PEER_B: ${{ needs.node-b.outputs.peer_id }}
           PEER_C: ${{ needs.node-c.outputs.peer_id }}
+          MACHINE_A: ${{ needs.node-a.outputs.machine_fingerprint }}
+          MACHINE_B: ${{ needs.node-b.outputs.machine_fingerprint }}
+          MACHINE_C: ${{ needs.node-c.outputs.machine_fingerprint }}
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0 || { echo "ERROR: runner must not be root"; exit 1; }
           test -n "$ID_A" && test -n "$ID_B" && test -n "$ID_C"
           test -n "$PEER_A" && test -n "$PEER_B" && test -n "$PEER_C"
+          test -n "$MACHINE_A" && test -n "$MACHINE_B" && test -n "$MACHINE_C"
+          test "$(printf '%s\\n' "$MACHINE_A" "$MACHINE_B" "$MACHINE_C" | sort -u | wc -l)" -eq 3 || {
+            echo "ERROR: runners are not three distinct Ubuntu operating systems (machine fingerprints duplicate)." >&2
+            exit 1
+          }
           test "$(printf '%s\n' "$ID_A" "$ID_B" "$ID_C" | sort -u | wc -l)" -eq 3
           test "$(printf '%s\n' "$PEER_A" "$PEER_B" "$PEER_C" | sort -u | wc -l)" -eq 3
           test "$(printf '%s\n' TEST-DOC-A-001 TEST-DOC-B-002 TEST-DOC-C-003 | sort -u | wc -l)" -eq 3
