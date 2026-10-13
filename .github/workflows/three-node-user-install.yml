@@ -1,0 +1,60 @@
+name: Prepare one independent Node Core OS test node
+
+on:
+  workflow_call:
+    inputs:
+      node_name:
+        required: true
+        type: string
+      runner_label:
+        required: true
+        type: string
+      full_name:
+        required: true
+        type: string
+      alias_name:
+        required: true
+        type: string
+      document_number:
+        required: true
+        type: string
+    outputs:
+      peer_id:
+        description: Kubo peer ID associated with this node's synthetic identity
+        value: ${{ jobs.prepare.outputs.peer_id }}
+      identity_id:
+        description: Logical identity ID created in the BIOS form
+        value: ${{ jobs.prepare.outputs.identity_id }}
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: [self-hosted, linux, ${{ inputs.runner_label }}]
+    timeout-minutes: 30
+    outputs:
+      peer_id: ${{ steps.boot.outputs.peer_id }}
+      identity_id: ${{ steps.boot.outputs.identity_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install, start Kubo, complete BIOS identity, and open P2P Contracts as user
+        id: boot
+        shell: bash
+        env:
+          NODE_NAME: ${{ inputs.node_name }}
+          FULL_NAME: ${{ inputs.full_name }}
+          ALIAS_NAME: ${{ inputs.alias_name }}
+          DOCUMENT_NUMBER: ${{ inputs.document_number }}
+        run: |
+          set -euo pipefail
+          bash applications/p2p_contracts/tests/ci_user_node_boot.sh \
+            "$NODE_NAME" "$FULL_NAME" "$ALIAS_NAME" "$DOCUMENT_NUMBER"
+      - name: Preserve per-node first-boot and application diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.node_name }}-first-boot
+          path: ${{ runner.temp }}/${{ inputs.node_name }}-*.log
+          if-no-files-found: warn
+          retention-days: 14
