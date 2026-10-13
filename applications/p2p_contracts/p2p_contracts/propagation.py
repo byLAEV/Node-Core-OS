@@ -206,10 +206,15 @@ class PropagationProtocol:
                     requester = document.get("requester") or {}
                     if requester.get("node_id") != sender:
                         raise ValueError("Request sender ID does not match the request's claimed node ID.")
-                    result = self.service.import_remote_requests([document])
+                    manifest_document = message.get("manifest_document")
+                    if isinstance(manifest_document, dict):
+                        result = self.service.import_remote_manifest(manifest_document, request_documents=[document])
+                    else:
+                        result = self.service.import_remote_requests([document])
                     self._publish("REQUEST_ACK", reply_to=message["message_id"],
                                   request_id=document.get("request_id"), accepted=True,
-                                  imported_count=result["imported_count"], reason="Public request imported.")
+                                  imported_count=result.get("imported_request_count", result.get("imported_count", 0)),
+                                  manifest_hash=result.get("manifest_hash"), reason="Public request imported.")
                 except (ValueError, RuntimeError, OSError) as exc:
                     self._publish("REQUEST_ACK", reply_to=message["message_id"],
                                   request_id=document.get("request_id"), accepted=False, reason=str(exc))
@@ -219,10 +224,12 @@ class PropagationProtocol:
                 try:
                     if document.get("reporter_node_id") != sender:
                         raise ValueError("Evidence reporter ID does not match the message's claimed sender ID.")
-                    result = self.service.import_remote_evidence(document)
+                    manifest_document = message.get("manifest_document")
+                    result = self.service.import_remote_evidence(document, manifest_document=manifest_document)
                     self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
                                   evidence_id=document.get("evidence_id"), accepted=True,
-                                  imported=result.get("imported", False), reason="Evidence verified and imported.")
+                                  imported=result.get("imported", False), manifest_hash=result.get("manifest_hash"),
+                                  reason="Evidence verified and imported.")
                 except (ValueError, RuntimeError, OSError) as exc:
                     self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
                                   evidence_id=document.get("evidence_id"), accepted=False, reason=str(exc))
@@ -230,10 +237,15 @@ class PropagationProtocol:
             documents = message.get("request_documents")
             if self.service is not None and isinstance(documents, list) and documents:
                 try:
-                    result = self.service.import_remote_requests(documents)
+                    manifest_document = message.get("manifest_document")
+                    if isinstance(manifest_document, dict):
+                        result = self.service.import_remote_manifest(manifest_document, request_documents=documents)
+                        imported_count = result.get("imported_request_count", 0)
+                    else:
+                        result = self.service.import_remote_requests(documents)
+                        imported_count = result.get("imported_count", 0)
                     self._publish("BATCH_ACK", reply_to=message["message_id"],
-                                  imported_count=result["imported_count"],
-                                  manifest_hash=result["manifest_hash"])
+                                  imported_count=imported_count, manifest_hash=result.get("manifest_hash"))
                 except (ValueError, RuntimeError, OSError) as exc:
                     self._publish("BATCH_ACK", reply_to=message["message_id"], imported_count=0, error=str(exc))
 
@@ -334,9 +346,9 @@ class PropagationProtocol:
         return {"accepted": False, "request_id": request_id,
                 "reason": "No acknowledgement received before timeout."}
 
-    def publish_request(self, request_document, wait_seconds=1.5):
+    def publish_request(self, request_document, manifest_document=None, wait_seconds=1.5):
         self.start()
-        message = self._publish("REQUEST_BROADCAST", request_document=request_document)
+        message = self._publish("REQUEST_BROADCAST", request_document=request_document, manifest_document=manifest_document)
         deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
         while time.monotonic() < deadline:
             with self._lock:
@@ -347,9 +359,9 @@ class PropagationProtocol:
             time.sleep(0.1)
         return {"message_id": message["message_id"], "peer_acknowledgements": []}
 
-    def publish_evidence(self, evidence_document, wait_seconds=1.5):
+    def publish_evidence(self, evidence_document, manifest_document=None, wait_seconds=1.5):
         self.start()
-        message = self._publish("EVIDENCE_BROADCAST", evidence_document=evidence_document)
+        message = self._publish("EVIDENCE_BROADCAST", evidence_document=evidence_document, manifest_document=manifest_document)
         deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
         while time.monotonic() < deadline:
             with self._lock:
@@ -385,7 +397,7 @@ class PropagationProtocol:
             imported = self.service.import_remote_requests(documents)
             self._publish("REQUEST_BATCH", proposal_id=state.get("proposal_id"),
                           proposal_hash=state.get("proposal_hash"), request_documents=documents,
-                          manifest_hash=imported.get("manifest_hash"))
+                          manifest_document=imported.get("manifest_document"), manifest_hash=imported.get("manifest_hash"))
         with self._lock:
             self._pending_requests = []
             self._save_pending()
