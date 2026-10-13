@@ -75,6 +75,59 @@ class PropagationTests(unittest.TestCase):
         multibase_url = "u" + urlsafe
         self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase_url), payload)
 
+    def test_cli_publish_retries_transient_validation_ignored_with_same_message(self):
+        class CliOnlyKubo:
+            executable = "ipfs"
+            def _environment(self):
+                return {}
+
+        self.protocol.kubo = CliOnlyKubo()
+        failure = __import__("subprocess").CalledProcessError(
+            1,
+            ["ipfs", "pubsub", "pub", "topic", "-"],
+            stderr="Error: validation ignored",
+        )
+        success = type("Result", (), {"stdout": "", "stderr": ""})()
+        with patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.subprocess.run",
+            side_effect=[failure, success],
+        ) as run, patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.time.sleep"
+        ) as sleep:
+            message = self.protocol._publish("STATUS_QUERY", test_field="same-payload")
+
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0].kwargs["input"], run.call_args_list[1].kwargs["input"])
+        encoded = json.loads(run.call_args_list[0].kwargs["input"])
+        self.assertEqual(encoded["message_id"], message["message_id"])
+        self.assertEqual(encoded["test_field"], "same-payload")
+        sleep.assert_called_once_with(0.25)
+
+    def test_cli_publish_stops_after_three_validation_ignored_failures(self):
+        import subprocess
+
+        class CliOnlyKubo:
+            executable = "ipfs"
+            def _environment(self):
+                return {}
+
+        self.protocol.kubo = CliOnlyKubo()
+        failure = subprocess.CalledProcessError(
+            1,
+            ["ipfs", "pubsub", "pub", "topic", "-"],
+            stderr="Error: validation ignored",
+        )
+        with patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.subprocess.run",
+            side_effect=[failure, failure, failure],
+        ) as run, patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.time.sleep"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "after 3 attempt"):
+                self.protocol._publish("STATUS_QUERY")
+
+        self.assertEqual(run.call_count, 3)
+
     def test_pending_request_is_accepted_only_for_matching_active_proposal(self):
         from applications.p2p_contracts.p2p_contracts.service import document_hash, REQUEST_SCHEMA
         state = self.protocol.accept_new_propagation("a" * 64)
