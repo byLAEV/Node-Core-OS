@@ -55,7 +55,7 @@ jobs:
           ! grep -R -nE '(^|[[:space:]])(sudo|su|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' \
             installer/install.sh installer/lib installer/update.sh installer/uninstall.sh
 
-      - name: Install Node Core OS 1.3.0 as the current user
+      - name: Install Node Core OS 1.4.0 as the current user
         run: |
           set -euo pipefail
           test "$(id -u)" -ne 0
