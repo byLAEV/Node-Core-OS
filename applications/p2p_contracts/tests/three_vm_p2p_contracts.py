@@ -309,6 +309,185 @@ def main():
         summary["final_manifest_sequence"] = final_manifest["sequence"]
         summary["request_status"] = service.find_request(request_a_id)["request_status"]
         summary["evidence_verified"] = True
+
+        # Scenario 2 rotates roles: B proposes, C submits, and A records closure evidence.
+        propagation_module.WINDOW_SECONDS = 45
+        if role == "node-b":
+            parent_hash = service.current_manifest()["manifest_hash"]
+            proposal2 = protocol.accept_new_propagation(parent_hash, require_owner_request=True)
+            wait_until(
+                "node C's request to be queued by node B",
+                lambda: len(protocol._pending_requests) >= 1,
+                timeout=35.0,
+            )
+            wait_until(
+                "second proposal window to become ready",
+                lambda: protocol.current_state()
+                if protocol.current_state() and protocol.current_state().get("status") == "READY_TO_SUBMIT"
+                else False,
+                timeout=60.0,
+            )
+            request_b2, request_b2_doc = create_request(
+                service, "node-b-round-2", "0.010", "ETH", "2", "ETHEREUM"
+            )
+            finalized2 = protocol.finalize_propagation(request_b2_doc)
+            manifest2 = service.current_manifest()
+            request_ids2 = [item.get("request_id") for item in manifest2.get("requests", [])]
+            if (
+                len(request_ids2) != 4
+                or request_b2["request_id"] not in request_ids2
+                or finalized2.get("batch_request_count") != 2
+            ):
+                raise AssertionError(f"Node B did not append a two-request batch to manifest sequence 2: {request_ids2!r}")
+            request_c2_id = next(
+                item for item in request_ids2
+                if item != request_b2["request_id"]
+                and item not in {request_a_id, request_b_id}
+            )
+            protocol._publish(
+                "TEST_REQUEST_PUBLISHED_2",
+                request_b2_id=request_b2["request_id"],
+                request_c2_id=request_c2_id,
+                manifest_hash=manifest2["manifest_hash"],
+                request_ids=request_ids2,
+            )
+            summary["scenario2_request_b_id"] = request_b2["request_id"]
+            summary["scenario2_request_c_id"] = request_c2_id
+            summary["scenario2_initial_manifest_hash"] = manifest2["manifest_hash"]
+
+        elif role == "node-c":
+            proposal2 = wait_until(
+                "active second proposal from node B",
+                lambda: next(
+                    (item for item in protocol.query_status(wait_seconds=1.0).get("active_proposals", [])
+                     if item.get("proposer_node_id") in expected_peer_ids
+                     and item.get("parent_manifest_hash") == service.current_manifest()["manifest_hash"]),
+                    False,
+                ),
+                timeout=70.0,
+                interval=0.2,
+            )
+            if proposal2.get("proposer_node_id") == local_identity.peer_id:
+                raise AssertionError("Node C unexpectedly discovered its own second proposal as remote.")
+            request_c2, request_c2_doc = create_request(
+                service, "node-c-round-2", "0.008", "USDC", "300", "POLYGON"
+            )
+            acknowledgement2 = protocol.submit_request(proposal2, request_c2_doc, wait_seconds=12.0)
+            if not acknowledgement2.get("accepted"):
+                raise AssertionError(f"Node B rejected node C's second request: {acknowledgement2!r}")
+            event2 = wait_until(
+                "node B's committed second batch announcement",
+                lambda: received_event(protocol, "TEST_REQUEST_PUBLISHED_2"),
+                timeout=90.0,
+            )
+            if request_c2["request_id"] != event2.get("request_c2_id"):
+                raise AssertionError("Node B committed a different request than node C submitted.")
+            summary["scenario2_request_b_id"] = event2["request_b2_id"]
+            summary["scenario2_request_c_id"] = event2["request_c2_id"]
+            summary["scenario2_initial_manifest_hash"] = event2["manifest_hash"]
+
+        else:  # node-a observes the second batch
+            event2 = wait_until(
+                "node B's committed second batch announcement",
+                lambda: received_event(protocol, "TEST_REQUEST_PUBLISHED_2"),
+                timeout=120.0,
+            )
+            summary["scenario2_request_b_id"] = event2["request_b2_id"]
+            summary["scenario2_request_c_id"] = event2["request_c2_id"]
+            summary["scenario2_initial_manifest_hash"] = event2["manifest_hash"]
+
+        request_b2_id = summary["scenario2_request_b_id"]
+        request_c2_id = summary["scenario2_request_c_id"]
+        wait_for_request(service, request_b2_id, timeout=75.0)
+        wait_for_request(service, request_c2_id, timeout=75.0)
+
+        def matching_second_manifest():
+            manifest = service.current_manifest()
+            if (
+                manifest
+                and len(manifest.get("requests", [])) == 4
+                and manifest.get("manifest_hash") == summary["scenario2_initial_manifest_hash"]
+            ):
+                return manifest
+            return False
+
+        second_manifest = wait_until(
+            "second four-request manifest synchronization",
+            matching_second_manifest,
+            timeout=75.0,
+        )
+        if len(second_manifest.get("requests", [])) != 4:
+            raise AssertionError(f"{role} did not import the four-request manifest for scenario 2.")
+
+        if role == "node-a":
+            evidence2 = service.create_request_evidence(
+                request_id=request_b2_id,
+                outcome="exchange_completed",
+                evidence_type="exchange_result",
+                description="Synthetic evidence created by independent Ubuntu node A in scenario 2.",
+                reporter_statement="Node A verified the rotated-proposer cross-VM scenario.",
+                target_node_id=next(item["peer_id"] for item in load_peer_endpoints(args.peer_file, role)
+                                    if item["node"] == "node-b"),
+                rating=5,
+            )
+            evidence_path2 = runtime.storage.path("p2p_contracts/evidence") / f"{evidence2['evidence_id']}.json"
+            evidence_document2 = json.loads(evidence_path2.read_text(encoding="utf-8"))
+            published2 = protocol.publish_evidence(
+                evidence_document2, service.current_manifest(), wait_seconds=5.0
+            )
+            accepted2 = {
+                item.get("sender_node_id")
+                for item in published2.get("peer_acknowledgements", [])
+                if item.get("accepted") is True
+            }
+            if not expected_peer_ids.issubset(accepted2):
+                raise AssertionError(
+                    f"Node A did not receive positive evidence acknowledgements from B and C: {published2!r}"
+                )
+            final_manifest2 = service.current_manifest()
+            protocol._publish(
+                "TEST_EVIDENCE_EXPECTED_2",
+                request_b2_id=request_b2_id,
+                evidence_id=evidence2["evidence_id"],
+                manifest_hash=final_manifest2["manifest_hash"],
+            )
+            summary["scenario2_evidence_id"] = evidence2["evidence_id"]
+            summary["scenario2_final_manifest_hash"] = final_manifest2["manifest_hash"]
+        else:
+            event_evidence2 = wait_until(
+                "node A's second evidence convergence announcement",
+                lambda: received_event(protocol, "TEST_EVIDENCE_EXPECTED_2"),
+                timeout=90.0,
+            )
+            if event_evidence2.get("request_b2_id") != request_b2_id:
+                raise AssertionError("Second evidence announcement refers to a different request.")
+            summary["scenario2_evidence_id"] = event_evidence2["evidence_id"]
+            summary["scenario2_final_manifest_hash"] = event_evidence2["manifest_hash"]
+
+        def matching_second_final_manifest():
+            manifest = service.current_manifest()
+            found = service.find_request(request_b2_id)
+            if (
+                manifest
+                and manifest.get("manifest_hash") == summary["scenario2_final_manifest_hash"]
+                and found
+                and found.get("request_status") == "exchange_completed"
+                and any(
+                    item.get("evidence_id") == summary["scenario2_evidence_id"] and item.get("rating") == 5
+                    for item in found.get("evidence", [])
+                )
+            ):
+                return manifest
+            return False
+
+        final_manifest2 = wait_until(
+            "scenario 2 manifest and closure evidence convergence",
+            matching_second_final_manifest,
+            timeout=90.0,
+        )
+        summary["scenario2_final_manifest_sequence"] = final_manifest2["sequence"]
+        summary["scenario2_request_status"] = service.find_request(request_b2_id)["request_status"]
+        summary["scenario2_evidence_verified"] = True
         summary["connected_peer_ids"] = sorted(set(runtime.network.connected_peers()))
         summary["result"] = "PASS"
 
