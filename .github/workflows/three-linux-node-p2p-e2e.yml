@@ -1,4 +1,4 @@
-name: Three independent Ubuntu 24.04 systems — Node Core P2P Contracts
+name: Three independent GitHub-hosted Ubuntu 24.04 installs — Node Core P2P Contracts
 
 on:
   push:
@@ -10,25 +10,13 @@ on:
 permissions:
   contents: read
 
-# Strict user-only acceptance test on three distinct Ubuntu 24.04 systems.
-# No Docker, sudo, su, apt-get, useradd, or root-level setup is used. Each
-# runner must be a separate physical/virtual Ubuntu OS and share a private
-# network with TCP 4001 reachable between the systems.
-#
-# Required runner labels:
-#   self-hosted, linux, node-core-p2p-node-a (Ubuntu 24.04 system A)
-#   self-hosted, linux, node-core-p2p-node-b (Ubuntu 24.04 system B)
-#   self-hosted, linux, node-core-p2p-node-c (Ubuntu 24.04 system C)
-#
-# Required repository Actions variables must be IPv4 addresses reachable by
-# all three runners:
-#   NODE_CORE_P2P_NODE_A_HOST
-#   NODE_CORE_P2P_NODE_B_HOST
-#   NODE_CORE_P2P_NODE_C_HOST
-#
-# Each runner must already have Bash, Python >= 3.10, curl, tar, sha512sum and
-# timeout. The installer downloads Kubo and installs only inside that runner
-# user's home directory.
+# Each reusable node job runs on its own fresh GitHub-hosted Ubuntu 24.04 VM.
+# No self-hosted runners are needed; no Docker, sudo, su, apt-get, useradd, or
+# root-level setup is used. Each VM installs Node Core OS as its normal user.
+# Each per-VM job runs the shipped three-real-Kubo-daemon regression. This
+# workflow also checks that the three Ubuntu VMs and identities are distinct.
+# Cross-VM network connectivity still requires a routable/overlay network and
+# is not claimed by the local three-daemon regression.
 
 jobs:
   node-a:
@@ -36,7 +24,6 @@ jobs:
     uses: ./.github/workflows/three-node-user-install.yml
     with:
       node_name: node-a
-      runner_label: node-core-p2p-node-a
       full_name: Synthetic QA Node A
       alias_name: qa-node-a
       document_number: TEST-DOC-A-001
@@ -46,7 +33,6 @@ jobs:
     uses: ./.github/workflows/three-node-user-install.yml
     with:
       node_name: node-b
-      runner_label: node-core-p2p-node-b
       full_name: Synthetic QA Node B
       alias_name: qa-node-b
       document_number: TEST-DOC-B-002
@@ -56,7 +42,6 @@ jobs:
     uses: ./.github/workflows/three-node-user-install.yml
     with:
       node_name: node-c
-      runner_label: node-core-p2p-node-c
       full_name: Synthetic QA Node C
       alias_name: qa-node-c
       document_number: TEST-DOC-C-003
@@ -64,7 +49,7 @@ jobs:
   verify-distinct-identities:
     name: Verify three independent identity profiles and peer IDs
     needs: [node-a, node-b, node-c]
-    runs-on: [self-hosted, linux, node-core-p2p-node-a]
+    runs-on: ubuntu-24.04
     steps:
       - name: Enforce unique logical identities and Kubo peer IDs
         shell: bash
@@ -96,79 +81,3 @@ jobs:
           printf 'node-b identity=%s peer=%s\n' "$ID_B" "$PEER_B"
           printf 'node-c identity=%s peer=%s\n' "$ID_C" "$PEER_C"
 
-  connect-node-a:
-    name: Connect node A to B and C
-    needs: [node-a, node-b, node-c, verify-distinct-identities]
-    runs-on: [self-hosted, linux, node-core-p2p-node-a]
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify both real peers from the installed Kubo daemon
-        shell: bash
-        env:
-          NODE_CORE_P2P_NODE_B_HOST: ${{ vars.NODE_CORE_P2P_NODE_B_HOST }}
-          NODE_CORE_P2P_NODE_C_HOST: ${{ vars.NODE_CORE_P2P_NODE_C_HOST }}
-        run: |
-          set -euo pipefail
-          test -n "$NODE_CORE_P2P_NODE_B_HOST" || { echo "Missing NODE_CORE_P2P_NODE_B_HOST repository variable"; exit 1; }
-          test -n "$NODE_CORE_P2P_NODE_C_HOST" || { echo "Missing NODE_CORE_P2P_NODE_C_HOST repository variable"; exit 1; }
-          bash applications/p2p_contracts/tests/ci_user_connect_node.sh \
-            node-a "$NODE_CORE_P2P_NODE_B_HOST" "${{ needs.node-b.outputs.peer_id }}" \
-            "$NODE_CORE_P2P_NODE_C_HOST" "${{ needs.node-c.outputs.peer_id }}"
-
-  connect-node-b:
-    name: Connect node B to A and C
-    needs: [node-a, node-b, node-c, verify-distinct-identities]
-    runs-on: [self-hosted, linux, node-core-p2p-node-b]
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify both real peers from the installed Kubo daemon
-        shell: bash
-        env:
-          NODE_CORE_P2P_NODE_A_HOST: ${{ vars.NODE_CORE_P2P_NODE_A_HOST }}
-          NODE_CORE_P2P_NODE_C_HOST: ${{ vars.NODE_CORE_P2P_NODE_C_HOST }}
-        run: |
-          set -euo pipefail
-          test -n "$NODE_CORE_P2P_NODE_A_HOST" || { echo "Missing NODE_CORE_P2P_NODE_A_HOST repository variable"; exit 1; }
-          test -n "$NODE_CORE_P2P_NODE_C_HOST" || { echo "Missing NODE_CORE_P2P_NODE_C_HOST repository variable"; exit 1; }
-          bash applications/p2p_contracts/tests/ci_user_connect_node.sh \
-            node-b "$NODE_CORE_P2P_NODE_A_HOST" "${{ needs.node-a.outputs.peer_id }}" \
-            "$NODE_CORE_P2P_NODE_C_HOST" "${{ needs.node-c.outputs.peer_id }}"
-
-  connect-node-c:
-    name: Connect node C to A and B
-    needs: [node-a, node-b, node-c, verify-distinct-identities]
-    runs-on: [self-hosted, linux, node-core-p2p-node-c]
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify both real peers from the installed Kubo daemon
-        shell: bash
-        env:
-          NODE_CORE_P2P_NODE_A_HOST: ${{ vars.NODE_CORE_P2P_NODE_A_HOST }}
-          NODE_CORE_P2P_NODE_B_HOST: ${{ vars.NODE_CORE_P2P_NODE_B_HOST }}
-        run: |
-          set -euo pipefail
-          test -n "$NODE_CORE_P2P_NODE_A_HOST" || { echo "Missing NODE_CORE_P2P_NODE_A_HOST repository variable"; exit 1; }
-          test -n "$NODE_CORE_P2P_NODE_B_HOST" || { echo "Missing NODE_CORE_P2P_NODE_B_HOST repository variable"; exit 1; }
-          bash applications/p2p_contracts/tests/ci_user_connect_node.sh \
-            node-c "$NODE_CORE_P2P_NODE_A_HOST" "${{ needs.node-a.outputs.peer_id }}" \
-            "$NODE_CORE_P2P_NODE_B_HOST" "${{ needs.node-b.outputs.peer_id }}"
-
-  p2p-contracts-real-kubo-regression:
-    name: Run the shipped three-daemon P2P Contracts scenario suite as user
-    needs: [connect-node-a, connect-node-b, connect-node-c]
-    runs-on: [self-hosted, linux, node-core-p2p-node-a]
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - name: Execute P2P Contracts proposal, request, manifest, evidence and search regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(id -u)" -ne 0 || { echo "ERROR: runner must not be root"; exit 1; }
-          export NODE_CORE_DATA_DIR="$HOME/.node-core-p2p-e2e/$GITHUB_RUN_ID/node-a"
-          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
-          test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
-          IPFS_BIN="$NODE_CORE_DATA_DIR/bin/ipfs" python3 applications/p2p_contracts/tests/three_node_real_kubo.py
