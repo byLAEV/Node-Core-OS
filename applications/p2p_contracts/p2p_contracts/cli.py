@@ -140,27 +140,58 @@ class P2PContractsCLI:
             print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
             print("Submit to the currently active proposal instead of opening a competing propagation window.")
             return
-        if not result["responses"]:
-            print("Cannot safely accept a propagation: no peer responded. A local timeout is not proof of network-wide availability.")
-            return
+
         manifest = self.service.current_manifest()
-        parent_hash = manifest.get("manifest_hash") if manifest else None
-        print("No active proposal was reported by the responding peers.")
+        bootstrap = manifest is None and not result["responses"]
+        if not result["responses"] and not bootstrap:
+            print("Cannot start a later propagation without peer responses when a local manifest already exists.")
+            print("A genesis-only single-node bootstrap is allowed; subsequent network coordination remains experimental.")
+            return
+
+        if bootstrap:
+            genesis = self.service._ensure_genesis_manifest()
+            parent_hash = genesis["genesis_hash"]
+            print("GENESIS BOOTSTRAP: no peer responses are required to initialize logical block 1.")
+            print(f"Verified genesis root hash: {parent_hash}")
+            print("This explicitly accepts the bundled, validated genesis reference locally.")
+        else:
+            parent_hash = manifest.get("manifest_hash") if manifest else self.service._ensure_genesis_manifest()["genesis_hash"]
+            print("No active proposal was reported by responding peers.")
+
         print("WARNING: this experimental version cannot prove global absence or enforce a network-wide exclusive lease.")
-        if not self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?"):
+        if bootstrap:
+            accepted = self._yes(
+                f"Accept genesis hash {parent_hash} as the root reference and initialize block 1 on this node alone?"
+            )
+        else:
+            accepted = self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?")
+        if not accepted:
             print("Propagation acceptance cancelled.")
             return
+
         print("Before accepting propagation, prepare this node's own public BTC exchange request.")
         if not self.create_request_form(draft_only=True):
             print("Propagation acceptance cancelled because the owner request draft was not saved.")
             return
+
         recheck = self.propagation.query_status()
         if recheck["active_proposals"]:
             print("Another active propagation appeared while this node's request was being prepared. This node will not open a competing window.")
             return
+        if not recheck["responses"] and not bootstrap:
+            print("Peer responses disappeared before acceptance. This node will not start a non-genesis propagation.")
+            return
+
         state = self.propagation.accept_new_propagation(parent_hash, require_owner_request=True)
+        if bootstrap:
+            state["bootstrap_from_genesis"] = True
+            state["genesis_hash_accepted"] = parent_hash
+            self.propagation._save_state(state)
         print("\nPROPAGATION ACCEPTED")
         print(f"Propagation hash: {state['proposal_hash']}")
+        if bootstrap:
+            print(f"Accepted genesis root hash: {parent_hash}")
+            print("Single-node genesis bootstrap accepted; peer discovery is not a prerequisite for logical block 1.")
         print(f"Accepted at: {state['accepted_at']}")
         print(f"Automatic batch submission time: {state['send_enabled_at']}")
         print("Incoming peer requests and this node's prepared request will be included in one manifest transition.")
