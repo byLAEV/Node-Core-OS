@@ -19,9 +19,9 @@ jobs:
       matrix:
         node: [node-a, node-b, node-c]
     env:
-      HOME: ${{ github.workspace }}/.node-core-home-${{ matrix.node }}
-      NODE_CORE_DATA_DIR: ${{ github.workspace }}/.node-core-home-${{ matrix.node }}/.node-core
-      NODE_CORE_CONFIG: ${{ github.workspace }}/.node-core-home-${{ matrix.node }}/.node-core/config.json
+      HOME: /home/runner/.node-core-home-${{ matrix.node }}
+      NODE_CORE_DATA_DIR: /home/runner/.node-core-home-${{ matrix.node }}/.node-core
+      NODE_CORE_CONFIG: /home/runner/.node-core-home-${{ matrix.node }}/.node-core/config.json
       PYTHONUNBUFFERED: "1"
     defaults:
       run:
