@@ -439,4 +439,7 @@ class PropagationProtocol:
                 self._listener.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 self._listener.kill()
+                self._listener.wait(timeout=2)
+        if self._listener and self._listener.stdout:
+            self._listener.stdout.close()
         self._listener = None
