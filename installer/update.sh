@@ -89,6 +89,8 @@ validate_installed_application_for_recovery() {
   [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || return 1
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/genesis.py" ]] || return 1
   [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || return 1
 
   python3 -m compileall -q \
@@ -98,7 +100,8 @@ validate_installed_application_for_recovery() {
 
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+    python3 -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+    python3 -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])"
   )
 }
 
