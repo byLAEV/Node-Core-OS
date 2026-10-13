@@ -244,7 +244,7 @@ class PropagationProtocol:
                 if not self._remember(message):
                     continue
                 self._handle_message(message)
-            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError):
+            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError, RuntimeError):
                 continue
 
     def query_status(self, wait_seconds=3.0):
@@ -270,6 +270,13 @@ class PropagationProtocol:
                     active.append(proposal)
             except (KeyError, TypeError, ValueError):
                 continue
+        local_state = self.current_state()
+        if local_state and local_state.get("status") == "ACCEPTED":
+            try:
+                if now < parse_timestamp(local_state["send_enabled_at"]) and now < parse_timestamp(local_state["lease_expires_at"]):
+                    active.append(local_state)
+            except (KeyError, TypeError, ValueError):
+                pass
         unique = {item.get("proposal_hash"): item for item in active if item.get("proposal_hash")}
         return {"responses": list(responses.values()), "active_proposals": list(unique.values()),
                 "status": "UNVERIFIED" if unique else ("NO_ACTIVE_PROPOSAL" if responses else "NO_NODE_RESPONSES")}
