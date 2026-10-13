@@ -3,8 +3,6 @@ name: Three independent Ubuntu nodes — Node Core OS + P2P Contracts
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [test/three-ubuntu-p2p-contracts-independent-install-20261012]
   workflow_dispatch:
 
 permissions:
