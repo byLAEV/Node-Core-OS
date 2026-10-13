@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - test/three-ubuntu-p2p-contracts-independent-install-20261012
   pull_request:
     branches:
       - main
@@ -115,6 +114,7 @@ jobs:
           python applications/p2p_contracts/tests/three_node_real_kubo.py
 
   cross-vm-node:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     needs: linux-terminal
     permissions:
       contents: read
@@ -337,6 +337,7 @@ jobs:
       - name: Publish temporary endpoint for this run to the pull request
         run: |
           set -euo pipefail
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           marker="<!-- node-core-p2p-endpoint:${GITHUB_RUN_ID}:${NODE_ROLE} -->"
           peer_id="$("$NODE_CORE_DATA_DIR/bin/ipfs" id -f='<id>')"
           address="$(cat "$RUNNER_TEMP/cross-vm-multiaddr.txt")"
@@ -503,7 +504,7 @@ jobs:
   verify-cross-vm-convergence:
     name: Assert three separate VMs converged to the same manifest
     needs: cross-vm-node
-    if: always() && ((github.event_name == 'push' && github.ref_name == 'test/three-ubuntu-p2p-contracts-independent-install-20261012') || github.event_name == 'workflow_dispatch')
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     defaults:
       run:
