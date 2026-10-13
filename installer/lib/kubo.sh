@@ -102,7 +102,11 @@ start_kubo() {
     return 0
   fi
 
-  nohup "$executable" daemon >"$NODE_CORE_DATA_DIR/logs/kubo.log" 2>&1 &
+  local -a daemon_command=("$executable" daemon)
+  if "$executable" daemon --help 2>&1 | grep -q -- '--enable-pubsub-experiment'; then
+    daemon_command+=("--enable-pubsub-experiment")
+  fi
+  nohup "${daemon_command[@]}" >"$NODE_CORE_DATA_DIR/logs/kubo.log" 2>&1 &
   local pid="$!"
   printf '%s\n' "$pid" > "$NODE_CORE_DATA_DIR/runtime/kubo.pid"
 
