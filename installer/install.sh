@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
   exit 1
 fi
 
@@ -59,8 +59,21 @@ for value in sys.argv[1:]:
 print("Installed Node Core OS version:", Path(sys.argv[1]).read_text(encoding="utf-8").strip())
 print("Installed HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
 PY
-  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py" ]] || {
+    printf 'Installed P2P Contracts entry point is missing.\n' >&2
+    exit 1
+  }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
+    printf 'Installed P2P Contracts CLI is missing.\n' >&2
+    exit 1
+  }
+  [[ -d "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests" ]] || {
+    printf 'Installed P2P Contracts tests are missing.\n' >&2
+    exit 1
+  }
+  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
   (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v)
+  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
   mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/proofs" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/proofs" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
   install_kubo

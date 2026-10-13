@@ -40,7 +40,7 @@ jobs:
       - name: Validate Python sources
         run: |
           set -euo pipefail
-          python -m compileall -q main.py node_core tests applications/hashpaper
+          python -m compileall -q main.py node_core tests applications/hashpaper applications/p2p_contracts
 
       - name: Validate installer shell syntax
         run: |
@@ -65,3 +65,45 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s applications/hashpaper/tests -v
+
+      - name: Run P2P Contracts unit tests
+        run: |
+          set -euo pipefail
+          python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+
+  three-kubo-node-integration:
+    name: Three independent Kubo nodes — P2P Contracts end-to-end
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download pinned Kubo CLI
+        run: |
+          set -euo pipefail
+          if ! curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 --retry 1 --retry-delay 2 \
+            https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
+            --output "$RUNNER_TEMP/kubo.tar.gz"; then
+            curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 \
+              https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
+              --output "$RUNNER_TEMP/kubo.tar.gz"
+          fi
+          mkdir -p "$RUNNER_TEMP/kubo-unpack"
+          tar -xzf "$RUNNER_TEMP/kubo.tar.gz" -C "$RUNNER_TEMP/kubo-unpack"
+          test -x "$RUNNER_TEMP/kubo-unpack/kubo/ipfs"
+          echo "IPFS_BIN=$RUNNER_TEMP/kubo-unpack/kubo/ipfs" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/kubo-unpack/kubo/ipfs" version
+
+      - name: Run three-node real Kubo integration
+        run: |
+          set -euo pipefail
+          python applications/p2p_contracts/tests/three_node_real_kubo.py

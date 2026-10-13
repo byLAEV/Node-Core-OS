@@ -26,6 +26,11 @@ class FakeKubo:
         class Status: running = True
         return Status()
     def _environment(self): return {}
+    def pubsub_publish(self, topic, encoded):
+        if topic != "node-core-os/p2p-contracts/propagation/v1":
+            raise RuntimeError("Unexpected PubSub topic.")
+        self.published.append(json.loads(encoded))
+
     def _run(self, *args):
         if args[:2] == ("pubsub", "pub"):
             self.published.append(json.loads(args[3]))
@@ -38,6 +43,38 @@ class PropagationTests(unittest.TestCase):
         self.kubo = FakeKubo()
         self.protocol = PropagationProtocol(FakeStorage(temp.name), FakeNetwork(), self.kubo)
         self.protocol.start = lambda: None
+
+    def test_kubo_json_base64_payload_is_decoded_without_stripping_first_character(self):
+        import base64
+        payload = b'{"type":"TEST"}'
+        encoded = base64.b64encode(payload).decode("ascii")
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(encoded), payload)
+        urlsafe = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(urlsafe), payload)
+        multibase = "m" + base64.b64encode(payload).decode("ascii")
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase), payload)
+        multibase_url = "u" + urlsafe
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase_url), payload)
+
+    def test_pending_request_is_accepted_only_for_matching_active_proposal(self):
+        from applications.p2p_contracts.p2p_contracts.service import document_hash, REQUEST_SCHEMA
+        state = self.protocol.accept_new_propagation("a" * 64)
+        payload = {
+            "schema": REQUEST_SCHEMA,
+            "request_id": "request-12345678-1234-1234-1234-123456789abc",
+            "request_type": "btc_exchange",
+            "requester": {"node_id": "QmFakeNodeIdentity012345678901234567890123456789"},
+        }
+        document = {**payload, "document_hash": document_hash(payload)}
+        message = {
+            "message_id": "test-message", "sender_node_id": "QmFakeNodeIdentity012345678901234567890123456789",
+            "proposal_id": state["proposal_id"], "proposal_hash": state["proposal_hash"],
+            "request_document": document,
+        }
+        self.assertEqual(self.protocol._queue_request(message), payload["request_id"])
+        self.assertEqual(len(self.protocol._pending_requests), 1)
+        self.assertEqual(self.protocol._queue_request(message), payload["request_id"])
+        self.assertEqual(len(self.protocol._pending_requests), 1)
 
     def test_ten_minute_window_is_exact(self):
         self.assertEqual(WINDOW_SECONDS, 600)

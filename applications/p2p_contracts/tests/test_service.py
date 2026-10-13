@@ -115,6 +115,58 @@ class P2PContractsServiceTests(unittest.TestCase):
                 reporter_statement="Test reporter statement.", target_node_id="peer-counterparty", rating=6,
             )
 
+    def test_remote_request_batch_is_imported_as_one_manifest(self):
+        requests = []
+        for amount in ("0.01", "0.02"):
+            result = self.service.create_btc_exchange_request(
+                btc_amount=amount, receive_asset="USDT", receive_amount="100",
+                receive_network="TRON", description="Remote batch test",
+                contacts=[{"type": "email", "value": "test@example.invalid"}],
+                publish_identity=False,
+            )
+            requests.append(json.loads(Path(result["request_path"]).read_text(encoding="utf-8")))
+        remote_root = self.root / "remote-storage"
+        remote_storage = StorageManager(remote_root)
+        remote_storage.initialize()
+        remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
+        result = remote_service.import_remote_requests(requests)
+        self.assertEqual(result["imported_count"], 2)
+        self.assertEqual(remote_service.current_manifest()["sequence"], 1)
+        self.assertIsNotNone(remote_service.find_request(requests[0]["request_id"]))
+        self.assertIsNotNone(remote_service.find_request(requests[1]["request_id"]))
+        duplicate = remote_service.import_remote_requests(requests)
+        self.assertEqual(duplicate["imported_count"], 0)
+        self.assertEqual(remote_service.current_manifest()["sequence"], 1)
+
+    def test_remote_evidence_is_verified_and_imported(self):
+        request = self.service.create_btc_exchange_request(
+            btc_amount="0.03", receive_asset="EUR", receive_amount="700",
+            receive_network="", description="Evidence sync test",
+            contacts=[{"type": "email", "value": "test@example.invalid"}],
+            publish_identity=False,
+        )
+        remote_root = self.root / "evidence-remote-storage"
+        remote_storage = StorageManager(remote_root)
+        remote_storage.initialize()
+        remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
+        request_doc = json.loads(Path(request["request_path"]).read_text(encoding="utf-8"))
+        remote_service.import_remote_requests([request_doc])
+        evidence = self.service.create_request_evidence(
+            request_id=request["request_id"], outcome="exchange_completed",
+            evidence_type="exchange_result", description="Completed for synchronization test.",
+            reporter_statement="Self-reported evidence from source node.",
+            target_node_id="peer-counterparty", rating=4,
+        )
+        evidence_path = self.root / "storage" / "p2p_contracts" / "evidence" / f"{evidence['evidence_id']}.json"
+        evidence_doc = json.loads(evidence_path.read_text(encoding="utf-8"))
+        imported = remote_service.import_remote_evidence(evidence_doc)
+        self.assertTrue(imported["imported"])
+        found = remote_service.find_request(request["request_id"])
+        self.assertEqual(found["request_status"], "exchange_completed")
+        self.assertEqual(found["evidence"][0]["rating"], 4)
+        self.assertEqual(found["evidence"][0]["target_node_id"], "peer-counterparty")
+        self.assertFalse(remote_service.import_remote_evidence(evidence_doc)["imported"])
+
     def test_manifest_tampering_is_detected(self):
         self.service.create_btc_exchange_request(
             btc_amount="0.1", receive_asset="ETH", receive_amount="1",

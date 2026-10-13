@@ -1,6 +1,9 @@
-""""English terminal interface for Node Core OS P2P Contracts v0.1."""
+"""English terminal interface for Node Core OS P2P Contracts v0.1."""
 from datetime import datetime, timezone
-import time
+import json
+import os
+from pathlib import Path
+import threading
 from typing import Any
 
 from applications.p2p_contracts.p2p_contracts.propagation import (
@@ -13,7 +16,9 @@ class P2PContractsCLI:
     def __init__(self, runtime: Any) -> None:
         self.runtime = runtime
         self.service = P2PContractsService(runtime.storage, runtime.identity_profile, runtime.network)
-        self.propagation = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo)
+        self.propagation = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo, service=self.service)
+        self._stop_event = threading.Event()
+        self._auto_submit_lock = threading.Lock()
 
     @staticmethod
     def _ask(label: str, optional: bool = False) -> str:
@@ -43,6 +48,10 @@ class P2PContractsCLI:
             print("Identity consent was not granted. Returning to Node Core OS.")
             return
         try:
+            state = self.propagation.current_state()
+            if state and state.get("require_owner_request") and not state.get("owner_request_sent") and state.get("status") in {"ACCEPTED", "READY_TO_SUBMIT"}:
+                self.propagation.start()
+                self._start_owner_auto_submit()
             while True:
                 print("\n========================================")
                 print("       NODE CORE OS P2P CONTRACTS")
@@ -70,17 +79,24 @@ class P2PContractsCLI:
                     print(f"Operation not completed: {exc}")
                 input("\nPress Enter to continue...")
         finally:
+            self._stop_event.set()
             self.propagation.stop()
+
 
     def public_request_menu(self) -> None:
         while True:
             state = self.propagation.current_state()
+            if state and state.get("status") == "READY_TO_SUBMIT" and state.get("require_owner_request") and not state.get("owner_request_sent"):
+                self.submit_owner_draft_if_ready(state)
+                state = self.propagation.current_state()
             print("\n--- CREATE PUBLIC REQUEST ---")
             print("1. Check Propagation Hash Status")
             print("2. Accept a New Propagation Hash")
             print("3. View Propagation Status")
-            enabled = bool(state and state.get("status") == "READY_TO_SUBMIT")
-            print(f"4. Create BTC Exchange Request ({'ENABLED' if enabled else 'LOCKED'})")
+            enabled = bool(state and state.get("status") == "READY_TO_SUBMIT" and not state.get("require_owner_request") and not state.get("owner_request_sent"))
+            own_status = "AUTOMATICALLY SENT" if state and state.get("owner_request_sent") else ("ENABLED" if enabled else "LOCKED")
+            print(f"4. Create This Node's BTC Exchange Request ({own_status})")
+            print("5. Submit a BTC Exchange Request to the Active Propagation")
             print("0. Back")
             choice = input("\nSelect an option: ").strip()
             if choice == "0":
@@ -93,10 +109,12 @@ class P2PContractsCLI:
                 self.show_propagation_status()
             elif choice == "4":
                 state = self.propagation.current_state()
-                if not state or state.get("status") != "READY_TO_SUBMIT":
-                    print("Submission is locked. A locally accepted propagation must reach its enabled timestamp first.")
+                if not state or state.get("status") != "READY_TO_SUBMIT" or state.get("require_owner_request") or state.get("owner_request_sent"):
+                    print("This propagation's owner request is prepared and submitted automatically with the peer batch; a second owner request is not enabled in the same propagation.")
                 else:
                     self.create_request_form()
+            elif choice == "5":
+                self.submit_to_active_propagation()
             else:
                 print("Choose an available option.")
 
@@ -120,7 +138,7 @@ class P2PContractsCLI:
         result = self.propagation.query_status()
         if result["active_proposals"]:
             print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
-            print("Verify the proposal manually; remote acceptance and request routing are not implemented yet.")
+            print("Submit to the currently active proposal instead of opening a competing propagation window.")
             return
         if not result["responses"]:
             print("Cannot safely accept a propagation: no peer responded. A local timeout is not proof of network-wide availability.")
@@ -132,13 +150,22 @@ class P2PContractsCLI:
         if not self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?"):
             print("Propagation acceptance cancelled.")
             return
-        state = self.propagation.accept_new_propagation(parent_hash)
+        print("Before accepting propagation, prepare this node's own public BTC exchange request.")
+        if not self.create_request_form(draft_only=True):
+            print("Propagation acceptance cancelled because the owner request draft was not saved.")
+            return
+        recheck = self.propagation.query_status()
+        if recheck["active_proposals"]:
+            print("Another active propagation appeared while this node's request was being prepared. This node will not open a competing window.")
+            return
+        state = self.propagation.accept_new_propagation(parent_hash, require_owner_request=True)
         print("\nPROPAGATION ACCEPTED")
         print(f"Propagation hash: {state['proposal_hash']}")
         print(f"Accepted at: {state['accepted_at']}")
-        print(f"Request submission enabled at: {state['send_enabled_at']}")
-        print("The ten-minute waiting period has started.")
-        print("Keep Node Core OS and Kubo running. This is a prototype lease, not global consensus.")
+        print(f"Automatic batch submission time: {state['send_enabled_at']}")
+        print("Incoming peer requests and this node's prepared request will be included in one manifest transition.")
+        print("Keep Node Core OS and Kubo running. This remains an experimental, non-global lease.")
+        self._start_owner_auto_submit()
 
     def show_propagation_status(self) -> None:
         state = self.propagation.current_state()
@@ -155,11 +182,45 @@ class P2PContractsCLI:
             print(f"Time remaining: {remaining // 60:02d}:{remaining % 60:02d}")
             print("The request form remains locked until the timestamp.")
         elif state["status"] == "READY_TO_SUBMIT":
-            print("The local timer has elapsed. The form is enabled, but distributed submission/remote manifest merging is not implemented yet.")
+            print("The local timer has elapsed.")
+            print(f"Queued/owner batch finalized: {bool(state.get('batch_flushed'))}")
+            print(f"Owner request automatically submitted: {bool(state.get('owner_request_sent'))}")
+            if not state.get("batch_flushed") and state.get("require_owner_request"):
+                print("The owner request draft and incoming peer requests are waiting for automatic batch submission.")
         elif state["status"] == "CANCELLED":
             print(f"Cancellation reason: {state.get('cancel_reason', 'Not specified')}")
 
-    def create_request_form(self) -> None:
+
+    def submit_to_active_propagation(self) -> None:
+        print("\nChecking for an active propagation proposal from connected peers...")
+        result = self.propagation.query_status()
+        if not result["responses"]:
+            print("No peer responded. A new submission cannot be safely routed.")
+            return
+        proposals = result["active_proposals"]
+        if not proposals:
+            print("No active propagation proposal was reported by responding peers.")
+            print("If this node needs to create a new propagation, use option 2 only after checking network status.")
+            return
+        unique = {item.get("proposal_hash"): item for item in proposals if item.get("proposal_hash")}
+        if len(unique) != 1:
+            print("Conflicting active propagation hashes were reported. Submission is blocked.")
+            for item in unique.values():
+                print(f"- {item.get('proposal_hash')} from {item.get('proposer_node_id')}")
+            return
+        proposal = next(iter(unique.values()))
+        if proposal.get("proposer_node_id") == self.runtime.network.identity().peer_id:
+            print("This node owns the active propagation. Use option 4 after the timer unlocks.")
+            return
+        print(f"Active propagation hash: {proposal.get('proposal_hash')}")
+        print(f"Receiving node ID: {proposal.get('proposer_node_id')}")
+        print(f"Submission window closes at: {proposal.get('send_enabled_at')}")
+        if not self._yes("Prepare a public BTC exchange request for this propagation node?"):
+            print("Request submission cancelled.")
+            return
+        self.create_request_form(remote_proposal=proposal)
+
+    def create_request_form(self, remote_proposal: dict[str, Any] | None = None, draft_only: bool = False) -> bool:
         profile = self.runtime.identity_profile.load() or {}
         node = self.runtime.network.identity()
         print("\n--- PUBLIC BTC EXCHANGE REQUEST ---")
@@ -197,19 +258,106 @@ class P2PContractsCLI:
         print(f"Request: {receive_amount} {asset.upper()}")
         print(f"Contact methods: {len(contacts)}")
         print("Identity fields to publish: " + (", ".join(sorted(selected)) if selected else "none"))
-        if not self._yes("Create this request in the local append-only manifest?"):
+        confirm_text = ("Save this request as a local draft for automatic propagation submission?"
+                        if draft_only else "Create this request in the local append-only manifest?")
+        if not self._yes(confirm_text):
             print("Request creation cancelled.")
-            return
+            return False
+        if draft_only:
+            draft = {
+                "btc_amount": btc_amount, "receive_asset": asset, "receive_amount": receive_amount,
+                "receive_network": receive_network, "description": description, "contacts": contacts,
+                "publish_identity": bool(selected), "identity_fields": sorted(selected),
+            }
+            draft_path = self.runtime.storage.path("p2p_contracts/propagation/owner-request-draft.json")
+            draft_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path = draft_path.with_suffix(".tmp")
+            temporary_path.write_text(json.dumps(draft, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+            os.chmod(temporary_path, 0o600)
+            os.replace(temporary_path, draft_path)
+            print("Owner request draft saved locally. It has not been published or appended to the manifest.")
+            return True
         result = self.service.create_btc_exchange_request(
             btc_amount=btc_amount, receive_asset=asset, receive_amount=receive_amount,
             receive_network=receive_network, description=description, contacts=contacts,
             publish_identity=bool(selected), identity_fields=selected,
+            defer_manifest=remote_proposal is not None,
         )
         print("Request saved locally.")
         print(f"Request ID: {result['request_id']}")
         print(f"Request hash: {result['request_hash']}")
         print(f"Manifest hash: {result['manifest_hash']}")
-        print("Status: LOCAL_ONLY. Network request delivery and remote manifest merging are not implemented in v0.1.")
+        request_document = json.loads(Path(result["request_path"]).read_text(encoding="utf-8"))
+        if remote_proposal is not None:
+            acknowledgement = self.propagation.submit_request(remote_proposal, request_document)
+            if acknowledgement.get("accepted"):
+                print("Propagation node acknowledged the request for inclusion in its pending batch.")
+                print(f"Target node: {remote_proposal.get('proposer_node_id')}")
+            else:
+                print("Request remains saved locally but was NOT acknowledged by the propagation node.")
+                print(f"Reason: {acknowledgement.get('reason', 'No reason provided.')}")
+        else:
+            broadcast = self.propagation.publish_request(request_document, result["manifest_document"])
+            print(f"Network acknowledgements received: {len(broadcast['peer_acknowledgements'])}")
+            print("Request broadcast attempted. Peers without acknowledgements may not have imported it.")
+        return True
+
+    def _start_owner_auto_submit(self) -> None:
+        if self._stop_event.is_set():
+            return
+        threading.Thread(target=self._owner_auto_submit_loop, daemon=True, name="p2p-contracts-owner-submit").start()
+
+    def _owner_auto_submit_loop(self) -> None:
+        while not self._stop_event.wait(1.0):
+            try:
+                state = self.propagation.current_state()
+                if not state:
+                    return
+                if state.get("status") == "CANCELLED":
+                    return
+                if state.get("status") == "READY_TO_SUBMIT" and state.get("require_owner_request") and not state.get("owner_request_sent"):
+                    self.submit_owner_draft_if_ready(state)
+                    return
+            except (ValueError, P2PContractsError, PubSubUnavailable, OSError, RuntimeError) as exc:
+                print(f"Automatic propagation submission is waiting for recovery: {exc}")
+            time.sleep(0.5)
+
+    def submit_owner_draft_if_ready(self, state: dict[str, Any]) -> None:
+        if not self._auto_submit_lock.acquire(blocking=False):
+            return
+        try:
+            current = self.propagation.current_state()
+            if not current or current.get("status") != "READY_TO_SUBMIT" or current.get("owner_request_sent"):
+                return
+            draft_path = self.runtime.storage.path("p2p_contracts/propagation/owner-request-draft.json")
+            if not draft_path.is_file():
+                print("Automatic submission cannot proceed: the local owner request draft is missing.")
+                return
+            draft = json.loads(draft_path.read_text(encoding="utf-8"))
+            request_document = draft.get("request_document")
+            if not isinstance(request_document, dict):
+                result = self.service.create_btc_exchange_request(
+                    btc_amount=draft["btc_amount"], receive_asset=draft["receive_asset"],
+                    receive_amount=draft["receive_amount"], receive_network=draft["receive_network"],
+                    description=draft["description"], contacts=draft["contacts"],
+                    publish_identity=bool(draft["publish_identity"]),
+                    identity_fields=set(draft["identity_fields"]), defer_manifest=True,
+                )
+                request_document = json.loads(Path(result["request_path"]).read_text(encoding="utf-8"))
+                draft["request_document"] = request_document
+                temporary_path = draft_path.with_suffix(".tmp")
+                temporary_path.write_text(json.dumps(draft, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+                os.chmod(temporary_path, 0o600)
+                os.replace(temporary_path, draft_path)
+            result = self.propagation.finalize_propagation(request_document)
+            draft_path.unlink(missing_ok=True)
+            print("\nPROPAGATION BATCH SUBMITTED")
+            print(f"Owner request ID: {request_document['request_id']}")
+            print(f"Requests included in the manifest transition: {result.get('batch_request_count', result.get('imported_count', 0))}")
+            print(f"Manifest hash: {result.get('manifest_hash')}")
+            print("The owner request and queued peer requests were broadcast as one request batch.")
+        finally:
+            self._auto_submit_lock.release()
 
     def create_closure_form(self) -> None:
         print("\n--- CREATE REQUEST CLOSURE / REPUTATION EVIDENCE ---")
@@ -240,12 +388,17 @@ class P2PContractsCLI:
         print(f"Evidence ID: {result['evidence_id']}")
         print(f"Evidence hash: {result['evidence_hash']}")
         print("Verification status: self_reported_unverified")
+        evidence_path = self.runtime.storage.path(f"p2p_contracts/evidence/{result['evidence_id']}.json")
+        evidence_document = json.loads(evidence_path.read_text(encoding="utf-8"))
+        broadcast = self.propagation.publish_evidence(evidence_document, result["manifest_document"])
+        print(f"Evidence broadcast acknowledgements: {len(broadcast['peer_acknowledgements'])}")
+        print("Remote nodes verify the evidence hash and import it only if the referenced request is already present.")
 
     def search_request_form(self) -> None:
         request_id = self._ask("Request ID to search")
         result = self.service.find_request(request_id)
         if result is None:
-            print("Request ID was not found in the local manifest. Remote search is not implemented yet.")
+            print("Request ID was not found in this node's synchronized local manifest.")
             return
         request = result["request"]
         exchange = request.get("exchange", {})

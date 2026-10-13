@@ -36,10 +36,27 @@ service_status() {
   esac
 }
 
+write_kubo_daemon_launcher() {
+  local launcher="$NODE_CORE_DATA_DIR/bin/node-core-kubo-daemon"
+  mkdir -p "$(dirname "$launcher")"
+  cat > "$launcher" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+ipfs="$NODE_CORE_DATA_DIR/bin/ipfs"
+if "\$ipfs" daemon --help 2>&1 | grep -q -- '--enable-pubsub-experiment'; then
+  exec "\$ipfs" daemon --enable-pubsub-experiment
+fi
+exec "\$ipfs" daemon
+EOF
+  chmod 700 "$launcher"
+  [[ -x "$launcher" ]]
+}
+
 write_kubo_service_unit() {
   local unit_path
   unit_path="$(service_unit_path)"
   mkdir -p "$(dirname "$unit_path")"
+  write_kubo_daemon_launcher
 
   cat > "$unit_path" <<EOF
 [Unit]
@@ -49,7 +66,7 @@ After=network-online.target
 [Service]
 Type=simple
 Environment=IPFS_PATH=$NODE_CORE_DATA_DIR/ipfs
-ExecStart=$NODE_CORE_DATA_DIR/bin/ipfs daemon
+ExecStart=$NODE_CORE_DATA_DIR/bin/node-core-kubo-daemon
 Restart=on-failure
 RestartSec=3
 

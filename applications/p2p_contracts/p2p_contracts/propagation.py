@@ -1,5 +1,6 @@
-""""Experimental Kubo PubSub propagation window for P2P Contracts."""
+"""Experimental Kubo PubSub request propagation for P2P Contracts."""
 from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 import base64
 import hashlib
@@ -14,12 +15,16 @@ from uuid import uuid4
 TOPIC = "node-core-os/p2p-contracts/propagation/v1"
 MESSAGE_SCHEMA = "node-core-os/p2p-contracts/pubsub-message/1"
 WINDOW_SECONDS = 600
+ACK_WAIT_SECONDS = 5.0
+
 
 def utc_now():
     return datetime.now(timezone.utc)
 
+
 def timestamp(value):
     return value.isoformat(timespec="seconds").replace("+00:00", "Z")
+
 
 def parse_timestamp(value):
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -27,19 +32,24 @@ def parse_timestamp(value):
         raise ValueError("Timestamp must include a timezone.")
     return parsed.astimezone(timezone.utc)
 
+
 class PubSubUnavailable(RuntimeError):
     """Kubo PubSub is unavailable or disabled."""
 
+
 class PropagationProtocol:
-    """Prototype PubSub protocol; messages are untrusted claims, not consensus."""
-    def __init__(self, storage: Any, network: Any, kubo: Any):
-        self.storage, self.network, self.kubo = storage, network, kubo
+    """Experimental message protocol; peer claims are not cryptographic consensus."""
+    def __init__(self, storage: Any, network: Any, kubo: Any, service: Any = None):
+        self.storage, self.network, self.kubo, self.service = storage, network, kubo, service
         self.directory = storage.path("p2p_contracts/propagation")
         self.directory.mkdir(parents=True, exist_ok=True)
         self.state_path = self.directory / "state.json"
         self.messages_path = self.directory / "received-messages.json"
-        self._lock = threading.Lock()
+        self.pending_path = self.directory / "pending-requests.json"
+        self._lock = threading.RLock()
         self._received = []
+        self._listener_errors = []
+        self._pending_requests = []
         self._listener = None
         if self.messages_path.is_file():
             try:
@@ -47,6 +57,12 @@ class PropagationProtocol:
                 self._received = items[-1000:] if isinstance(items, list) else []
             except (OSError, json.JSONDecodeError):
                 self._received = []
+        if self.pending_path.is_file():
+            try:
+                items = json.loads(self.pending_path.read_text(encoding="utf-8"))
+                self._pending_requests = items if isinstance(items, list) else []
+            except (OSError, json.JSONDecodeError):
+                self._pending_requests = []
 
     def _state(self):
         if not self.state_path.is_file():
@@ -57,10 +73,17 @@ class PropagationProtocol:
             raise PubSubUnavailable(f"Cannot read propagation state: {exc}") from exc
         return result if isinstance(result, dict) else None
 
+    @staticmethod
+    def _atomic_json(path, value):
+        temp = path.with_suffix(".tmp")
+        temp.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        os.replace(temp, path)
+
     def _save_state(self, state):
-        temp = self.state_path.with_suffix(".tmp")
-        temp.write_text(json.dumps(state, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-        os.replace(temp, self.state_path)
+        self._atomic_json(self.state_path, state)
+
+    def _save_pending(self):
+        self._atomic_json(self.pending_path, self._pending_requests)
 
     def _new_message(self, kind, **fields):
         return {"schema": MESSAGE_SCHEMA, "message_id": str(uuid4()), "created_at": timestamp(utc_now()),
@@ -70,9 +93,20 @@ class PropagationProtocol:
         message = self._new_message(kind, **fields)
         encoded = json.dumps(message, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         try:
-            self.kubo._run("pubsub", "pub", TOPIC, encoded)
-        except (subprocess.CalledProcessError, RuntimeError) as exc:
-            raise PubSubUnavailable("Kubo PubSub is unavailable. Enable Pubsub.Enabled and restart Kubo.") from exc
+            publisher = getattr(self.kubo, "pubsub_publish", None)
+            if callable(publisher):
+                publisher(TOPIC, encoded)
+            else:
+                subprocess.run(
+                    [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
+                    env=self.kubo._environment(), input=encoded, text=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=True, timeout=15,
+                )
+        except (subprocess.CalledProcessError, RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+            detail = getattr(exc, "stderr", None) or str(exc)
+            detail = detail.strip() if isinstance(detail, str) else str(detail)
+            raise PubSubUnavailable(f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity.") from exc
         return message
 
     def start(self):
@@ -84,13 +118,156 @@ class PropagationProtocol:
             self._listener = subprocess.Popen(
                 [self.kubo.executable, "--enc=json", "pubsub", "sub", TOPIC],
                 env=self.kubo._environment(), stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         except OSError as exc:
             raise PubSubUnavailable(f"Could not start PubSub listener: {exc}") from exc
         threading.Thread(target=self._read_loop, daemon=True, name="p2p-contracts-pubsub").start()
-        time.sleep(0.15)
+        time.sleep(0.2)
         if self._listener.poll() is not None:
             raise PubSubUnavailable("Kubo PubSub listener exited. Check Pubsub.Enabled and Kubo logs.")
+
+    @staticmethod
+    def _decode_pubsub_data(value):
+        if not isinstance(value, str):
+            raise ValueError("PubSub message has no data field.")
+        # Kubo JSON output may use base64, base64url, or a multibase prefix.
+        candidates = [value]
+        if value.startswith("m"):
+            candidates.insert(0, value[1:])
+        elif value.startswith("u"):
+            candidates.insert(0, value[1:])
+        for candidate in candidates:
+            padded = candidate + "=" * (-len(candidate) % 4)
+            decoded_values = []
+            try:
+                decoded_values.append(base64.b64decode(padded, validate=True))
+            except (ValueError, base64.binascii.Error):
+                pass
+            try:
+                decoded_values.append(base64.urlsafe_b64decode(padded))
+            except (ValueError, base64.binascii.Error):
+                pass
+            for decoded in decoded_values:
+                if decoded.lstrip().startswith(b"{"):
+                    return decoded
+        raise ValueError("PubSub message data is not valid base64-encoded JSON.")
+
+    def _remember(self, message):
+        with self._lock:
+            if any(old.get("message_id") == message["message_id"] for old in self._received):
+                return False
+            self._received.append(message)
+            self._received = self._received[-1000:]
+            self._atomic_json(self.messages_path, self._received)
+        return True
+
+    def _queue_request(self, message):
+        document = message.get("request_document")
+        if not isinstance(document, dict):
+            raise ValueError("Request submission has no request document.")
+        request_id = document.get("request_id")
+        requester = document.get("requester")
+        if not isinstance(request_id, str) or not isinstance(requester, dict):
+            raise ValueError("Request submission is malformed.")
+        # The sender field is only a claim in this prototype, not a signed identity.
+        if requester.get("node_id") != message.get("sender_node_id"):
+            raise ValueError("Requesting node ID does not match the message's claimed sender.")
+        with self._lock:
+            existing = next((item for item in self._pending_requests if item.get("request_id") == request_id), None)
+            if existing is not None:
+                if existing.get("document_hash") != document.get("document_hash"):
+                    raise ValueError("A conflicting request document reused an ID already in the pending batch.")
+            else:
+                self._pending_requests.append(document)
+                self._save_pending()
+        return request_id
+
+    def _handle_message(self, message):
+        kind = message.get("type")
+        sender = message.get("sender_node_id")
+        if kind == "STATUS_QUERY":
+            state = self.current_state()
+            active = None
+            if state and state.get("status") == "ACCEPTED":
+                now = utc_now()
+                if now < parse_timestamp(state["send_enabled_at"]) and now < parse_timestamp(state["lease_expires_at"]):
+                    active = state
+            self._publish("STATUS_RESPONSE", reply_to=message["message_id"],
+                          queried_by=sender, active_proposal=active)
+        elif kind == "PROPOSAL_ANNOUNCE":
+            proposal = message.get("proposal") or {}
+            self._publish("PROPOSAL_STATUS", proposal_id=proposal.get("proposal_id"),
+                          observed_proposal_hash=(self._state() or {}).get("proposal_hash"),
+                          observed_status=((self._state() or {}).get("status") or "NONE"))
+        elif kind == "REQUEST_SUBMISSION":
+            state = self.current_state()
+            proposal_id = message.get("proposal_id")
+            proposal_hash = message.get("proposal_hash")
+            request_id = None
+            accepted = False
+            reason = "No active propagation window on this node."
+            if state and state.get("status") == "ACCEPTED" and utc_now() < parse_timestamp(state["send_enabled_at"]):
+                if proposal_id == state.get("proposal_id") and proposal_hash == state.get("proposal_hash"):
+                    try:
+                        request_id = self._queue_request(message)
+                        accepted = True
+                        reason = "Request queued for the active propagation batch."
+                    except (ValueError, OSError) as exc:
+                        reason = str(exc)
+                else:
+                    reason = "Propagation ID or hash does not match the active proposal."
+            self._publish("REQUEST_ACK", reply_to=message["message_id"], request_id=request_id,
+                          proposal_id=proposal_id, accepted=accepted, reason=reason,
+                          target_node_id=sender)
+        elif kind == "REQUEST_BROADCAST":
+            document = message.get("request_document")
+            if self.service is not None and isinstance(document, dict):
+                try:
+                    requester = document.get("requester") or {}
+                    if requester.get("node_id") != sender:
+                        raise ValueError("Request sender ID does not match the request's claimed node ID.")
+                    manifest_document = message.get("manifest_document")
+                    if isinstance(manifest_document, dict):
+                        result = self.service.import_remote_manifest(manifest_document, request_documents=[document])
+                    else:
+                        result = self.service.import_remote_requests([document])
+                    self._publish("REQUEST_ACK", reply_to=message["message_id"],
+                                  request_id=document.get("request_id"), accepted=True,
+                                  imported_count=result.get("imported_request_count", result.get("imported_count", 0)),
+                                  manifest_hash=result.get("manifest_hash"), reason="Public request imported.")
+                except (ValueError, RuntimeError, OSError) as exc:
+                    self._publish("REQUEST_ACK", reply_to=message["message_id"],
+                                  request_id=document.get("request_id"), accepted=False, reason=str(exc))
+        elif kind == "EVIDENCE_BROADCAST":
+            document = message.get("evidence_document")
+            if self.service is not None and isinstance(document, dict):
+                try:
+                    if document.get("reporter_node_id") != sender:
+                        raise ValueError("Evidence reporter ID does not match the message's claimed sender ID.")
+                    manifest_document = message.get("manifest_document")
+                    result = self.service.import_remote_evidence(document, manifest_document=manifest_document)
+                    self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
+                                  evidence_id=document.get("evidence_id"), accepted=True,
+                                  imported=result.get("imported", False), manifest_hash=result.get("manifest_hash"),
+                                  reason="Evidence verified and imported.")
+                except (ValueError, RuntimeError, OSError) as exc:
+                    self._publish("EVIDENCE_ACK", reply_to=message["message_id"],
+                                  evidence_id=document.get("evidence_id"), accepted=False, reason=str(exc))
+        elif kind == "REQUEST_BATCH":
+            documents = message.get("request_documents")
+            if self.service is not None and isinstance(documents, list) and documents:
+                try:
+                    manifest_document = message.get("manifest_document")
+                    if isinstance(manifest_document, dict):
+                        result = self.service.import_remote_manifest(manifest_document, request_documents=documents)
+                        imported_count = result.get("imported_request_count", 0)
+                    else:
+                        result = self.service.import_remote_requests(documents)
+                        imported_count = result.get("imported_count", 0)
+                    self._publish("BATCH_ACK", reply_to=message["message_id"],
+                                  imported_count=imported_count, manifest_hash=result.get("manifest_hash"))
+                except (ValueError, RuntimeError, OSError) as exc:
+                    self._publish("BATCH_ACK", reply_to=message["message_id"], imported_count=0, error=str(exc))
 
     def _read_loop(self):
         process = self._listener
@@ -99,39 +276,19 @@ class PropagationProtocol:
         for line in process.stdout:
             try:
                 envelope = json.loads(line)
-                data = envelope.get("Data")
-                if not isinstance(data, str):
-                    continue
-                if data.startswith("m"):
-                    raw = base64.b64decode(data[1:] + "=" * (-len(data[1:]) % 4))
-                elif data.startswith("u"):
-                    raw = base64.urlsafe_b64decode(data[1:] + "=" * (-len(data[1:]) % 4))
-                else:
-                    raw = base64.b64decode(data + "=" * (-len(data) % 4))
-                message = json.loads(raw.decode("utf-8"))
+                data = envelope.get("data", envelope.get("Data"))
+                message = json.loads(self._decode_pubsub_data(data).decode("utf-8"))
                 if message.get("schema") != MESSAGE_SCHEMA or not message.get("message_id") or not message.get("sender_node_id"):
                     continue
                 if message.get("sender_node_id") == self.network.identity().peer_id:
                     continue
+                if not self._remember(message):
+                    continue
+                self._handle_message(message)
+            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError, RuntimeError) as exc:
                 with self._lock:
-                    if any(old.get("message_id") == message["message_id"] for old in self._received):
-                        continue
-                    self._received.append(message)
-                    temp = self.messages_path.with_suffix(".tmp")
-                    temp.write_text(json.dumps(self._received[-1000:], ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
-                    os.replace(temp, self.messages_path)
-                if message.get("type") == "STATUS_QUERY":
-                    state = self.current_state()
-                    self._publish("STATUS_RESPONSE", reply_to=message["message_id"],
-                                  queried_by=message["sender_node_id"],
-                                  active_proposal=state if state and state["status"] in {"ACCEPTED", "READY_TO_SUBMIT"} else None)
-                elif message.get("type") == "PROPOSAL_ANNOUNCE":
-                    state = self._state()
-                    proposal = message.get("proposal") or {}
-                    self._publish("PROPOSAL_STATUS", proposal_id=proposal.get("proposal_id"),
-                                  observed_proposal_hash=state.get("proposal_hash") if state else None,
-                                  observed_status=state.get("status") if state else "NONE")
-            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError):
+                    self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
+                    self._listener_errors = self._listener_errors[-20:]
                 continue
 
     def query_status(self, wait_seconds=3.0):
@@ -146,13 +303,29 @@ class PropagationProtocol:
                 if item.get("type") == "STATUS_RESPONSE" and item.get("reply_to") == query["message_id"]:
                     responses[item.get("sender_node_id", "")] = item
             time.sleep(0.1)
-        active = [item["active_proposal"] for item in responses.values()
-                  if isinstance(item.get("active_proposal"), dict)
-                  and item["active_proposal"].get("status") in {"ACCEPTED", "READY_TO_SUBMIT"}]
-        return {"responses": list(responses.values()), "active_proposals": active,
-                "status": "UNVERIFIED" if active else ("NO_ACTIVE_PROPOSAL" if responses else "NO_NODE_RESPONSES")}
+        now = utc_now()
+        active = []
+        for item in responses.values():
+            proposal = item.get("active_proposal")
+            if not isinstance(proposal, dict) or proposal.get("status") != "ACCEPTED":
+                continue
+            try:
+                if now < parse_timestamp(proposal["send_enabled_at"]) and now < parse_timestamp(proposal["lease_expires_at"]):
+                    active.append(proposal)
+            except (KeyError, TypeError, ValueError):
+                continue
+        local_state = self.current_state()
+        if local_state and local_state.get("status") == "ACCEPTED":
+            try:
+                if now < parse_timestamp(local_state["send_enabled_at"]) and now < parse_timestamp(local_state["lease_expires_at"]):
+                    active.append(local_state)
+            except (KeyError, TypeError, ValueError):
+                pass
+        unique = {item.get("proposal_hash"): item for item in active if item.get("proposal_hash")}
+        return {"responses": list(responses.values()), "active_proposals": list(unique.values()),
+                "status": "UNVERIFIED" if unique else ("NO_ACTIVE_PROPOSAL" if responses else "NO_NODE_RESPONSES")}
 
-    def accept_new_propagation(self, parent_manifest_hash):
+    def accept_new_propagation(self, parent_manifest_hash, require_owner_request=False):
         self.start()
         now = utc_now()
         node_id = self.network.identity().peer_id
@@ -164,7 +337,8 @@ class PropagationProtocol:
                  "parent_manifest_hash": parent_manifest_hash, "proposer_node_id": node_id,
                  "accepted_at": timestamp(now), "send_enabled_at": timestamp(now + timedelta(seconds=WINDOW_SECONDS)),
                  "lease_expires_at": timestamp(now + timedelta(seconds=WINDOW_SECONDS + 60)),
-                 "window_seconds": WINDOW_SECONDS, "status": "ACCEPTED",
+                 "window_seconds": WINDOW_SECONDS, "status": "ACCEPTED", "batch_flushed": False,
+                 "require_owner_request": bool(require_owner_request), "owner_request_sent": False,
                  "warning": "Local proposal state; not a global consensus certificate."}
         self._save_state(state)
         try:
@@ -177,19 +351,110 @@ class PropagationProtocol:
             raise
         return state
 
+    def submit_request(self, proposal, request_document, wait_seconds=ACK_WAIT_SECONDS):
+        self.start()
+        request_id = request_document.get("request_id")
+        message = self._publish("REQUEST_SUBMISSION", proposal_id=proposal.get("proposal_id"),
+                                proposal_hash=proposal.get("proposal_hash"), request_id=request_id,
+                                request_document=request_document)
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 15.0))
+        while time.monotonic() < deadline:
+            with self._lock:
+                replies = [item for item in self._received
+                           if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]
+                           and item.get("sender_node_id") == proposal.get("proposer_node_id")]
+            if replies:
+                return replies[-1]
+            time.sleep(0.1)
+        return {"accepted": False, "request_id": request_id,
+                "reason": "No acknowledgement received before timeout."}
+
+    def publish_request(self, request_document, manifest_document=None, wait_seconds=1.5):
+        self.start()
+        message = self._publish("REQUEST_BROADCAST", request_document=request_document, manifest_document=manifest_document)
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
+        while time.monotonic() < deadline:
+            time.sleep(0.1)
+        with self._lock:
+            replies = [item for item in self._received
+                       if item.get("type") == "REQUEST_ACK" and item.get("reply_to") == message["message_id"]]
+        return {"message_id": message["message_id"], "peer_acknowledgements": replies}
+
+    def publish_evidence(self, evidence_document, manifest_document=None, wait_seconds=1.5):
+        self.start()
+        message = self._publish("EVIDENCE_BROADCAST", evidence_document=evidence_document, manifest_document=manifest_document)
+        deadline = time.monotonic() + max(0.5, min(float(wait_seconds), 5.0))
+        while time.monotonic() < deadline:
+            time.sleep(0.1)
+        with self._lock:
+            replies = [item for item in self._received
+                       if item.get("type") == "EVIDENCE_ACK" and item.get("reply_to") == message["message_id"]]
+        return {"message_id": message["message_id"], "peer_acknowledgements": replies}
+
+    def finalize_propagation(self, owner_request_document=None):
+        """Commit all queued peer requests and the owner's prepared request in one manifest."""
+        state = self.current_state()
+        if not state or state.get("status") != "READY_TO_SUBMIT":
+            raise PubSubUnavailable("The propagation window is not ready to finalize.")
+        if utc_now() >= parse_timestamp(state["lease_expires_at"]):
+            state["status"] = "CANCELLED"
+            state["cancel_reason"] = "Propagation lease expired before finalization."
+            self._save_state(state)
+            with self._lock:
+                self._pending_requests = []
+                self._save_pending()
+            raise PubSubUnavailable("The propagation lease expired before finalization.")
+        if state.get("batch_flushed"):
+            return {"imported_count": 0, "manifest_hash": (self.service.current_manifest() or {}).get("manifest_hash"),
+                    "owner_request_sent": bool(state.get("owner_request_sent"))}
+        with self._lock:
+            pending = list(self._pending_requests)
+        documents = list(pending)
+        if owner_request_document is not None:
+            documents.append(owner_request_document)
+        imported = {"imported_count": 0, "manifest_hash": None}
+        if documents:
+            if self.service is None:
+                raise PubSubUnavailable("Request service is not connected to the propagation protocol.")
+            imported = self.service.import_remote_requests(documents)
+            self._publish("REQUEST_BATCH", proposal_id=state.get("proposal_id"),
+                          proposal_hash=state.get("proposal_hash"), request_documents=documents,
+                          manifest_document=imported.get("manifest_document"), manifest_hash=imported.get("manifest_hash"))
+        with self._lock:
+            self._pending_requests = []
+            self._save_pending()
+        state["batch_flushed"] = True
+        state["owner_request_sent"] = owner_request_document is not None
+        state["batch_request_count"] = len(documents)
+        state["final_manifest_hash"] = imported.get("manifest_hash")
+        state["finalized_at"] = timestamp(utc_now())
+        self._save_state(state)
+        return {**imported, "batch_request_count": len(documents),
+                "owner_request_sent": state["owner_request_sent"]}
+
+    def _flush_pending_requests(self, state):
+        if state.get("batch_flushed"):
+            return
+        self.finalize_propagation()
+
     def current_state(self):
         state = self._state()
         if not state:
             return None
         now = utc_now()
-        if state.get("status") == "ACCEPTED":
+        if state.get("status") in {"ACCEPTED", "READY_TO_SUBMIT"}:
             if now >= parse_timestamp(state["lease_expires_at"]):
                 state["status"] = "CANCELLED"
-                state["cancel_reason"] = "Propagation lease expired before submission was completed."
+                state["cancel_reason"] = "Propagation lease expired before the request batch was completed."
                 self._save_state(state)
-            elif now >= parse_timestamp(state["send_enabled_at"]):
+                with self._lock:
+                    self._pending_requests = []
+                    self._save_pending()
+            elif state.get("status") == "ACCEPTED" and now >= parse_timestamp(state["send_enabled_at"]):
                 state["status"] = "READY_TO_SUBMIT"
                 self._save_state(state)
+                if not state.get("require_owner_request"):
+                    self._flush_pending_requests(state)
         return state
 
     def stop(self):
@@ -199,4 +464,7 @@ class PropagationProtocol:
                 self._listener.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 self._listener.kill()
+                self._listener.wait(timeout=2)
+        if self._listener and self._listener.stdout:
+            self._listener.stdout.close()
         self._listener = None
