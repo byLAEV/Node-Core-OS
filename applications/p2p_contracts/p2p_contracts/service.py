@@ -262,6 +262,58 @@ class P2PContractsService:
             "identity_fields_published": sorted(identity), "status": "LOCAL_ONLY",
         }
 
+    def import_remote_requests(self, request_documents: list[dict[str, Any]]) -> dict[str, Any]:
+        """Validate and append a batch of public requests received from a peer."""
+        self._ensure_directories()
+        if not isinstance(request_documents, list) or not request_documents:
+            raise ValueError("At least one remote request document is required.")
+        previous = self._load_head()
+        requests = list(previous.get("requests", [])) if previous else []
+        evidence = list(previous.get("evidence", [])) if previous else []
+        known = {entry.get("request_id") for entry in requests}
+        imported = []
+        for document in request_documents:
+            if not isinstance(document, dict):
+                raise ValueError("Remote request must be a JSON object.")
+            digest = document.get("document_hash")
+            payload = {key: value for key, value in document.items() if key != "document_hash"}
+            if payload.get("schema") != REQUEST_SCHEMA or payload.get("request_type") != "btc_exchange":
+                raise ValueError("Remote document is not a supported BTC exchange request.")
+            if payload.get("visibility") != "public":
+                raise ValueError("Only public requests can be imported by this protocol.")
+            request_id = payload.get("request_id")
+            if not isinstance(request_id, str) or not re.fullmatch(r"request-[0-9a-fA-F-]{36}", request_id):
+                raise ValueError("Remote request ID is malformed.")
+            if not isinstance(digest, str) or document_hash(payload) != digest:
+                raise P2PContractsError(f"Remote request hash verification failed: {request_id}")
+            requester = payload.get("requester")
+            if not isinstance(requester, dict) or not isinstance(requester.get("node_id"), str):
+                raise ValueError("Remote request does not identify its requesting node.")
+            if request_id in known:
+                continue
+            relative_path = f"p2p_contracts/requests/{request_id}.json"
+            destination = self.storage.path(relative_path)
+            if destination.exists():
+                existing = self._read_json(destination)
+                if existing.get("document_hash") != digest:
+                    raise P2PContractsError(f"Conflicting request ID already exists locally: {request_id}")
+            else:
+                self._write_json(destination, document)
+            requests.append({
+                "request_id": request_id, "document_path": relative_path,
+                "document_hash": digest, "status": "open",
+                "created_at": payload.get("created_at"),
+            })
+            known.add(request_id)
+            imported.append(request_id)
+        if not imported:
+            current = self._load_head()
+            return {"imported_request_ids": [], "imported_count": 0,
+                    "manifest_hash": current.get("manifest_hash") if current else None}
+        manifest = self._publish_new_manifest(requests=requests, evidence=evidence)
+        return {"imported_request_ids": imported, "imported_count": len(imported),
+                "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"]}
+
     def create_request_evidence(
         self, *, request_id: str, outcome: str, evidence_type: str,
         description: str, reporter_statement: str, external_reference: str = "",
