@@ -177,17 +177,17 @@ Antes de escribir la aplicación, la siguiente tarea es cerrar la Fase 0 y luego
 
 No se afirma que P2P Contracts, sus manifiestos, OpenPGP ni su sincronización ya existan. Este documento fija la auditoría inicial y el orden de trabajo para construirlos mediante cambios pequeños y verificables.
 
-## 8. Requisito OpenPGP acordado: claves existentes y modo privado cifrado
+## 8. Alcance de la versión inicial y política OpenPGP futura
 
-P2P Contracts no generará claves privadas OpenPGP nuevas, ni durante la instalación ni durante el uso de la aplicación. El usuario importará explícitamente una clave privada existente, que permanecerá local y no se publicará ni se incluirá en documentos, manifiestos, logs o contenido de IPFS.
+La primera versión funcional de P2P Contracts será exclusivamente pública y transparente. Primero se implementarán y probarán las solicitudes, respuestas, propuestas, aceptaciones, evidencias, publicación y trazabilidad entre nodos. La primera versión no tendrá modo privado funcional, no requerirá importar claves y no integrará OpenPGP para comunicaciones. La opción privada se pospone hasta que la modalidad pública funcione y el usuario autorice expresamente comenzar esa fase.
 
-El usuario podrá registrar contactos importando sus claves públicas OpenPGP. La aplicación calculará y mostrará el fingerprint, validará el formato y permitirá compararlo por un canal independiente. Los contactos se conservarán localmente por defecto.
+Para la futura modalidad privada, Node Core OS y P2P Contracts no generarán claves privadas nuevas. La opción preferida es que el usuario introduzca o cargue una clave privada OpenPGP existente cada vez que la operación lo necesite, sin almacenamiento persistente. La clave se procesará temporalmente en memoria durante el tiempo mínimo posible y no se copiará a archivos temporales, logs, manifiestos ni IPFS. La contraseña de desbloqueo, si existe, también se solicitará de forma segura y no se almacenará.
 
-Cuando el usuario seleccione **Privado**, el contenido de comunicación se cifrará mediante OpenPGP para las claves públicas de los destinatarios antes de salir del almacenamiento privado o publicarse en IPFS. No se permite fallback a texto claro: si faltan claves o falla el cifrado, el envío se detiene. La firma, cuando sea necesaria para acreditar autoría, se realiza con la clave privada existente que el remitente haya importado; cifrado y firma se validan por separado.
+Antes de implementar se comprobará que la biblioteca elegida admite ese flujo y se documentarán sus límites de gestión de memoria. No se prometerá que el lenguaje puede borrar todas las copias de memoria de forma perfecta. Un fingerprint/hash de la clave privada sirve para identificar o comparar la clave, pero no permite firmar ni descifrar y no sustituye la clave privada.
 
-La primera versión transparente seguirá publicando abiertamente solo el contenido marcado como público. El modo privado no debe colocar el texto en claro en manifiestos generales, índices, logs ni publicaciones IPFS. Los metadatos y los CIDs de paquetes cifrados también requieren minimización.
+En la futura opción privada, los contactos se añadirán mediante claves públicas OpenPGP existentes, validadas y mostradas por fingerprint. La comunicación privada se cifrará para las claves públicas de los destinatarios antes de transmitirla o publicarla en IPFS. Si se requiere firma de autoría, se usará la clave privada existente que el remitente aporte para esa operación. No habrá fallback a texto claro: si falla el cifrado, no se envía el mensaje.
 
-Este requisito se especifica en `docs/P2P-CONTRACTS-SCHEMAS.md`. Antes de implementar se evaluará una biblioteca OpenPGP compatible con la plataforma objetivo. No se incorporará generación automática de claves ni se añadirá una dependencia criptográfica sin evaluación.
+Esta fase privada queda fuera de la implementación actual. La modalidad pública no debe manejar claves privadas y debe advertir claramente que el contenido publicado es público. HashPaper permanece fuera de alcance y no se modifica.
 
 ## 9. Regla de no regresión de HashPaper
 
