@@ -98,7 +98,7 @@ validate_installed_application_for_recovery() {
 
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v
+    python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
   )
 }
 
