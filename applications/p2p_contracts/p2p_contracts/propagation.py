@@ -130,19 +130,27 @@ class PropagationProtocol:
     def _decode_pubsub_data(value):
         if not isinstance(value, str):
             raise ValueError("PubSub message has no data field.")
-        # Kubo CLI JSON encodes the raw PubSub data as ordinary base64.
+        # Kubo JSON output may use base64, base64url, or a multibase prefix.
         candidates = [value]
-        # Also accept multibase-prefixed payloads for compatible CLI variants.
         if value.startswith("m"):
-            candidates.append(value[1:])
-        if value.startswith("u"):
-            candidates.append(value[1:])
+            candidates.insert(0, value[1:])
+        elif value.startswith("u"):
+            candidates.insert(0, value[1:])
         for candidate in candidates:
+            padded = candidate + "=" * (-len(candidate) % 4)
+            decoded_values = []
             try:
-                return base64.b64decode(candidate + "=" * (-len(candidate) % 4), validate=True)
+                decoded_values.append(base64.b64decode(padded, validate=True))
             except (ValueError, base64.binascii.Error):
-                continue
-        raise ValueError("PubSub message data is not valid base64.")
+                pass
+            try:
+                decoded_values.append(base64.urlsafe_b64decode(padded))
+            except (ValueError, base64.binascii.Error):
+                pass
+            for decoded in decoded_values:
+                if decoded.lstrip().startswith(b"{"):
+                    return decoded
+        raise ValueError("PubSub message data is not valid base64-encoded JSON.")
 
     def _remember(self, message):
         with self._lock:
