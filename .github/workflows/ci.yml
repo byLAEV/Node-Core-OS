@@ -123,6 +123,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: write
     name: Cross-VM P2P node ${{ matrix.node }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
