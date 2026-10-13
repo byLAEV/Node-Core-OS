@@ -146,37 +146,19 @@ jobs:
           PY
           cat "$RUNNER_TEMP/${{ matrix.node }}-identity-menu.txt"
 
-      - name: Open P2P Contracts from the Node Core OS Applications menu and consent
+      - name: Open P2P Contracts from Applications menu and accept local identity use
         shell: bash
         run: |
           set -euo pipefail
           export HOME="$NODE_CORE_HOME"
           export NODE_CORE_CONFIG
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
-          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY' > "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
-          import sys
-          from unittest.mock import patch
-          sys.path.insert(0, sys.argv[1])
-          from node_core.runtime import NodeRuntime
-
-          answers = iter(["4", "2", "yes", "0", "0", "0"])
-          def scripted_input(prompt=""):
-              print(prompt, end="", flush=True)
-              return next(answers)
-
-          runtime = NodeRuntime()
-          runtime.boot()
-          # Main menu > Applications > P2P Contracts > consent > exit app > exit menus.
-          with patch("builtins.input", side_effect=scripted_input):
-              runtime.menu()
-          PY
-          cat "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
-          grep -Fq 'NODE CORE OS P2P CONTRACTS' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
+          # Use a real subprocess and stdin, because the Applications menu launches P2P Contracts as a child process.
+          printf '%s\\n' 4 2 yes 0 0 0 | python3 "$NODE_CORE_DATA_DIR/app/main.py" > "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '1. Create Public Request' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '4. Search Request ID' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
-
       - name: Test P2P Contracts service and propagation scenarios
         shell: bash
         run: |
