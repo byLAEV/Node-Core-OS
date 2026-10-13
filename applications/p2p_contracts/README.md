@@ -2,7 +2,7 @@
 
 ## Status
 
-This is an experimental development version. The terminal interface is in English. It supports local BTC-for-asset request records, request evidence with reputation ratings, local ID search, and an experimental Kubo PubSub propagation status/ten-minute timer.
+This is an experimental development version with an English terminal interface. It supports public BTC-for-asset requests, request closure/reputation evidence, local request search, and experimental Kubo PubSub synchronization between connected nodes.
 
 ## Main menu
 
@@ -11,35 +11,60 @@ This is an experimental development version. The terminal interface is in Englis
 3. Create Request Closure
 4. Search Request ID
 
-The application requires the operator to consent to local use of the existing Node Core OS identity profile before entering the menu. Each public request separately asks which identity fields may be included. No private key is requested or generated.
+The operator must consent to local use of the existing Node Core OS identity profile before entering the menu. Every public request separately asks which personal identity fields may be published. The node peer ID is added automatically. No private key is requested or generated.
 
-## Public request flow
+## Public propagation flow
 
-The submenu offers:
+The public request submenu offers:
+
 - Check Propagation Hash Status
 - Accept a New Propagation Hash
 - View Propagation Status
-- Create BTC Exchange Request (locked until the local ten-minute timestamp)
+- Create This Node's BTC Exchange Request (unlocked after the node's own ten-minute window)
+- Submit a BTC Exchange Request to the Active Propagation (for a peer submitting to another node)
 
-The propagation module uses Kubo PubSub topic node-core-os/p2p-contracts/propagation/v1. PubSub is experimental and must already be enabled in the user's Kubo configuration (Pubsub.Enabled=true), then Kubo must be restarted. This app does not modify Kubo configuration automatically.
+A node that accepts a propagation announces a proposal hash and opens a ten-minute request-collection window. Other nodes query peers and, if they observe one unique active proposal, can submit a public BTC exchange request to the proposing node. The receiving node queues valid request documents. When the ten-minute timer elapses and the application checks the state, the receiver imports the queued requests into one local manifest transition and broadcasts the request batch. The proposing node can then create and broadcast its own request. Public request broadcasts and closure evidence are hash-validated and imported by peers that receive them.
 
-## Critical limitations
+Kubo PubSub topic: node-core-os/p2p-contracts/propagation/v1.
 
-This version is not a production consensus protocol. PubSub messages are untrusted claims, not signed consensus certificates. There is no global validator membership, quorum, authenticated authorization, complete lease recovery, or proof that every network node observed the same proposal. No peer responses are not proof that a proposal is absent.
+Kubo PubSub must be enabled in each node's Kubo configuration (Pubsub.Enabled=true) and Kubo must be restarted. The application does not alter Kubo configuration automatically.
 
-The timer unlocks local form creation after ten minutes. This version does NOT yet route submitted requests to the currently active remote proposer, automatically merge remote requests into the trusted local manifest, or guarantee that a node is globally exclusive. Requests created in this version are marked LOCAL_ONLY. Do not use this prototype to coordinate financial settlement or to assert verified reputation.
+## Local tests
 
-## Closure evidence and search
+From the repository root:
 
-Closure records include request ID, reporter node ID, evaluated counterparty node ID, rating (1–5), declared final state, description and timestamp. Evidence is self-reported and unverified. The search checks the local manifest and validates the stored request/evidence hashes.
+    python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
 
-## Storage and tests
+These tests do not require a running Kubo daemon.
 
-Data is stored under the configured Node Core OS local storage path in p2p_contracts/.
+## Three independent real Kubo daemons (local integration)
 
-Run from the repository root:
+The integration test creates three separate temporary Kubo repositories and daemons, connects them as peers, then tests:
 
-    python -m unittest applications.p2p_contracts.tests.test_service
-    python -m unittest applications.p2p_contracts.tests.test_propagation
+1. Node A announces a propagation hash.
+2. Node B discovers A's active proposal.
+3. B sends a BTC exchange request to A.
+4. A imports the received request batch into its manifest and broadcasts it.
+5. A publishes its own BTC exchange request; B and C synchronize it.
+6. C creates closure evidence with a rating and publishes it.
+7. A, B, and C search the request ID and verify the synchronized final state and evidence.
 
-No BTC or other asset transaction is executed. HashPaper is unchanged. Installer integration is not included in this PR.
+It does not modify or use an existing user's Kubo repository. It shortens the timer in the test fixture after checking that the production constant is 600 seconds; it does not wait ten real minutes.
+
+Run it with an installed Kubo CLI:
+
+    IPFS_BIN="$(command -v ipfs)" python applications/p2p_contracts/tests/three_node_real_kubo.py
+
+GitHub Actions also runs this integration test using a pinned Kubo CLI version. Three local daemons on one machine prove application-level peer synchronization in that environment, but are not a substitute for testing three physically separate, already-installed Node Core OS devices.
+
+## Important limitations
+
+This is not a production consensus protocol. PubSub messages carry claimed node IDs but are not cryptographically signed or authenticated. A malicious peer can spoof fields, and the prototype cannot prove global absence of competing proposals, enforce a network-wide exclusive lease, or prevent Sybil attacks. The query only reflects responses received during its time window.
+
+The ten-minute timeout unlocks local state and flushes queued incoming requests when the application is running and checks its state. Automatic recovery if a node crashes during the window, a signed quorum, and a globally authoritative chain head are not implemented. The integration test must pass before calling this version tested.
+
+Closure evidence and reputation ratings are self-reported; they are not independent proof that an exchange occurred. No BTC or other asset transaction is executed. Private requests remain disabled pending real OpenPGP encryption. HashPaper behavior is unchanged.
+
+## Data
+
+Local request, evidence, manifest and propagation state is stored under the configured Node Core OS storage path in p2p_contracts/.
