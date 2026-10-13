@@ -287,6 +287,11 @@ class P2PContractsCLI:
         print(f"Evidence ID: {result['evidence_id']}")
         print(f"Evidence hash: {result['evidence_hash']}")
         print("Verification status: self_reported_unverified")
+        evidence_path = self.runtime.storage.path(f"p2p_contracts/evidence/{result['evidence_id']}.json")
+        evidence_document = json.loads(evidence_path.read_text(encoding="utf-8"))
+        broadcast = self.propagation.publish_evidence(evidence_document)
+        print(f"Evidence broadcast acknowledgements: {len(broadcast['peer_acknowledgements'])}")
+        print("Remote nodes verify the evidence hash and import it only if the referenced request is already present.")
 
     def search_request_form(self) -> None:
         request_id = self._ask("Request ID to search")
