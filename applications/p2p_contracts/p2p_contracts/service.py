@@ -201,8 +201,14 @@ class P2PContractsService:
             value = _clean_text(item.get("value", ""), "Contact value", 1000)
             if kind not in CONTACT_TYPES:
                 raise ValueError(f"Unsupported contact type: {kind}")
+            if kind == "pgp_public_key":
+                if "-----BEGIN PGP PRIVATE KEY BLOCK-----" in value:
+                    raise ValueError("A private PGP key must never be entered as a contact method.")
+                if "-----BEGIN PGP PUBLIC KEY BLOCK-----" not in value:
+                    raise ValueError("PGP contact must contain an armored public key block.")
             normalized_contacts.append({"type": kind, "value": value})
-        node_id = self.network.identity().peer_id
+        node_identity = self.network.identity()
+        node_id = node_identity.peer_id
         profile = self.identity_profile.load()
         identity = self._public_identity_fields(profile) if publish_identity else {}
         if identity_fields is not None:
@@ -221,7 +227,8 @@ class P2PContractsService:
             "visibility": "public",
             "requester": {
                 "node_id": node_id,
-                "identity_ref": profile.get("identity_id") if profile else None,
+                "addresses": list(node_identity.addresses),
+                "identity_ref": profile.get("identity_id") if publish_identity and profile else None,
                 "identity_fields": identity,
             },
             "exchange": {
