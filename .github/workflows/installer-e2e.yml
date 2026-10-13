@@ -263,6 +263,10 @@ jobs:
           package_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/packages/upgrade-preservation.json" | awk '{print $1}')"
           record_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/records/upgrade-preservation.json" | awk '{print $1}')"
           storage_hash="$(sha256sum "$NODE_CORE_DATA_DIR/storage/upgrade-preservation.txt" | awk '{print $1}')"
+          # Create a minimal synthetic identity fixture; HashPaper-specific setup no longer runs.
+          mkdir -p "$NODE_CORE_DATA_DIR/identity"
+          printf '{"identity_id":"synthetic-updater-preservation"}\n' > "$NODE_CORE_DATA_DIR/identity/profile.json"
+          chmod 600 "$NODE_CORE_DATA_DIR/identity/profile.json"
           identity_hash="$(sha256sum "$NODE_CORE_DATA_DIR/identity/profile.json" | awk '{print $1}')"
           config_hash="$(sha256sum "$NODE_CORE_DATA_DIR/config.json" | awk '{print $1}')"
           ipfs_config_hash="$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')"
