@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
+  printf 'Node Core OS is strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
   exit 1
 fi
 
@@ -87,9 +87,6 @@ require_installation() {
 
 validate_installed_application_for_recovery() {
   [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
-  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" ]] || return 1
-  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/hashpaper/cli.py" ]] || return 1
-  [[ -d "$NODE_CORE_APP_DIR/applications/hashpaper/tests" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || return 1
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || return 1
   [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || return 1
@@ -97,13 +94,10 @@ validate_installed_application_for_recovery() {
   python3 -m compileall -q \
     "$NODE_CORE_APP_DIR/main.py" \
     "$NODE_CORE_APP_DIR/node_core" \
-    "$NODE_CORE_APP_DIR/applications/hashpaper" \
     "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
 
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest discover \
-      -s applications/hashpaper/tests -p 'test_*.py' -v
     python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
   )
 }
@@ -186,7 +180,7 @@ recover_stale_cleanup_if_safe() {
 
   cat > "$archive_dir/RECOVERY.txt" <<EOF
 Node Core OS updater recovery marker archive.
-Created after validating the installed application and HashPaper tests.
+Created after validating the installed Node Core OS and P2P Contracts application.
 No application backup existed, so automatic rollback was not possible.
 Original marker files were copied and verified before their active copies were removed.
 Current commit: ${current_commit:-absent}
@@ -246,14 +240,6 @@ exec "\$ipfs" daemon
 EOF
   chmod 700 "$NODE_CORE_DATA_DIR/bin/node-core-kubo-daemon"
 
-  cat > "$NODE_CORE_DATA_DIR/bin/hashpaper" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-export NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR"
-export PATH="$NODE_CORE_DATA_DIR/runtime/opentimestamps-venv/bin:$PATH"
-exec python3 "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" "\$@"
-EOF
-  chmod 700 "$NODE_CORE_DATA_DIR/bin/hashpaper"
 }
 
 refresh_kubo_service_unit_if_present() {
@@ -426,19 +412,9 @@ update_application() (
   mkdir -p "$NODE_CORE_APP_DIR" || return 1
   cp -R "$source"/. "$NODE_CORE_APP_DIR"/ || return 1
   rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
+  # HashPaper is a separate application and is not part of Node Core OS 1.4.0.
+  rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
 
-  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/main.py" ]] || {
-    printf 'Update is missing HashPaper entry point; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -f "$NODE_CORE_APP_DIR/applications/hashpaper/hashpaper/cli.py" ]] || {
-    printf 'Update is missing HashPaper CLI; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -d "$NODE_CORE_APP_DIR/applications/hashpaper/tests" ]] || {
-    printf 'Update is missing HashPaper tests; refusing activation.\n' >&2
-    return 1
-  }
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
     printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
     return 1
@@ -451,39 +427,22 @@ update_application() (
     printf 'Update is missing P2P Contracts tests; refusing activation.\n' >&2
     return 1
   }
-  python3 - "$NODE_CORE_APP_DIR/VERSION" "$NODE_CORE_APP_DIR/applications/hashpaper/VERSION" <<'PY'
+  python3 - "$NODE_CORE_APP_DIR/VERSION" <<'PY'
 import re
 import sys
 from pathlib import Path
-
-for value in sys.argv[1:]:
-    path = Path(value)
-    if not path.is_file():
-        raise SystemExit(f"Required application version file is missing: {path}")
-    version = path.read_text(encoding="utf-8").strip()
-    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
-        raise SystemExit(f"Invalid application version in {path}: {version!r}")
-print("Node Core OS version:", Path(sys.argv[1]).read_text(encoding="utf-8").strip())
-print("HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
+path = Path(sys.argv[1])
+version = path.read_text(encoding="utf-8").strip()
+if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+    raise SystemExit(f"Invalid Node Core OS version in {path}: {version!r}")
+print("Node Core OS version:", version)
 PY
-  if [[ -f "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" ]]; then
-    source "$NODE_CORE_APP_DIR/installer/lib/opentimestamps.sh" || return 1
-    ensure_opentimestamps_client || return 1
-  else
-    printf '%s\\n' 'Warning: update source does not include the OpenTimestamps installer helper; skipping dependency setup.' >&2
-  fi
-  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records" || return 1
-  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records" || return 1
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/hashpaper" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
-  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v); then
-    printf 'HashPaper tests failed after update; refusing to mark the update successful.\n' >&2
-    return 1
-  fi
+  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
   if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v); then
     printf 'P2P Contracts tests failed after update; refusing to mark the update successful.\n' >&2
     return 1
   fi
-  printf '✓ Node Core OS and bundled HashPaper versions validated.\n'
+  printf '✓ Node Core OS and Node Core P2P Contracts validated.\n'
   printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
 )
 
