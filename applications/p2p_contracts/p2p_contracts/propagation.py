@@ -49,6 +49,8 @@ class PropagationProtocol:
         self._lock = threading.RLock()
         self._received = []
         self._pending_requests = []
+        if self._listener and self._listener.stdout:
+            self._listener.stdout.close()
         self._listener = None
         if self.messages_path.is_file():
             try:
@@ -94,7 +96,9 @@ class PropagationProtocol:
         try:
             self.kubo._run("pubsub", "pub", TOPIC, encoded)
         except (subprocess.CalledProcessError, RuntimeError, OSError) as exc:
-            raise PubSubUnavailable("Kubo PubSub publish failed. Enable Pubsub.Enabled and check Kubo connectivity.") from exc
+            detail = getattr(exc, "stderr", None) or str(exc)
+            detail = detail.strip() if isinstance(detail, str) else str(detail)
+            raise PubSubUnavailable(f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity.") from exc
         return message
 
     def start(self):
