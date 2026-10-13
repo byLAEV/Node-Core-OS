@@ -117,9 +117,9 @@ jobs:
       matrix:
         node: [node-a, node-b, node-c]
     env:
-      HOME: ${{ runner.temp }}/p2p-${{ matrix.node }}-${{ github.run_id }}
-      NODE_CORE_DATA_DIR: ${{ runner.temp }}/p2p-${{ matrix.node }}-${{ github.run_id }}/.node-core
-      NODE_CORE_CONFIG: ${{ runner.temp }}/p2p-${{ matrix.node }}-${{ github.run_id }}/.node-core/config.json
+      HOME: ${{ github.workspace }}/.p2p-${{ matrix.node }}-${{ github.run_id }}
+      NODE_CORE_DATA_DIR: ${{ github.workspace }}/.p2p-${{ matrix.node }}-${{ github.run_id }}/.node-core
+      NODE_CORE_CONFIG: ${{ github.workspace }}/.p2p-${{ matrix.node }}-${{ github.run_id }}/.node-core/config.json
       PYTHONUNBUFFERED: "1"
     defaults:
       run:
