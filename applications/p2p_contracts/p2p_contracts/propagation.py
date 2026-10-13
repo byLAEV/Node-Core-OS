@@ -92,8 +92,13 @@ class PropagationProtocol:
         message = self._new_message(kind, **fields)
         encoded = json.dumps(message, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         try:
-            self.kubo._run("pubsub", "pub", TOPIC, encoded)
-        except (subprocess.CalledProcessError, RuntimeError, OSError) as exc:
+            subprocess.run(
+                [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
+                env=self.kubo._environment(), input=encoded, text=True,
+                stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                check=True, timeout=15,
+            )
+        except (subprocess.CalledProcessError, RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
             detail = getattr(exc, "stderr", None) or str(exc)
             detail = detail.strip() if isinstance(detail, str) else str(detail)
             raise PubSubUnavailable(f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity.") from exc
