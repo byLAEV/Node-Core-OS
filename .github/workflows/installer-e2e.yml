@@ -511,3 +511,179 @@ jobs:
           set -euo pipefail
           printf 'REMOVE\n' | ./installer/uninstall.sh
           test ! -e "$NODE_CORE_DATA_DIR"
+
+  three-independent-ubuntu-p2p-e2e:
+    name: ${{ matrix.node }} — independent Ubuntu install and P2P Contracts E2E
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node: node-a
+            full_name: Synthetic Person A
+            alias: synthetic-node-a
+            document_number: TEST-UBUNTU-A-1001
+          - node: node-b
+            full_name: Synthetic Person B
+            alias: synthetic-node-b
+            document_number: TEST-UBUNTU-B-2002
+          - node: node-c
+            full_name: Synthetic Person C
+            alias: synthetic-node-c
+            document_number: TEST-UBUNTU-C-3003
+    env:
+      NODE_CORE_HOME: ${{ runner.temp }}/node-core-e2e-${{ matrix.node }}
+      NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-e2e-${{ matrix.node }}/.node-core
+      NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-e2e-${{ matrix.node }}/.node-core/config.json
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify separate Ubuntu runner and user-only execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID" = ubuntu
+          test "$VERSION_ID" = 24.04
+          test "$(uname -m)" = x86_64
+          test "$(id -u)" -ne 0
+          mkdir -p "$RUNNER_TEMP/node-evidence"
+          printf 'node=%s\nrunner=%s\nuid=%s\nos=%s\n' \
+            "${{ matrix.node }}" "$RUNNER_NAME" "$(id -u)" "$PRETTY_NAME" \
+            > "$RUNNER_TEMP/node-evidence/runner.txt"
+
+      - name: Install Node Core OS and bundled P2P Contracts from terminal
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$NODE_CORE_HOME"
+          mkdir -p "$HOME"
+          chmod +x installer/install.sh installer/uninstall.sh installer/lib/*.sh
+          ./installer/install.sh
+
+      - name: Verify release, Kubo daemon and non-root ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$NODE_CORE_HOME"
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          test "$(id -u)" -ne 0
+          test -x "$NODE_CORE_DATA_DIR/bin/node-core"
+          test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
+          grep -qx '1.3.0' "$NODE_CORE_DATA_DIR/app/VERSION"
+          grep -qx '1.0.0' "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/VERSION"
+          test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py"
+          test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py"
+          "$NODE_CORE_DATA_DIR/bin/ipfs" id > "$RUNNER_TEMP/node-evidence/ipfs-id.json"
+          test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
+          test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
+
+      - name: Enter synthetic identity through Node Core BIOS and associate Kubo Peer ID
+        shell: bash
+        env:
+          SYNTHETIC_FULL_NAME: ${{ matrix.full_name }}
+          SYNTHETIC_ALIAS: ${{ matrix.alias }}
+          SYNTHETIC_DOCUMENT_NUMBER: ${{ matrix.document_number }}
+        run: |
+          set -euo pipefail
+          export HOME="$NODE_CORE_HOME"
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY' > "$RUNNER_TEMP/node-evidence/identity-bios.txt"
+          import os, sys
+          from unittest.mock import patch
+          sys.path.insert(0, sys.argv[1])
+          from node_core.runtime import NodeRuntime
+
+          answers = iter([
+              "1", "10", "1",
+              os.environ["SYNTHETIC_FULL_NAME"],
+              os.environ["SYNTHETIC_ALIAS"],
+              "Synthetic", "Costa Rica", "Cédula de identidad de prueba",
+              os.environ["SYNTHETIC_DOCUMENT_NUMBER"],
+              "1990-01-01", "170", "No especificado",
+              "", "2", "", "0", "0", "0",
+          ])
+          def scripted_input(prompt=""):
+              print(prompt, end="", flush=True)
+              return next(answers)
+
+          runtime = NodeRuntime()
+          runtime.boot()
+          with patch("builtins.input", side_effect=scripted_input):
+              runtime.menu()
+          profile = runtime.identity_profile.load()
+          node = runtime.network.identity()
+          assert profile is not None
+          assert profile["identity_status"] == "declared"
+          assert profile["full_name"] == os.environ["SYNTHETIC_FULL_NAME"]
+          assert profile["alias"] == os.environ["SYNTHETIC_ALIAS"]
+          assert profile["document_number"] == os.environ["SYNTHETIC_DOCUMENT_NUMBER"]
+          assert profile["node_id"] == node.peer_id
+          assert oct(runtime.identity_profile.profile_path.stat().st_mode & 0o777) == "0o600"
+          print("BIOS identity associated with Peer ID:", node.peer_id)
+          print("Synthetic identity ID:", profile["identity_id"])
+          PY
+          cp "$NODE_CORE_DATA_DIR/identity/profile.json" "$RUNNER_TEMP/node-evidence/profile.json"
+
+      - name: Open P2P Contracts from Applications menu and accept local identity use
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$NODE_CORE_HOME"
+          export NODE_CORE_CONFIG
+          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY' > "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
+          import sys
+          from unittest.mock import patch
+          sys.path.insert(0, sys.argv[1])
+          from node_core.runtime import NodeRuntime
+
+          answers = iter(["4", "2", "yes", "0", "0", "0"])
+          def scripted_input(prompt=""):
+              print(prompt, end="", flush=True)
+              return next(answers)
+
+          runtime = NodeRuntime()
+          runtime.boot()
+          with patch("builtins.input", side_effect=scripted_input):
+              runtime.menu()
+          PY
+          grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
+          grep -Fq '1. Create Public Request' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
+          grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
+          grep -Fq '4. Search Request ID' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
+
+      - name: Test requests, validation, manifests and closure evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$NODE_CORE_HOME"
+          export NODE_CORE_CONFIG
+          cd "$NODE_CORE_DATA_DIR/app"
+          python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+
+      - name: Test three real Kubo daemons and P2P propagation scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="$NODE_CORE_HOME"
+          export NODE_CORE_CONFIG
+          export IPFS_BIN="$NODE_CORE_DATA_DIR/bin/ipfs"
+          cd "$NODE_CORE_DATA_DIR/app"
+          python3 applications/p2p_contracts/tests/three_node_real_kubo.py -v
+
+      - name: Upload per-node diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.node }}-ubuntu-p2p-e2e
+          path: ${{ runner.temp }}/node-evidence/
+          if-no-files-found: warn
+          retention-days: 14
