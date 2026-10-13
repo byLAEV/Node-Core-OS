@@ -133,6 +133,11 @@ class PropagationTests(unittest.TestCase):
         self.assertEqual(saved_after_first["final_manifest_document"], service.manifest)
         self.assertEqual(service.import_calls, 1)
 
+        # An ACK retry must still be possible after the proposal lease expires:
+        # the exact manifest and batch are already committed and persisted.
+        saved_after_first["lease_expires_at"] = timestamp(utc_now() - timedelta(seconds=1))
+        self.protocol._save_state(saved_after_first)
+
         original_publish = self.protocol._publish
         def publish_with_ack(kind, **fields):
             message = original_publish(kind, **fields)
