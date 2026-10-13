@@ -60,6 +60,33 @@ jobs:
       alias_name: qa-node-c
       document_number: TEST-DOC-C-003
 
+  verify-distinct-identities:
+    name: Verify three independent identity profiles and peer IDs
+    needs: [node-a, node-b, node-c]
+    runs-on: [self-hosted, linux, node-core-p2p-node-a]
+    steps:
+      - name: Enforce unique logical identities and Kubo peer IDs
+        shell: bash
+        env:
+          ID_A: ${{ needs.node-a.outputs.identity_id }}
+          ID_B: ${{ needs.node-b.outputs.identity_id }}
+          ID_C: ${{ needs.node-c.outputs.identity_id }}
+          PEER_A: ${{ needs.node-a.outputs.peer_id }}
+          PEER_B: ${{ needs.node-b.outputs.peer_id }}
+          PEER_C: ${{ needs.node-c.outputs.peer_id }}
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0 || { echo "ERROR: runner must not be root"; exit 1; }
+          test -n "$ID_A" && test -n "$ID_B" && test -n "$ID_C"
+          test -n "$PEER_A" && test -n "$PEER_B" && test -n "$PEER_C"
+          test "$(printf '%s\n' "$ID_A" "$ID_B" "$ID_C" | sort -u | wc -l)" -eq 3
+          test "$(printf '%s\n' "$PEER_A" "$PEER_B" "$PEER_C" | sort -u | wc -l)" -eq 3
+          test "$(printf '%s\n' TEST-DOC-A-001 TEST-DOC-B-002 TEST-DOC-C-003 | sort -u | wc -l)" -eq 3
+          printf 'IDENTITY_UNIQUENESS_OK logical_ids=3 peer_ids=3 document_numbers=3\n'
+          printf 'node-a identity=%s peer=%s\n' "$ID_A" "$PEER_A"
+          printf 'node-b identity=%s peer=%s\n' "$ID_B" "$PEER_B"
+          printf 'node-c identity=%s peer=%s\n' "$ID_C" "$PEER_C"
+
   connect-node-a:
     name: Connect node A to B and C
     needs: [node-a, node-b, node-c]
