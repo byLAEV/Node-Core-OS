@@ -223,12 +223,19 @@ def main():
         # Every remote node must import the same two-request manifest before proceeding.
         wait_for_request(service, request_a_id, timeout=75.0)
         wait_for_request(service, request_b_id, timeout=75.0)
+        def matching_initial_manifest():
+            manifest = service.current_manifest()
+            if (
+                manifest
+                and len(manifest.get("requests", [])) == 2
+                and manifest.get("manifest_hash") == summary["initial_manifest_hash"]
+            ):
+                return manifest
+            return False
+
         initial_manifest = wait_until(
             "two-request manifest synchronization",
-            lambda: (manifest := service.current_manifest())
-            if manifest and len(manifest.get("requests", [])) == 2
-            and manifest.get("manifest_hash") == summary["initial_manifest_hash"]
-            else False,
+            matching_initial_manifest,
             timeout=75.0,
         )
         if len(initial_manifest.get("requests", [])) != 2:
@@ -276,15 +283,25 @@ def main():
             summary["evidence_id"] = event["evidence_id"]
             summary["final_manifest_hash"] = event["manifest_hash"]
 
+        def matching_final_manifest():
+            manifest = service.current_manifest()
+            found = service.find_request(request_a_id)
+            if (
+                manifest
+                and manifest.get("manifest_hash") == summary["final_manifest_hash"]
+                and found
+                and found.get("request_status") == "exchange_completed"
+                and any(
+                    item.get("evidence_id") == summary["evidence_id"] and item.get("rating") == 5
+                    for item in found.get("evidence", [])
+                )
+            ):
+                return manifest
+            return False
+
         final_manifest = wait_until(
             "identical final manifest and closure evidence",
-            lambda: (manifest := service.current_manifest())
-            if manifest and manifest.get("manifest_hash") == summary["final_manifest_hash"]
-            and (found := service.find_request(request_a_id))
-            and found.get("request_status") == "exchange_completed"
-            and any(item.get("evidence_id") == summary["evidence_id"] and item.get("rating") == 5
-                    for item in found.get("evidence", []))
-            else False,
+            matching_final_manifest,
             timeout=90.0,
         )
         if final_manifest.get("manifest_hash") != summary["final_manifest_hash"]:
