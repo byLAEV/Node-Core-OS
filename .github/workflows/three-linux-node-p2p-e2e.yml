@@ -126,7 +126,7 @@ jobs:
             log="$RUNNER_TEMP/$node-first-boot.log"
             grep -q 'Identity profile saved locally as declared data' "$log"
             grep -q 'Identity profile associated with the current node' "$log"
-            grep -q 'NODE CORE OS' "$log"
+            grep -q 'Node Core OS' "$log"
             grep -q 'P2P CONTRACTS' "$log"
             ! grep -q 'Identity consent was not granted' "$log"
             cat "$log"
