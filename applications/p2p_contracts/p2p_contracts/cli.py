@@ -6,6 +6,7 @@ from pathlib import Path
 import threading
 from typing import Any
 
+from applications.p2p_contracts.p2p_contracts.genesis import GENESIS_HASH
 from applications.p2p_contracts.p2p_contracts.propagation import (
     PropagationProtocol, PubSubUnavailable, parse_timestamp,
 )
@@ -140,11 +141,14 @@ class P2PContractsCLI:
             print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
             print("Submit to the currently active proposal instead of opening a competing propagation window.")
             return
-        if not result["responses"]:
-            print("Cannot safely accept a propagation: no peer responded. A local timeout is not proof of network-wide availability.")
-            return
         manifest = self.service.current_manifest()
-        parent_hash = manifest.get("manifest_hash") if manifest else None
+        bootstrap = manifest is None
+        if not result["responses"] and not bootstrap:
+            print("Cannot safely accept a later propagation: no peer responded. A local timeout is not proof of network-wide availability.")
+            return
+        if bootstrap and not result["responses"]:
+            print("No peers responded. This is the initial genesis bootstrap, so the local node may explicitly accept H0; this does not prove that other nodes are online.")
+        parent_hash = manifest.get("propagation_hash") if manifest else GENESIS_HASH
         print("No active proposal was reported by the responding peers.")
         print("WARNING: this experimental version cannot prove global absence or enforce a network-wide exclusive lease.")
         if not self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?"):
