@@ -125,7 +125,7 @@ class P2PContractsCLI:
         result = self.propagation.query_status()
         if result["active_proposals"]:
             print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
-            print("Verify the proposal manually; remote acceptance and request routing are not implemented yet.")
+            print("Submit to the currently active proposal instead of opening a competing propagation window.")
             return
         if not result["responses"]:
             print("Cannot safely accept a propagation: no peer responded. A local timeout is not proof of network-wide availability.")
@@ -160,7 +160,7 @@ class P2PContractsCLI:
             print(f"Time remaining: {remaining // 60:02d}:{remaining % 60:02d}")
             print("The request form remains locked until the timestamp.")
         elif state["status"] == "READY_TO_SUBMIT":
-            print("The local timer has elapsed. The form is enabled, but distributed submission/remote manifest merging is not implemented yet.")
+            print("The local timer has elapsed. Queued incoming requests are imported as a batch when the state is checked.")
         elif state["status"] == "CANCELLED":
             print(f"Cancellation reason: {state.get('cancel_reason', 'Not specified')}")
 
@@ -297,7 +297,7 @@ class P2PContractsCLI:
         request_id = self._ask("Request ID to search")
         result = self.service.find_request(request_id)
         if result is None:
-            print("Request ID was not found in the local manifest. Remote search is not implemented yet.")
+            print("Request ID was not found in this node's synchronized local manifest.")
             return
         request = result["request"]
         exchange = request.get("exchange", {})
