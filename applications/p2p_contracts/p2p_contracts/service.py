@@ -11,6 +11,8 @@ import os
 from pathlib import Path
 import re
 import tempfile
+import threading
+from functools import wraps
 from typing import Any
 from uuid import uuid4
 
@@ -73,6 +75,15 @@ def validate_asset_code(value: str) -> str:
     return code
 
 
+def _synchronized(method):
+    """Serialize local manifest read-modify-write operations within this process."""
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._manifest_lock:
+            return method(self, *args, **kwargs)
+    return wrapper
+
+
 class P2PContractsService:
     """Create and search local immutable request, evidence and manifest documents."""
 
@@ -85,6 +96,7 @@ class P2PContractsService:
         self.evidence_dir = self.root / "evidence"
         self.manifests_dir = self.root / "manifests"
         self.head_path = self.root / "head.json"
+        self._manifest_lock = threading.RLock()
 
     def _ensure_directories(self) -> None:
         for directory in (self.requests_dir, self.evidence_dir, self.manifests_dir):
@@ -174,6 +186,7 @@ class P2PContractsService:
         )
         return {key: profile[key] for key in allowed if key in profile and profile[key] not in (None, "")}
 
+    @_synchronized
     def create_btc_exchange_request(
         self, *, btc_amount: str, receive_asset: str, receive_amount: str,
         receive_network: str, description: str, contacts: list[dict[str, str]],
@@ -262,6 +275,7 @@ class P2PContractsService:
             "identity_fields_published": sorted(identity), "status": "LOCAL_ONLY",
         }
 
+    @_synchronized
     def import_remote_requests(self, request_documents: list[dict[str, Any]]) -> dict[str, Any]:
         """Validate and append a batch of public requests received from a peer."""
         self._ensure_directories()
@@ -314,6 +328,7 @@ class P2PContractsService:
         return {"imported_request_ids": imported, "imported_count": len(imported),
                 "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"]}
 
+    @_synchronized
     def create_request_evidence(
         self, *, request_id: str, outcome: str, evidence_type: str,
         description: str, reporter_statement: str, external_reference: str = "",
@@ -370,6 +385,7 @@ class P2PContractsService:
             "verification_status": payload["verification_status"],
         }
 
+    @_synchronized
     def import_remote_evidence(self, evidence_document: dict[str, Any]) -> dict[str, Any]:
         """Validate and append a public self-reported evidence record received from a peer."""
         self._ensure_directories()
@@ -421,6 +437,7 @@ class P2PContractsService:
         return {"imported": True, "evidence_id": evidence_id,
                 "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"]}
 
+    @_synchronized
     def find_request(self, request_id: str) -> dict[str, Any] | None:
         """Search the current local manifest and verify the request and linked evidence."""
         value = request_id.strip()
@@ -454,6 +471,7 @@ class P2PContractsService:
             "manifest_hash": manifest["manifest_hash"], "manifest_sequence": manifest["sequence"],
         }
 
+    @_synchronized
     def current_manifest(self) -> dict[str, Any] | None:
         """Return the verified current local manifest, if one exists."""
         return self._load_head()
