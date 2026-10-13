@@ -92,22 +92,46 @@ class PropagationProtocol:
     def _publish(self, kind, **fields):
         message = self._new_message(kind, **fields)
         encoded = json.dumps(message, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        try:
-            publisher = getattr(self.kubo, "pubsub_publish", None)
-            if callable(publisher):
+        publisher = getattr(self.kubo, "pubsub_publish", None)
+        if callable(publisher):
+            try:
                 publisher(TOPIC, encoded)
-            else:
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                detail = str(exc).strip()
+                raise PubSubUnavailable(
+                    f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity."
+                ) from exc
+            return message
+
+        command = [self.kubo.executable, "pubsub", "pub", TOPIC, "-"]
+        for attempt in range(3):
+            try:
                 subprocess.run(
-                    [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
+                    command,
                     env=self.kubo._environment(), input=encoded, text=True,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     check=True, timeout=15,
                 )
-        except (subprocess.CalledProcessError, RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
-            detail = getattr(exc, "stderr", None) or str(exc)
-            detail = detail.strip() if isinstance(detail, str) else str(detail)
-            raise PubSubUnavailable(f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity.") from exc
-        return message
+                return message
+            except subprocess.CalledProcessError as exc:
+                detail = getattr(exc, "stderr", None) or str(exc)
+                detail = detail.strip() if isinstance(detail, str) else str(detail)
+                # Kubo/libp2p can transiently return this validation result while the
+                # remote PubSub mesh is converging. Retry the exact same message ID
+                # and payload; receivers already deduplicate by message_id.
+                if "validation ignored" in detail.lower() and attempt < 2:
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+                raise PubSubUnavailable(
+                    f"Kubo PubSub publish failed after {attempt + 1} attempt(s): {detail}. "
+                    "Check Pubsub.Enabled and Kubo connectivity."
+                ) from exc
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                detail = str(exc).strip()
+                raise PubSubUnavailable(
+                    f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity."
+                ) from exc
+        raise PubSubUnavailable("Kubo PubSub publish failed after three attempts.");
 
     def start(self):
         if self._listener and self._listener.poll() is None:
@@ -273,23 +297,33 @@ class PropagationProtocol:
         process = self._listener
         if process is None or process.stdout is None:
             return
-        for line in process.stdout:
-            try:
-                envelope = json.loads(line)
-                data = envelope.get("data", envelope.get("Data"))
-                message = json.loads(self._decode_pubsub_data(data).decode("utf-8"))
-                if message.get("schema") != MESSAGE_SCHEMA or not message.get("message_id") or not message.get("sender_node_id"):
+        try:
+            for line in process.stdout:
+                try:
+                    envelope = json.loads(line)
+                    data = envelope.get("data", envelope.get("Data"))
+                    message = json.loads(self._decode_pubsub_data(data).decode("utf-8"))
+                    if message.get("schema") != MESSAGE_SCHEMA or not message.get("message_id") or not message.get("sender_node_id"):
+                        continue
+                    if message.get("sender_node_id") == self.network.identity().peer_id:
+                        continue
+                    if not self._remember(message):
+                        continue
+                    self._handle_message(message)
+                except Exception as exc:
+                    # PubSub data is untrusted. A malformed message or validation bug must
+                    # be recorded and skipped, not terminate the long-lived listener thread.
+                    with self._lock:
+                        self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
+                        self._listener_errors = self._listener_errors[-20:]
                     continue
-                if message.get("sender_node_id") == self.network.identity().peer_id:
-                    continue
-                if not self._remember(message):
-                    continue
-                self._handle_message(message)
-            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError, RuntimeError) as exc:
+        except (ValueError, OSError) as exc:
+            # stop() may close stdout while this thread is blocked reading it.
+            # Treat that shutdown race as a listener event instead of leaking a traceback.
+            if process.poll() is None:
                 with self._lock:
-                    self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
+                    self._listener_errors.append(f"{type(exc).__name__}: {exc}; listener stdout closed unexpectedly")
                     self._listener_errors = self._listener_errors[-20:]
-                continue
 
     def query_status(self, wait_seconds=3.0):
         self.start()
@@ -392,11 +426,16 @@ class PropagationProtocol:
         return {"message_id": message["message_id"], "peer_acknowledgements": replies}
 
     def finalize_propagation(self, owner_request_document=None):
-        """Commit all queued peer requests and the owner's prepared request in one manifest."""
+        """Commit a request batch and keep it retryable until required peers ACK its exact manifest."""
         state = self.current_state()
-        if not state or state.get("status") != "READY_TO_SUBMIT":
+        if not state or state.get("status") not in {"READY_TO_SUBMIT", "PENDING_ACKS"}:
             raise PubSubUnavailable("The propagation window is not ready to finalize.")
-        if utc_now() >= parse_timestamp(state["lease_expires_at"]):
+        retryable_batch = (
+            state.get("status") == "PENDING_ACKS"
+            and isinstance(state.get("final_manifest_document"), dict)
+            and isinstance(state.get("finalized_batch_documents"), list)
+        )
+        if utc_now() >= parse_timestamp(state["lease_expires_at"]) and not retryable_batch:
             state["status"] = "CANCELLED"
             state["cancel_reason"] = "Propagation lease expired before finalization."
             self._save_state(state)
@@ -405,32 +444,149 @@ class PropagationProtocol:
                 self._save_pending()
             raise PubSubUnavailable("The propagation lease expired before finalization.")
         if state.get("batch_flushed"):
-            return {"imported_count": 0, "manifest_hash": (self.service.current_manifest() or {}).get("manifest_hash"),
-                    "owner_request_sent": bool(state.get("owner_request_sent"))}
-        with self._lock:
-            pending = list(self._pending_requests)
-        documents = list(pending)
-        if owner_request_document is not None:
-            documents.append(owner_request_document)
-        imported = {"imported_count": 0, "manifest_hash": None}
-        if documents:
-            if self.service is None:
-                raise PubSubUnavailable("Request service is not connected to the propagation protocol.")
-            imported = self.service.import_remote_requests(documents)
-            self._publish("REQUEST_BATCH", proposal_id=state.get("proposal_id"),
-                          proposal_hash=state.get("proposal_hash"), request_documents=documents,
-                          manifest_document=imported.get("manifest_document"), manifest_hash=imported.get("manifest_hash"))
-        with self._lock:
-            self._pending_requests = []
-            self._save_pending()
-        state["batch_flushed"] = True
-        state["owner_request_sent"] = owner_request_document is not None
+            return {
+                "imported_count": 0,
+                "manifest_hash": state.get("final_manifest_hash"),
+                "owner_request_sent": bool(state.get("owner_request_sent")),
+                "missing_peer_ids": [],
+                "peer_errors": {},
+            }
+
+        # Persist the exact batch and manifest before network I/O. If ACKs are missing
+        # or the process restarts, a retry must resend the same immutable transition,
+        # not create a second manifest or silently lose the queued requests.
+        if isinstance(state.get("final_manifest_document"), dict):
+            documents = list(state.get("finalized_batch_documents", []))
+            manifest_document = state["final_manifest_document"]
+            imported = {
+                "imported_count": state.get("batch_request_count", len(documents)),
+                "manifest_hash": state.get("final_manifest_hash"),
+                "manifest_sequence": manifest_document.get("sequence"),
+                "manifest_document": manifest_document,
+            }
+            expected_peer_ids = set(state.get("expected_peer_ids", []))
+        else:
+            with self._lock:
+                pending = list(self._pending_requests)
+                expected_peer_ids = {
+                    item.get("sender_node_id")
+                    for item in self._received
+                    if item.get("type") == "PROPOSAL_STATUS"
+                    and item.get("proposal_id") == state.get("proposal_id")
+                    and isinstance(item.get("sender_node_id"), str)
+                    and item.get("sender_node_id") != state.get("proposer_node_id")
+                }
+            documents = list(pending)
+            if owner_request_document is not None:
+                documents.append(owner_request_document)
+            imported = {"imported_count": 0, "manifest_hash": None}
+            if documents:
+                if self.service is None:
+                    raise PubSubUnavailable("Request service is not connected to the propagation protocol.")
+                imported = self.service.import_remote_requests(documents)
+                if not isinstance(imported.get("manifest_document"), dict):
+                    current_manifest = self.service.current_manifest()
+                    if not isinstance(current_manifest, dict) or current_manifest.get("manifest_hash") != imported.get("manifest_hash"):
+                        raise PubSubUnavailable("Could not recover the exact manifest for a retryable batch.")
+                    imported["manifest_document"] = current_manifest
+                state["finalized_batch_documents"] = documents
+                state["final_manifest_document"] = imported["manifest_document"]
+                state["final_manifest_hash"] = imported.get("manifest_hash")
+                state["batch_request_count"] = len(documents)
+                state["owner_request_sent"] = owner_request_document is not None
+                state["expected_peer_ids"] = sorted(expected_peer_ids)
+                state["batch_flushed"] = False
+                state["status"] = "PENDING_ACKS"
+                self._save_state(state)
+            else:
+                # Nothing changed, so there is no remote manifest transition to ACK.
+                with self._lock:
+                    self._pending_requests = []
+                    self._save_pending()
+                state["batch_flushed"] = True
+                state["owner_request_sent"] = False
+                state["batch_request_count"] = 0
+                state["final_manifest_hash"] = (self.service.current_manifest() or {}).get("manifest_hash") if self.service else None
+                state["batch_acknowledgements"] = []
+                state["missing_peer_ids"] = []
+                state["batch_peer_errors"] = {}
+                state["finalized_at"] = timestamp(utc_now())
+                self._save_state(state)
+                return {
+                    "imported_count": 0,
+                    "manifest_hash": state.get("final_manifest_hash"),
+                    "batch_request_count": 0,
+                    "owner_request_sent": False,
+                    "peer_acknowledgements": [],
+                    "missing_peer_ids": [],
+                    "peer_errors": {},
+                }
+
+        peer_acknowledgements = {}
+        peer_errors = {}
+        batch_message_ids = set()
+        for attempt in range(3):
+            batch_message = self._publish(
+                "REQUEST_BATCH",
+                proposal_id=state.get("proposal_id"),
+                proposal_hash=state.get("proposal_hash"),
+                request_documents=documents,
+                manifest_document=imported.get("manifest_document"),
+                manifest_hash=imported.get("manifest_hash"),
+            )
+            batch_message_ids.add(batch_message["message_id"])
+            if not expected_peer_ids:
+                break
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline:
+                with self._lock:
+                    replies = [
+                        item for item in self._received
+                        if item.get("type") == "BATCH_ACK"
+                        and item.get("reply_to") in batch_message_ids
+                    ]
+                for reply in replies:
+                    sender_id = reply.get("sender_node_id")
+                    if sender_id not in expected_peer_ids:
+                        continue
+                    if reply.get("error"):
+                        peer_errors[sender_id] = str(reply["error"])
+                    elif reply.get("manifest_hash") == imported.get("manifest_hash"):
+                        peer_acknowledgements[sender_id] = reply
+                        peer_errors.pop(sender_id, None)
+                if expected_peer_ids.issubset(peer_acknowledgements):
+                    break
+                time.sleep(0.1)
+            if expected_peer_ids.issubset(peer_acknowledgements):
+                break
+            if attempt < 2:
+                time.sleep(0.5)
+
+        missing_peer_ids = sorted(expected_peer_ids - set(peer_acknowledgements))
+        state["batch_flushed"] = not missing_peer_ids
+        state["status"] = "FINALIZED" if not missing_peer_ids else "PENDING_ACKS"
+        state["owner_request_sent"] = bool(state.get("owner_request_sent"))
         state["batch_request_count"] = len(documents)
         state["final_manifest_hash"] = imported.get("manifest_hash")
+        state["batch_acknowledgements"] = sorted(peer_acknowledgements)
+        state["missing_peer_ids"] = missing_peer_ids
+        state["batch_peer_errors"] = peer_errors
         state["finalized_at"] = timestamp(utc_now())
+        if not missing_peer_ids:
+            with self._lock:
+                self._pending_requests = []
+                self._save_pending()
         self._save_state(state)
-        return {**imported, "batch_request_count": len(documents),
-                "owner_request_sent": state["owner_request_sent"]}
+        return {
+            **imported,
+            "batch_request_count": len(documents),
+            "owner_request_sent": state["owner_request_sent"],
+            "peer_acknowledgements": list(peer_acknowledgements.values()),
+            "missing_peer_ids": missing_peer_ids,
+            "peer_errors": peer_errors,
+            "batch_flushed": state["batch_flushed"],
+            "status": state["status"],
+        }
 
     def _flush_pending_requests(self, state):
         if state.get("batch_flushed"):

@@ -5,7 +5,8 @@ import unittest
 
 from node_core.storage import StorageManager
 from applications.p2p_contracts.p2p_contracts.service import (
-    P2PContractsService, validate_btc_amount, validate_asset_code,
+    MANIFEST_SCHEMA, P2PContractsService, document_hash,
+    validate_btc_amount, validate_asset_code,
 )
 
 
@@ -166,6 +167,40 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.assertEqual(found["evidence"][0]["rating"], 4)
         self.assertEqual(found["evidence"][0]["target_node_id"], "peer-counterparty")
         self.assertFalse(remote_service.import_remote_evidence(evidence_doc)["imported"])
+
+    def test_remote_manifest_rejects_non_object_index_entries(self):
+        request = self.service.create_btc_exchange_request(
+            btc_amount="0.1", receive_asset="ETH", receive_amount="1",
+            receive_network="Ethereum", description="Malformed manifest regression test",
+            contacts=[{"type": "other", "value": "synthetic test contact"}],
+            publish_identity=False,
+        )
+        request_document = json.loads(Path(request["request_path"]).read_text(encoding="utf-8"))
+
+        remote_root = self.root / "malformed-manifest-remote-storage"
+        remote_storage = StorageManager(remote_root)
+        remote_storage.initialize()
+        remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
+
+        payload = {
+            "schema": MANIFEST_SCHEMA,
+            "application_id": "node-core-os-p2p-contracts",
+            "application_version": "0.1.0-dev",
+            "protocol_version": "0.1.0",
+            "sequence": 1,
+            "previous_manifest_hash": None,
+            "created_at": "2026-01-01T00:00:00Z",
+            "requests": [None],
+            "evidence": [],
+        }
+        malformed_manifest = {**payload, "manifest_hash": document_hash(payload)}
+
+        with self.assertRaisesRegex(ValueError, "request index entries must be JSON objects"):
+            remote_service.import_remote_manifest(
+                malformed_manifest,
+                request_documents=[request_document],
+            )
+        self.assertIsNone(remote_service.current_manifest())
 
     def test_manifest_tampering_is_detected(self):
         self.service.create_btc_exchange_request(

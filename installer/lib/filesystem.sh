@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\n' >&2
   return 1 2>/dev/null || exit 1
 fi
 

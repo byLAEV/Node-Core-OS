@@ -511,3 +511,5 @@ jobs:
           set -euo pipefail
           printf 'REMOVE\n' | ./installer/uninstall.sh
           test ! -e "$NODE_CORE_DATA_DIR"
+
+
