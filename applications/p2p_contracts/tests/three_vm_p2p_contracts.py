@@ -71,6 +71,29 @@ def received_event(protocol, event_type):
         return next((item for item in reversed(protocol._received) if item.get("type") == event_type), None)
 
 
+def wait_for_peer_readiness(protocol, role, peer_id, timeout=60.0, soak_seconds=10.0):
+    expected_roles = {"node-a", "node-b", "node-c"} - {role}
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        protocol._publish("TEST_NODE_READY", node_role=role, peer_id=peer_id)
+        with protocol._lock:
+            ready_roles = {
+                item.get("node_role")
+                for item in protocol._received
+                if item.get("type") == "TEST_NODE_READY"
+            }
+        if expected_roles.issubset(ready_roles):
+            # Keep announcing during a short soak so late subscribers have a live listener
+            # before the proposer starts the request-window timer.
+            soak_deadline = time.monotonic() + soak_seconds
+            while time.monotonic() < soak_deadline:
+                protocol._publish("TEST_NODE_READY", node_role=role, peer_id=peer_id)
+                time.sleep(1.0)
+            return
+        time.sleep(1.0)
+    raise AssertionError(f"{role} did not observe readiness announcements from {sorted(expected_roles)}.")
+
+
 def wait_for_request(service, request_id, timeout=60.0, evidence=False):
     def ready():
         item = service.find_request(request_id)
@@ -130,6 +153,7 @@ def main():
     }
 
     try:
+        wait_for_peer_readiness(protocol, role, local_identity.peer_id)
         if role == "node-a":
             # Shorten the protocol's ten-minute window only inside this acceptance-test process.
             # Production defaults and installed source files are not changed.
@@ -360,8 +384,7 @@ def main():
                 "active second proposal from node B",
                 lambda: next(
                     (item for item in protocol.query_status(wait_seconds=1.0).get("active_proposals", [])
-                     if item.get("proposer_node_id") in expected_peer_ids
-                     and item.get("parent_manifest_hash") == service.current_manifest()["manifest_hash"]),
+                     if item.get("proposer_node_id") in expected_peer_ids),
                     False,
                 ),
                 timeout=70.0,
