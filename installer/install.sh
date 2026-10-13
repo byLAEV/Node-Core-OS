@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
   exit 1
 fi
 
@@ -60,15 +60,15 @@ print("Installed Node Core OS version:", Path(sys.argv[1]).read_text(encoding="u
 print("Installed HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
 PY
   [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py" ]] || {
-    printf 'Installed P2P Contracts entry point is missing.\\n' >&2
+    printf 'Installed P2P Contracts entry point is missing.\n' >&2
     exit 1
   }
   [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
-    printf 'Installed P2P Contracts CLI is missing.\\n' >&2
+    printf 'Installed P2P Contracts CLI is missing.\n' >&2
     exit 1
   }
   [[ -d "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests" ]] || {
-    printf 'Installed P2P Contracts tests are missing.\\n' >&2
+    printf 'Installed P2P Contracts tests are missing.\n' >&2
     exit 1
   }
   python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
