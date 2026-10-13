@@ -36,6 +36,8 @@ main() {
   ensure_dependencies
   prepare_filesystem
   install_application "$PROJECT_ROOT"
+  # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
+  rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
   [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || {
     printf 'Installed Node Core OS version file is missing.\n' >&2
     exit 1
