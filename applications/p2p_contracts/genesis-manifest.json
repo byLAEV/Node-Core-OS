@@ -1,0 +1,81 @@
+{
+  "schema": "node-core-os-p2p-contracts/manifest/v1",
+  "application_id": "node-core-os-p2p-contracts",
+  "block": 0,
+  "block_type": "GENESIS",
+  "genesis_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+  "previous_block_hash": null,
+  "references": {
+    "bitcoin_genesis_block": {
+      "network": "Bitcoin Mainnet",
+      "block_height": 0,
+      "block_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+      "message": "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+    }
+  },
+  "identity_header_rule": {
+    "required_for": "All request manifests",
+    "fields": [
+      "identity_id",
+      "node_id",
+      "identity_verification",
+      "public_profile",
+      "contact"
+    ],
+    "description": "Every request manifest must identify its creating identity and node. The identity creating a manifest must remain distinguishable from the identities that created the requests contained within it."
+  },
+  "protocol": {
+    "root_reference": {
+      "rule": "The Bitcoin Mainnet genesis block hash is also the root reference of Node Core P2P Contracts.",
+      "root_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+    },
+    "initial_acceptance": {
+      "required_hash": "000000000019d6689c085ae165831e934ff763ae46a2a172b3f1b60a8ce26f",
+      "status": "PENDING_ACCEPTANCE",
+      "rule": "The application must locate and verify this genesis manifest. An authenticated identity must accept the initial propagation reference before the application enables the creation of the first request in logical block 1."
+    },
+    "content_hash_rule": "HL_n = SHA256(canonical_content_of_block_n). HL_n is the hash obtained by reading and hashing the canonical content of the request block. Derived hash fields must be excluded from the content being hashed to avoid circular calculations.",
+    "initial_propagation_rule": "H2 = SHA256(binary(H0) || binary(HL1)), where H0 is the Bitcoin genesis root hash and HL1 is the content hash of logical block 1.",
+    "continuation_rule": "For each subsequent block n, the next propagation hash is calculated by combining the previously established propagation hash with the content hash of the current block. For example, H3 = SHA256(binary(H2) || binary(HL2)).",
+    "hash_encoding_rule": "Before concatenation, each SHA-256 hash must be decoded from its hexadecimal representation into its 32-byte binary value. The concatenated bytes are then hashed with SHA-256.",
+    "canonicalization_rule": "All nodes must use the same deterministic JSON serialization, character encoding, field inclusion rules, and hash encoding so that identical request content produces identical content hashes.",
+    "sequence_rule": "The genesis establishes the root reference. Each new request block contributes its content hash to the propagation chain and produces the next expected propagation hash.",
+    "acceptance_rule": "Each generated propagation hash remains pending until an authenticated identity has accepted it and the application has verified that acceptance.",
+    "request_creation_rule": "After the required propagation hash has been verified and accepted, the accepting identity may create the next request manifest according to the protocol.",
+    "multiple_requests_rule": "A request manifest may contain multiple requests created by different identities or nodes. Each request must retain its own request identifier, creator identity, creator node, content, and status.",
+    "identity_verification_rule": "Acceptance must be associated with a verifiable identity and recorded through the application's authentication mechanism. A hash calculation alone does not prove that an identity accepted it.",
+    "privacy_rule": "Identity and contact information must be limited to information intended for publication. Private identity-document data must not be propagated automatically."
+  },
+  "hash_examples": {
+    "root": "H0 = Bitcoin Mainnet genesis block hash",
+    "first_request_content_hash": "HL1 = SHA256(canonical_content_of_block_1)",
+    "hash_expected_for_block_2": "H2 = SHA256(binary(H0) || binary(HL1))",
+    "second_request_content_hash": "HL2 = SHA256(canonical_content_of_block_2)",
+    "hash_expected_for_block_3": "H3 = SHA256(binary(H2) || binary(HL2))"
+  },
+  "announcement": {
+    "project": "Trilema Project byLAEV",
+    "message": "The genesis of Node Core P2P Contracts announces the Trilema comic trilogy.",
+    "works": [
+      "The Hanbot Trilema Comic",
+      "The Blockchain OG's Comic",
+      "The Bitcoiners Cartel Comic"
+    ]
+  },
+  "dedication": {
+    "message": "In memory of Satoshi Nakamoto's legacy.",
+    "communities": [
+      "The Blockchain OG's",
+      "The Bitcoiners Cartel",
+      "The Hanbot Trilema",
+      "Trilema Records byLAEV"
+    ],
+    "created_by": {
+      "name": "Lerry Alexander Elizondo Villalobos",
+      "alias": "LAEV",
+      "github": "byLAEV"
+    }
+  },
+  "requests": [],
+  "status": "GENESIS_REFERENCE"
+}
