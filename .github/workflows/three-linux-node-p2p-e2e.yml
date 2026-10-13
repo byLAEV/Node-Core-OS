@@ -89,7 +89,7 @@ jobs:
 
   connect-node-a:
     name: Connect node A to B and C
-    needs: [node-a, node-b, node-c]
+    needs: [node-a, node-b, node-c, verify-distinct-identities]
     runs-on: [self-hosted, linux, node-core-p2p-node-a]
     timeout-minutes: 10
     steps:
@@ -109,7 +109,7 @@ jobs:
 
   connect-node-b:
     name: Connect node B to A and C
-    needs: [node-a, node-b, node-c]
+    needs: [node-a, node-b, node-c, verify-distinct-identities]
     runs-on: [self-hosted, linux, node-core-p2p-node-b]
     timeout-minutes: 10
     steps:
