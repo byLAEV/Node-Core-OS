@@ -190,6 +190,7 @@ class TestThreeNodeRealKubo(unittest.TestCase):
                 publish_identity=False, defer_manifest=True,
             )
             request_b_doc = json.loads(Path(request_b["request_path"]).read_text(encoding="utf-8"))
+            self.assertIsNone(services[1].current_manifest(), "A peer request must remain uncommitted until the proposer publishes the batch.")
             acknowledgement = protocols[1].submit_request(proposal, request_b_doc, wait_seconds=5.0)
             self.assertTrue(acknowledgement.get("accepted"), acknowledgement.get("reason"))
 
