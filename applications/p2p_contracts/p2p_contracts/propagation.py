@@ -285,7 +285,9 @@ class PropagationProtocol:
                 if not self._remember(message):
                     continue
                 self._handle_message(message)
-            except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, OSError, KeyError, RuntimeError) as exc:
+            except Exception as exc:
+                # PubSub data is untrusted. A malformed message or validation bug must
+                # be recorded and skipped, not terminate the long-lived listener thread.
                 with self._lock:
                     self._listener_errors.append(f"{type(exc).__name__}: {exc}; output={line[:240].strip()}")
                     self._listener_errors = self._listener_errors[-20:]
