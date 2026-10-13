@@ -92,22 +92,46 @@ class PropagationProtocol:
     def _publish(self, kind, **fields):
         message = self._new_message(kind, **fields)
         encoded = json.dumps(message, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        try:
-            publisher = getattr(self.kubo, "pubsub_publish", None)
-            if callable(publisher):
+        publisher = getattr(self.kubo, "pubsub_publish", None)
+        if callable(publisher):
+            try:
                 publisher(TOPIC, encoded)
-            else:
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                detail = str(exc).strip()
+                raise PubSubUnavailable(
+                    f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity."
+                ) from exc
+            return message
+
+        command = [self.kubo.executable, "pubsub", "pub", TOPIC, "-"]
+        for attempt in range(3):
+            try:
                 subprocess.run(
-                    [self.kubo.executable, "pubsub", "pub", TOPIC, "-"],
+                    command,
                     env=self.kubo._environment(), input=encoded, text=True,
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     check=True, timeout=15,
                 )
-        except (subprocess.CalledProcessError, RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
-            detail = getattr(exc, "stderr", None) or str(exc)
-            detail = detail.strip() if isinstance(detail, str) else str(detail)
-            raise PubSubUnavailable(f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity.") from exc
-        return message
+                return message
+            except subprocess.CalledProcessError as exc:
+                detail = getattr(exc, "stderr", None) or str(exc)
+                detail = detail.strip() if isinstance(detail, str) else str(detail)
+                # Kubo/libp2p can transiently return this validation result while the
+                # remote PubSub mesh is converging. Retry the exact same message ID
+                # and payload; receivers already deduplicate by message_id.
+                if "validation ignored" in detail.lower() and attempt < 2:
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+                raise PubSubUnavailable(
+                    f"Kubo PubSub publish failed after {attempt + 1} attempt(s): {detail}. "
+                    "Check Pubsub.Enabled and Kubo connectivity."
+                ) from exc
+            except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                detail = str(exc).strip()
+                raise PubSubUnavailable(
+                    f"Kubo PubSub publish failed: {detail}. Check Pubsub.Enabled and Kubo connectivity."
+                ) from exc
+        raise PubSubUnavailable("Kubo PubSub publish failed after three attempts.");
 
     def start(self):
         if self._listener and self._listener.poll() is None:
