@@ -53,6 +53,8 @@ class PropagationTests(unittest.TestCase):
         self.assertEqual(PropagationProtocol._decode_pubsub_data(urlsafe), payload)
         multibase = "m" + base64.b64encode(payload).decode("ascii")
         self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase), payload)
+        multibase_url = "u" + urlsafe
+        self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase_url), payload)
 
     def test_pending_request_is_accepted_only_for_matching_active_proposal(self):
         from applications.p2p_contracts.p2p_contracts.service import document_hash, REQUEST_SCHEMA
