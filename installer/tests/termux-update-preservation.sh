@@ -123,7 +123,7 @@ grep -q 'old bundled Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
 grep -qx '1.2.6' "$NODE_CORE_DATA_DIR/app/VERSION"
-grep -qx '0.3.0' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
+test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
