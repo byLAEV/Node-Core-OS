@@ -34,6 +34,7 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.storage = StorageManager(self.root / "storage")
         self.storage.initialize()
         self.service = P2PContractsService(self.storage, FakeIdentityProfile(), FakeNetwork())
+        self.service.accept_initial_genesis_reference(accepted_by_node_id=FakeNetwork().identity().peer_id)
 
     def test_btc_amount_is_validated_without_float(self):
         self.assertEqual(validate_btc_amount("0.01000000"), "0.01")
@@ -130,6 +131,7 @@ class P2PContractsServiceTests(unittest.TestCase):
         remote_storage = StorageManager(remote_root)
         remote_storage.initialize()
         remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
+        remote_service.accept_initial_genesis_reference(accepted_by_node_id=FakeNetwork().identity().peer_id)
         result = remote_service.import_remote_requests(requests)
         self.assertEqual(result["imported_count"], 2)
         self.assertEqual(remote_service.current_manifest()["sequence"], 1)
@@ -182,17 +184,30 @@ class P2PContractsServiceTests(unittest.TestCase):
         remote_storage.initialize()
         remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
 
+        from applications.p2p_contracts.p2p_contracts.genesis import (
+            GENESIS_HASH, content_hash, next_propagation_hash,
+        )
         payload = {
             "schema": MANIFEST_SCHEMA,
             "application_id": "node-core-os-p2p-contracts",
             "application_version": "0.1.0-dev",
-            "protocol_version": "0.1.0",
+            "protocol_version": "1.0",
             "sequence": 1,
-            "previous_manifest_hash": None,
+            "previous_manifest_hash": GENESIS_HASH,
+            "previous_propagation_hash": GENESIS_HASH,
+            "genesis_hash": GENESIS_HASH,
+            "identity_header": {
+                "identity_id": "identity-test", "node_id": FakeNetwork().identity().peer_id,
+                "identity_verification": {"status": "NOT_CRYPTOGRAPHICALLY_VERIFIED"},
+                "public_profile": {}, "contact": [],
+            },
             "created_at": "2026-01-01T00:00:00Z",
             "requests": [None],
             "evidence": [],
         }
+        hl = content_hash(payload)
+        payload["HL"] = hl
+        payload["propagation_hash"] = next_propagation_hash(GENESIS_HASH, hl)
         malformed_manifest = {**payload, "manifest_hash": document_hash(payload)}
 
         with self.assertRaisesRegex(ValueError, "request index entries must be JSON objects"):
