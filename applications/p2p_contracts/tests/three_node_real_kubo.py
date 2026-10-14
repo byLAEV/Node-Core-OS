@@ -233,6 +233,11 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             self.assertIn(proposal["proposal_hash"], status_output.getvalue())
             self.assertIn("Remote claims are UNVERIFIED", status_output.getvalue())
 
+            # Node B must explicitly accept the genesis reference locally before its first request.
+            services[1].accept_initial_genesis_reference(
+                accepted_by_node_id=networks[1].identity().peer_id
+            )
+
             # Exercise the real interactive BTC exchange form, not only the service API.
             # The input stream is synthetic, while the request is sent through the real
             # PropagationProtocol and the three real Kubo daemons started by this test.
