@@ -212,6 +212,8 @@ def main():
         raise AssertionError(f"{role} lost a peer connection after the wait: {connected_peer_ids!r}")
 
     service = P2PContractsService(runtime.storage, runtime.identity_profile, runtime.network)
+    # Each isolated node must explicitly accept the configured genesis root before requests.
+    service.accept_initial_genesis_reference(accepted_by_node_id=local_identity.peer_id)
     protocol = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo, service=service)
     protocol.start()
     summary = {
