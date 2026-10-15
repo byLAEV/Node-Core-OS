@@ -794,7 +794,7 @@ class MainMenu:
     def network_nodes(self) -> None:
         """Manage native authenticated P2P and the separate Kubo/IPFS network."""
         while True:
-            print("\\nNode Core OS — Network / Nodes")
+            print("\nNode Core OS — Network / Nodes")
             print("0. Back")
             print("1. Native P2P status")
             print("2. List trusted native peers")
@@ -806,7 +806,7 @@ class MainMenu:
             print("8. Connect to Kubo/IPFS peer")
             print("9. Ping Kubo/IPFS peer")
             print("10. Identity Presence / Shared Report")
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
 
             if choice == "0":
                 return
@@ -814,7 +814,7 @@ class MainMenu:
             try:
                 if choice == "1":
                     status = self.runtime.native_p2p_status()
-                    print("\\nNative Node Core OS P2P")
+                    print("\nNative Node Core OS P2P")
                     print(f"Local node ID: {status['node_id']}")
                     print(f"Service: {'RUNNING' if status['service_running'] else 'STOPPED'}")
                     address = status["listen_address"]
@@ -825,10 +825,10 @@ class MainMenu:
                     if status["last_error"]:
                         print(f"Last service error: {status['last_error']}")
                     print("This is native P2P status; it is separate from Kubo/IPFS.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "2":
                     peers = self.runtime.p2p_trust.list_peers()
-                    print("\\nTrusted native peers")
+                    print("\nTrusted native peers")
                     if not peers:
                         print("No peers registered.")
                     for peer in peers:
@@ -838,7 +838,7 @@ class MainMenu:
                         print(f"  Added: {peer['added_at']}")
                         if peer["revoked_at"]:
                             print(f"  Revoked: {peer['revoked_at']}")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "3":
                     print("Verify the certificate fingerprint with the peer operator through a separate trusted channel.")
                     node_id = input("Peer node ID (sha256:...): ").strip()
@@ -851,7 +851,7 @@ class MainMenu:
                     print(f"Node ID: {result['node_id']}")
                     print(f"Certificate SHA-256: {result['fingerprint_sha256']}")
                     print("Keep the peer certificate file public; never copy a private key.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "4":
                     node_id = input("Node ID to revoke (sha256:...): ").strip()
                     confirm = input(f"Type REVOKE to revoke {node_id}: ").strip()
@@ -861,21 +861,21 @@ class MainMenu:
                         result = self.runtime.revoke_trusted_peer(node_id)
                         print(f"Peer revoked: {result['node_id']}")
                         print("Native P2P listener stopped; restart only after reviewing its trust list.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "5":
                     host = input("Listen host [127.0.0.1; use 0.0.0.0 only when intentionally exposing the service]: ").strip() or "127.0.0.1"
                     raw_port = input("Listen port [0 for OS-assigned]: ").strip() or "0"
                     address = self.runtime.start_native_p2p(host, int(raw_port))
                     print(f"Native P2P listener running at {address[0]}:{address[1]}")
                     print("Only explicitly trusted peer certificates are accepted.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "6":
                     self.runtime.stop_native_p2p()
                     print("Native P2P listener stopped.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "7":
                     status = self.runtime.network.status()
-                    print("\\nKubo / IPFS network")
+                    print("\nKubo / IPFS network")
                     print(f"Local peer ID: {status.identity.peer_id}")
                     print(f"Directly connected peers: {len(status.connected_peers)}")
                     print(f"Nodes observed (local + direct peers): {len(status.connected_peers) + 1}")
@@ -884,20 +884,20 @@ class MainMenu:
                     if not status.connected_peers:
                         print("No directly connected Kubo peers were reported.")
                     print("This is not a count of every node on the IPFS network.")
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "8":
                     address = input("Complete Kubo peer multiaddress: ").strip()
                     result = self.runtime.network.connect(address)
                     print("Kubo connection request completed.")
                     print(result)
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "9":
                     peer_id = input("Kubo peer ID: ").strip()
                     print(self.runtime.network.ping(peer_id))
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "10":
                     self.identity_presence_menu()
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
-                input("\\n> ")
+                input("\n> ")
 
