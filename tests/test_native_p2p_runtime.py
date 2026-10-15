@@ -1,0 +1,84 @@
+import os
+import tempfile
+import unittest
+from pathlib import Path
+
+from node_core.identity.node_identity import NodeIdentityStore
+from node_core.p2p.tls_transport import NodeTLSTransport
+from node_core.runtime import NodeRuntime
+
+
+class NativeP2PRuntimeTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.previous_data_dir = os.environ.get("NODE_CORE_DATA_DIR")
+        self.previous_config = os.environ.get("NODE_CORE_CONFIG")
+        os.environ["NODE_CORE_DATA_DIR"] = str(self.root / "runtime-data")
+        os.environ.pop("NODE_CORE_CONFIG", None)
+        self.addCleanup(self._restore_environment)
+        self.runtime = NodeRuntime()
+        self.runtime.boot()
+
+    def _restore_environment(self):
+        if self.previous_data_dir is None:
+            os.environ.pop("NODE_CORE_DATA_DIR", None)
+        else:
+            os.environ["NODE_CORE_DATA_DIR"] = self.previous_data_dir
+        if self.previous_config is None:
+            os.environ.pop("NODE_CORE_CONFIG", None)
+        else:
+            os.environ["NODE_CORE_CONFIG"] = self.previous_config
+        self.runtime.stop_native_p2p()
+
+    def test_native_status_initializes_identity_without_kubo(self):
+        status = self.runtime.native_p2p_status()
+        self.assertTrue(status["node_id"].startswith("sha256:"))
+        self.assertFalse(status["service_running"])
+        self.assertEqual(status["trusted_count"], 0)
+        self.assertTrue(Path(status["certificate_path"]).is_file())
+
+    def test_listener_requires_an_explicit_trusted_peer(self):
+        from node_core.p2p.service import PeerServiceError
+        with self.assertRaises(PeerServiceError):
+            self.runtime.start_native_p2p()
+
+    def test_trusted_peer_can_be_added_listed_and_revoked(self):
+        remote_root = self.root / "remote"
+        remote_identity = NodeIdentityStore(remote_root)
+        remote_meta = remote_identity.initialize()
+        certificate = NodeTLSTransport(remote_identity).ensure_certificate()
+        certificate_path = self.root / "remote-cert.pem"
+        certificate_path.write_bytes(certificate)
+
+        added = self.runtime.trust_peer_certificate(
+            remote_meta["node_id"], certificate_path, "remote-test"
+        )
+        self.assertEqual(added["node_id"], remote_meta["node_id"])
+        self.assertEqual(self.runtime.p2p_trust.get(remote_meta["node_id"])["status"], "trusted")
+
+        revoked = self.runtime.revoke_trusted_peer(remote_meta["node_id"])
+        self.assertEqual(revoked["status"], "revoked")
+        self.assertEqual(self.runtime.p2p_trust.get(remote_meta["node_id"])["status"], "revoked")
+
+    def test_listener_starts_and_stops_with_trusted_peer(self):
+        remote_root = self.root / "remote"
+        remote_identity = NodeIdentityStore(remote_root)
+        remote_meta = remote_identity.initialize()
+        certificate = NodeTLSTransport(remote_identity).ensure_certificate()
+        certificate_path = self.root / "remote-cert.pem"
+        certificate_path.write_bytes(certificate)
+        self.runtime.trust_peer_certificate(remote_meta["node_id"], certificate_path)
+
+        host, port = self.runtime.start_native_p2p()
+        self.assertEqual(host, "127.0.0.1")
+        self.assertGreater(port, 0)
+        self.assertTrue(self.runtime.native_p2p_status()["service_running"])
+
+        self.runtime.stop_native_p2p()
+        self.assertFalse(self.runtime.native_p2p_status()["service_running"])
+
+
+if __name__ == "__main__":
+    unittest.main()
