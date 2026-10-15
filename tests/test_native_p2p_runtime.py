@@ -1,6 +1,8 @@
 import os
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
@@ -54,6 +56,51 @@ class NativeP2PRuntimeTests(unittest.TestCase):
         self.assertIn("discovery_running", status)
         if not result:
             self.assertTrue(status["discovery_error"])
+
+    def test_discovery_retries_after_initial_failure_and_stops_cleanly(self):
+        from node_core.p2p.discovery_service import NodeDiscoveryService
+
+        attempts = {"count": 0}
+
+        class FakeDiscovery:
+            running = True
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def start(self):
+                attempts["count"] += 1
+                if attempts["count"] == 1:
+                    raise OSError("simulated LAN interface not ready")
+
+            def stop(self):
+                self.running = False
+
+            def snapshot(self):
+                return ()
+
+        with patch("node_core.p2p.discovery_service.NodeDiscoveryService", FakeDiscovery), patch(
+            "node_core.runtime.NodeRuntime._retry_native_discovery"
+        ) as retry_worker:
+            # The initial attempt fails gracefully and schedules recovery.
+            self.runtime.p2p_discovery = None
+            self.runtime._p2p_discovery_retry_thread = None
+            self.runtime._p2p_discovery_stop_event.clear()
+            result = self.runtime.start_native_discovery()
+            self.assertFalse(result)
+            self.assertIn("simulated LAN interface not ready", self.runtime._p2p_discovery_error)
+            retry_worker.assert_called_once()
+
+        # Exercise the retry routine deterministically without waiting for its
+        # real backoff: the second startup attempt succeeds.
+        self.runtime._p2p_discovery_stop_event.set()
+        self.runtime._p2p_discovery_retry_thread = None
+        self.runtime.p2p_discovery = None
+        with patch("node_core.p2p.discovery_service.NodeDiscoveryService", FakeDiscovery):
+            self.assertTrue(self.runtime._try_start_native_discovery())
+            self.assertEqual(attempts["count"], 2)
+            self.assertIsNone(self.runtime._p2p_discovery_error)
+            self.runtime.stop_native_discovery()
 
     def test_listener_requires_an_explicit_trusted_peer(self):
         from node_core.p2p.service import PeerServiceError
