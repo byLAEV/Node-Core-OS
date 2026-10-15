@@ -884,7 +884,16 @@ class MainMenu:
             for peer in discovered:
                 details = peer_states.get(peer["node_id"], {})
                 print(f"- {peer['node_id']} @ {peer['host']}:{peer['port']}")
-                print(f"  Identidad: {details.get('state', 'DETECTADA; estado de confianza no disponible')}")
+                print(
+                    "  Firma del anuncio: "
+                    f"{'VALIDADA' if details.get('announcement_signature_validated') else 'NO VERIFICADA'}"
+                )
+                print(
+                    "  Sesión de identidad autenticada: "
+                    f"{'SÍ' if details.get('identity_authenticated') else 'NO'}"
+                )
+                print(f"  Confianza: {details.get('trust_status', 'desconocida')}")
+                print(f"  Estado: {details.get('state', 'estado no disponible')}")
                 print(f"  Último anuncio UTC: {peer['last_announcement']}")
             print("Detectado no significa autenticado ni autorizado.")
             if discovery_status.get("discovery_error"):
@@ -1058,10 +1067,18 @@ class MainMenu:
                         print(f"- Node ID: {peer['node_id']}")
                         print(f"  Advertised endpoint (not yet authenticated): {peer['host']}:{peer['port']}")
                         print(f"  Last announcement (UTC epoch): {peer['last_announcement']}")
-                        print(f"  Trust: {details.get('trust_status', 'unknown')}")
-                        print(f"  State: {details.get('state', 'discovered; authentication not established')}")
                         print(
-                            "  Authenticated inbound session: "
+                            "  Announcement signature: "
+                            f"{'VALID' if details.get('announcement_signature_validated') else 'NOT VERIFIED'}"
+                        )
+                        print(f"  Trust: {details.get('trust_status', 'unknown')}")
+                        print(f"  State: {details.get('state', 'state unavailable')}")
+                        print(
+                            "  Authenticated identity session: "
+                            f"{'YES' if details.get('identity_authenticated') else 'NO'}"
+                        )
+                        print(
+                            "  Authenticated inbound privileged session: "
                             f"{'YES' if details.get('authenticated_inbound_session') else 'NO'}"
                         )
                     print("Detection does not grant trust or prove an authenticated session.")

@@ -117,6 +117,9 @@ class NodeRuntime:
         for peer in discovered_peers:
             trust_status = trust_by_node_id.get(peer.node_id, "not_trusted")
             authenticated_inbound = peer.node_id in authenticated_inbound_node_ids
+            # Entries in discovery.snapshot() have already passed the signed
+            # announcement parser. This authenticates that announcement, not a
+            # fresh interactive session and not authorization for application use.
             if trust_status == "revoked":
                 state = "revoked"
             elif authenticated_inbound:
@@ -124,12 +127,14 @@ class NodeRuntime:
             elif trust_status == "trusted":
                 state = "trusted_not_connected"
             else:
-                state = "discovered_not_trusted"
+                state = "signed_announcement_verified_not_trusted"
             discovered_peer_status.append({
                 "node_id": peer.node_id,
                 "host": peer.host,
                 "port": peer.port,
                 "last_announcement": peer.timestamp,
+                "announcement_signature_validated": True,
+                "identity_authenticated": authenticated_inbound,
                 "trust_status": trust_status,
                 "authenticated_inbound_session": authenticated_inbound,
                 "state": state,
