@@ -2,6 +2,14 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.5.1] - 2026-10-15
+
+- Add a consolidated Network / Nodes status dashboard for Kubo/IPFS and native authenticated P2P.
+- Show each transport's local identity, direct/active peers, listener state, trusted and revoked peer counts, and independent error state.
+- Keep Kubo/IPFS peer counts separate from native P2P sessions; do not imply a global network node count.
+- Add regression tests for healthy status and partial failures when either transport is unavailable.
+- Preserve existing menu options and ordinary-user operation; no root or sudo is required.
+
 ## Node Core OS [1.4.2] - 2026-10-13
 
 - Allow the first P2P Contracts propagation to bootstrap from the validated genesis hash on a single node when no peer responds.
