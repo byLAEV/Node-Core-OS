@@ -475,7 +475,7 @@ def main():
         # Scenario 2 rotates roles: B proposes, C submits, and A records closure evidence.
         propagation_module.WINDOW_SECONDS = 45
         if role == "node-b":
-            parent_hash = service.current_manifest()["manifest_hash"]
+            parent_hash = service.current_manifest()["propagation_hash"]
             proposal2 = protocol.accept_new_propagation(parent_hash, require_owner_request=True)
             wait_until(
                 "node C's request to be queued by node B",
