@@ -54,6 +54,62 @@ def _receive_message(sock: socket.socket) -> dict[str, Any]:
     return message
 
 
+PROTOCOL_VERSION = 1
+MAX_PEER_LIST_ITEMS = 100
+
+
+def validate_application_message(message: dict[str, Any]) -> dict[str, Any]:
+    """Validate a versioned Node Core OS application message after authentication."""
+    if not isinstance(message, dict):
+        raise PeerSessionError("Application message must be a JSON object.")
+    if message.get("version") != PROTOCOL_VERSION:
+        raise PeerSessionError("Unsupported P2P application protocol version.")
+    message_type = message.get("type")
+    if not isinstance(message_type, str):
+        raise PeerSessionError("Application message type is required.")
+    if message_type == "STATUS":
+        if message.get("action") not in ("request", "response"):
+            raise PeerSessionError("STATUS action must be request or response.")
+        request_id = message.get("request_id")
+        if not isinstance(request_id, str) or not request_id or len(request_id) > 128:
+            raise PeerSessionError("STATUS request_id is invalid.")
+        if message["action"] == "response":
+            state = message.get("state")
+            if state not in ("running", "degraded", "stopped", "unknown"):
+                raise PeerSessionError("STATUS response state is invalid.")
+            observed_at = message.get("observed_at")
+            if not isinstance(observed_at, str) or not observed_at or len(observed_at) > 64:
+                raise PeerSessionError("STATUS response observed_at is invalid.")
+    elif message_type == "PEERS":
+        peers = message.get("peers")
+        if not isinstance(peers, list) or len(peers) > MAX_PEER_LIST_ITEMS:
+            raise PeerSessionError("PEERS must contain at most 100 peer IDs.")
+        for node_id in peers:
+            if not isinstance(node_id, str) or not node_id.startswith("sha256:") or len(node_id) > 128:
+                raise PeerSessionError("PEERS contains an invalid node ID.")
+    elif message_type == "ERROR":
+        code = message.get("code")
+        detail = message.get("message")
+        if not isinstance(code, str) or not code or len(code) > 64:
+            raise PeerSessionError("ERROR code is invalid.")
+        if not isinstance(detail, str) or len(detail) > 512:
+            raise PeerSessionError("ERROR message is invalid.")
+    else:
+        raise PeerSessionError("Unknown P2P application message type.")
+    return message
+
+
+def send_application_message(sock: socket.socket, message: dict[str, Any]) -> None:
+    """Send a validated, length-framed application message over an authenticated socket."""
+    validate_application_message(message)
+    _send_message(sock, message)
+
+
+def receive_application_message(sock: socket.socket) -> dict[str, Any]:
+    """Receive and validate a length-framed application message."""
+    return validate_application_message(_receive_message(sock))
+
+
 class AuthenticatedPeerSession:
     """Perform Node Core OS HELLO/AUTH on an already-established pinned TLS socket.
 
