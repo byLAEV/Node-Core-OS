@@ -80,7 +80,8 @@ class MainMenu:
             print(
                 f"Native node network: {state} | "
                 f"Discovered: {discovered} | "
-                f"Authenticated sessions: {len(status.get('active_peers', []))}"
+                f"Authenticated sessions: {len(status.get('active_peers', []))} | "
+                f"WAN discovery: {'ACTIVE' if status.get('wan_discovery_running') else 'NOT CONFIGURED'}"
             )
             if status.get("discovery_error") and not status.get("discovery_running"):
                 print(f"Discovery detail: {status['discovery_error']}")
@@ -864,6 +865,18 @@ class MainMenu:
             )
             discovered = discovery_status.get("discovered_peers", [])
             print(f"Identidades detectadas en la LAN: {len(discovered)}")
+            print(
+                "Descubrimiento WAN: "
+                f"{'ACTIVO' if discovery_status.get('wan_discovery_running') else 'NO CONFIGURADO'}"
+            )
+            if not discovery_status.get("wan_discovery_running"):
+                print(
+                    "Motivo: "
+                    + str(discovery_status.get(
+                        "wan_discovery_error",
+                        "Se necesita un servicio rendezvous/bootstrap accesible por Internet.",
+                    ))
+                )
             for peer in discovered:
                 print(f"- {peer['node_id']} @ {peer['host']}:{peer['port']}")
             if discovery_status.get("discovery_error"):
