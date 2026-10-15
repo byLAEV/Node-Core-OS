@@ -45,6 +45,8 @@ printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/ma
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
 printf '1.4.1\n' > "$release_root/Node-Core-OS-fixture/VERSION"
+# An empty requirements file keeps this offline updater fixture dependency-free.
+: > "$release_root/Node-Core-OS-fixture/requirements.txt"
 printf 'print("updated HashPaper")\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/main.py"
 printf 'VALUE = "updated HashPaper CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper/cli.py"
 printf 'print("fixture P2P Contracts")\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/main.py"

@@ -36,6 +36,7 @@ main() {
   ensure_dependencies
   prepare_filesystem
   install_application "$PROJECT_ROOT"
+  ensure_python_environment "$NODE_CORE_DATA_DIR/app/requirements.txt"
   # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
   rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
@@ -89,8 +90,8 @@ if version != "1.0.0":
 print("Installed Node Core P2P Contracts version:", version)
 PY
   python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
-  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
-  (cd "$NODE_CORE_DATA_DIR/app" && python3 -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])")
+  (cd "$NODE_CORE_DATA_DIR/app" && "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
+  (cd "$NODE_CORE_DATA_DIR/app" && "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])")
   install_kubo
   write_config
   create_launcher
