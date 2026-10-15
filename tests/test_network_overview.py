@@ -70,6 +70,11 @@ class NetworkOverviewMenuTests(unittest.TestCase):
         self.assertIn("P2P nativo autenticado de Node Core OS", output)
         self.assertIn("cryptography is missing", output)
 
+    def test_network_overview_explains_wan_discovery_is_not_yet_configured(self):
+        output = self.render(FakeRuntime())
+        self.assertIn("Descubrimiento WAN: NO CONFIGURADO", output)
+        self.assertIn("rendezvous/bootstrap", output)
+
     def test_network_menu_keeps_existing_choices_and_adds_dashboard(self):
         runtime = FakeRuntime()
         output = io.StringIO()
