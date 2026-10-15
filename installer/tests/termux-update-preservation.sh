@@ -46,6 +46,8 @@ mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/tests"
 printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/main.py"
 printf '1.2.6\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/VERSION"
+# Keep the offline release fixture dependency-free while exercising the updater.
+: > "$TEST_FIXTURES/release/Node-Core-OS-test/requirements.txt"
 printf '0.3.0\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/VERSION"
 printf 'VALUE = "updated"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/node_core/__init__.py"
 cp "$REPOSITORY_ROOT/installer/update.sh" "$TEST_FIXTURES/release/Node-Core-OS-test/installer/update.sh"
