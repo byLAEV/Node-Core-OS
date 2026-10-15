@@ -1,4 +1,6 @@
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -45,6 +47,45 @@ class P2PStatusRequestResponseTests(unittest.TestCase):
         self.assertEqual(result["state"], "running")
         self.assertTrue(result["observed_at"])
         self.assertTrue(result["request_id"])
+
+    def test_authenticated_session_is_registered_and_removed_on_disconnect(self):
+        seen = threading.Event()
+        observed = []
+
+        def on_peer(peer, _socket):
+            observed.extend(server.active_peers)
+            seen.set()
+
+        server = NodePeerService(
+            identity_store=self.store_b,
+            tls_transport=self.tls_b,
+            trusted_peers={self.meta_a["node_id"]: self.cert_a},
+            host="127.0.0.1",
+            port=0,
+            timeout_seconds=3,
+            on_peer=on_peer,
+        )
+        host, port = server.start()
+        self.addCleanup(server.stop)
+
+        client = NodePeerService(
+            identity_store=self.store_a,
+            tls_transport=self.tls_a,
+            trusted_peers={self.meta_b["node_id"]: self.cert_b},
+            timeout_seconds=3,
+        )
+        client.request_status(host, port, self.meta_b["node_id"])
+
+        self.assertTrue(seen.wait(3))
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0]["node_id"], self.meta_a["node_id"])
+        self.assertTrue(observed[0]["connected_at"])
+        self.assertTrue(observed[0]["last_seen"])
+
+        deadline = time.monotonic() + 3
+        while server.active_peers and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(server.active_peers, [])
 
     def test_status_request_refuses_untrusted_node(self):
         client = NodePeerService(
