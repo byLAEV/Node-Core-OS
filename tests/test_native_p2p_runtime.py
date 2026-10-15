@@ -1,6 +1,8 @@
 import os
 import tempfile
+import time
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
@@ -54,6 +56,45 @@ class NativeP2PRuntimeTests(unittest.TestCase):
         self.assertIn("discovery_running", status)
         if not result:
             self.assertTrue(status["discovery_error"])
+
+    def test_discovery_retries_after_initial_failure_and_stops_cleanly(self):
+        from node_core.p2p.discovery_service import NodeDiscoveryService
+
+        attempts = {"count": 0}
+
+        class FakeDiscovery:
+            running = False
+
+            def __init__(self, *args, **kwargs):
+                self.running = False
+
+            def start(self):
+                attempts["count"] += 1
+                if attempts["count"] == 1:
+                    raise OSError("simulated LAN interface not ready")
+                self.running = True
+
+            def stop(self):
+                self.running = False
+
+            def snapshot(self):
+                return ()
+
+        with patch("node_core.p2p.discovery_service.NodeDiscoveryService", FakeDiscovery):
+            self.runtime.p2p_discovery = None
+            self.runtime._p2p_discovery_retry_thread = None
+            self.runtime._p2p_discovery_stop_event.clear()
+            self.assertFalse(self.runtime.start_native_discovery())
+            self.assertIn("simulated LAN interface not ready", self.runtime._p2p_discovery_error)
+
+            retry = self.runtime._p2p_discovery_retry_thread
+            self.assertIsNotNone(retry)
+            retry.join(timeout=2.5)
+            self.assertFalse(retry.is_alive(), "discovery retry should finish after successful startup")
+            self.assertEqual(attempts["count"], 2)
+            self.assertTrue(self.runtime.p2p_discovery.running)
+            self.assertIsNone(self.runtime._p2p_discovery_error)
+            self.runtime.stop_native_discovery()
 
     def test_listener_requires_an_explicit_trusted_peer(self):
         from node_core.p2p.service import PeerServiceError

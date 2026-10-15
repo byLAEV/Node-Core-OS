@@ -1,5 +1,6 @@
 """Runtime orchestration for Node Core OS."""
 from pathlib import Path
+import threading
 from typing import Any
 
 from node_core.config import NodeConfig
@@ -49,6 +50,9 @@ class NodeRuntime:
         self.p2p_service: Any = None
         self.p2p_discovery: Any = None
         self._p2p_discovery_error: str | None = None
+        self._p2p_discovery_retry_thread: threading.Thread | None = None
+        self._p2p_discovery_stop_event = threading.Event()
+        self._p2p_discovery_lock = threading.RLock()
         self._booted = False
 
     @property
@@ -137,16 +141,32 @@ class NodeRuntime:
         }
 
     def start_native_discovery(self) -> bool:
-        """Start signed LAN discovery without requiring Kubo or trusted peers."""
-        if self.p2p_discovery is not None and self.p2p_discovery.running:
-            return True
+        """Start signed LAN discovery and schedule bounded retries after failures."""
+        with self._p2p_discovery_lock:
+            if self.p2p_discovery is not None and self.p2p_discovery.running:
+                return True
+            if self._try_start_native_discovery():
+                return True
+            retry = self._p2p_discovery_retry_thread
+            if retry is None or not retry.is_alive():
+                self._p2p_discovery_stop_event.clear()
+                self._p2p_discovery_retry_thread = threading.Thread(
+                    target=self._retry_native_discovery,
+                    name="node-core-p2p-discovery-retry",
+                    daemon=True,
+                )
+                self._p2p_discovery_retry_thread.start()
+            return False
+
+    def _try_start_native_discovery(self) -> bool:
+        """Perform one discovery startup attempt and retain a useful error."""
         try:
             from node_core.p2p.discovery_service import NodeDiscoveryService
 
             discovery = NodeDiscoveryService(
                 self.p2p_identity,
-                # Default endpoint advertised for native P2P; the listener remains
-                # gated separately by the existing explicit trust store.
+                # This is only the advertised candidate endpoint. The listener
+                # remains gated by the explicit trusted-peer allowlist.
                 p2p_port=45873,
             )
             discovery.start()
@@ -158,11 +178,29 @@ class NodeRuntime:
             self._p2p_discovery_error = str(exc)
             return False
 
+    def _retry_native_discovery(self) -> None:
+        """Retry discovery with bounded exponential backoff until shutdown."""
+        delay_seconds = 1.0
+        maximum_delay_seconds = 30.0
+        while not self._p2p_discovery_stop_event.wait(delay_seconds):
+            with self._p2p_discovery_lock:
+                if self.p2p_discovery is not None and self.p2p_discovery.running:
+                    return
+                if self._try_start_native_discovery():
+                    return
+            delay_seconds = min(delay_seconds * 2.0, maximum_delay_seconds)
+
     def stop_native_discovery(self) -> None:
-        """Stop the LAN discovery worker if it is running."""
-        discovery, self.p2p_discovery = self.p2p_discovery, None
-        if discovery is not None:
-            discovery.stop()
+        """Stop LAN discovery and its retry worker."""
+        self._p2p_discovery_stop_event.set()
+        retry = self._p2p_discovery_retry_thread
+        if retry is not None and retry is not threading.current_thread():
+            retry.join(timeout=2.0)
+        self._p2p_discovery_retry_thread = None
+        with self._p2p_discovery_lock:
+            discovery, self.p2p_discovery = self.p2p_discovery, None
+            if discovery is not None:
+                discovery.stop()
 
     def shutdown(self) -> None:
         """Stop all native P2P services owned by this runtime."""
