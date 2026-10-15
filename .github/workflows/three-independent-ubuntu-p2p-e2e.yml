@@ -67,7 +67,7 @@ jobs:
           ! grep -R -nE '(^|[[:space:]])(sudo|apt-get|dnf|yum|pacman|zypper)([[:space:]]|$)' \
             installer/lib installer/install.sh installer/update.sh installer/uninstall.sh
 
-      - name: Install Node Core OS 1.3.0 as the normal user
+      - name: Install the repository's declared Node Core OS version as the normal user
         shell: bash
         run: |
           set -euo pipefail
@@ -84,7 +84,13 @@ jobs:
           test "$(id -u)" -ne 0
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
           test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
-          grep -qx '1.3.0' "$NODE_CORE_DATA_DIR/app/VERSION"
+          expected_node_core_version="$(tr -d '\\r\\n' < VERSION)"
+          installed_node_core_version="$(tr -d '\\r\\n' < "$NODE_CORE_DATA_DIR/app/VERSION")"
+          if [[ "$installed_node_core_version" != "$expected_node_core_version" ]]; then
+            printf 'Node Core OS version mismatch: repository=%s installed=%s path=%s\\n' \\
+              "$expected_node_core_version" "$installed_node_core_version" "$NODE_CORE_DATA_DIR/app/VERSION" >&2
+            exit 1
+          fi
           grep -qx '1.0.0' "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/VERSION"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py"
