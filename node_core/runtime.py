@@ -114,6 +114,7 @@ class NodeRuntime:
             "peers": peers,
             "service_running": listening,
             "listen_address": address,
+            "active_peers": service.active_peers if service else [],
             "last_error": service.last_error if service else None,
         }
 

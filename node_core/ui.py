@@ -822,6 +822,12 @@ class MainMenu:
                     print(f"Listen address: {address[0]}:{address[1]}" if address else "Listen address: -")
                     print(f"Trusted peers: {status['trusted_count']}")
                     print(f"Revoked peers: {status['revoked_count']}")
+                    active_peers = status["active_peers"]
+                    print(f"Authenticated inbound sessions: {len(active_peers)}")
+                    for peer in active_peers:
+                        print(f"- {peer['node_id']}")
+                        print(f"  Connected at (UTC): {peer['connected_at']}")
+                        print(f"  Last seen (UTC): {peer['last_seen']}")
                     print(f"Local certificate: {status['certificate_path']}")
                     if status["last_error"]:
                         print(f"Last service error: {status['last_error']}")
