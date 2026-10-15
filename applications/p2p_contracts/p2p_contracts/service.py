@@ -100,7 +100,6 @@ class P2PContractsService:
         self.genesis_path = self.manifests_dir / "genesis-manifest.json"
         self.bundled_genesis_path = Path(__file__).resolve().parents[1] / "genesis-manifest.json"
         self.head_path = self.root / "head.json"
-        self.genesis_path = self.root / "genesis-manifest.json"
         self.initial_acceptance_path = self.root / "initial-acceptance.json"
         self._manifest_lock = threading.RLock()
         self._ensure_directories()
@@ -146,6 +145,52 @@ class P2PContractsService:
     def _load_genesis_hash(self) -> str:
         genesis = self._ensure_genesis_manifest()
         return genesis["genesis_hash"]
+
+    @_synchronized
+    def accept_initial_genesis_reference(self, *, accepted_by_node_id: str) -> dict[str, Any]:
+        """Record this node's explicit acceptance of the verified genesis root."""
+        if not isinstance(accepted_by_node_id, str) or not accepted_by_node_id.strip():
+            raise ValueError("An accepting node identity is required.")
+        identity = self.network.identity()
+        local_node_id = getattr(identity, "peer_id", None)
+        if not isinstance(local_node_id, str) or accepted_by_node_id != local_node_id:
+            raise P2PContractsError("Genesis acceptance must be recorded by the current local node identity.")
+
+        genesis = self._ensure_genesis_reference()
+        genesis_hash = genesis.get("genesis_hash")
+        if genesis_hash != GENESIS_HASH:
+            raise P2PContractsError("The verified genesis reference does not match the configured root hash.")
+
+        acceptance = {
+            "schema": "node-core-os-p2p-contracts/initial-acceptance/v1",
+            "genesis_hash": genesis_hash,
+            "accepted_by_node_id": local_node_id,
+            "accepted_at": _now(),
+            "status": "ACCEPTED",
+        }
+        self._write_json(self.initial_acceptance_path, acceptance)
+        return acceptance
+
+    def _require_initial_genesis_acceptance(self) -> dict[str, Any]:
+        """Refuse first-request creation until this node explicitly accepts genesis."""
+        try:
+            acceptance = self._read_json(self.initial_acceptance_path)
+        except P2PContractsError as exc:
+            raise P2PContractsError(
+                "The initial genesis reference must be explicitly accepted before creating requests."
+            ) from exc
+
+        local_node_id = getattr(self.network.identity(), "peer_id", None)
+        if (
+            acceptance.get("schema") != "node-core-os-p2p-contracts/initial-acceptance/v1"
+            or acceptance.get("genesis_hash") != self._load_genesis_hash()
+            or acceptance.get("accepted_by_node_id") != local_node_id
+            or acceptance.get("status") != "ACCEPTED"
+            or not isinstance(acceptance.get("accepted_at"), str)
+            or not acceptance.get("accepted_at")
+        ):
+            raise P2PContractsError("The initial genesis acceptance is invalid for this local node.")
+        return acceptance
 
     @staticmethod
     def _write_json(path: Path, payload: dict[str, Any]) -> None:
