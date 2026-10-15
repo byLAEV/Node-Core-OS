@@ -102,6 +102,11 @@ class NodePeerService:
             if peer is not None:
                 peer["last_seen"] = datetime.now(timezone.utc).isoformat()
 
+    def _active_peer_node_id(self, session_id: str) -> str | None:
+        with self._active_peers_lock:
+            peer = self._active_peers.get(session_id)
+            return peer["node_id"] if peer else None
+
     def _unregister_peer(self, session_id: str | None) -> None:
         if session_id is None:
             return
@@ -245,6 +250,67 @@ class NodePeerService:
             if raw_socket is not None:
                 raw_socket.close()
 
+    def request_peers(
+        self, host: str, port: int, expected_peer_node_id: str
+    ) -> dict[str, Any]:
+        """Request the remote node's known peer IDs without trusting them automatically."""
+        certificate = self.trusted_peers.get(expected_peer_node_id)
+        if certificate is None:
+            raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
+        raw_socket: socket.socket | None = None
+        try:
+            raw_socket = socket.create_connection(
+                (host, port), timeout=self.timeout_seconds
+            )
+            tls_socket = self.tls_transport.client_context([certificate]).wrap_socket(
+                raw_socket, server_hostname=None
+            )
+            raw_socket = None
+            with tls_socket:
+                session = AuthenticatedPeerSession(
+                    self.identity_store,
+                    self.tls_transport,
+                    expected_peer_node_id,
+                    timeout_seconds=self.timeout_seconds,
+                )
+                peer = session.establish(tls_socket, "initiator")
+                request_id = uuid.uuid4().hex
+                send_application_message(
+                    tls_socket,
+                    {
+                        "version": 1,
+                        "type": "PEERS",
+                        "action": "request",
+                        "request_id": request_id,
+                    },
+                )
+                response = receive_application_message(tls_socket)
+                if (
+                    response.get("type") != "PEERS"
+                    or response.get("action") != "response"
+                    or response.get("request_id") != request_id
+                ):
+                    raise PeerServiceError("Peer returned an unexpected PEERS response.")
+                peer_ids = response["peers"]
+                if peer["node_id"] in peer_ids:
+                    raise PeerServiceError("Peer returned its own node ID in its PEERS list.")
+                if self.identity_store.initialize()["node_id"] in peer_ids:
+                    raise PeerServiceError("Peer returned this node's ID in its PEERS list.")
+                return {
+                    "node_id": peer["node_id"],
+                    "request_id": request_id,
+                    "peers": peer_ids,
+                    "observed_at": datetime.now(timezone.utc).isoformat(),
+                    "trust_changed": False,
+                }
+        except (OSError, PeerSessionError, TLSTransportError, KeyError) as exc:
+            raise PeerServiceError(
+                "Unable to complete an authenticated PEERS request."
+            ) from exc
+        finally:
+            if raw_socket is not None:
+                raw_socket.close()
+
     def _accept_loop(self) -> None:
         while not self._stop.is_set():
             listener = self._listener
@@ -335,6 +401,24 @@ class NodePeerService:
                         "request_id": message["request_id"],
                         "state": "running",
                         "observed_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                continue
+            if message["type"] == "PEERS" and message["action"] == "request":
+                local_node_id = self.identity_store.initialize()["node_id"]
+                peer_ids = sorted(
+                    node_id
+                    for node_id in self.trusted_peers
+                    if node_id not in (local_node_id, self._active_peer_node_id(session_id))
+                )[:100]
+                send_application_message(
+                    tls_socket,
+                    {
+                        "version": 1,
+                        "type": "PEERS",
+                        "action": "response",
+                        "request_id": message["request_id"],
+                        "peers": peer_ids,
                     },
                 )
                 continue
