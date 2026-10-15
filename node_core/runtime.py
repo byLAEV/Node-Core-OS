@@ -162,6 +162,23 @@ class NodeRuntime:
         )
         return client.request_status(host, port, node_id)
 
+    def query_native_peer_peers(
+        self, host: str, port: int, node_id: str
+    ) -> dict[str, object]:
+        """Request a peer-ID list from one explicitly trusted node; never changes trust."""
+        from node_core.p2p.service import NodePeerService, PeerServiceError
+
+        certificates = self.p2p_trust.trusted_certificates()
+        if node_id not in certificates:
+            raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
+        client = NodePeerService(
+            identity_store=self.p2p_identity,
+            tls_transport=self.p2p_tls,
+            trusted_peers=certificates,
+            timeout_seconds=10.0,
+        )
+        return client.request_peers(host, port, node_id)
+
     def stop_native_p2p(self) -> None:
         """Stop the native P2P listener if it is running."""
         service, self.p2p_service = self.p2p_service, None
@@ -178,9 +195,16 @@ class NodeRuntime:
         return result
 
     def revoke_trusted_peer(self, node_id: str) -> dict[str, str]:
-        """Persist peer revocation and stop the listener so its allowlist cannot stay stale."""
+        """Persist revocation and close only this peer's sessions when the service is running."""
         result = self.p2p_trust.revoke(node_id)
-        self.stop_native_p2p()
+        service = self.p2p_service
+        if service is not None:
+            if self.p2p_trust.trusted_certificates():
+                service.revoke_peer(node_id)
+            else:
+                # A listener with an empty allowlist has no useful authenticated
+                # sessions to serve, so stop it rather than leave it misleadingly active.
+                self.stop_native_p2p()
         return result
 
     def menu(self) -> None:

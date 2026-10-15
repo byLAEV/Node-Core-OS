@@ -81,12 +81,28 @@ def validate_application_message(message: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(observed_at, str) or not observed_at or len(observed_at) > 64:
                 raise PeerSessionError("STATUS response observed_at is invalid.")
     elif message_type == "PEERS":
-        peers = message.get("peers")
-        if not isinstance(peers, list) or len(peers) > MAX_PEER_LIST_ITEMS:
-            raise PeerSessionError("PEERS must contain at most 100 peer IDs.")
-        for node_id in peers:
-            if not isinstance(node_id, str) or not node_id.startswith("sha256:") or len(node_id) > 128:
-                raise PeerSessionError("PEERS contains an invalid node ID.")
+        action = message.get("action")
+        if action not in ("request", "response"):
+            raise PeerSessionError("PEERS action must be request or response.")
+        request_id = message.get("request_id")
+        if not isinstance(request_id, str) or not request_id or len(request_id) > 128:
+            raise PeerSessionError("PEERS request_id is invalid.")
+        if action == "response":
+            peers = message.get("peers")
+            if not isinstance(peers, list) or len(peers) > MAX_PEER_LIST_ITEMS:
+                raise PeerSessionError("PEERS response must contain at most 100 peer IDs.")
+            for node_id in peers:
+                if (
+                    not isinstance(node_id, str)
+                    or len(node_id) != 71
+                    or not node_id.startswith("sha256:")
+                    or any(char not in "0123456789abcdef" for char in node_id[7:])
+                ):
+                    raise PeerSessionError("PEERS contains an invalid node ID.")
+            if len(set(peers)) != len(peers):
+                raise PeerSessionError("PEERS response must not contain duplicate node IDs.")
+        elif "peers" in message:
+            raise PeerSessionError("PEERS request must not include a peer list.")
     elif message_type == "ERROR":
         code = message.get("code")
         detail = message.get("message")

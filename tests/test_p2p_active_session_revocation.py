@@ -6,7 +6,11 @@ from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.service import NodePeerService
-from node_core.p2p.session import AuthenticatedPeerSession
+from node_core.p2p.session import (
+    AuthenticatedPeerSession,
+    receive_application_message,
+    send_application_message,
+)
 from node_core.p2p.tls_transport import NodeTLSTransport
 
 
@@ -23,6 +27,99 @@ class ActivePeerSessionRevocationTests(unittest.TestCase):
         self.tls_b = NodeTLSTransport(self.store_b)
         self.cert_a = self.tls_a.ensure_certificate()
         self.cert_b = self.tls_b.ensure_certificate()
+
+    def test_revoking_one_peer_keeps_other_peer_session_and_listener(self):
+        store_c = NodeIdentityStore(Path(self.temp.name) / "node-c")
+        meta_c = store_c.initialize()
+        tls_c = NodeTLSTransport(store_c)
+        cert_c = tls_c.ensure_certificate()
+
+        server = NodePeerService(
+            identity_store=self.store_b,
+            tls_transport=self.tls_b,
+            trusted_peers={
+                self.meta_a["node_id"]: self.cert_a,
+                meta_c["node_id"]: cert_c,
+            },
+            host="127.0.0.1",
+            port=0,
+            timeout_seconds=3,
+        )
+        host, port = server.start()
+        self.addCleanup(server.stop)
+
+        def connect_client(store, tls, expected_server_id, server_certificate):
+            raw = socket.create_connection((host, port), timeout=3)
+            client_tls = tls.client_context([server_certificate]).wrap_socket(
+                raw, server_hostname=None
+            )
+            client_tls.settimeout(3)
+            AuthenticatedPeerSession(
+                store, tls, expected_server_id, timeout_seconds=3
+            ).establish(client_tls, "initiator")
+            return client_tls
+
+        client_a = connect_client(
+            self.store_a, self.tls_a, self.meta_b["node_id"], self.cert_b
+        )
+        client_c = connect_client(
+            store_c, tls_c, self.meta_b["node_id"], self.cert_b
+        )
+        self.addCleanup(client_a.close)
+        self.addCleanup(client_c.close)
+
+        deadline = time.monotonic() + 3
+        while len(server.active_peers) < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(
+            {peer["node_id"] for peer in server.active_peers},
+            {self.meta_a["node_id"], meta_c["node_id"]},
+        )
+
+        closed_count = server.revoke_peer(self.meta_a["node_id"])
+        self.assertEqual(closed_count, 1)
+        self.assertNotIn(self.meta_a["node_id"], server.trusted_peers)
+        self.assertEqual(server.address, (host, port))
+        self.assertEqual(
+            {peer["node_id"] for peer in server.active_peers},
+            {meta_c["node_id"]},
+        )
+        try:
+            self.assertEqual(client_a.recv(1), b"")
+        except OSError:
+            pass
+        send_application_message(
+            client_c,
+            {
+                "version": 1,
+                "type": "STATUS",
+                "action": "request",
+                "request_id": "still-trusted",
+            },
+        )
+        response = receive_application_message(client_c)
+        self.assertEqual(response["type"], "STATUS")
+        self.assertEqual(response["request_id"], "still-trusted")
+
+        # The listener remains online but must reject the revoked certificate.
+        raw = socket.create_connection((host, port), timeout=3)
+        revoked_tls = None
+        try:
+            # TLS 1.3 may return from the client-side wrap_socket before the
+            # server's certificate-rejection alert is observed. Force I/O to
+            # complete the handshake and assert that the revoked certificate
+            # cannot establish a usable connection.
+            revoked_tls = self.tls_a.client_context([self.cert_b]).wrap_socket(
+                raw, server_hostname=None
+            )
+            revoked_tls.settimeout(3)
+            with self.assertRaises(OSError):
+                revoked_tls.recv(1)
+        finally:
+            if revoked_tls is not None:
+                revoked_tls.close()
+            else:
+                raw.close()
 
     def test_active_session_is_removed_when_service_stops(self):
         server = NodePeerService(

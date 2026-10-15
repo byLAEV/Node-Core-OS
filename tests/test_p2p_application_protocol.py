@@ -38,18 +38,44 @@ class P2PApplicationProtocolTests(unittest.TestCase):
         with self.assertRaises(PeerSessionError):
             validate_application_message(message)
 
-    def test_peers_message_is_bounded_and_validated(self):
+    def test_peers_response_is_bounded_and_validated(self):
+        node_id = "sha256:" + "a" * 64
         message = {
             "version": 1,
             "type": "PEERS",
-            "peers": ["sha256:" + "a" * 64],
+            "action": "response",
+            "request_id": "peers-test-1",
+            "peers": [node_id],
         }
         self.assertEqual(validate_application_message(message), message)
+
         message["peers"] = ["not-a-node-id"]
         with self.assertRaises(PeerSessionError):
             validate_application_message(message)
 
-        message["peers"] = ["sha256:" + "a" * 64] * 101
+        message["peers"] = [node_id] * 101
+        with self.assertRaises(PeerSessionError):
+            validate_application_message(message)
+
+        message["peers"] = [node_id, node_id]
+        with self.assertRaisesRegex(PeerSessionError, "duplicate"):
+            validate_application_message(message)
+
+    def test_peers_request_requires_request_id_and_no_peer_list(self):
+        message = {
+            "version": 1,
+            "type": "PEERS",
+            "action": "request",
+            "request_id": "peers-test-2",
+        }
+        self.assertEqual(validate_application_message(message), message)
+
+        message["peers"] = []
+        with self.assertRaisesRegex(PeerSessionError, "must not include"):
+            validate_application_message(message)
+
+        del message["peers"]
+        message["request_id"] = ""
         with self.assertRaises(PeerSessionError):
             validate_application_message(message)
 
