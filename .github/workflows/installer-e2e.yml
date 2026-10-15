@@ -388,7 +388,7 @@ jobs:
           test "$(id -u)" -ne 0
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
           test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
-          grep -qx '1.3.0' "$NODE_CORE_DATA_DIR/app/VERSION"
+          cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
           grep -qx '1.0.0' "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/VERSION"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py"
@@ -451,7 +451,7 @@ jobs:
           export NODE_CORE_CONFIG
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           # Use a real subprocess and stdin, because the Applications menu launches P2P Contracts as a child process.
-          printf '%s\\n' 4 2 yes 0 0 0 | python3 "$NODE_CORE_DATA_DIR/app/main.py" > "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
+          printf '%s\n' 4 2 yes 0 0 0 | python3 "$NODE_CORE_DATA_DIR/app/main.py" > "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq '1. Create Public Request' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
           grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/node-evidence/p2p-menu.txt"
