@@ -877,8 +877,16 @@ class MainMenu:
                         "Se necesita un servicio rendezvous/bootstrap accesible por Internet.",
                     ))
                 )
+            peer_states = {
+                peer["node_id"]: peer
+                for peer in discovery_status.get("discovered_peer_status", [])
+            }
             for peer in discovered:
+                details = peer_states.get(peer["node_id"], {})
                 print(f"- {peer['node_id']} @ {peer['host']}:{peer['port']}")
+                print(f"  Identidad: {details.get('state', 'DETECTADA; estado de confianza no disponible')}")
+                print(f"  Último anuncio UTC: {peer['last_announcement']}")
+            print("Detectado no significa autenticado ni autorizado.")
             if discovery_status.get("discovery_error"):
                 print(f"Detalle del descubrimiento: {discovery_status['discovery_error']}")
         except Exception as exc:
@@ -1041,10 +1049,21 @@ class MainMenu:
                     peers = status.get("discovered_peers", [])
                     if not peers:
                         print("No valid signed LAN announcements have been observed.")
+                    peer_states = {
+                        peer["node_id"]: peer
+                        for peer in status.get("discovered_peer_status", [])
+                    }
                     for peer in peers:
+                        details = peer_states.get(peer["node_id"], {})
                         print(f"- Node ID: {peer['node_id']}")
                         print(f"  Advertised endpoint (not yet authenticated): {peer['host']}:{peer['port']}")
                         print(f"  Last announcement (UTC epoch): {peer['last_announcement']}")
+                        print(f"  Trust: {details.get('trust_status', 'unknown')}")
+                        print(f"  State: {details.get('state', 'discovered; authentication not established')}")
+                        print(
+                            "  Authenticated inbound session: "
+                            f"{'YES' if details.get('authenticated_inbound_session') else 'NO'}"
+                        )
                     print("Detection does not grant trust or prove an authenticated session.")
                     if status.get("discovery_error"):
                         print(f"Discovery detail: {status['discovery_error']}")
