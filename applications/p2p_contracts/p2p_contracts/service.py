@@ -273,6 +273,16 @@ class P2PContractsService:
             "genesis_hash": genesis_hash,
             "previous_manifest_hash": previous.get("manifest_hash") if previous else genesis_hash,
             "created_at": _now(),
+            "identity_header": {
+                "identity_id": profile.get("identity_id") if profile else None,
+                "node_id": node_identity.peer_id,
+                "identity_verification": {
+                    "status": "NOT_CRYPTOGRAPHICALLY_VERIFIED",
+                    "method": "local_node_identity_reference",
+                },
+                "public_profile": {},
+                "contact": [],
+            },
             "requests": requests,
             "evidence": evidence,
             "previous_propagation_hash": previous_propagation_hash,
