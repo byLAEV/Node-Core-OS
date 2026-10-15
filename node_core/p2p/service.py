@@ -192,7 +192,8 @@ class NodePeerService:
 
     def connect(self, host: str, port: int, expected_peer_node_id: str) -> dict[str, str]:
         """Connect to one configured peer and complete TLS plus P2P authentication."""
-        certificate = self.trusted_peers.get(expected_peer_node_id)
+        with self._trusted_peers_lock:
+            certificate = self.trusted_peers.get(expected_peer_node_id)
         if certificate is None:
             raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
         raw_socket: socket.socket | None = None
@@ -224,7 +225,8 @@ class NodePeerService:
         self, host: str, port: int, expected_peer_node_id: str
     ) -> dict[str, str]:
         """Open an authenticated connection and return a validated remote STATUS response."""
-        certificate = self.trusted_peers.get(expected_peer_node_id)
+        with self._trusted_peers_lock:
+            certificate = self.trusted_peers.get(expected_peer_node_id)
         if certificate is None:
             raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
         raw_socket: socket.socket | None = None
@@ -279,7 +281,8 @@ class NodePeerService:
         self, host: str, port: int, expected_peer_node_id: str
     ) -> dict[str, Any]:
         """Request the remote node's known peer IDs without trusting them automatically."""
-        certificate = self.trusted_peers.get(expected_peer_node_id)
+        with self._trusted_peers_lock:
+            certificate = self.trusted_peers.get(expected_peer_node_id)
         if certificate is None:
             raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
         raw_socket: socket.socket | None = None
@@ -439,9 +442,11 @@ class NodePeerService:
                 continue
             if message["type"] == "PEERS" and message["action"] == "request":
                 local_node_id = self.identity_store.initialize()["node_id"]
+                with self._trusted_peers_lock:
+                    trusted_node_ids = tuple(self.trusted_peers)
                 peer_ids = sorted(
                     node_id
-                    for node_id in self.trusted_peers
+                    for node_id in trusted_node_ids
                     if node_id not in (local_node_id, self._active_peer_node_id(session_id))
                 )[:100]
                 send_application_message(
