@@ -144,6 +144,23 @@ class NodeRuntime:
         self.p2p_service = service
         return address
 
+    def query_native_peer_status(
+        self, host: str, port: int, node_id: str
+    ) -> dict[str, str]:
+        """Query one explicitly trusted native peer without requiring a local listener."""
+        from node_core.p2p.service import NodePeerService, PeerServiceError
+
+        certificates = self.p2p_trust.trusted_certificates()
+        if node_id not in certificates:
+            raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
+        client = NodePeerService(
+            identity_store=self.p2p_identity,
+            tls_transport=self.p2p_tls,
+            trusted_peers=certificates,
+            timeout_seconds=10.0,
+        )
+        return client.request_status(host, port, node_id)
+
     def stop_native_p2p(self) -> None:
         """Stop the native P2P listener if it is running."""
         service, self.p2p_service = self.p2p_service, None
