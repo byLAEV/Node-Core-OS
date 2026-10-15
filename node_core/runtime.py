@@ -127,6 +127,12 @@ class NodeRuntime:
             "listen_address": address,
             "active_peers": service.active_peers if service else [],
             "last_error": service.last_error if service else None,
+            # The current built-in discovery service is LAN multicast only.
+            # Keep WAN explicitly unavailable until a rendezvous/bootstrap service
+            # is deployed and configured; never imply global discovery is active.
+            "discovery_scope": "lan",
+            "wan_discovery_running": False,
+            "wan_discovery_error": "WAN discovery requires a configured rendezvous/bootstrap service.",
             "discovery_running": bool(discovery and discovery.running),
             "discovery_error": (discovery.last_error if discovery else None) or self._p2p_discovery_error,
             "discovered_peers": [
