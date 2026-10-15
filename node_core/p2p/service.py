@@ -65,6 +65,10 @@ class NodePeerService:
         self._stop = threading.Event()
         self._workers: set[threading.Thread] = set()
         self._workers_lock = threading.Lock()
+        self._active_peers: dict[str, dict[str, str]] = {}
+        self._active_peers_lock = threading.Lock()
+        self._active_connections: set[socket.socket] = set()
+        self._active_connections_lock = threading.Lock()
         self.last_error: str | None = None
 
     @property
@@ -73,6 +77,36 @@ class NodePeerService:
             raise PeerServiceError("Peer service is not listening.")
         host, port = self._listener.getsockname()[:2]
         return str(host), int(port)
+
+    @property
+    def active_peers(self) -> list[dict[str, str]]:
+        """Return a snapshot of currently authenticated inbound peer sessions."""
+        with self._active_peers_lock:
+            return [dict(peer) for peer in self._active_peers.values()]
+
+    def _register_peer(self, peer: dict[str, str]) -> str:
+        session_id = uuid.uuid4().hex
+        now = datetime.now(timezone.utc).isoformat()
+        with self._active_peers_lock:
+            self._active_peers[session_id] = {
+                "session_id": session_id,
+                "node_id": peer["node_id"],
+                "connected_at": now,
+                "last_seen": now,
+            }
+        return session_id
+
+    def _touch_peer(self, session_id: str) -> None:
+        with self._active_peers_lock:
+            peer = self._active_peers.get(session_id)
+            if peer is not None:
+                peer["last_seen"] = datetime.now(timezone.utc).isoformat()
+
+    def _unregister_peer(self, session_id: str | None) -> None:
+        if session_id is None:
+            return
+        with self._active_peers_lock:
+            self._active_peers.pop(session_id, None)
 
     def start(self) -> tuple[str, int]:
         """Start listening; the port may be zero to request an OS-assigned port."""
@@ -103,6 +137,19 @@ class NodePeerService:
         if listener is not None:
             try:
                 listener.close()
+            except OSError:
+                pass
+        # Revocation and shutdown must terminate established sessions as well
+        # as the listening socket; otherwise an old allowlist could remain usable.
+        with self._active_connections_lock:
+            connections = list(self._active_connections)
+        for active_connection in connections:
+            try:
+                active_connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                active_connection.close()
             except OSError:
                 pass
         if self._accept_thread is not None:
@@ -222,10 +269,15 @@ class NodePeerService:
             worker.start()
 
     def _handle_connection(self, connection: socket.socket) -> None:
+        session_id: str | None = None
+        tls_socket: socket.socket | None = None
         try:
             connection.settimeout(self.timeout_seconds)
             context = self.tls_transport.server_context(self.trusted_peers.values())
-            with context.wrap_socket(connection, server_side=True) as tls_socket:
+            tls_socket = context.wrap_socket(connection, server_side=True)
+            with self._active_connections_lock:
+                self._active_connections.add(tls_socket)
+            with tls_socket:
                 certificate_peer = self.tls_transport.verify_peer_identity(tls_socket)
                 node_id = certificate_peer["node_id"]
                 if node_id not in self.trusted_peers:
@@ -237,15 +289,24 @@ class NodePeerService:
                     timeout_seconds=self.timeout_seconds,
                 )
                 peer = session.establish(tls_socket, "responder")
+                session_id = self._register_peer(peer)
                 if self.on_peer:
                     self.on_peer(peer, tls_socket)
-                self._serve_application_messages(tls_socket)
+                self._serve_application_messages(tls_socket, session_id)
         except socket.timeout:
             # Idle peers may close without sending an application message.
             pass
         except (OSError, PeerSessionError, TLSTransportError, PeerServiceError) as exc:
             self.last_error = str(exc)
         finally:
+            self._unregister_peer(session_id)
+            if tls_socket is not None:
+                with self._active_connections_lock:
+                    self._active_connections.discard(tls_socket)
+                try:
+                    tls_socket.close()
+                except OSError:
+                    pass
             try:
                 connection.close()
             except OSError:
@@ -254,13 +315,16 @@ class NodePeerService:
             with self._workers_lock:
                 self._workers.discard(current)
 
-    def _serve_application_messages(self, tls_socket: socket.socket) -> None:
+    def _serve_application_messages(
+        self, tls_socket: socket.socket, session_id: str
+    ) -> None:
         """Serve bounded application requests on an authenticated TLS connection."""
         while not self._stop.is_set():
             try:
                 message = receive_application_message(tls_socket)
             except socket.timeout:
                 return
+            self._touch_peer(session_id)
             if message["type"] == "STATUS" and message["action"] == "request":
                 send_application_message(
                     tls_socket,
