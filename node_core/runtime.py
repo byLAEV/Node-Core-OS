@@ -47,6 +47,8 @@ class NodeRuntime:
         self._p2p_trust: Any = None
         self._p2p_tls: Any = None
         self.p2p_service: Any = None
+        self.p2p_discovery: Any = None
+        self._p2p_discovery_error: str | None = None
         self._booted = False
 
     @property
@@ -89,6 +91,9 @@ class NodeRuntime:
         self.storage.initialize()
         self.config.save()
         self._booted = True
+        # Discovery is independent of Kubo/IPFS and must not prevent the core
+        # CLI from booting when multicast is unavailable on this network.
+        self.start_native_discovery()
 
     def native_p2p_status(self) -> dict[str, object]:
         """Return local identity, trust, and listener state without requiring Kubo."""
@@ -98,6 +103,8 @@ class NodeRuntime:
         self.p2p_tls.ensure_certificate()
         peers = self.p2p_trust.list_peers()
         service = self.p2p_service
+        discovery = self.p2p_discovery
+        discovered_peers = list(discovery.snapshot()) if discovery is not None else []
         listening = False
         address: tuple[str, int] | None = None
         if service is not None:
@@ -116,7 +123,51 @@ class NodeRuntime:
             "listen_address": address,
             "active_peers": service.active_peers if service else [],
             "last_error": service.last_error if service else None,
+            "discovery_running": bool(discovery and discovery.running),
+            "discovery_error": (discovery.last_error if discovery else None) or self._p2p_discovery_error,
+            "discovered_peers": [
+                {
+                    "node_id": peer.node_id,
+                    "host": peer.host,
+                    "port": peer.port,
+                    "last_announcement": peer.timestamp,
+                }
+                for peer in discovered_peers
+            ],
         }
+
+    def start_native_discovery(self) -> bool:
+        """Start signed LAN discovery without requiring Kubo or trusted peers."""
+        if self.p2p_discovery is not None and self.p2p_discovery.running:
+            return True
+        try:
+            from node_core.p2p.discovery_service import NodeDiscoveryService
+
+            discovery = NodeDiscoveryService(
+                self.p2p_identity,
+                # Default endpoint advertised for native P2P; the listener remains
+                # gated separately by the existing explicit trust store.
+                p2p_port=45873,
+            )
+            discovery.start()
+            self.p2p_discovery = discovery
+            self._p2p_discovery_error = None
+            return True
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:
+            self.p2p_discovery = None
+            self._p2p_discovery_error = str(exc)
+            return False
+
+    def stop_native_discovery(self) -> None:
+        """Stop the LAN discovery worker if it is running."""
+        discovery, self.p2p_discovery = self.p2p_discovery, None
+        if discovery is not None:
+            discovery.stop()
+
+    def shutdown(self) -> None:
+        """Stop all native P2P services owned by this runtime."""
+        self.stop_native_p2p()
+        self.stop_native_discovery()
 
     def start_native_p2p(self, host: str = "127.0.0.1", port: int = 0) -> tuple[str, int]:
         """Start the native P2P listener using the current persistent trust allowlist."""
