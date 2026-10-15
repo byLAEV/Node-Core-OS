@@ -65,10 +65,12 @@ class NodePeerService:
         self._stop = threading.Event()
         self._workers: set[threading.Thread] = set()
         self._workers_lock = threading.Lock()
+        self._trusted_peers_lock = threading.RLock()
         self._active_peers: dict[str, dict[str, str]] = {}
         self._active_peers_lock = threading.Lock()
         self._active_connections: set[socket.socket] = set()
         self._active_connections_lock = threading.Lock()
+        self._connection_peers: dict[socket.socket, str] = {}
         self.last_error: str | None = None
 
     @property
@@ -112,6 +114,29 @@ class NodePeerService:
             return
         with self._active_peers_lock:
             self._active_peers.pop(session_id, None)
+
+    def revoke_peer(self, node_id: str) -> int:
+        """Remove one peer from the live allowlist and close only its inbound sessions."""
+        with self._trusted_peers_lock:
+            if node_id not in self.trusted_peers:
+                return 0
+            self.trusted_peers.pop(node_id, None)
+            with self._active_connections_lock:
+                connections = [
+                    connection
+                    for connection, peer_node_id in self._connection_peers.items()
+                    if peer_node_id == node_id
+                ]
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                connection.close()
+            except OSError:
+                pass
+        return len(connections)
 
     def start(self) -> tuple[str, int]:
         """Start listening; the port may be zero to request an OS-assigned port."""
@@ -339,15 +364,15 @@ class NodePeerService:
         tls_socket: socket.socket | None = None
         try:
             connection.settimeout(self.timeout_seconds)
-            context = self.tls_transport.server_context(self.trusted_peers.values())
+            with self._trusted_peers_lock:
+                trusted_certificates = list(self.trusted_peers.values())
+            context = self.tls_transport.server_context(trusted_certificates)
             tls_socket = context.wrap_socket(connection, server_side=True)
             with self._active_connections_lock:
                 self._active_connections.add(tls_socket)
             with tls_socket:
                 certificate_peer = self.tls_transport.verify_peer_identity(tls_socket)
                 node_id = certificate_peer["node_id"]
-                if node_id not in self.trusted_peers:
-                    raise PeerServiceError("Peer certificate is not in the trusted-peer list.")
                 session = AuthenticatedPeerSession(
                     self.identity_store,
                     self.tls_transport,
@@ -355,7 +380,14 @@ class NodePeerService:
                     timeout_seconds=self.timeout_seconds,
                 )
                 peer = session.establish(tls_socket, "responder")
-                session_id = self._register_peer(peer)
+                # Recheck and register under the same lock used by revoke_peer so
+                # a handshake racing with revocation cannot create a stale session.
+                with self._trusted_peers_lock:
+                    if node_id not in self.trusted_peers:
+                        raise PeerServiceError("Peer certificate is not in the trusted-peer list.")
+                    session_id = self._register_peer(peer)
+                    with self._active_connections_lock:
+                        self._connection_peers[tls_socket] = node_id
                 if self.on_peer:
                     self.on_peer(peer, tls_socket)
                 self._serve_application_messages(tls_socket, session_id)
@@ -369,6 +401,7 @@ class NodePeerService:
             if tls_socket is not None:
                 with self._active_connections_lock:
                     self._active_connections.discard(tls_socket)
+                    self._connection_peers.pop(tls_socket, None)
                 try:
                     tls_socket.close()
                 except OSError:
