@@ -54,8 +54,10 @@ def create_announcement(
         address = ipaddress.ip_address(host)
     except ValueError as exc:
         raise DiscoveryAnnouncementError("Discovery host must be an IP address.") from exc
-    if not 1 <= port <= 65535:
-        raise DiscoveryAnnouncementError("Discovery port must be between 1 and 65535.")
+    # Port 0 explicitly means that this identity is discoverable but has no
+    # currently advertised inbound P2P endpoint.
+    if type(port) is not int or not 0 <= port <= 65535:
+        raise DiscoveryAnnouncementError("Discovery port must be between 0 and 65535.")
 
     identity = identity_store.initialize()
     fields: dict[str, Any] = {
@@ -129,7 +131,8 @@ def parse_announcement(
         host = str(ipaddress.ip_address(host))
     except ValueError as exc:
         raise DiscoveryAnnouncementError("Discovery host must be an IP address.") from exc
-    if type(port) is not int or not 1 <= port <= 65535:
+    # Port 0 is an identity-only announcement, not a reachable endpoint.
+    if type(port) is not int or not 0 <= port <= 65535:
         raise DiscoveryAnnouncementError("Discovery port is invalid.")
     if type(timestamp) is not int or timestamp < 0:
         raise DiscoveryAnnouncementError("Discovery timestamp is invalid.")
