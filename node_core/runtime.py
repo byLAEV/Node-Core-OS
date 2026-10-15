@@ -146,6 +146,22 @@ class NodeRuntime:
             ],
         }
 
+    def _native_p2p_advertised_port(self) -> int:
+        """Return a port only when a non-loopback native P2P listener is active."""
+        service = self.p2p_service
+        if service is None:
+            return 0
+        try:
+            host, port = service.address
+        except Exception:
+            return 0
+        if not isinstance(port, int) or not 1 <= port <= 65535:
+            return 0
+        # A listener bound only to loopback cannot be reached by other LAN nodes.
+        if host.startswith("127.") or host == "::1" or host == "localhost":
+            return 0
+        return port
+
     def start_native_discovery(self) -> bool:
         """Start signed LAN discovery and schedule bounded retries after failures."""
         with self._p2p_discovery_lock:
@@ -171,9 +187,10 @@ class NodeRuntime:
 
             discovery = NodeDiscoveryService(
                 self.p2p_identity,
-                # This is only the advertised candidate endpoint. The listener
-                # remains gated by the explicit trusted-peer allowlist.
-                p2p_port=45873,
+                # Identity announcements remain useful before a listener exists.
+                # The service advertises port 0 until a reachable listener is active,
+                # then reads its real bound port for each announcement.
+                p2p_port=self._native_p2p_advertised_port,
             )
             discovery.start()
             self.p2p_discovery = discovery
