@@ -6,6 +6,30 @@ if [[ "$(id -u)" == "0" ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+ensure_python_environment() {
+  local requirements_file="$1"
+  local environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
+  [[ -f "$requirements_file" ]] || {
+    printf 'Python requirements file not found: %s\n' "$requirements_file" >&2
+    return 1
+  }
+  mkdir -p "$NODE_CORE_DATA_DIR/runtime"
+  if [[ ! -x "$environment/bin/python" ]]; then
+    python3 -m venv "$environment" || {
+      printf 'Could not create the private Python environment. Install the python3-venv package and retry.\n' >&2
+      return 1
+    }
+  fi
+  "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+    printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
+    return 1
+  }
+  "$environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || {
+    printf 'The cryptography dependency failed its import verification.\n' >&2
+    return 1
+  }
+}
+
 install_application() {
   local source_dir="$1" target_dir="$NODE_CORE_DATA_DIR/app"
   if [[ -L "$target_dir" || ( -e "$target_dir" && ! -d "$target_dir" ) ]]; then
@@ -25,7 +49,7 @@ create_launcher() {
 #!/usr/bin/env bash
 set -euo pipefail
 export NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json"
-exec python3 "$NODE_CORE_DATA_DIR/app/main.py" "$@"
+exec "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" "$NODE_CORE_DATA_DIR/app/main.py" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core"
 
