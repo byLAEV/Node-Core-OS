@@ -84,10 +84,10 @@ jobs:
           test "$(id -u)" -ne 0
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
           test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
-          expected_node_core_version="$(tr -d '\\r\\n' < VERSION)"
+          expected_node_core_version="$(tr -d '\r\n' < VERSION)"
           installed_node_core_version="$(tr -d '\\r\\n' < "$NODE_CORE_DATA_DIR/app/VERSION")"
           if [[ "$installed_node_core_version" != "$expected_node_core_version" ]]; then
-            printf 'Node Core OS version mismatch: repository=%s installed=%s path=%s\\n' \\
+            printf 'Node Core OS version mismatch: repository=%s installed=%s path=%s\n' \\
               "$expected_node_core_version" "$installed_node_core_version" "$NODE_CORE_DATA_DIR/app/VERSION" >&2
             exit 1
           fi
@@ -160,7 +160,7 @@ jobs:
           export NODE_CORE_CONFIG
           export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
           # Use a real subprocess and stdin, because the Applications menu launches P2P Contracts as a child process.
-          printf '%s\\n' 4 2 yes 0 0 0 | python3 "$NODE_CORE_DATA_DIR/app/main.py" > "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
+          printf '%s\n' 4 2 yes 0 0 0 | python3 "$NODE_CORE_DATA_DIR/app/main.py" > "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '1. Create Public Request' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
           grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/${{ matrix.node }}-p2p-menu.txt"
