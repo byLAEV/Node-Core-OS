@@ -791,6 +791,53 @@ class MainMenu:
                 print(f"{application_name} exited with status {result.returncode}.")
                 input("\n> ")
 
+    def _network_overview(self) -> None:
+        """Show Kubo and native P2P status independently without conflating networks."""
+        print("\nNode Core OS — Estado de la red de nodos")
+
+        try:
+            status = self.runtime.network.status()
+            print("\nKubo / IPFS")
+            print("Estado: DISPONIBLE")
+            print(f"Peer ID local: {status.identity.peer_id}")
+            print(f"Conexiones directas: {len(status.connected_peers)}")
+            for peer_id in status.connected_peers:
+                print(f"- {peer_id}")
+            if not status.connected_peers:
+                print("No hay peers Kubo conectados directamente.")
+            print("Nota: esta cifra no representa todos los nodos de la red IPFS.")
+        except Exception as exc:
+            print("\nKubo / IPFS")
+            print("Estado: NO DISPONIBLE")
+            print(f"Motivo: {exc}")
+
+        try:
+            status = self.runtime.native_p2p_status()
+            address = status["listen_address"]
+            active_peers = status["active_peers"]
+            print("\nP2P nativo autenticado de Node Core OS")
+            print(f"Estado del listener: {'ACTIVO' if status['service_running'] else 'DETENIDO'}")
+            print(f"Node ID local: {status['node_id']}")
+            print(
+                f"Dirección de escucha: {address[0]}:{address[1]}"
+                if address
+                else "Dirección de escucha: -"
+            )
+            print(f"Peers de confianza: {status['trusted_count']}")
+            print(f"Peers revocados: {status['revoked_count']}")
+            print(f"Sesiones entrantes autenticadas: {len(active_peers)}")
+            for peer in active_peers:
+                print(f"- {peer['node_id']} (última actividad UTC: {peer['last_seen']})")
+            if status["last_error"]:
+                print(f"Último error del servicio: {status['last_error']}")
+        except Exception as exc:
+            print("\nP2P nativo autenticado de Node Core OS")
+            print("Estado: NO DISPONIBLE")
+            print(f"Motivo: {exc}")
+
+        print("\nKubo/IPFS y P2P nativo son transportes distintos; sus peers no se suman.")
+
+
     def network_nodes(self) -> None:
         """Manage native authenticated P2P and the separate Kubo/IPFS network."""
         while True:
@@ -808,6 +855,7 @@ class MainMenu:
             print("10. Identity Presence / Shared Report")
             print("11. Query trusted native peer status")
             print("12. Exchange known native peer IDs")
+            print("13. Estado general de la red de nodos")
             choice = input("\n> ").strip()
 
             if choice == "0":
@@ -932,6 +980,9 @@ class MainMenu:
                     else:
                         print("No additional peer IDs were advertised.")
                     print("Trust remains unchanged; verify certificates out of band before trusting a node.")
+                    input("\n> ")
+                elif choice == "13":
+                    self._network_overview()
                     input("\n> ")
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
