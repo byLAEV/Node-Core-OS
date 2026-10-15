@@ -69,24 +69,28 @@ class MainMenu:
                 self.network_nodes()
 
     def _print_native_network_indicator(self) -> None:
-        """Add one concise native-network line without changing the existing menu header."""
+        """Show verified scope-specific status without implying global connectivity."""
         try:
             status = self.runtime.native_p2p_status()
             discovered = len(status.get("discovered_peers", []))
             if status.get("discovery_running"):
-                state = "DISCOVERING" if discovered == 0 else "NODES DETECTED"
+                lan_state = "RUNNING" if discovered == 0 else "NODES DETECTED"
             else:
-                state = "UNAVAILABLE"
+                lan_state = "UNAVAILABLE"
             print(
-                f"Native node network: {state} | "
-                f"Discovered: {discovered} | "
-                f"Authenticated sessions: {len(status.get('active_peers', []))} | "
-                f"WAN discovery: {'ACTIVE' if status.get('wan_discovery_running') else 'NOT CONFIGURED'}"
+                f"Native P2P LAN discovery: {lan_state} | "
+                f"Discovered identities: {discovered} | "
+                f"Authenticated inbound sessions: {len(status.get('active_peers', []))}"
             )
             if status.get("discovery_error") and not status.get("discovery_running"):
-                print(f"Discovery detail: {status['discovery_error']}")
+                print(f"LAN discovery detail: {status['discovery_error']}")
+            if status.get("wan_discovery_running"):
+                print("Native P2P worldwide discovery: ACTIVE")
+            else:
+                reason = status.get("wan_discovery_error") or "No worldwide discovery service is configured."
+                print(f"Native P2P worldwide discovery: NOT CONFIGURED — {reason}")
         except Exception as exc:
-            print(f"Native node network: UNAVAILABLE ({exc})")
+            print(f"Native P2P status: UNAVAILABLE ({exc})")
 
     def _print_update_status(self, status: UpdateStatus) -> None:
         if status.available:
@@ -938,6 +942,18 @@ class MainMenu:
                     print(f"Listen address: {address[0]}:{address[1]}" if address else "Listen address: -")
                     print(f"Trusted peers: {status['trusted_count']}")
                     print(f"Revoked peers: {status['revoked_count']}")
+                    print(
+                        "LAN discovery: "
+                        f"{'RUNNING' if status.get('discovery_running') else 'UNAVAILABLE'}"
+                    )
+                    print(
+                        "Worldwide discovery: "
+                        f"{'ACTIVE' if status.get('wan_discovery_running') else 'NOT CONFIGURED'}"
+                    )
+                    if status.get("wan_discovery_error"):
+                        print(f"Worldwide discovery detail: {status['wan_discovery_error']}")
+                    if status.get("discovery_error"):
+                        print(f"LAN discovery detail: {status['discovery_error']}")
                     active_peers = status["active_peers"]
                     print(f"Authenticated inbound sessions: {len(active_peers)}")
                     for peer in active_peers:
@@ -1054,7 +1070,8 @@ class MainMenu:
                 elif choice == "14":
                     status = self.runtime.native_p2p_status()
                     print("\nDetected native P2P identities (not automatically trusted)")
-                    print(f"Discovery: {'RUNNING' if status.get('discovery_running') else 'UNAVAILABLE'}")
+                    print(f"LAN discovery: {'RUNNING' if status.get('discovery_running') else 'UNAVAILABLE'}")
+                    print("Worldwide discovery: NOT CONFIGURED" if not status.get("wan_discovery_running") else "Worldwide discovery: ACTIVE")
                     peers = status.get("discovered_peers", [])
                     if not peers:
                         print("No valid signed LAN announcements have been observed.")
