@@ -46,6 +46,38 @@ class NativeP2PRuntimeTests(unittest.TestCase):
         self.assertIsInstance(status["discovered_peers"], list)
 
 
+    def test_discovered_identity_is_not_reported_as_trusted_or_authenticated(self):
+        from types import SimpleNamespace
+
+        node_id = "sha256:" + "a" * 64
+
+        class FakeDiscovery:
+            running = True
+            last_error = None
+
+            def snapshot(self):
+                return (
+                    SimpleNamespace(
+                        node_id=node_id,
+                        host="192.168.1.25",
+                        port=0,
+                        timestamp=1234567890,
+                    ),
+                )
+
+        self.runtime.p2p_discovery = FakeDiscovery()
+        status = self.runtime.native_p2p_status()
+
+        self.assertEqual(len(status["discovered_peer_status"]), 1)
+        peer = status["discovered_peer_status"][0]
+        self.assertEqual(peer["node_id"], node_id)
+        self.assertEqual(peer["trust_status"], "not_trusted")
+        self.assertFalse(peer["authenticated_inbound_session"])
+        self.assertEqual(peer["state"], "discovered_not_trusted")
+        self.assertEqual(status["trusted_count"], 0)
+
+        self.runtime.p2p_discovery = None
+
     def test_discovery_can_be_started_without_kubo_or_trusted_peers(self):
         # LAN multicast may be unavailable in CI, so assert graceful startup handling
         # rather than requiring the host network to support multicast.
