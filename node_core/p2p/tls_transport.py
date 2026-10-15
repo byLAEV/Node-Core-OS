@@ -79,7 +79,7 @@ class NodeTLSTransport:
 
     def server_context(self, trusted_peer_certificates: Iterable[bytes]) -> ssl.SSLContext:
         """Build a TLS server context requiring a certificate from a pinned peer."""
-        context = self._base_context()
+        context = self._base_context(server_side=True)
         context.load_cert_chain(str(self.certificate_path), str(self.identity_store.private_key_path))
         self._load_pinned_certificates(context, trusted_peer_certificates)
         context.verify_mode = ssl.CERT_REQUIRED
@@ -87,7 +87,7 @@ class NodeTLSTransport:
 
     def client_context(self, trusted_peer_certificates: Iterable[bytes]) -> ssl.SSLContext:
         """Build a TLS client context requiring a pinned server and presenting this node."""
-        context = self._base_context()
+        context = self._base_context(server_side=False)
         context.check_hostname = False
         context.load_cert_chain(str(self.certificate_path), str(self.identity_store.private_key_path))
         self._load_pinned_certificates(context, trusted_peer_certificates)
@@ -118,8 +118,9 @@ class NodeTLSTransport:
             raise TLSTransportError("TLS peer certificate is malformed.") from exc
 
     @staticmethod
-    def _base_context() -> ssl.SSLContext:
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    def _base_context(server_side: bool) -> ssl.SSLContext:
+        protocol = ssl.PROTOCOL_TLS_SERVER if server_side else ssl.PROTOCOL_TLS_CLIENT
+        context = ssl.SSLContext(protocol)
         context.minimum_version = ssl.TLSVersion.TLSv1_3
         context.maximum_version = ssl.TLSVersion.TLSv1_3
         context.check_hostname = False
