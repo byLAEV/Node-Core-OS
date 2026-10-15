@@ -2,6 +2,18 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.5.2] - 2026-10-15
+
+- Make LAN discovery and worldwide discovery independent, explicitly labeled states in the network menu.
+- Show discovered identities separately from authenticated inbound sessions and never treat discovery as trust or authorization.
+- Preserve the existing user-level installation contract and existing local data during updates.
+- Harden updater rollback reporting so recovery files are retained if automatic rollback fails.
+- Add regression tests for symlinked application paths, commit markers, and release source paths.
+- Align installer package names and release metadata with Node Core OS as a separate application; the Node Core updater package no longer bundles the HashPaper updater.
+- Validate package archives and publish SHA-512 checksums through the version-tag workflow.
+- Release validation targets Ubuntu 24.04 x86_64 GNU/Linux. Termux/Android is not declared supported by this release.
+
+
 ## Node Core OS [1.5.1] - 2026-10-15
 
 - Add a consolidated Network / Nodes status dashboard for Kubo/IPFS and native authenticated P2P.
