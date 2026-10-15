@@ -40,7 +40,7 @@ class FakeKubo:
 class FakeService:
     def __init__(self):
         self.import_calls = 0
-        self.manifest = {"manifest_hash": "manifest-hash-1", "sequence": 1}
+        self.manifest = {"manifest_hash": "manifest-hash-1", "propagation_hash": "a" * 64, "sequence": 1}
 
     def import_remote_requests(self, documents):
         self.import_calls += 1
@@ -152,7 +152,7 @@ class PropagationTests(unittest.TestCase):
         remote_peer = "QmRemoteNodeIdentity012345678901234567890123456789"
         service = FakeService()
         self.protocol.service = service
-        state = self.protocol.accept_new_propagation(None, require_owner_request=True)
+        state = self.protocol.accept_new_propagation("a" * 64, require_owner_request=True)
         state["send_enabled_at"] = timestamp(utc_now() - timedelta(seconds=1))
         state["status"] = "READY_TO_SUBMIT"
         self.protocol._save_state(state)

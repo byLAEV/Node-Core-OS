@@ -6,6 +6,7 @@ from pathlib import Path
 import threading
 from typing import Any
 
+from applications.p2p_contracts.p2p_contracts.genesis import GENESIS_HASH
 from applications.p2p_contracts.p2p_contracts.propagation import (
     PropagationProtocol, PubSubUnavailable, parse_timestamp,
 )

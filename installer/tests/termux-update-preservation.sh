@@ -57,6 +57,8 @@ printf 'VALUE = "fixture P2P service"\n' > "$TEST_FIXTURES/release/Node-Core-OS-
 printf 'VALUE = "fixture P2P propagation"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/p2p_contracts/propagation.py"
 cp "$REPOSITORY_ROOT/applications/p2p_contracts/genesis-manifest.json" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/genesis-manifest.json"
+cp "$REPOSITORY_ROOT/applications/p2p_contracts/p2p_contracts/genesis.py" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/p2p_contracts/genesis.py"
 cat > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/tests/test_service.py" <<'PY'
 import unittest
 class P2PServiceFixtureTest(unittest.TestCase):
@@ -109,7 +111,7 @@ while (($#)); do
 done
 [[ -n "$output" && -n "$url" ]] || exit 2
 case "$url" in
-  */commits/main) cp "$TEST_FIXTURES/latest-commit.json" "$output" ;;
+  */commits/main|*/commits\?sha=main\&per_page=1) cp "$TEST_FIXTURES/latest-commit.json" "$output" ;;
   */archive/5555555555555555555555555555555555555555.tar.gz) cp "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" "$output" ;;
   *) printf 'unexpected URL in Termux updater test: %s\n' "$url" >&2; exit 3 ;;
 esac

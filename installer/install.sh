@@ -55,6 +55,14 @@ main() {
     printf 'Installed Node Core P2P Contracts version file is missing.\n' >&2
     exit 1
   }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/genesis-manifest.json" ]] || {
+    printf 'Node Core P2P Contracts genesis manifest is missing.\n' >&2
+    exit 1
+  }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/genesis.py" ]] || {
+    printf 'Node Core P2P Contracts genesis validator is missing.\n' >&2
+    exit 1
+  }
   [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
     printf 'Installed Node Core P2P Contracts CLI is missing.\n' >&2
     exit 1
@@ -81,7 +89,8 @@ if version != "1.0.0":
 print("Installed Node Core P2P Contracts version:", version)
 PY
   python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
-  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
+  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
+  (cd "$NODE_CORE_DATA_DIR/app" && python3 -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])")
   install_kubo
   write_config
   create_launcher

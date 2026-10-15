@@ -233,6 +233,11 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             self.assertIn(proposal["proposal_hash"], status_output.getvalue())
             self.assertIn("Remote claims are UNVERIFIED", status_output.getvalue())
 
+            # Node B must explicitly accept the genesis reference locally before its first request.
+            services[1].accept_initial_genesis_reference(
+                accepted_by_node_id=networks[1].identity().peer_id
+            )
+
             # Exercise the real interactive BTC exchange form, not only the service API.
             # The input stream is synthetic, while the request is sent through the real
             # PropagationProtocol and the three real Kubo daemons started by this test.
@@ -292,7 +297,15 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             self.assertIsNotNone(request_a_found, "Node A's owner request form was not committed.")
             request_a_doc = request_a_found["request"]
             finalized_state = protocols[0].current_state()
-            self.assertEqual(finalized_state["status"], "FINALIZED")
+            self.assertEqual(
+                finalized_state["status"], "FINALIZED",
+                "Batch did not finalize: "
+                f"missing_peer_ids={finalized_state.get('missing_peer_ids')}; "
+                f"batch_peer_errors={finalized_state.get('batch_peer_errors')}; "
+                f"acknowledgements={finalized_state.get('batch_acknowledgements')}; "
+                f"node_listener_errors={[protocol._listener_errors for protocol in protocols]}; "
+                f"received_types={[[item.get('type') for item in protocol._received[-30:]] for protocol in protocols]}",
+            )
             self.assertTrue(finalized_state["owner_request_sent"])
             self.assertEqual(services[0].current_manifest()["sequence"], 1)
             self.assertEqual(len(services[0].current_manifest()["requests"]), 2)

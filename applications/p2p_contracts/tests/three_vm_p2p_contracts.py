@@ -212,6 +212,8 @@ def main():
         raise AssertionError(f"{role} lost a peer connection after the wait: {connected_peer_ids!r}")
 
     service = P2PContractsService(runtime.storage, runtime.identity_profile, runtime.network)
+    # Each isolated node must explicitly accept the configured genesis root before requests.
+    service.accept_initial_genesis_reference(accepted_by_node_id=local_identity.peer_id)
     protocol = PropagationProtocol(runtime.storage, runtime.network, runtime.kubo, service=service)
     protocol.start()
     summary = {
@@ -473,7 +475,7 @@ def main():
         # Scenario 2 rotates roles: B proposes, C submits, and A records closure evidence.
         propagation_module.WINDOW_SECONDS = 45
         if role == "node-b":
-            parent_hash = service.current_manifest()["manifest_hash"]
+            parent_hash = service.current_manifest()["propagation_hash"]
             proposal2 = protocol.accept_new_propagation(parent_hash, require_owner_request=True)
             wait_until(
                 "node C's request to be queued by node B",
