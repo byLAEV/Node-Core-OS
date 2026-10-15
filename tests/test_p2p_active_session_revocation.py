@@ -103,13 +103,23 @@ class ActivePeerSessionRevocationTests(unittest.TestCase):
 
         # The listener remains online but must reject the revoked certificate.
         raw = socket.create_connection((host, port), timeout=3)
+        revoked_tls = None
         try:
+            # TLS 1.3 may return from the client-side wrap_socket before the
+            # server's certificate-rejection alert is observed. Force I/O to
+            # complete the handshake and assert that the revoked certificate
+            # cannot establish a usable connection.
+            revoked_tls = self.tls_a.client_context([self.cert_b]).wrap_socket(
+                raw, server_hostname=None
+            )
+            revoked_tls.settimeout(3)
             with self.assertRaises(OSError):
-                self.tls_a.client_context([self.cert_b]).wrap_socket(
-                    raw, server_hostname=None
-                )
+                revoked_tls.recv(1)
         finally:
-            raw.close()
+            if revoked_tls is not None:
+                revoked_tls.close()
+            else:
+                raw.close()
 
     def test_active_session_is_removed_when_service_stops(self):
         server = NodePeerService(
