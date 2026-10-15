@@ -30,7 +30,7 @@ class NativeP2PRuntimeTests(unittest.TestCase):
             os.environ.pop("NODE_CORE_CONFIG", None)
         else:
             os.environ["NODE_CORE_CONFIG"] = self.previous_config
-        self.runtime.stop_native_p2p()
+        self.runtime.shutdown()
 
     def test_native_status_initializes_identity_without_kubo(self):
         status = self.runtime.native_p2p_status()
@@ -38,6 +38,22 @@ class NativeP2PRuntimeTests(unittest.TestCase):
         self.assertFalse(status["service_running"])
         self.assertEqual(status["trusted_count"], 0)
         self.assertTrue(Path(status["certificate_path"]).is_file())
+        self.assertIn("discovery_running", status)
+        self.assertIn("discovery_error", status)
+        self.assertIn("discovered_peers", status)
+        self.assertIsInstance(status["discovered_peers"], list)
+
+
+    def test_discovery_can_be_started_without_kubo_or_trusted_peers(self):
+        # LAN multicast may be unavailable in CI, so assert graceful startup handling
+        # rather than requiring the host network to support multicast.
+        result = self.runtime.start_native_discovery()
+        status = self.runtime.native_p2p_status()
+        self.assertIsInstance(result, bool)
+        self.assertEqual(status["trusted_count"], 0)
+        self.assertIn("discovery_running", status)
+        if not result:
+            self.assertTrue(status["discovery_error"])
 
     def test_listener_requires_an_explicit_trusted_peer(self):
         from node_core.p2p.service import PeerServiceError
