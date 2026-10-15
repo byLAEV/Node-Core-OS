@@ -275,6 +275,7 @@ class P2PContractsService:
             "created_at": _now(),
             "requests": requests,
             "evidence": evidence,
+            "previous_propagation_hash": previous_propagation_hash,
         }
         hl = manifest_content_hash(payload)
         propagation_hash = next_propagation_hash(previous_propagation_hash, hl)
