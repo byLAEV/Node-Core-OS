@@ -20,14 +20,18 @@ ensure_python_environment() {
       return 1
     }
   fi
-  "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
-    printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
-    return 1
-  }
-  "$environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || {
-    printf 'The cryptography dependency failed its import verification.\n' >&2
-    return 1
-  }
+  if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
+    "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+      printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
+      return 1
+    }
+  fi
+  if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
+    "$environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || {
+      printf 'The cryptography dependency failed its import verification.\n' >&2
+      return 1
+    }
+  fi
 }
 
 install_application() {
