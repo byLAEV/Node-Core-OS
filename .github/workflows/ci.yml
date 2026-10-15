@@ -38,6 +38,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Python dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
       - name: Verify supported platform
         run: |
           set -euo pipefail
