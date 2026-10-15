@@ -199,7 +199,12 @@ class NodeRuntime:
         result = self.p2p_trust.revoke(node_id)
         service = self.p2p_service
         if service is not None:
-            service.revoke_peer(node_id)
+            if self.p2p_trust.trusted_certificates():
+                service.revoke_peer(node_id)
+            else:
+                # A listener with an empty allowlist has no useful authenticated
+                # sessions to serve, so stop it rather than leave it misleadingly active.
+                self.stop_native_p2p()
         return result
 
     def menu(self) -> None:
