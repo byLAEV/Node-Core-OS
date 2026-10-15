@@ -109,7 +109,7 @@ while (($#)); do
 done
 [[ -n "$output" && -n "$url" ]] || exit 2
 case "$url" in
-  */commits/main) cp "$TEST_FIXTURES/latest-commit.json" "$output" ;;
+  */commits/main|*/commits\?sha=main\&per_page=1) cp "$TEST_FIXTURES/latest-commit.json" "$output" ;;
   */archive/5555555555555555555555555555555555555555.tar.gz) cp "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" "$output" ;;
   *) printf 'unexpected URL in Termux updater test: %s\n' "$url" >&2; exit 3 ;;
 esac
