@@ -55,8 +55,17 @@ class DiscoveryAnnouncementTests(unittest.TestCase):
     def test_rejects_invalid_address_and_port(self):
         with self.assertRaises(DiscoveryAnnouncementError):
             create_announcement(self.identity, "localhost", 4242, timestamp=1000)
-        with self.assertRaises(DiscoveryAnnouncementError):
-            create_announcement(self.identity, "192.168.1.10", 0, timestamp=1000)
+        # Port zero is valid for identity-only announcements when no listener is available.
+        payload = create_announcement(
+            self.identity, "192.168.1.10", 0, timestamp=1000
+        )
+        self.assertEqual(parse_announcement(payload, now=1000).port, 0)
+        for invalid_port in (-1, 65536):
+            with self.subTest(port=invalid_port):
+                with self.assertRaises(DiscoveryAnnouncementError):
+                    create_announcement(
+                        self.identity, "192.168.1.10", invalid_port, timestamp=1000
+                    )
 
 
 if __name__ == "__main__":
