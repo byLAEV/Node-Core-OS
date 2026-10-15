@@ -38,8 +38,10 @@ class NodeTLSTransportTests(unittest.TestCase):
             NameOID.COMMON_NAME
         )[0].value
         self.assertNotEqual(subject_a, subject_b)
-        self.assertIn(self.meta_a["node_id"], subject_a)
-        self.assertIn(self.meta_b["node_id"], subject_b)
+        self.assertTrue(subject_a.startswith("NCP2P-"))
+        self.assertTrue(subject_b.startswith("NCP2P-"))
+        self.assertLessEqual(len(subject_a), 64)
+        self.assertLessEqual(len(subject_b), 64)
 
     def test_mutual_tls_13_handshake_and_identity_pinning(self):
         left, right = socket.socketpair()
