@@ -80,7 +80,7 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.assertEqual(manifest["genesis_hash"], root_hash)
         self.assertEqual(manifest["previous_manifest_hash"], root_hash)
         identity_header = manifest["identity_header"]
-        self.assertEqual(identity_header["node_id"], self.network.identity().peer_id)
+        self.assertEqual(identity_header["node_id"], FakeNetwork().identity().peer_id)
         self.assertEqual(
             set(identity_header),
             {"identity_id", "node_id", "identity_verification", "public_profile", "contact"},
