@@ -91,8 +91,6 @@ def validate_application_message(message: dict[str, Any]) -> dict[str, Any]:
             peers = message.get("peers")
             if not isinstance(peers, list) or len(peers) > MAX_PEER_LIST_ITEMS:
                 raise PeerSessionError("PEERS response must contain at most 100 peer IDs.")
-            if len(set(peers)) != len(peers):
-                raise PeerSessionError("PEERS response must not contain duplicate node IDs.")
             for node_id in peers:
                 if (
                     not isinstance(node_id, str)
@@ -101,6 +99,8 @@ def validate_application_message(message: dict[str, Any]) -> dict[str, Any]:
                     or any(char not in "0123456789abcdef" for char in node_id[7:])
                 ):
                     raise PeerSessionError("PEERS contains an invalid node ID.")
+            if len(set(peers)) != len(peers):
+                raise PeerSessionError("PEERS response must not contain duplicate node IDs.")
         elif "peers" in message:
             raise PeerSessionError("PEERS request must not include a peer list.")
     elif message_type == "ERROR":
