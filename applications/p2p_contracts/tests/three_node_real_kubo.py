@@ -84,13 +84,18 @@ class TestThreeNodeRealKubo(unittest.TestCase):
         cls.temporary = tempfile.TemporaryDirectory(prefix="p2p-contracts-three-node-")
         cls.root = Path(cls.temporary.name)
         cls.nodes = []
+        # Reserve one unique set of API, gateway and swarm ports for all three
+        # daemons at once. Reserving only one node at a time can reuse a gateway
+        # port that a previous daemon has not bound yet.
+        reserved_ports = free_ports(9)
+        port_sets = [reserved_ports[index:index + 3] for index in range(0, 9, 3)]
         for index in range(3):
             repo = cls.root / f"kubo-{index + 1}"
             repo.mkdir()
             env = {**os.environ, "IPFS_PATH": str(repo)}
             subprocess.run([cls.ipfs, "init", "--profile=test"], env=env, check=True,
                            capture_output=True, text=True, timeout=30)
-            api_port, gateway_port, swarm_port = free_ports(3)
+            api_port, gateway_port, swarm_port = port_sets[index]
             commands = [
                 ("config", "Addresses.API", f"/ip4/127.0.0.1/tcp/{api_port}"),
                 ("config", "Addresses.Gateway", f"/ip4/127.0.0.1/tcp/{gateway_port}"),
