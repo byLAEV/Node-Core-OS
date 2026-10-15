@@ -92,6 +92,49 @@ fi
 grep -q 'new app' "$NODE_CORE_DATA_DIR/app/main.py"
 grep -qx 'new-commit-123' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 
+# Reject an application directory that redirects writes outside the data directory.
+saved_app_dir="$temporary_root/app-directory-saved"
+outside_app_dir="$temporary_root/outside-app"
+mv "$NODE_CORE_DATA_DIR/app" "$saved_app_dir"
+mkdir -p "$outside_app_dir/node_core"
+printf 'outside app must survive\n' > "$outside_app_dir/main.py"
+ln -s "$outside_app_dir" "$NODE_CORE_DATA_DIR/app"
+if node_core_apply_application "$source_dir" "unsafe-app-path" 2>/dev/null; then
+  printf 'FAIL: symbolic-link app directory was accepted.\n' >&2
+  exit 1
+fi
+grep -qx 'outside app must survive' "$outside_app_dir/main.py"
+rm "$NODE_CORE_DATA_DIR/app"
+mv "$saved_app_dir" "$NODE_CORE_DATA_DIR/app"
+grep -q 'new app' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx 'new-commit-123' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+
+# Reject a symbolic-link commit marker before changing the live application.
+saved_commit_file="$temporary_root/commit-marker-saved"
+outside_commit_file="$temporary_root/outside-commit-marker"
+mv "$NODE_CORE_DATA_DIR/runtime/node-core-commit" "$saved_commit_file"
+printf 'external marker must survive\n' > "$outside_commit_file"
+ln -s "$outside_commit_file" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+if node_core_apply_application "$source_dir" "unsafe-marker" 2>/dev/null; then
+  printf 'FAIL: symbolic-link commit marker was accepted.\n' >&2
+  exit 1
+fi
+grep -qx 'external marker must survive' "$outside_commit_file"
+rm "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+mv "$saved_commit_file" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+grep -q 'new app' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx 'new-commit-123' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+
+# Reject a source directory supplied through a symbolic link.
+source_link="$temporary_root/release-link"
+ln -s "$source_dir" "$source_link"
+if node_core_apply_application "$source_link" "unsafe-source-link" 2>/dev/null; then
+  printf 'FAIL: symbolic-link source directory was accepted.\n' >&2
+  exit 1
+fi
+grep -q 'new app' "$NODE_CORE_DATA_DIR/app/main.py"
+grep -qx 'new-commit-123' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+
 # Reject root before touching files (mock only id inside this test process).
 id() {
   printf '0\n'
