@@ -4,6 +4,9 @@ import threading
 import unittest
 from pathlib import Path
 
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.tls_transport import NodeTLSTransport, TLSTransportError
 
@@ -26,6 +29,17 @@ class NodeTLSTransportTests(unittest.TestCase):
         self.assertEqual(self.tls_a.ensure_certificate(), self.cert_a)
         self.assertEqual(self.tls_b.ensure_certificate(), self.cert_b)
         self.assertTrue(self.tls_a.certificate_path.exists())
+
+    def test_pinned_peer_certificates_have_unique_subjects(self):
+        subject_a = x509.load_pem_x509_certificate(self.cert_a).subject.get_attributes_for_oid(
+            NameOID.COMMON_NAME
+        )[0].value
+        subject_b = x509.load_pem_x509_certificate(self.cert_b).subject.get_attributes_for_oid(
+            NameOID.COMMON_NAME
+        )[0].value
+        self.assertNotEqual(subject_a, subject_b)
+        self.assertIn(self.meta_a["node_id"], subject_a)
+        self.assertIn(self.meta_b["node_id"], subject_b)
 
     def test_mutual_tls_13_handshake_and_identity_pinning(self):
         left, right = socket.socketpair()
