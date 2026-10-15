@@ -104,12 +104,23 @@ jobs:
       - name: Download pinned Kubo CLI
         run: |
           set -euo pipefail
-          if ! curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 --retry 1 --retry-delay 2 \
-            https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
-            --output "$RUNNER_TEMP/kubo.tar.gz"; then
-            curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 \
-              https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
-              --output "$RUNNER_TEMP/kubo.tar.gz"
+          archive="$RUNNER_TEMP/kubo.tar.gz"
+          dist_url="https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz"
+          github_url="https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz"
+          downloaded=false
+          for url in "$dist_url" "$github_url"; do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 20 --max-time 180 \
+              --retry 5 --retry-all-errors --retry-delay 3 \
+              "$url" --output "$archive"; then
+              downloaded=true
+              break
+            fi
+            rm -f "$archive"
+          done
+          if [[ "$downloaded" != true ]]; then
+            echo "Unable to download pinned Kubo v0.32.1 from either official source after retries." >&2
+            exit 1
           fi
           mkdir -p "$RUNNER_TEMP/kubo-unpack"
           tar -xzf "$RUNNER_TEMP/kubo.tar.gz" -C "$RUNNER_TEMP/kubo-unpack"
