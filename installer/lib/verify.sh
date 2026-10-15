@@ -20,7 +20,7 @@ wait_for_kubo_api() {
 verify_installation() {
   local failures=0 executable app_dir
   app_dir="$NODE_CORE_DATA_DIR/app"
-  executable="\${NODE_CORE_KUBO_EXECUTABLE:-$NODE_CORE_DATA_DIR/bin/ipfs}"
+  executable="${NODE_CORE_KUBO_EXECUTABLE:-$NODE_CORE_DATA_DIR/bin/ipfs}"
 
   check_file() {
     if [[ ! -f "$1" ]]; then
