@@ -1,1 +1,2 @@
-# Node Core OS currently uses only the Python standard library.
+# Node Core OS dependencies
+cryptography>=42.0.0

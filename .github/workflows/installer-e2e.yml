@@ -100,8 +100,7 @@ jobs:
           test -f "$NODE_CORE_DATA_DIR/config.json"
           test -f "$NODE_CORE_DATA_DIR/app/VERSION"
           cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
-          test -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
-          grep -qx '0.3.5' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION"
+          test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests/three_node_real_kubo.py"
@@ -109,8 +108,6 @@ jobs:
           grep -Eq "^[0-9]+\\.[0-9]+\\.[0-9]+$" "$NODE_CORE_DATA_DIR/app/VERSION"
           test -f "$NODE_CORE_DATA_DIR/ipfs/config"
           test -d "$NODE_CORE_DATA_DIR/storage"
-          test -d "$NODE_CORE_DATA_DIR/hashpaper/proofs"
-          test "$(stat -c %a "$NODE_CORE_DATA_DIR/hashpaper/proofs")" = "700"
           test "$(id -u)" -ne 0
           test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
           test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
@@ -127,197 +124,6 @@ jobs:
             -X POST http://127.0.0.1:5001/api/v0/id >/dev/null
           NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" \
             python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core"
-
-      - name: Test installed HashPaper interactive menu
-        env:
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
-        run: |
-          set -euo pipefail
-          test "$(id -u)" -ne 0
-          test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
-          launcher="$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
-          test -f "$launcher"
-          # The interactive entry point requires a real local identity profile and live Peer ID.
-          NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" python3 - "$NODE_CORE_DATA_DIR/app" <<'PY'
-          import sys
-          sys.path.insert(0, sys.argv[1])
-          from node_core.runtime import NodeRuntime
-
-          runtime = NodeRuntime()
-          runtime.boot()
-          profile = runtime.identity_profile.save_declared_profile(
-              full_name="Synthetic HashPaper Menu Test",
-              alias="hashpaper-menu-e2e",
-              nationality="Synthetic",
-              issuing_country="ZZ",
-              document_type="TEST",
-              document_number="SYNTHETIC-MENU-NOT-A-REAL-ID",
-              birth_date="2000-01-01",
-              height_cm=170,
-              gender="not-specified",
-          )
-          assert profile["identity_status"] == "declared"
-          status = runtime.kubo.status()
-          assert status.running and status.peer_id
-          print("Synthetic identity and live Peer ID ready for consent-gated menu test.")
-          PY
-          output="$(printf 'ACCEPT IDENTITY DATA USE\n0\n' | NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json" python3 "$launcher")"
-          printf '%s\n' "$output"
-          grep -Fq "IDENTITY DATA USE — REQUIRED TO ENTER HASHPAPER" <<< "$output"
-          grep -Fq "Identity data use accepted for this session." <<< "$output"
-          grep -Fq "HashPaper for Node Core OS" <<< "$output"
-          grep -Fq "1. Create document + send to OpenTimestamps" <<< "$output"
-          grep -Fq "2. Send selected document to OpenTimestamps" <<< "$output"
-          grep -Fq "5. Send selected document copy to IPFS" <<< "$output"
-          grep -Fq "6. IPFS publication history and gateways" <<< "$output"
-          grep -Fq "8. Build transparent JSON package (advanced)" <<< "$output"
-          grep -Fq "9. Publish existing transparent package (advanced)" <<< "$output"
-          grep -Fq "0. Exit" <<< "$output"
-          printf 'Installed HashPaper consent-gated interactive menu test passed.\n'
-
-      - name: Test HashPaper package publication against live Kubo
-        env:
-          HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
-          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
-          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
-        run: |
-          set -euo pipefail
-          test "$(id -u)" -ne 0
-          documents="$NODE_CORE_DATA_DIR/hashpaper/documents"
-          packages="$NODE_CORE_DATA_DIR/hashpaper/packages"
-          records="$NODE_CORE_DATA_DIR/hashpaper/records"
-          mkdir -p "$documents" "$packages" "$records"
-          original="$documents/hashpaper-live-kubo-e2e-001.md"
-          package="$packages/hashpaper-live-kubo-e2e-001.json"
-          receipt="$records/hashpaper-live-kubo-e2e-001.publication.json"
-
-          python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" create \
-            --output "$original" \
-            --title "Synthetic HashPaper live Kubo test" \
-            --text "Synthetic content for the Node Core OS HashPaper integration test."
-          python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" package \
-            --input "$original" \
-            --output "$package"
-
-          python3 - "$original" "$package" <<'PY'
-          import hashlib
-          import json
-          import sys
-          from pathlib import Path
-
-          original = Path(sys.argv[1])
-          package_path = Path(sys.argv[2])
-          original_bytes = original.read_bytes()
-          package = json.loads(package_path.read_text(encoding="utf-8"))
-          assert package["document"]["original_text"] == original_bytes.decode("utf-8")
-          assert package["document"]["sha256"] == hashlib.sha256(original_bytes).hexdigest()
-          assert package["encryption"]["implemented"] is False
-          assert package["opentimestamps"]["status"] == "NOT_SUBMITTED"
-          print("HashPaper original-byte hash and full-text package checks passed.")
-          PY
-
-          printf 'PUBLISH\n' | python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" publish \
-            --input "$package" \
-            --report "$receipt"
-
-          python3 - "$receipt" "$package" <<'PY'
-          import hashlib
-          import json
-          import sys
-          from pathlib import Path
-
-          receipt = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-          package = Path(sys.argv[2]).read_bytes()
-          assert receipt["publication_status"] == "PUBLISHED_AND_RETRIEVED"
-          assert receipt["content_verified"] is True
-          assert receipt["pinned"] is True
-          assert receipt["published"] is True
-          assert receipt["sha256"] == hashlib.sha256(package).hexdigest()
-          print("HashPaper live Kubo publication receipt checks passed.")
-          print(f"HashPaper live Kubo CID: {receipt['cid']}")
-          PY
-
-          export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
-          cid="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["cid"])' "$receipt")"
-          recovered="$RUNNER_TEMP/hashpaper-live-kubo-recovered.json"
-          "$NODE_CORE_DATA_DIR/bin/ipfs" cat "$cid" > "$recovered"
-          cmp -s "$package" "$recovered"
-          printf "HashPaper live Kubo CID byte-for-byte retrieval passed: %s\n" "$cid"
-
-      - name: Test HashPaper live identity and Peer ID association
-        env:
-          HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
-          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
-          NODE_CORE_CONFIG: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/config.json
-          PYTHONPATH: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core/app
-        run: |
-          set -euo pipefail
-          test "$(id -u)" -ne 0
-          documents="$NODE_CORE_DATA_DIR/hashpaper/documents"
-          packages="$NODE_CORE_DATA_DIR/hashpaper/packages"
-          mkdir -p "$documents" "$packages"
-          original="$documents/hashpaper-live-identity-e2e-001.md"
-          package="$packages/hashpaper-live-identity-e2e-001.json"
-
-          python3 - "$NODE_CORE_DATA_DIR/app" <<'PY'
-          import sys
-          from pathlib import Path
-          sys.path.insert(0, sys.argv[1])
-          from node_core.runtime import NodeRuntime
-
-          runtime = NodeRuntime()
-          runtime.boot()
-          profile = runtime.identity_profile.save_declared_profile(
-              full_name="Synthetic HashPaper Test Identity",
-              alias="hashpaper-e2e",
-              nationality="Synthetic",
-              issuing_country="ZZ",
-              document_type="TEST",
-              document_number="SYNTHETIC-NOT-A-REAL-DOCUMENT",
-              birth_date="2000-01-01",
-              height_cm=170,
-              gender="not-specified",
-          )
-          assert profile["identity_status"] == "declared"
-          # Profile creation must not be coupled to root privileges or to a
-          # pre-existing association. The package flow below verifies association
-          # with the actual Peer ID returned by Node Core OS Kubo.
-          status = runtime.kubo.status()
-          assert status.running and status.peer_id, "Kubo must provide a live Peer ID for this test"
-          print("Synthetic local identity profile created; live Kubo Peer ID is available.")
-          PY
-
-          printf 'Synthetic content for live HashPaper identity association.\n' > "$original"
-          printf 'INCLUDE IDENTITY AND NODE\n' | python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" package \
-            --input "$original" \
-            --output "$package" \
-            --use-node-profile
-
-          python3 - "$NODE_CORE_DATA_DIR/app" "$original" "$package" <<'PY'
-          import hashlib
-          import json
-          import sys
-          from pathlib import Path
-          sys.path.insert(0, sys.argv[1])
-          from node_core.runtime import NodeRuntime
-
-          original = Path(sys.argv[2]).read_bytes()
-          package = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
-          runtime = NodeRuntime()
-          profile = runtime.identity_profile.load()
-          status = runtime.kubo.status()
-          assert status.running and status.peer_id
-          assert profile["node_id"] == status.peer_id
-          assert package["node"]["peer_id"] == status.peer_id
-          assert package["identity"]["fields"]["full_name"] == "Synthetic HashPaper Test Identity"
-          assert package["identity"]["fields"]["document_number"] == "SYNTHETIC-NOT-A-REAL-DOCUMENT"
-          assert package["document"]["original_text"] == original.decode("utf-8")
-          assert package["document"]["sha256"] == hashlib.sha256(original).hexdigest()
-          assert package["encryption"]["implemented"] is False
-          print(f"HashPaper live identity association verified against Kubo Peer ID: {status.peer_id}")
-          print("Synthetic identity, complete original text, and exact-byte SHA-256 checks passed.")
-          PY
 
       - name: Test External CID Library against the running Kubo daemon
         env:
@@ -427,7 +233,7 @@ jobs:
           cmp -s "$test_content" "$recovered"
           printf "Node Core E2E CID: %s\n" "$cid"
 
-      - name: Test real updater preserves installed HashPaper and user data
+      - name: Test real updater preserves Node Core user data and excludes HashPaper
         env:
           HOME: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}
           NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.service_mode }}/.node-core
@@ -441,7 +247,7 @@ jobs:
           test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
           test -f "$app/installer/update.sh"
 
-          # Seed persistent synthetic HashPaper data and capture exact-byte digests.
+          # Seed legacy separate-app data and capture exact-byte digests to verify preservation.
           mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" \
             "$NODE_CORE_DATA_DIR/hashpaper/proofs" \
             "$NODE_CORE_DATA_DIR/hashpaper/packages" \
@@ -457,6 +263,10 @@ jobs:
           package_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/packages/upgrade-preservation.json" | awk '{print $1}')"
           record_hash="$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/records/upgrade-preservation.json" | awk '{print $1}')"
           storage_hash="$(sha256sum "$NODE_CORE_DATA_DIR/storage/upgrade-preservation.txt" | awk '{print $1}')"
+          # Create a minimal synthetic identity fixture; HashPaper-specific setup no longer runs.
+          mkdir -p "$NODE_CORE_DATA_DIR/identity"
+          printf '{"identity_id":"synthetic-updater-preservation"}\n' > "$NODE_CORE_DATA_DIR/identity/profile.json"
+          chmod 600 "$NODE_CORE_DATA_DIR/identity/profile.json"
           identity_hash="$(sha256sum "$NODE_CORE_DATA_DIR/identity/profile.json" | awk '{print $1}')"
           config_hash="$(sha256sum "$NODE_CORE_DATA_DIR/config.json" | awk '{print $1}')"
           ipfs_config_hash="$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')"
@@ -467,7 +277,7 @@ jobs:
           printf '5858956bf88e457077ea57b7a75c2b9dac1ea897\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
           printf 'y\n' | "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
-          test -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
+          test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
           test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
           test "$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/documents/upgrade-preservation.md" | awk '{print $1}')" = "$document_hash"
@@ -484,7 +294,7 @@ jobs:
           test "$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")" != '5858956bf88e457077ea57b7a75c2b9dac1ea897'
           test "$(id -u)" -ne 0
           test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
-          printf 'Real updater preserved HashPaper documents, proofs, packages, records, identity, config, local storage, Kubo binary and repository.\n'
+          printf 'Real updater preserved separate-app data, identity, config, local storage, Kubo binary and repository while excluding HashPaper from Node Core OS.\n'
 
       - name: Test uninstall rejects dangerous normalized paths
         env:
@@ -673,3 +483,4 @@ jobs:
           path: ${{ runner.temp }}/node-evidence/
           if-no-files-found: warn
           retention-days: 14
+

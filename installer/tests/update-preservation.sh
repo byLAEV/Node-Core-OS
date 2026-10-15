@@ -44,13 +44,15 @@ mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity" \
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
-printf '1.2.3\n' > "$release_root/Node-Core-OS-fixture/VERSION"
+printf '1.4.1\n' > "$release_root/Node-Core-OS-fixture/VERSION"
 printf 'print("updated HashPaper")\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/main.py"
 printf 'VALUE = "updated HashPaper CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper/cli.py"
 printf 'print("fixture P2P Contracts")\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/main.py"
 printf 'VALUE = "fixture P2P CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/cli.py"
 printf 'VALUE = "fixture P2P service"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/service.py"
 printf 'VALUE = "fixture P2P propagation"\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts/propagation.py"
+cp "$REPOSITORY_ROOT/applications/p2p_contracts/genesis-manifest.json" \
+  "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/genesis-manifest.json"
 cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_service.py" <<'PY'
 import unittest
 class P2PServiceFixtureTest(unittest.TestCase):
@@ -60,6 +62,18 @@ PY
 cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_propagation.py" <<'PY'
 import unittest
 class P2PPropagationFixtureTest(unittest.TestCase):
+    def test_fixture(self):
+        self.assertTrue(True)
+PY
+cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_cli_bootstrap.py" <<'PY'
+import unittest
+class P2PBootstrapFixtureTest(unittest.TestCase):
+    def test_fixture(self):
+        self.assertTrue(True)
+PY
+cat > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests/test_cli_local_manifest.py" <<'PY'
+import unittest
+class P2PLocalManifestFixtureTest(unittest.TestCase):
     def test_fixture(self):
         self.assertTrue(True)
 PY
@@ -138,13 +152,12 @@ printf 'y\n' | bash "$REPOSITORY_ROOT/installer/update.sh"
 
 # Verify the new application is installed and its commit marker is updated.
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
-grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
+grep -qx '1.4.1' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx 'IDENTITY_PROFILE_RELEASE = "1.2.2"' "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py"
 printf 'Updater happy-path application check passed.\\n'
 grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
-test -x "$NODE_CORE_DATA_DIR/bin/hashpaper"
-grep -q 'updated HashPaper' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py"
-grep -q 'updated HashPaper CLI' "$NODE_CORE_DATA_DIR/app/applications/hashpaper/hashpaper/cli.py"
+test ! -e "$NODE_CORE_DATA_DIR/bin/hashpaper"
+test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
 printf 'Updater happy-path commit marker check passed.\\n'
 
 # Verify Kubo, its repository, local storage, and configuration remain untouched.
@@ -174,7 +187,8 @@ grep -qx '{"custom":"keep"}' "$NODE_CORE_DATA_DIR/config.json"
 # Verify that a syntactically invalid update rolls back the application.
 previous_commit="$(cat "$NODE_CORE_DATA_DIR/runtime/node-core-commit")"
 printf '{"sha":"2222222222222222222222222222222222222222"}\n' > "$TEST_FIXTURES/latest-commit.json"
-mkdir -p "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core"
+mkdir -p "$TEMP_ROOT/bad-release"
+cp -R "$release_root/Node-Core-OS-fixture" "$TEMP_ROOT/bad-release/Node-Core-OS-bad"
 printf 'def broken(:\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/main.py"
 printf 'VALUE = "bad"\n' > "$TEMP_ROOT/bad-release/Node-Core-OS-bad/node_core/__init__.py"
 tar -czf "$TEST_FIXTURES/2222222222222222222222222222222222222222.tar.gz" \
@@ -187,7 +201,7 @@ set -e
 test "$update_status" -ne 0
 grep -q 'Rolling back Node Core application' "$TEMP_ROOT/rollback.log"
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
-grep -qx '1.2.3' "$NODE_CORE_DATA_DIR/app/VERSION"
+grep -qx '1.4.1' "$NODE_CORE_DATA_DIR/app/VERSION"
 grep -qx "$previous_commit" "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 
 # A failed update must also preserve all persistent user data and Kubo assets.

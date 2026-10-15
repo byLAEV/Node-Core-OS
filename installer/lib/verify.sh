@@ -2,10 +2,9 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\n' >&2
   return 1 2>/dev/null || exit 1
 fi
-
 
 wait_for_kubo_api() {
   local attempt
@@ -19,34 +18,64 @@ wait_for_kubo_api() {
 }
 
 verify_installation() {
-  local failures=0 executable
+  local failures=0 executable app_dir
+  app_dir="$NODE_CORE_DATA_DIR/app"
   executable="${NODE_CORE_KUBO_EXECUTABLE:-$NODE_CORE_DATA_DIR/bin/ipfs}"
-  [[ "$(uname -s)" == "Linux" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/node_core/evidence.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/node_core/my_life.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/node_core/identity/profile.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/hashpaper/cli.py" ]] || failures=1
-  [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || failures=1
-  if [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]]; then
-    local app_version
-    app_version="$(cat "$NODE_CORE_DATA_DIR/app/VERSION")"
-    [[ "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || failures=1
+
+  check_file() {
+    if [[ ! -f "$1" ]]; then
+      printf 'Verification failed: required file is missing: %s\n' "$1" >&2
+      failures=1
+    fi
+  }
+  check_executable() {
+    if [[ ! -x "$1" ]]; then
+      printf 'Verification failed: required executable is missing or not executable: %s\n' "$1" >&2
+      failures=1
+    fi
+  }
+
+  if [[ "$(uname -s)" != "Linux" ]]; then
+    printf 'Verification failed: expected Linux, found %s.\n' "$(uname -s)" >&2
+    failures=1
   fi
-  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/main.py" "$NODE_CORE_DATA_DIR/app/node_core" "$NODE_CORE_DATA_DIR/app/applications/hashpaper" || failures=1
-  [[ -x "$NODE_CORE_DATA_DIR/bin/node-core" ]] || failures=1
-  [[ -x "$NODE_CORE_DATA_DIR/bin/hashpaper" ]] || failures=1
-  python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" --help >/dev/null 2>&1 || failures=1
-  [[ -x "$executable" ]] || failures=1
+
+  check_file "$app_dir/node_core/evidence.py"
+  check_file "$app_dir/node_core/my_life.py"
+  check_file "$app_dir/node_core/identity/profile.py"
+  check_file "$app_dir/VERSION"
+
+  if [[ -f "$app_dir/VERSION" ]]; then
+    local app_version
+    app_version="$(cat "$app_dir/VERSION")"
+    if [[ ! "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      printf 'Verification failed: invalid application VERSION: %s\n' "$app_version" >&2
+      failures=1
+    fi
+  fi
+
+  if ! python3 -m compileall -q "$app_dir/main.py" "$app_dir/node_core" "$app_dir/applications/p2p_contracts"; then
+    printf 'Verification failed: Python compilation failed for the installed application.\n' >&2
+    failures=1
+  fi
+
+  check_executable "$NODE_CORE_DATA_DIR/bin/node-core"
+  check_executable "$executable"
+
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
-  [[ -f "$IPFS_PATH/config" ]] || failures=1
+  check_file "$IPFS_PATH/config"
+
   if ! wait_for_kubo_api; then
-    printf 'Verification failed: Kubo API is not reachable after startup retries.\n' >&2
+    printf 'Verification failed: Kubo API is not reachable after startup retries at %s.\n' "$NODE_CORE_KUBO_API" >&2
     if [[ -f "$NODE_CORE_DATA_DIR/logs/kubo.log" ]]; then
       printf '%s\n' '--- Kubo startup log ---' >&2
       cat "$NODE_CORE_DATA_DIR/logs/kubo.log" >&2
     fi
     failures=1
+  fi
+
+  if [[ "$failures" -eq 0 ]]; then
+    printf 'Installation verification passed.\n'
   fi
   return "$failures"
 }

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
+  printf 'Node Core OS is strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
   exit 1
 fi
 
@@ -17,7 +17,6 @@ source "$INSTALLER_DIR/lib/python.sh"
 source "$INSTALLER_DIR/lib/kubo.sh"
 source "$INSTALLER_DIR/lib/service.sh"
 source "$INSTALLER_DIR/lib/verify.sh"
-source "$INSTALLER_DIR/lib/opentimestamps.sh"
 main() {
   printf '%s\n' 'Node Core OS installer'
   printf '%s\n' 'GNU/Linux terminal only'
@@ -37,28 +36,17 @@ main() {
   ensure_dependencies
   prepare_filesystem
   install_application "$PROJECT_ROOT"
-  ensure_opentimestamps_client
+  # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
+  rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+  rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
+  rm -f "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-update.sh"
+  rm -f "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER.md" "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
+  rm -f "$NODE_CORE_DATA_DIR/app/tests/test_hashpaper_storage_layout.py"
+  rm -f "$NODE_CORE_DATA_DIR/app/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_DATA_DIR/app/.github/workflows/hashpaper-python-matrix.yml"
   [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || {
     printf 'Installed Node Core OS version file is missing.\n' >&2
     exit 1
   }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION" ]] || {
-    printf 'Installed HashPaper version file is missing.\n' >&2
-    exit 1
-  }
-  python3 - "$NODE_CORE_DATA_DIR/app/VERSION" "$NODE_CORE_DATA_DIR/app/applications/hashpaper/VERSION" <<'PY'
-import re
-import sys
-from pathlib import Path
-
-for value in sys.argv[1:]:
-    path = Path(value)
-    version = path.read_text(encoding="utf-8").strip()
-    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
-        raise SystemExit(f"Invalid application version in {path}: {version!r}")
-print("Installed Node Core OS version:", Path(sys.argv[1]).read_text(encoding="utf-8").strip())
-print("Installed HashPaper version:", Path(sys.argv[2]).read_text(encoding="utf-8").strip())
-PY
   [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py" ]] || {
     printf 'Installed Node Core P2P Contracts entry point is missing.\n' >&2
     exit 1
@@ -67,8 +55,20 @@ PY
     printf 'Installed Node Core P2P Contracts version file is missing.\n' >&2
     exit 1
   }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/genesis-manifest.json" ]] || {
+    printf 'Node Core P2P Contracts genesis manifest is missing.\n' >&2
+    exit 1
+  }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/genesis.py" ]] || {
+    printf 'Node Core P2P Contracts genesis validator is missing.\n' >&2
+    exit 1
+  }
   [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
     printf 'Installed Node Core P2P Contracts CLI is missing.\n' >&2
+    exit 1
+  }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/genesis-manifest.json" ]] || {
+    printf 'Installed Node Core P2P Contracts genesis manifest is missing.\n' >&2
     exit 1
   }
   [[ -d "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests" ]] || {
@@ -88,11 +88,9 @@ if version != "1.0.0":
     raise SystemExit(f"Expected Node Core P2P Contracts 1.0.0, found {version}")
 print("Installed Node Core P2P Contracts version:", version)
 PY
-  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
-  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest discover -s applications/hashpaper/tests -p 'test_*.py' -v)
-  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
-  mkdir -p "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/proofs" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
-  chmod 700 "$NODE_CORE_DATA_DIR/hashpaper" "$NODE_CORE_DATA_DIR/hashpaper/documents" "$NODE_CORE_DATA_DIR/hashpaper/proofs" "$NODE_CORE_DATA_DIR/hashpaper/ipfs" "$NODE_CORE_DATA_DIR/hashpaper/packages" "$NODE_CORE_DATA_DIR/hashpaper/records"
+  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+  (cd "$NODE_CORE_DATA_DIR/app" && python3 -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
+  (cd "$NODE_CORE_DATA_DIR/app" && python3 -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])")
   install_kubo
   write_config
   create_launcher

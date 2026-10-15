@@ -5,7 +5,8 @@ import unittest
 
 from node_core.storage import StorageManager
 from applications.p2p_contracts.p2p_contracts.service import (
-    P2PContractsService, validate_btc_amount, validate_asset_code,
+    MANIFEST_SCHEMA, P2PContractsService, document_hash,
+    validate_btc_amount, validate_asset_code,
 )
 
 
@@ -33,6 +34,7 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.storage = StorageManager(self.root / "storage")
         self.storage.initialize()
         self.service = P2PContractsService(self.storage, FakeIdentityProfile(), FakeNetwork())
+        self.service.accept_initial_genesis_reference(accepted_by_node_id=FakeNetwork().identity().peer_id)
 
     def test_btc_amount_is_validated_without_float(self):
         self.assertEqual(validate_btc_amount("0.01000000"), "0.01")
@@ -54,6 +56,68 @@ class P2PContractsServiceTests(unittest.TestCase):
                 contacts=[{"type": "pgp_public_key", "value": "-----BEGIN PGP PRIVATE KEY BLOCK-----"}],
                 publish_identity=False,
             )
+
+    def test_genesis_is_in_manifest_directory_and_anchors_block_one(self):
+        expected_bundled_path = Path(__file__).resolve().parents[1] / "genesis-manifest.json"
+        self.assertEqual(self.service.bundled_genesis_path, expected_bundled_path)
+        self.assertTrue(expected_bundled_path.is_file())
+
+        genesis_path = self.root / "storage" / "p2p_contracts" / "manifests" / "genesis-manifest.json"
+        self.assertTrue(genesis_path.is_file())
+        genesis = json.loads(genesis_path.read_text(encoding="utf-8"))
+        root_hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+        self.assertEqual(genesis["genesis_hash"], root_hash)
+        self.assertEqual(genesis["references"]["bitcoin_genesis_block"]["block_hash"], root_hash)
+
+        result = self.service.create_btc_exchange_request(
+            btc_amount="0.025", receive_asset="USDT", receive_amount="1500",
+            receive_network="TRON", description="Genesis reference test",
+            contacts=[{"type": "email", "value": "test@example.invalid"}],
+            publish_identity=True,
+        )
+        manifest = result["manifest_document"]
+        self.assertEqual(manifest["sequence"], 1)
+        self.assertEqual(manifest["genesis_hash"], root_hash)
+        self.assertEqual(manifest["previous_manifest_hash"], root_hash)
+        identity_header = manifest["identity_header"]
+        self.assertEqual(identity_header["node_id"], FakeNetwork().identity().peer_id)
+        self.assertEqual(
+            set(identity_header),
+            {"identity_id", "node_id", "identity_verification", "public_profile", "contact"},
+        )
+        self.assertEqual(identity_header["public_profile"], {})
+        self.assertEqual(identity_header["contact"], [])
+        self.assertEqual(
+            identity_header["identity_verification"]["status"],
+            "NOT_CRYPTOGRAPHICALLY_VERIFIED",
+        )
+        self.assertEqual(Path(result["manifest_path"]).parent, genesis_path.parent)
+
+    def test_multiple_local_manifests_do_not_require_peer_responses(self):
+        first = self.service.create_btc_exchange_request(
+            btc_amount="0.01", receive_asset="USDT", receive_amount="100",
+            receive_network="", description="Offline manifest one",
+            contacts=[{"type": "email", "value": "first@example.invalid"}],
+            publish_identity=False,
+        )
+        second = self.service.create_btc_exchange_request(
+            btc_amount="0.02", receive_asset="EUR", receive_amount="200",
+            receive_network="", description="Offline manifest two",
+            contacts=[{"type": "email", "value": "second@example.invalid"}],
+            publish_identity=False,
+        )
+
+        genesis = json.loads(self.service.genesis_path.read_text(encoding="utf-8"))
+        first_manifest = first["manifest_document"]
+        second_manifest = second["manifest_document"]
+
+        self.assertEqual(first_manifest["sequence"], 1)
+        self.assertEqual(first_manifest["previous_manifest_hash"], genesis["genesis_hash"])
+        self.assertEqual(second_manifest["sequence"], 2)
+        self.assertEqual(second_manifest["previous_manifest_hash"], first_manifest["manifest_hash"])
+        self.assertEqual(second_manifest["genesis_hash"], genesis["genesis_hash"])
+        self.assertTrue(Path(first["manifest_path"]).is_file())
+        self.assertTrue(Path(second["manifest_path"]).is_file())
 
     def test_create_request_and_find_request(self):
         result = self.service.create_btc_exchange_request(
@@ -129,6 +193,7 @@ class P2PContractsServiceTests(unittest.TestCase):
         remote_storage = StorageManager(remote_root)
         remote_storage.initialize()
         remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
+        remote_service.accept_initial_genesis_reference(accepted_by_node_id=FakeNetwork().identity().peer_id)
         result = remote_service.import_remote_requests(requests)
         self.assertEqual(result["imported_count"], 2)
         self.assertEqual(remote_service.current_manifest()["sequence"], 1)
@@ -166,6 +231,55 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.assertEqual(found["evidence"][0]["rating"], 4)
         self.assertEqual(found["evidence"][0]["target_node_id"], "peer-counterparty")
         self.assertFalse(remote_service.import_remote_evidence(evidence_doc)["imported"])
+
+    def test_remote_manifest_rejects_non_object_index_entries(self):
+        request = self.service.create_btc_exchange_request(
+            btc_amount="0.1", receive_asset="ETH", receive_amount="1",
+            receive_network="Ethereum", description="Malformed manifest regression test",
+            contacts=[{"type": "other", "value": "synthetic test contact"}],
+            publish_identity=False,
+        )
+        request_document = json.loads(Path(request["request_path"]).read_text(encoding="utf-8"))
+
+        remote_root = self.root / "malformed-manifest-remote-storage"
+        remote_storage = StorageManager(remote_root)
+        remote_storage.initialize()
+        remote_service = P2PContractsService(remote_storage, FakeIdentityProfile(), FakeNetwork())
+
+        from applications.p2p_contracts.p2p_contracts.genesis import (
+            GENESIS_HASH, content_hash, next_propagation_hash,
+        )
+        payload = {
+            "schema": MANIFEST_SCHEMA,
+            "application_id": "node-core-os-p2p-contracts",
+            "application_version": "0.1.0-dev",
+            "protocol_version": "1.0",
+            "sequence": 1,
+            "previous_manifest_hash": GENESIS_HASH,
+            "previous_propagation_hash": GENESIS_HASH,
+            "genesis_hash": GENESIS_HASH,
+            "identity_header": {
+                "identity_id": "identity-test", "node_id": FakeNetwork().identity().peer_id,
+                "identity_verification": {"status": "NOT_CRYPTOGRAPHICALLY_VERIFIED"},
+                "public_profile": {}, "contact": [],
+            },
+            "genesis_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+            "previous_manifest_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+            "created_at": "2026-01-01T00:00:00Z",
+            "requests": [None],
+            "evidence": [],
+        }
+        hl = content_hash(payload)
+        payload["HL"] = hl
+        payload["propagation_hash"] = next_propagation_hash(GENESIS_HASH, hl)
+        malformed_manifest = {**payload, "manifest_hash": document_hash(payload)}
+
+        with self.assertRaisesRegex(ValueError, "request index entries must be JSON objects"):
+            remote_service.import_remote_manifest(
+                malformed_manifest,
+                request_documents=[request_document],
+            )
+        self.assertIsNone(remote_service.current_manifest())
 
     def test_manifest_tampering_is_detected(self):
         self.service.create_btc_exchange_request(

@@ -16,6 +16,8 @@ from functools import wraps
 from typing import Any
 from uuid import uuid4
 
+from .genesis import GENESIS_HASH, content_hash as manifest_content_hash, load_genesis, next_propagation_hash
+
 REQUEST_SCHEMA = "node-core-os-p2p-contracts/btc-exchange-request/1"
 EVIDENCE_SCHEMA = "node-core-os-p2p-contracts/request-evidence/1"
 MANIFEST_SCHEMA = "node-core-os-p2p-contracts/application-manifest/1"
@@ -95,12 +97,100 @@ class P2PContractsService:
         self.requests_dir = self.root / "requests"
         self.evidence_dir = self.root / "evidence"
         self.manifests_dir = self.root / "manifests"
+        self.genesis_path = self.manifests_dir / "genesis-manifest.json"
+        self.bundled_genesis_path = Path(__file__).resolve().parents[1] / "genesis-manifest.json"
         self.head_path = self.root / "head.json"
+        self.initial_acceptance_path = self.root / "initial-acceptance.json"
         self._manifest_lock = threading.RLock()
+        self._ensure_directories()
 
     def _ensure_directories(self) -> None:
         for directory in (self.requests_dir, self.evidence_dir, self.manifests_dir):
             directory.mkdir(parents=True, exist_ok=True)
+        self._ensure_genesis_reference()
+
+    def _ensure_genesis_reference(self) -> dict[str, Any]:
+        """Install and verify the bundled genesis reference without overwriting user data."""
+        bundled = load_genesis()
+        if self.genesis_path.is_file():
+            local = load_genesis(self.genesis_path)
+            if local != bundled:
+                raise P2PContractsError("The local Node Core P2P Contracts genesis manifest differs from the bundled reference.")
+        return self._ensure_genesis_manifest()
+
+    def _ensure_genesis_manifest(self) -> dict[str, Any]:
+        """Copy the bundled genesis into the node-synchronized manifest directory once."""
+        expected_hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+        try:
+            bundled = self._read_json(self.bundled_genesis_path)
+        except P2PContractsError as exc:
+            raise P2PContractsError(f"Bundled Node Core P2P Contracts genesis manifest is unavailable: {exc}") from exc
+        reference = bundled.get("references", {}).get("bitcoin_genesis_block", {})
+        protocol_root = bundled.get("protocol", {}).get("root_reference", {})
+        if (bundled.get("schema") != "node-core-os-p2p-contracts/manifest/v1"
+                or bundled.get("application_id") != "node-core-os-p2p-contracts"
+                or bundled.get("block") != 0 or bundled.get("block_type") != "GENESIS"
+                or bundled.get("genesis_hash") != expected_hash
+                or reference.get("block_hash") != expected_hash
+                or protocol_root.get("root_hash") != expected_hash):
+            raise P2PContractsError("Bundled Node Core P2P Contracts genesis manifest failed validation.")
+        if self.genesis_path.exists():
+            local = self._read_json(self.genesis_path)
+            if local != bundled:
+                raise P2PContractsError("The synchronized genesis manifest differs from the bundled reference.")
+            return local
+        self._write_json(self.genesis_path, bundled)
+        return bundled
+
+    def _load_genesis_hash(self) -> str:
+        genesis = self._ensure_genesis_manifest()
+        return genesis["genesis_hash"]
+
+    @_synchronized
+    def accept_initial_genesis_reference(self, *, accepted_by_node_id: str) -> dict[str, Any]:
+        """Record this node's explicit acceptance of the verified genesis root."""
+        if not isinstance(accepted_by_node_id, str) or not accepted_by_node_id.strip():
+            raise ValueError("An accepting node identity is required.")
+        identity = self.network.identity()
+        local_node_id = getattr(identity, "peer_id", None)
+        if not isinstance(local_node_id, str) or accepted_by_node_id != local_node_id:
+            raise P2PContractsError("Genesis acceptance must be recorded by the current local node identity.")
+
+        genesis = self._ensure_genesis_reference()
+        genesis_hash = genesis.get("genesis_hash")
+        if genesis_hash != GENESIS_HASH:
+            raise P2PContractsError("The verified genesis reference does not match the configured root hash.")
+
+        acceptance = {
+            "schema": "node-core-os-p2p-contracts/initial-acceptance/v1",
+            "genesis_hash": genesis_hash,
+            "accepted_by_node_id": local_node_id,
+            "accepted_at": _now(),
+            "status": "ACCEPTED",
+        }
+        self._write_json(self.initial_acceptance_path, acceptance)
+        return acceptance
+
+    def _require_initial_genesis_acceptance(self) -> dict[str, Any]:
+        """Refuse first-request creation until this node explicitly accepts genesis."""
+        try:
+            acceptance = self._read_json(self.initial_acceptance_path)
+        except P2PContractsError as exc:
+            raise P2PContractsError(
+                "The initial genesis reference must be explicitly accepted before creating requests."
+            ) from exc
+
+        local_node_id = getattr(self.network.identity(), "peer_id", None)
+        if (
+            acceptance.get("schema") != "node-core-os-p2p-contracts/initial-acceptance/v1"
+            or acceptance.get("genesis_hash") != self._load_genesis_hash()
+            or acceptance.get("accepted_by_node_id") != local_node_id
+            or acceptance.get("status") != "ACCEPTED"
+            or not isinstance(acceptance.get("accepted_at"), str)
+            or not acceptance.get("accepted_at")
+        ):
+            raise P2PContractsError("The initial genesis acceptance is invalid for this local node.")
+        return acceptance
 
     @staticmethod
     def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -149,21 +239,58 @@ class P2PContractsService:
         payload = {key: value for key, value in manifest.items() if key != "manifest_hash"}
         if document_hash(payload) != expected_hash or manifest.get("manifest_hash") != expected_hash:
             raise P2PContractsError("Current local manifest hash does not match its content.")
+        if "HL" in manifest or "propagation_hash" in manifest:
+            hl = manifest_content_hash(payload)
+            if manifest.get("HL") != hl:
+                raise P2PContractsError("Current local manifest content hash (HL) does not match its content.")
+            previous_propagation_hash = manifest.get("previous_propagation_hash")
+            try:
+                expected_propagation_hash = next_propagation_hash(previous_propagation_hash, hl)
+            except ValueError as exc:
+                raise P2PContractsError(f"Current local manifest propagation hashes are invalid: {exc}") from exc
+            if manifest.get("propagation_hash") != expected_propagation_hash:
+                raise P2PContractsError("Current local manifest propagation hash does not match its content.")
         return manifest
 
     def _publish_new_manifest(self, *, requests: list[dict[str, Any]], evidence: list[dict[str, Any]]) -> dict[str, Any]:
         previous = self._load_head()
+        self._ensure_genesis_reference()
+        node_identity = self.network.identity()
+        profile = self.identity_profile.load() or {}
+        previous_manifest_hash = previous.get("manifest_hash") if previous else GENESIS_HASH
+        previous_propagation_hash = (
+            previous.get("propagation_hash") if previous and previous.get("propagation_hash")
+            else previous.get("manifest_hash") if previous
+            else GENESIS_HASH
+        )
+        genesis_hash = self._load_genesis_hash()
         payload: dict[str, Any] = {
             "schema": MANIFEST_SCHEMA,
             "application_id": "node-core-os-p2p-contracts",
             "application_version": "0.1.0-dev",
-            "protocol_version": "0.1.0",
+            "protocol_version": "1.0",
             "sequence": (previous["sequence"] + 1) if previous else 1,
-            "previous_manifest_hash": previous.get("manifest_hash") if previous else None,
+            "genesis_hash": genesis_hash,
+            "previous_manifest_hash": previous.get("manifest_hash") if previous else genesis_hash,
             "created_at": _now(),
+            "identity_header": {
+                "identity_id": profile.get("identity_id") if profile else None,
+                "node_id": node_identity.peer_id,
+                "identity_verification": {
+                    "status": "NOT_CRYPTOGRAPHICALLY_VERIFIED",
+                    "method": "local_node_identity_reference",
+                },
+                "public_profile": {},
+                "contact": [],
+            },
             "requests": requests,
             "evidence": evidence,
+            "previous_propagation_hash": previous_propagation_hash,
         }
+        hl = manifest_content_hash(payload)
+        propagation_hash = next_propagation_hash(previous_propagation_hash, hl)
+        payload["HL"] = hl
+        payload["propagation_hash"] = propagation_hash
         digest = document_hash(payload)
         manifest = {**payload, "manifest_hash": digest}
         relative_path = f"p2p_contracts/manifests/manifest-{payload['sequence']:08d}-{digest[:12]}.json"
@@ -195,6 +322,7 @@ class P2PContractsService:
     ) -> dict[str, Any]:
         """Persist a BTC-for-asset request and append it to the local manifest."""
         self._ensure_directories()
+        self._require_initial_genesis_acceptance()
         amount = validate_btc_amount(btc_amount)
         asset = validate_asset_code(receive_asset)
         wanted_amount = _clean_text(receive_amount, "Amount of asset requested", 128)
@@ -244,6 +372,16 @@ class P2PContractsService:
                 "addresses": list(node_identity.addresses),
                 "identity_ref": profile.get("identity_id") if publish_identity and profile else None,
                 "identity_fields": identity,
+            },
+            "identity_header": {
+                "identity_id": profile.get("identity_id") if publish_identity and profile else None,
+                "node_id": node_id,
+                "identity_verification": {
+                    "status": "NOT_CRYPTOGRAPHICALLY_VERIFIED",
+                    "method": "local_node_identity_reference",
+                },
+                "public_profile": identity,
+                "contact": normalized_contacts,
             },
             "exchange": {
                 "give_asset": "BTC",
@@ -309,20 +447,50 @@ class P2PContractsService:
         previous = self._load_head()
         if previous and previous.get("manifest_hash") == declared_hash:
             return {"imported": False, "manifest_hash": declared_hash, "manifest_sequence": sequence}
+        genesis_hash = self._load_genesis_hash()
+        if payload.get("genesis_hash") != genesis_hash:
+            raise P2PContractsError("Remote manifest does not reference the installed Node Core P2P Contracts genesis manifest.")
         parent_hash = payload.get("previous_manifest_hash")
+        if payload.get("genesis_hash") != GENESIS_HASH:
+            raise P2PContractsError("Remote manifest does not reference the configured Node Core P2P Contracts genesis.")
+        hl = manifest_content_hash(payload)
+        if payload.get("HL") != hl:
+            raise P2PContractsError("Remote manifest content hash (HL) verification failed.")
+        previous_propagation_hash = payload.get("previous_propagation_hash")
+        try:
+            expected_propagation_hash = next_propagation_hash(previous_propagation_hash, hl)
+        except ValueError as exc:
+            raise P2PContractsError(f"Remote manifest propagation hash is invalid: {exc}") from exc
+        if payload.get("propagation_hash") != expected_propagation_hash:
+            raise P2PContractsError("Remote manifest propagation hash verification failed.")
         if previous is None:
-            if sequence != 1 or parent_hash is not None:
-                raise P2PContractsError("Cannot import a later manifest without its trusted parent manifest.")
+            if sequence != 1 or parent_hash != GENESIS_HASH or previous_propagation_hash != GENESIS_HASH:
+                raise P2PContractsError("The first remote manifest must extend the verified genesis reference.")
+            if sequence != 1 or parent_hash != genesis_hash:
+                raise P2PContractsError("The first remote manifest must reference the installed genesis hash.")
             previous_requests, previous_evidence = [], []
         else:
             if parent_hash != previous.get("manifest_hash") or sequence != previous.get("sequence", 0) + 1:
                 raise P2PContractsError("Remote manifest does not extend the current local manifest head.")
+            expected_parent_propagation = previous.get("propagation_hash")
+            if expected_parent_propagation is None or previous_propagation_hash != expected_parent_propagation:
+                raise P2PContractsError("Remote manifest does not extend the current propagation-hash chain.")
             previous_requests = list(previous.get("requests", []))
             previous_evidence = list(previous.get("evidence", []))
+        identity_header = payload.get("identity_header")
+        if not isinstance(identity_header, dict) or identity_header.get("node_id") is None:
+            raise ValueError("Remote manifest must include its creating identity and node header.")
+        for required_field in ("identity_id", "node_id", "identity_verification", "public_profile", "contact"):
+            if required_field not in identity_header:
+                raise ValueError(f"Remote manifest identity header is missing {required_field}.")
         requests = payload.get("requests")
         evidence = payload.get("evidence")
         if not isinstance(requests, list) or not isinstance(evidence, list):
             raise ValueError("Remote manifest request and evidence indexes must be lists.")
+        if any(not isinstance(entry, dict) for entry in requests):
+            raise ValueError("Remote manifest request index entries must be JSON objects.")
+        if any(not isinstance(entry, dict) for entry in evidence):
+            raise ValueError("Remote manifest evidence index entries must be JSON objects.")
         if requests[:len(previous_requests)] != previous_requests:
             raise P2PContractsError("Remote manifest modified or reordered the existing request index.")
         if evidence[:len(previous_evidence)] != previous_evidence:
@@ -376,6 +544,12 @@ class P2PContractsService:
                 raise ValueError("Remote requested asset amount is malformed.")
             if not isinstance(requester, dict) or not isinstance(requester.get("node_id"), str):
                 raise ValueError("Remote request does not identify its requesting node.")
+            identity_header = document.get("identity_header")
+            if not isinstance(identity_header, dict) or identity_header.get("node_id") != requester.get("node_id"):
+                raise ValueError("Remote request identity header does not match its requesting node.")
+            for required_field in ("identity_id", "node_id", "identity_verification", "public_profile", "contact"):
+                if required_field not in identity_header:
+                    raise ValueError(f"Remote request identity header is missing {required_field}.")
             contacts = document.get("contact_methods")
             if not isinstance(contacts, list) or not contacts:
                 raise ValueError("Remote public request must include at least one contact method.")

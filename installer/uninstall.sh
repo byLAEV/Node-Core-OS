@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\\n' >&2
+  printf 'Node Core OS and HashPaper are strictly user-level software; root execution is forbidden. Run as your normal user without sudo.\n' >&2
   exit 1
 fi
 

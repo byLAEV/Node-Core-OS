@@ -2,6 +2,29 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.4.2] - 2026-10-13
+
+- Allow the first P2P Contracts propagation to bootstrap from the validated genesis hash on a single node when no peer responds.
+- Ask the operator to explicitly accept the genesis root hash before initializing logical block 1.
+- Keep active-proposal conflict checks and require peer responses for later propagations when a local manifest already exists.
+- Add regression tests for single-node genesis bootstrap, later propagation without peers, and active-proposal blocking.
+- Add a dedicated local-only request and manifest creation path that does not query PubSub or require peer responses.
+- Label single-node manifests as local and uncorroborated until other nodes verify them.
+- Keep the bundled genesis manifest path anchored to the application module and verify its local storage copy.
+- Add regression tests for multiple offline manifest sequences and CLI creation without peer discovery.
+- Run the new P2P CLI regression tests in CI and as part of updater validation.
+- Preserve ordinary-user-only operation; root and sudo are not required.
+
+
+## Node Core OS [1.4.1] - 2026-10-13
+
+- Anchor the first Node Core P2P Contracts manifest to the bundled genesis reference.
+- Validate the synchronized genesis manifest and require block 1 to reference the configured Bitcoin Mainnet genesis hash.
+- Reject first remote manifests that do not reference the expected genesis.
+- Require the genesis manifest in installation and update packages.
+- Extend real-Kubo three-node tests to verify block-1 genesis references and manifest convergence.
+- Keep installation, update, and runtime operations in the ordinary user's account; root and sudo are not required.
+
 ## Node Core OS [1.3.0] / Node Core P2P Contracts [1.0.0] - 2026-10-12
 
 - Include Node Core P2P Contracts in the default Node Core OS installation package.

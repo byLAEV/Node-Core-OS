@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from applications.p2p_contracts.p2p_contracts.propagation import (
     MESSAGE_SCHEMA, PropagationProtocol, WINDOW_SECONDS, parse_timestamp, timestamp, utc_now,
@@ -36,6 +37,24 @@ class FakeKubo:
             self.published.append(json.loads(args[3]))
         return type("Result", (), {"stdout": ""})()
 
+class FakeService:
+    def __init__(self):
+        self.import_calls = 0
+        self.manifest = {"manifest_hash": "manifest-hash-1", "propagation_hash": "a" * 64, "sequence": 1}
+
+    def import_remote_requests(self, documents):
+        self.import_calls += 1
+        return {
+            "imported_count": len(documents),
+            "manifest_hash": self.manifest["manifest_hash"],
+            "manifest_sequence": self.manifest["sequence"],
+            "manifest_document": self.manifest,
+        }
+
+    def current_manifest(self):
+        return self.manifest
+
+
 class PropagationTests(unittest.TestCase):
     def setUp(self):
         temp = tempfile.TemporaryDirectory()
@@ -56,6 +75,59 @@ class PropagationTests(unittest.TestCase):
         multibase_url = "u" + urlsafe
         self.assertEqual(PropagationProtocol._decode_pubsub_data(multibase_url), payload)
 
+    def test_cli_publish_retries_transient_validation_ignored_with_same_message(self):
+        class CliOnlyKubo:
+            executable = "ipfs"
+            def _environment(self):
+                return {}
+
+        self.protocol.kubo = CliOnlyKubo()
+        failure = __import__("subprocess").CalledProcessError(
+            1,
+            ["ipfs", "pubsub", "pub", "topic", "-"],
+            stderr="Error: validation ignored",
+        )
+        success = type("Result", (), {"stdout": "", "stderr": ""})()
+        with patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.subprocess.run",
+            side_effect=[failure, success],
+        ) as run, patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.time.sleep"
+        ) as sleep:
+            message = self.protocol._publish("STATUS_QUERY", test_field="same-payload")
+
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0].kwargs["input"], run.call_args_list[1].kwargs["input"])
+        encoded = json.loads(run.call_args_list[0].kwargs["input"])
+        self.assertEqual(encoded["message_id"], message["message_id"])
+        self.assertEqual(encoded["test_field"], "same-payload")
+        sleep.assert_called_once_with(0.25)
+
+    def test_cli_publish_stops_after_three_validation_ignored_failures(self):
+        import subprocess
+
+        class CliOnlyKubo:
+            executable = "ipfs"
+            def _environment(self):
+                return {}
+
+        self.protocol.kubo = CliOnlyKubo()
+        failure = subprocess.CalledProcessError(
+            1,
+            ["ipfs", "pubsub", "pub", "topic", "-"],
+            stderr="Error: validation ignored",
+        )
+        with patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.subprocess.run",
+            side_effect=[failure, failure, failure],
+        ) as run, patch(
+            "applications.p2p_contracts.p2p_contracts.propagation.time.sleep"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "after 3 attempt"):
+                self.protocol._publish("STATUS_QUERY")
+
+        self.assertEqual(run.call_count, 3)
+
     def test_pending_request_is_accepted_only_for_matching_active_proposal(self):
         from applications.p2p_contracts.p2p_contracts.service import document_hash, REQUEST_SCHEMA
         state = self.protocol.accept_new_propagation("a" * 64)
@@ -75,6 +147,88 @@ class PropagationTests(unittest.TestCase):
         self.assertEqual(len(self.protocol._pending_requests), 1)
         self.assertEqual(self.protocol._queue_request(message), payload["request_id"])
         self.assertEqual(len(self.protocol._pending_requests), 1)
+
+    def test_missing_batch_ack_keeps_exact_manifest_retryable(self):
+        remote_peer = "QmRemoteNodeIdentity012345678901234567890123456789"
+        service = FakeService()
+        self.protocol.service = service
+        state = self.protocol.accept_new_propagation("a" * 64, require_owner_request=True)
+        state["send_enabled_at"] = timestamp(utc_now() - timedelta(seconds=1))
+        state["status"] = "READY_TO_SUBMIT"
+        self.protocol._save_state(state)
+        pending_document = {"request_id": "request-test-pending"}
+        self.protocol._pending_requests = [pending_document]
+        self.protocol._save_pending()
+        self.protocol._received.append({
+            "type": "PROPOSAL_STATUS",
+            "proposal_id": state["proposal_id"],
+            "sender_node_id": remote_peer,
+        })
+
+        clock = {"value": 0.0}
+        def mocked_sleep(seconds):
+            clock["value"] += seconds
+
+        # Advance simulated time only when the protocol sleeps. This keeps deadline
+        # checks deterministic and allows an ACK appended during publish to be read.
+        with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic",
+                   side_effect=lambda: clock["value"]), \
+             patch("applications.p2p_contracts.p2p_contracts.propagation.time.sleep",
+                   side_effect=mocked_sleep):
+            first = self.protocol.finalize_propagation()
+
+        self.assertEqual(first["missing_peer_ids"], [remote_peer])
+        self.assertFalse(first["batch_flushed"])
+        saved_after_first = self.protocol._state()
+        self.assertEqual(saved_after_first["status"], "PENDING_ACKS")
+        self.assertFalse(saved_after_first["batch_flushed"])
+        self.assertEqual(self.protocol._pending_requests, [pending_document])
+        self.assertEqual(saved_after_first["final_manifest_document"], service.manifest)
+        self.assertEqual(service.import_calls, 1)
+
+        # An ACK retry must still be possible after the proposal lease expires:
+        # the exact manifest and batch are already committed and persisted.
+        saved_after_first["lease_expires_at"] = timestamp(utc_now() - timedelta(seconds=1))
+        self.protocol._save_state(saved_after_first)
+
+        original_publish = self.protocol._publish
+        def publish_with_ack(kind, **fields):
+            message = original_publish(kind, **fields)
+            if kind == "REQUEST_BATCH":
+                self.protocol._received.append({
+                    "type": "BATCH_ACK",
+                    "reply_to": message["message_id"],
+                    "sender_node_id": remote_peer,
+                    "manifest_hash": service.manifest["manifest_hash"],
+                })
+            return message
+        self.protocol._publish = publish_with_ack
+
+        with patch("applications.p2p_contracts.p2p_contracts.propagation.time.monotonic",
+                   side_effect=lambda: clock["value"]), \
+             patch("applications.p2p_contracts.p2p_contracts.propagation.time.sleep",
+                   side_effect=mocked_sleep):
+            second = self.protocol.finalize_propagation()
+
+        self.assertEqual(second["missing_peer_ids"], [])
+        self.assertTrue(second["batch_flushed"])
+        self.assertEqual(self.protocol._state()["status"], "FINALIZED")
+        self.assertEqual(self.protocol._pending_requests, [])
+        self.assertEqual(service.import_calls, 1, "Retry must reuse the saved manifest, not create another one.")
+
+    def test_listener_stdout_closed_during_shutdown_does_not_raise(self):
+        class ClosedStdout:
+            def __iter__(self):
+                raise ValueError("I/O operation on closed file")
+
+        class StoppedListener:
+            stdout = ClosedStdout()
+            def poll(self):
+                return 0
+
+        self.protocol._listener = StoppedListener()
+        self.protocol._read_loop()
+        self.assertEqual(self.protocol._listener_errors, [])
 
     def test_ten_minute_window_is_exact(self):
         self.assertEqual(WINDOW_SECONDS, 600)
