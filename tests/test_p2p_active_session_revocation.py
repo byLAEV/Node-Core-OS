@@ -78,6 +78,7 @@ class ActivePeerSessionRevocationTests(unittest.TestCase):
 
         closed_count = server.revoke_peer(self.meta_a["node_id"])
         self.assertEqual(closed_count, 1)
+        self.assertNotIn(self.meta_a["node_id"], server.trusted_peers)
         self.assertEqual(server.address, (host, port))
         self.assertEqual(
             {peer["node_id"] for peer in server.active_peers},
