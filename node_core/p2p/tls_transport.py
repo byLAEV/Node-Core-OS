@@ -53,7 +53,9 @@ class NodeTLSTransport:
             subject = issuer = x509.Name([
                 x509.NameAttribute(
                     NameOID.COMMON_NAME,
-                    "Node Core OS P2P " + metadata["node_id"],
+                    "NCP2P-" + hashlib.sha256(
+                        metadata["node_id"].encode("utf-8")
+                    ).hexdigest()[:58],
                 )
             ])
             now = datetime.now(timezone.utc)
