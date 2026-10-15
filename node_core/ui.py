@@ -806,6 +806,7 @@ class MainMenu:
             print("8. Connect to Kubo/IPFS peer")
             print("9. Ping Kubo/IPFS peer")
             print("10. Identity Presence / Shared Report")
+            print("11. Query trusted native peer status")
             choice = input("\n> ").strip()
 
             if choice == "0":
@@ -897,6 +898,17 @@ class MainMenu:
                     input("\n> ")
                 elif choice == "10":
                     self.identity_presence_menu()
+                elif choice == "11":
+                    node_id = input("Trusted peer node ID (sha256:...): ").strip()
+                    host = input("Peer host/IP: ").strip()
+                    port = int(input("Peer TCP port: ").strip())
+                    result = self.runtime.query_native_peer_status(host, port, node_id)
+                    print("\nAuthenticated native peer status")
+                    print(f"Node ID: {result['node_id']}")
+                    print(f"State: {result['state']}")
+                    print(f"Observed at (UTC): {result['observed_at']}")
+                    print(f"Request ID: {result['request_id']}")
+                    input("\n> ")
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
                 input("\n> ")
