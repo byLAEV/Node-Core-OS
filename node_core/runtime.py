@@ -195,9 +195,11 @@ class NodeRuntime:
         return result
 
     def revoke_trusted_peer(self, node_id: str) -> dict[str, str]:
-        """Persist peer revocation and stop the listener so its allowlist cannot stay stale."""
+        """Persist revocation and close only this peer's sessions when the service is running."""
         result = self.p2p_trust.revoke(node_id)
-        self.stop_native_p2p()
+        service = self.p2p_service
+        if service is not None:
+            service.revoke_peer(node_id)
         return result
 
     def menu(self) -> None:
