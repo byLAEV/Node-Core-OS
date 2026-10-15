@@ -47,8 +47,14 @@ class NodeTLSTransport:
             )
             if not isinstance(private_key, Ed25519PrivateKey):
                 raise TLSTransportError("Node private key is not Ed25519.")
+            # Every self-signed peer certificate must have a unique subject.
+            # OpenSSL can otherwise select the wrong trust anchor when several
+            # pinned certificates share the same subject, rejecting valid peers.
             subject = issuer = x509.Name([
-                x509.NameAttribute(NameOID.COMMON_NAME, "Node Core OS P2P")
+                x509.NameAttribute(
+                    NameOID.COMMON_NAME,
+                    "Node Core OS P2P " + metadata["node_id"],
+                )
             ])
             now = datetime.now(timezone.utc)
             cert = (
