@@ -48,7 +48,7 @@ class NodeTLSTransport:
             if not isinstance(private_key, Ed25519PrivateKey):
                 raise TLSTransportError("Node private key is not Ed25519.")
             subject = issuer = x509.Name([
-                x509.NameAttribute(NameOID.COMMON_NAME, metadata["node_id"])
+                x509.NameAttribute(NameOID.COMMON_NAME, "Node Core OS P2P")
             ])
             now = datetime.now(timezone.utc)
             cert = (
