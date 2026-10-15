@@ -116,7 +116,7 @@ class P2PContractsService:
             local = load_genesis(self.genesis_path)
             if local != bundled:
                 raise P2PContractsError("The local Node Core P2P Contracts genesis manifest differs from the bundled reference.")
-        self._ensure_genesis_manifest()
+        return self._ensure_genesis_manifest()
 
     def _ensure_genesis_manifest(self) -> dict[str, Any]:
         """Copy the bundled genesis into the node-synchronized manifest directory once."""
