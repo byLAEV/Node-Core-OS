@@ -7,11 +7,18 @@ from __future__ import annotations
 
 import socket
 import threading
+import uuid
+from datetime import datetime, timezone
 from collections.abc import Callable, Mapping
 from typing import Any
 
 from node_core.identity.node_identity import NodeIdentityStore
-from node_core.p2p.session import AuthenticatedPeerSession, PeerSessionError
+from node_core.p2p.session import (
+    AuthenticatedPeerSession,
+    PeerSessionError,
+    receive_application_message,
+    send_application_message,
+)
 from node_core.p2p.tls_transport import NodeTLSTransport, TLSTransportError
 
 
@@ -135,6 +142,62 @@ class NodePeerService:
             if raw_socket is not None:
                 raw_socket.close()
 
+
+    def request_status(
+        self, host: str, port: int, expected_peer_node_id: str
+    ) -> dict[str, str]:
+        """Open an authenticated connection and return a validated remote STATUS response."""
+        certificate = self.trusted_peers.get(expected_peer_node_id)
+        if certificate is None:
+            raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
+        raw_socket: socket.socket | None = None
+        try:
+            raw_socket = socket.create_connection(
+                (host, port), timeout=self.timeout_seconds
+            )
+            tls_socket = self.tls_transport.client_context([certificate]).wrap_socket(
+                raw_socket, server_hostname=None
+            )
+            raw_socket = None
+            with tls_socket:
+                session = AuthenticatedPeerSession(
+                    self.identity_store,
+                    self.tls_transport,
+                    expected_peer_node_id,
+                    timeout_seconds=self.timeout_seconds,
+                )
+                peer = session.establish(tls_socket, "initiator")
+                request_id = uuid.uuid4().hex
+                send_application_message(
+                    tls_socket,
+                    {
+                        "version": 1,
+                        "type": "STATUS",
+                        "action": "request",
+                        "request_id": request_id,
+                    },
+                )
+                response = receive_application_message(tls_socket)
+                if (
+                    response.get("type") != "STATUS"
+                    or response.get("action") != "response"
+                    or response.get("request_id") != request_id
+                ):
+                    raise PeerServiceError("Peer returned an unexpected STATUS response.")
+                return {
+                    "node_id": peer["node_id"],
+                    "state": response["state"],
+                    "observed_at": response["observed_at"],
+                    "request_id": request_id,
+                }
+        except (OSError, PeerSessionError, TLSTransportError, KeyError) as exc:
+            raise PeerServiceError(
+                "Unable to complete an authenticated STATUS request."
+            ) from exc
+        finally:
+            if raw_socket is not None:
+                raw_socket.close()
+
     def _accept_loop(self) -> None:
         while not self._stop.is_set():
             listener = self._listener
@@ -176,6 +239,10 @@ class NodePeerService:
                 peer = session.establish(tls_socket, "responder")
                 if self.on_peer:
                     self.on_peer(peer, tls_socket)
+                self._serve_application_messages(tls_socket)
+        except socket.timeout:
+            # Idle peers may close without sending an application message.
+            pass
         except (OSError, PeerSessionError, TLSTransportError, PeerServiceError) as exc:
             self.last_error = str(exc)
         finally:
@@ -186,6 +253,37 @@ class NodePeerService:
             current = threading.current_thread()
             with self._workers_lock:
                 self._workers.discard(current)
+
+    def _serve_application_messages(self, tls_socket: socket.socket) -> None:
+        """Serve bounded application requests on an authenticated TLS connection."""
+        while not self._stop.is_set():
+            try:
+                message = receive_application_message(tls_socket)
+            except socket.timeout:
+                return
+            if message["type"] == "STATUS" and message["action"] == "request":
+                send_application_message(
+                    tls_socket,
+                    {
+                        "version": 1,
+                        "type": "STATUS",
+                        "action": "response",
+                        "request_id": message["request_id"],
+                        "state": "running",
+                        "observed_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+                continue
+            send_application_message(
+                tls_socket,
+                {
+                    "version": 1,
+                    "type": "ERROR",
+                    "code": "UNSUPPORTED_REQUEST",
+                    "message": "This peer does not support that request.",
+                },
+            )
+            return
 
     def __enter__(self) -> "NodePeerService":
         self.start()
