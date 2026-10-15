@@ -8,15 +8,12 @@ from __future__ import annotations
 from dataclasses import replace
 import ipaddress
 import socket
-import struct
 import threading
 import time
 from collections.abc import Callable
-from typing import Any
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.discovery import (
-    DISCOVERY_PROTOCOL_VERSION,
     MAX_ANNOUNCEMENT_BYTES,
     DiscoveryAnnouncement,
     DiscoveryAnnouncementError,
