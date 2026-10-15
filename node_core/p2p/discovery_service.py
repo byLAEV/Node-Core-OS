@@ -40,7 +40,7 @@ class NodeDiscoveryService:
         self,
         identity_store: NodeIdentityStore,
         *,
-        p2p_port: int,
+        p2p_port: int | Callable[[], int],
         multicast_group: str = DEFAULT_MULTICAST_GROUP,
         multicast_port: int = DEFAULT_MULTICAST_PORT,
         announce_interval_seconds: float = DEFAULT_ANNOUNCE_INTERVAL_SECONDS,
@@ -48,8 +48,8 @@ class NodeDiscoveryService:
         interface_ip: str | None = None,
         on_peer: Callable[[DiscoveryAnnouncement], None] | None = None,
     ) -> None:
-        if not 1 <= p2p_port <= 65535:
-            raise ValueError("p2p_port must be between 1 and 65535.")
+        if not callable(p2p_port) and (type(p2p_port) is not int or not 0 <= p2p_port <= 65535):
+            raise ValueError("p2p_port must be between 0 and 65535, or a callable returning one.")
         try:
             group = ipaddress.ip_address(multicast_group)
             interface = ipaddress.ip_address(interface_ip) if interface_ip else None
@@ -65,7 +65,7 @@ class NodeDiscoveryService:
             raise ValueError("Discovery intervals must be positive.")
 
         self.identity_store = identity_store
-        self.p2p_port = p2p_port
+        self._p2p_port_source = p2p_port
         self.multicast_group = str(group)
         self.multicast_port = multicast_port
         self.announce_interval_seconds = announce_interval_seconds
@@ -155,6 +155,16 @@ class NodeDiscoveryService:
                 self._peers.values(), key=lambda item: item[1]
             ))
 
+    def _current_p2p_port(self) -> int:
+        """Return the current advertised port, or 0 when no endpoint is available."""
+        try:
+            port = self._p2p_port_source() if callable(self._p2p_port_source) else self._p2p_port_source
+        except Exception:
+            return 0
+        if type(port) is not int or not 0 <= port <= 65535:
+            return 0
+        return port
+
     def _default_interface_ip(self) -> str:
         """Select the routed local IPv4 address without sending application data."""
         probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -182,7 +192,7 @@ class NodeDiscoveryService:
                     payload = create_announcement(
                         self.identity_store,
                         self._bound_interface,
-                        self.p2p_port,
+                        self._current_p2p_port(),
                     )
                     if len(payload) <= MAX_ANNOUNCEMENT_BYTES:
                         sock.sendto(payload, destination)
