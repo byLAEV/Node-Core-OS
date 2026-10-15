@@ -20,6 +20,7 @@ class MainMenu:
         while True:
             print("\nNode Core OS\nbyLAEV\n")
             self._print_identity_summary()
+            self._print_native_network_indicator()
             self._print_update_status(update_status)
             print("0. Exit")
             print("1. Node Core BIOS")
@@ -66,6 +67,25 @@ class MainMenu:
                 self.applications()
             elif choice == "5":
                 self.network_nodes()
+
+    def _print_native_network_indicator(self) -> None:
+        """Add one concise native-network line without changing the existing menu header."""
+        try:
+            status = self.runtime.native_p2p_status()
+            discovered = len(status.get("discovered_peers", []))
+            if status.get("discovery_running"):
+                state = "DISCOVERING" if discovered == 0 else "NODES DETECTED"
+            else:
+                state = "UNAVAILABLE"
+            print(
+                f"Native node network: {state} | "
+                f"Discovered: {discovered} | "
+                f"Authenticated sessions: {len(status.get('active_peers', []))}"
+            )
+            if status.get("discovery_error") and not status.get("discovery_running"):
+                print(f"Discovery detail: {status['discovery_error']}")
+        except Exception as exc:
+            print(f"Native node network: UNAVAILABLE ({exc})")
 
     def _print_update_status(self, status: UpdateStatus) -> None:
         if status.available:
@@ -835,6 +855,15 @@ class MainMenu:
             print("Estado: NO DISPONIBLE")
             print(f"Motivo: {exc}")
 
+        print("\nDescubrimiento P2P nativo (independiente de Kubo/IPFS)")
+        print(f"Estado del descubrimiento: {'ACTIVO' if status.get('discovery_running') else 'NO DISPONIBLE'}")
+        discovered = status.get("discovered_peers", [])
+        print(f"Identidades detectadas en la LAN: {len(discovered)}")
+        for peer in discovered:
+            print(f"- {peer['node_id']} @ {peer['host']}:{peer['port']}")
+        if status.get("discovery_error"):
+            print(f"Detalle del descubrimiento: {status['discovery_error']}")
+
         print("\nKubo/IPFS y P2P nativo son transportes distintos; sus peers no se suman.")
 
 
@@ -856,6 +885,7 @@ class MainMenu:
             print("11. Query trusted native peer status")
             print("12. Exchange known native peer IDs")
             print("13. Estado general de la red de nodos")
+            print("14. List detected native P2P identities")
             choice = input("\n> ").strip()
 
             if choice == "0":
@@ -983,6 +1013,21 @@ class MainMenu:
                     input("\n> ")
                 elif choice == "13":
                     self._network_overview()
+                    input("\n> ")
+                elif choice == "14":
+                    status = self.runtime.native_p2p_status()
+                    print("\nDetected native P2P identities (not automatically trusted)")
+                    print(f"Discovery: {'RUNNING' if status.get('discovery_running') else 'UNAVAILABLE'}")
+                    peers = status.get("discovered_peers", [])
+                    if not peers:
+                        print("No valid signed LAN announcements have been observed.")
+                    for peer in peers:
+                        print(f"- Node ID: {peer['node_id']}")
+                        print(f"  LAN address: {peer['host']}:{peer['port']}")
+                        print(f"  Last announcement (UTC epoch): {peer['last_announcement']}")
+                    print("Detection does not grant trust or prove an authenticated session.")
+                    if status.get("discovery_error"):
+                        print(f"Discovery detail: {status['discovery_error']}")
                     input("\n> ")
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
