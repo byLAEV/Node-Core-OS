@@ -46,6 +46,40 @@ class P2PStatusRequestResponseTests(unittest.TestCase):
         self.assertTrue(result["observed_at"])
         self.assertTrue(result["request_id"])
 
+    def test_peers_request_returns_known_ids_without_changing_trust(self):
+        store_c = NodeIdentityStore(Path(self.temp.name) / "node-c")
+        meta_c = store_c.initialize()
+        tls_c = NodeTLSTransport(store_c)
+        cert_c = tls_c.ensure_certificate()
+
+        server = NodePeerService(
+            identity_store=self.store_b,
+            tls_transport=self.tls_b,
+            trusted_peers={
+                self.meta_a["node_id"]: self.cert_a,
+                meta_c["node_id"]: cert_c,
+            },
+            host="127.0.0.1",
+            port=0,
+            timeout_seconds=3,
+        )
+        host, port = server.start()
+        self.addCleanup(server.stop)
+
+        client = NodePeerService(
+            identity_store=self.store_a,
+            tls_transport=self.tls_a,
+            trusted_peers={self.meta_b["node_id"]: self.cert_b},
+            timeout_seconds=3,
+        )
+        result = client.request_peers(host, port, self.meta_b["node_id"])
+
+        self.assertEqual(result["node_id"], self.meta_b["node_id"])
+        self.assertEqual(result["peers"], [meta_c["node_id"]])
+        self.assertFalse(result["trust_changed"])
+        self.assertTrue(result["request_id"])
+        self.assertTrue(result["observed_at"])
+
     def test_status_request_refuses_untrusted_node(self):
         client = NodePeerService(
             identity_store=self.store_a,
