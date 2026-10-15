@@ -807,6 +807,7 @@ class MainMenu:
             print("9. Ping Kubo/IPFS peer")
             print("10. Identity Presence / Shared Report")
             print("11. Query trusted native peer status")
+            print("12. Exchange known native peer IDs")
             choice = input("\n> ").strip()
 
             if choice == "0":
@@ -914,6 +915,23 @@ class MainMenu:
                     print(f"State: {result['state']}")
                     print(f"Observed at (UTC): {result['observed_at']}")
                     print(f"Request ID: {result['request_id']}")
+                    input("\n> ")
+                elif choice == "12":
+                    node_id = input("Trusted peer node ID (sha256:...): ").strip()
+                    host = input("Peer host/IP: ").strip()
+                    port = int(input("Peer TCP port: ").strip())
+                    result = self.runtime.query_native_peer_peers(host, port, node_id)
+                    print("\nAuthenticated PEERS response")
+                    print(f"Responding node: {result['node_id']}")
+                    print(f"Observed at (UTC): {result['observed_at']}")
+                    print(f"Request ID: {result['request_id']}")
+                    print("Suggested peer IDs (not trusted automatically):")
+                    if result["peers"]:
+                        for suggested_node_id in result["peers"]:
+                            print(f"- {suggested_node_id}")
+                    else:
+                        print("No additional peer IDs were advertised.")
+                    print("Trust remains unchanged; verify certificates out of band before trusting a node.")
                     input("\n> ")
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
