@@ -6,7 +6,11 @@ from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.service import NodePeerService
-from node_core.p2p.session import AuthenticatedPeerSession
+from node_core.p2p.session import (
+    AuthenticatedPeerSession,
+    receive_application_message,
+    send_application_message,
+)
 from node_core.p2p.tls_transport import NodeTLSTransport
 
 
@@ -83,7 +87,18 @@ class ActivePeerSessionRevocationTests(unittest.TestCase):
             self.assertEqual(client_a.recv(1), b"")
         except OSError:
             pass
-        self.assertNotEqual(client_c.recv(1), b"")
+        send_application_message(
+            client_c,
+            {
+                "version": 1,
+                "type": "STATUS",
+                "action": "request",
+                "request_id": "still-trusted",
+            },
+        )
+        response = receive_application_message(client_c)
+        self.assertEqual(response["type"], "STATUS")
+        self.assertEqual(response["request_id"], "still-trusted")
 
         # The listener remains online but must reject the revoked certificate.
         raw = socket.create_connection((host, port), timeout=3)
