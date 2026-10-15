@@ -214,6 +214,27 @@ require_no_pending_recovery() {
   fi
 }
 
+ensure_python_environment() {
+  local requirements_file="$NODE_CORE_APP_DIR/requirements.txt"
+  local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
+  [[ -f "$requirements_file" ]] || {
+    printf 'Node Core OS requirements file is missing: %s\n' "$requirements_file" >&2
+    return 1
+  }
+  mkdir -p "$NODE_CORE_DATA_DIR/runtime"
+  if [[ ! -x "$python_environment/bin/python" ]]; then
+    python3 -m venv "$python_environment" || {
+      printf 'Could not create the private Python environment. Install python3-venv and retry.\n' >&2
+      return 1
+    }
+  fi
+  "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+    printf 'Could not install Node Core OS Python dependencies.\n' >&2
+    return 1
+  }
+  "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
+}
+
 ensure_launchers() {
   mkdir -p "$NODE_CORE_DATA_DIR/bin"
 
@@ -442,22 +463,8 @@ update_application() (
   rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
   rm -f "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-python-matrix.yml"
 
+  ensure_python_environment || return 1
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
-  [[ -f "$NODE_CORE_APP_DIR/requirements.txt" ]] || {
-    printf 'Update is missing requirements.txt; refusing activation.\n' >&2
-    return 1
-  }
-  if [[ ! -x "$python_environment/bin/python" ]]; then
-    python3 -m venv "$python_environment" || {
-      printf 'Could not create the private Python environment. Install python3-venv and retry.\n' >&2
-      return 1
-    }
-  fi
-  "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$NODE_CORE_APP_DIR/requirements.txt" || {
-    printf 'Could not install updated Node Core OS Python dependencies.\n' >&2
-    return 1
-  }
-  "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
 
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
     printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
@@ -542,6 +549,7 @@ main() {
   require_no_pending_recovery
   require_installation
   migrate_termux_config
+  ensure_python_environment
   ensure_launchers
   refresh_kubo_service_unit_if_present
 
