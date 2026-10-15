@@ -44,7 +44,30 @@ jobs:
           set -euo pipefail
           package="node-core-os-installer-${{ steps.versions.outputs.node }}"
           mkdir -p dist
-          git archive --format=tar.gz --prefix="$package/" HEAD > "dist/$package.tar.gz"
+          stage="$(mktemp -d)"
+          trap 'rm -rf "$stage"' EXIT
+          git archive --format=tar --prefix="$package/" HEAD | tar -xf - -C "$stage"
+
+          # HashPaper is a separate application and must not ship inside the
+          # Node Core OS installer source package.
+          rm -rf \
+            "$stage/$package/applications/hashpaper" \
+            "$stage/$package/installer/hashpaper-install.sh" \
+            "$stage/$package/installer/hashpaper-update.sh" \
+            "$stage/$package/installer/opentimestamps-server-install.sh" \
+            "$stage/$package/installer/tests/hashpaper-install.sh" \
+            "$stage/$package/installer/tests/hashpaper-update.sh" \
+            "$stage/$package/docs/HASHPAPER.md" \
+            "$stage/$package/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md" \
+            "$stage/$package/tests/test_hashpaper_storage_layout.py" \
+            "$stage/$package/.github/workflows/hashpaper-opentimestamps-live.yml" \
+            "$stage/$package/.github/workflows/hashpaper-python-matrix.yml"
+
+          tar -czf "dist/$package.tar.gz" -C "$stage" "$package"
+          if tar -tzf "dist/$package.tar.gz" | grep -Eq '/applications/hashpaper/|/installer/hashpaper-(install|update)\\.sh|/installer/opentimestamps-server-install\\.sh'; then
+            printf 'The Node Core OS source package contains a separate HashPaper component.\\n' >&2
+            exit 1
+          fi
           sha512sum "dist/$package.tar.gz" > "dist/$package.tar.gz.sha512"
 
       - name: Build existing-install updater package
