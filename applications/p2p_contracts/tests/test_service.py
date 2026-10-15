@@ -79,6 +79,18 @@ class P2PContractsServiceTests(unittest.TestCase):
         self.assertEqual(manifest["sequence"], 1)
         self.assertEqual(manifest["genesis_hash"], root_hash)
         self.assertEqual(manifest["previous_manifest_hash"], root_hash)
+        identity_header = manifest["identity_header"]
+        self.assertEqual(identity_header["node_id"], self.network.identity().peer_id)
+        self.assertEqual(
+            set(identity_header),
+            {"identity_id", "node_id", "identity_verification", "public_profile", "contact"},
+        )
+        self.assertEqual(identity_header["public_profile"], {})
+        self.assertEqual(identity_header["contact"], [])
+        self.assertEqual(
+            identity_header["identity_verification"]["status"],
+            "NOT_CRYPTOGRAPHICALLY_VERIFIED",
+        )
         self.assertEqual(Path(result["manifest_path"]).parent, genesis_path.parent)
 
     def test_multiple_local_manifests_do_not_require_peer_responses(self):
