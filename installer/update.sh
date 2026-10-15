@@ -221,7 +221,7 @@ ensure_launchers() {
 #!/usr/bin/env bash
 set -euo pipefail
 export NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json"
-exec python3 "$NODE_CORE_DATA_DIR/app/main.py" "$@"
+exec "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" "$NODE_CORE_DATA_DIR/app/main.py" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core"
 
@@ -442,6 +442,23 @@ update_application() (
   rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
   rm -f "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-python-matrix.yml"
 
+  local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
+  [[ -f "$NODE_CORE_APP_DIR/requirements.txt" ]] || {
+    printf 'Update is missing requirements.txt; refusing activation.\n' >&2
+    return 1
+  }
+  if [[ ! -x "$python_environment/bin/python" ]]; then
+    python3 -m venv "$python_environment" || {
+      printf 'Could not create the private Python environment. Install python3-venv and retry.\n' >&2
+      return 1
+    }
+  fi
+  "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$NODE_CORE_APP_DIR/requirements.txt" || {
+    printf 'Could not install updated Node Core OS Python dependencies.\n' >&2
+    return 1
+  }
+  "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
+
   [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
     printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
     return 1
@@ -469,7 +486,7 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
 print("Node Core OS version:", version)
 PY
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
-  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v); then
+  if ! (cd "$NODE_CORE_APP_DIR" && "$python_environment/bin/python" -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v); then
     printf 'P2P Contracts tests failed after update; refusing to mark the update successful.\n' >&2
     return 1
   fi
