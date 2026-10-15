@@ -71,9 +71,11 @@ class NativeP2PRuntimeTests(unittest.TestCase):
         self.assertEqual(len(status["discovered_peer_status"]), 1)
         peer = status["discovered_peer_status"][0]
         self.assertEqual(peer["node_id"], node_id)
+        self.assertTrue(peer["announcement_signature_validated"])
         self.assertEqual(peer["trust_status"], "not_trusted")
+        self.assertFalse(peer["identity_authenticated"])
         self.assertFalse(peer["authenticated_inbound_session"])
-        self.assertEqual(peer["state"], "discovered_not_trusted")
+        self.assertEqual(peer["state"], "signed_announcement_verified_not_trusted")
         self.assertEqual(status["trusted_count"], 0)
 
         self.runtime.p2p_discovery = None
