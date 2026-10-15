@@ -64,6 +64,7 @@ class NodeRuntime:
     def native_p2p_status(self) -> dict[str, object]:
         """Return local identity, trust, and listener state without requiring Kubo."""
         identity = self.p2p_identity.initialize()
+        self.p2p_tls.ensure_certificate()
         peers = self.p2p_trust.list_peers()
         service = self.p2p_service
         listening = False
@@ -119,7 +120,11 @@ class NodeRuntime:
     def trust_peer_certificate(self, node_id: str, certificate_path: Path, label: str = "") -> dict[str, str]:
         """Trust a certificate explicitly after the operator verifies its fingerprint out of band."""
         certificate = Path(certificate_path).expanduser().read_bytes()
-        return self.p2p_trust.add(node_id, certificate, label=label)
+        result = self.p2p_trust.add(node_id, certificate, label=label)
+        # The running service has an immutable allowlist; restart it explicitly
+        # after trust changes so it cannot continue using stale authorization.
+        self.stop_native_p2p()
+        return result
 
     def revoke_trusted_peer(self, node_id: str) -> dict[str, str]:
         """Persist peer revocation and stop the listener so its allowlist cannot stay stale."""
