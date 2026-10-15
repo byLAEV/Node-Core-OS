@@ -162,6 +162,10 @@ jobs:
           # Use a real subprocess and stdin, because the Applications menu launches P2P Contracts as a child process.
           printf '4\n2\nyes\n0\n0\n0\n' > "$RUNNER_TEMP/p2p-input.txt"
           script -q -e -c "python3 \"$NODE_CORE_DATA_DIR/app/main.py\"" /dev/null < "$RUNNER_TEMP/p2p-input.txt" > "$RUNNER_TEMP/p2p-menu.txt"
+          grep -Fq 'Do you accept that P2P Contracts may use your existing Node Core OS identity locally?' "$RUNNER_TEMP/p2p-menu.txt"
+          grep -Fq '1. Create Public Request' "$RUNNER_TEMP/p2p-menu.txt"
+          grep -Fq '3. Create Request Closure' "$RUNNER_TEMP/p2p-menu.txt"
+          grep -Fq '4. Search Request ID' "$RUNNER_TEMP/p2p-menu.txt"
       - name: Test P2P Contracts service and propagation scenarios
         shell: bash
         run: |
