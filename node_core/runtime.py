@@ -109,6 +109,31 @@ class NodeRuntime:
         service = self.p2p_service
         discovery = self.p2p_discovery
         discovered_peers = list(discovery.snapshot()) if discovery is not None else []
+        trust_by_node_id = {peer["node_id"]: peer["status"] for peer in peers}
+        authenticated_inbound_node_ids = {
+            peer["node_id"] for peer in (service.active_peers if service else [])
+        }
+        discovered_peer_status = []
+        for peer in discovered_peers:
+            trust_status = trust_by_node_id.get(peer.node_id, "not_trusted")
+            authenticated_inbound = peer.node_id in authenticated_inbound_node_ids
+            if trust_status == "revoked":
+                state = "revoked"
+            elif authenticated_inbound:
+                state = "trusted_and_authenticated_inbound"
+            elif trust_status == "trusted":
+                state = "trusted_not_connected"
+            else:
+                state = "discovered_not_trusted"
+            discovered_peer_status.append({
+                "node_id": peer.node_id,
+                "host": peer.host,
+                "port": peer.port,
+                "last_announcement": peer.timestamp,
+                "trust_status": trust_status,
+                "authenticated_inbound_session": authenticated_inbound,
+                "state": state,
+            })
         listening = False
         address: tuple[str, int] | None = None
         if service is not None:
@@ -144,6 +169,9 @@ class NodeRuntime:
                 }
                 for peer in discovered_peers
             ],
+            # Per-peer states deliberately separate discovery, trust, and live
+            # authenticated inbound sessions. Discovery never grants trust.
+            "discovered_peer_status": discovered_peer_status,
         }
 
     def _native_p2p_advertised_port(self) -> int:
