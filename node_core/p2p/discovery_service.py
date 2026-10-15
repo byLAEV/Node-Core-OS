@@ -202,7 +202,7 @@ class NodeDiscoveryService:
                         self._last_error = str(exc)
                 break
 
-            if self._stop_event.is_set() or sender[0] == self._bound_interface:
+            if self._stop_event.is_set():
                 continue
             try:
                 announcement = parse_announcement(payload)
