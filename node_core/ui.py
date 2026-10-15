@@ -856,13 +856,20 @@ class MainMenu:
             print(f"Motivo: {exc}")
 
         print("\nDescubrimiento P2P nativo (independiente de Kubo/IPFS)")
-        print(f"Estado del descubrimiento: {'ACTIVO' if status.get('discovery_running') else 'NO DISPONIBLE'}")
-        discovered = status.get("discovered_peers", [])
-        print(f"Identidades detectadas en la LAN: {len(discovered)}")
-        for peer in discovered:
-            print(f"- {peer['node_id']} @ {peer['host']}:{peer['port']}")
-        if status.get("discovery_error"):
-            print(f"Detalle del descubrimiento: {status['discovery_error']}")
+        try:
+            discovery_status = self.runtime.native_p2p_status()
+            print(
+                f"Estado del descubrimiento: "
+                f"{'ACTIVO' if discovery_status.get('discovery_running') else 'NO DISPONIBLE'}"
+            )
+            discovered = discovery_status.get("discovered_peers", [])
+            print(f"Identidades detectadas en la LAN: {len(discovered)}")
+            for peer in discovered:
+                print(f"- {peer['node_id']} @ {peer['host']}:{peer['port']}")
+            if discovery_status.get("discovery_error"):
+                print(f"Detalle del descubrimiento: {discovery_status['discovery_error']}")
+        except Exception as exc:
+            print(f"Estado del descubrimiento: NO DISPONIBLE ({exc})")
 
         print("\nKubo/IPFS y P2P nativo son transportes distintos; sus peers no se suman.")
 
@@ -1023,7 +1030,7 @@ class MainMenu:
                         print("No valid signed LAN announcements have been observed.")
                     for peer in peers:
                         print(f"- Node ID: {peer['node_id']}")
-                        print(f"  LAN address: {peer['host']}:{peer['port']}")
+                        print(f"  Advertised endpoint (not yet authenticated): {peer['host']}:{peer['port']}")
                         print(f"  Last announcement (UTC epoch): {peer['last_announcement']}")
                     print("Detection does not grant trust or prove an authenticated session.")
                     if status.get("discovery_error"):
