@@ -1,19 +1,16 @@
 """Runtime orchestration for Node Core OS."""
 from pathlib import Path
+from typing import Any
 
 from node_core.config import NodeConfig
 from node_core.content import ContentManager
 from node_core.evidence import EvidenceManager
 from node_core.external_cids import ExternalCIDLibrary
 from node_core.ipfs import KuboManager
-from node_core.identity.node_identity import NodeIdentityStore
 from node_core.identity.profile import IdentityProfileStore
 from node_core.identity_presence import IdentityPresence
 from node_core.my_life import MyLifeBlog
 from node_core.network import NodeNetwork
-from node_core.p2p.service import NodePeerService, PeerServiceError
-from node_core.p2p.tls_transport import NodeTLSTransport
-from node_core.p2p.trust_store import PeerTrustStore
 from node_core.storage import StorageManager
 from node_core.ui import MainMenu
 
@@ -44,16 +41,48 @@ class NodeRuntime:
         self.external_cids = ExternalCIDLibrary(self.storage, self.kubo)
         self.my_life = MyLifeBlog(self.storage, self.content)
 
-        # Native P2P uses a separate technical identity and never requires Kubo.
-        self.p2p_identity = NodeIdentityStore(self.config.data_dir)
-        self.p2p_trust = PeerTrustStore(self.config.data_dir)
-        self.p2p_tls = NodeTLSTransport(self.p2p_identity)
-        self.p2p_service: NodePeerService | None = None
+        # Keep the established CLI usable on installations that have not installed
+        # the optional P2P cryptography dependency. Load P2P only on explicit use.
+        self._p2p_identity: Any = None
+        self._p2p_trust: Any = None
+        self._p2p_tls: Any = None
+        self.p2p_service: Any = None
         self._booted = False
 
     @property
     def ipfs(self) -> KuboManager:
         return self.kubo
+
+    def _ensure_p2p_components(self) -> None:
+        if self._p2p_identity is not None:
+            return
+        try:
+            from node_core.identity.node_identity import NodeIdentityStore
+            from node_core.p2p.tls_transport import NodeTLSTransport
+            from node_core.p2p.trust_store import PeerTrustStore
+        except ImportError as exc:
+            raise RuntimeError(
+                "Native P2P requires the 'cryptography' dependency. "
+                "Install the project requirements before using Native P2P."
+            ) from exc
+        self._p2p_identity = NodeIdentityStore(self.config.data_dir)
+        self._p2p_trust = PeerTrustStore(self.config.data_dir)
+        self._p2p_tls = NodeTLSTransport(self._p2p_identity)
+
+    @property
+    def p2p_identity(self) -> Any:
+        self._ensure_p2p_components()
+        return self._p2p_identity
+
+    @property
+    def p2p_trust(self) -> Any:
+        self._ensure_p2p_components()
+        return self._p2p_trust
+
+    @property
+    def p2p_tls(self) -> Any:
+        self._ensure_p2p_components()
+        return self._p2p_tls
 
     def boot(self) -> None:
         self.config.ensure_directories()
@@ -63,6 +92,8 @@ class NodeRuntime:
 
     def native_p2p_status(self) -> dict[str, object]:
         """Return local identity, trust, and listener state without requiring Kubo."""
+        from node_core.p2p.service import PeerServiceError
+
         identity = self.p2p_identity.initialize()
         self.p2p_tls.ensure_certificate()
         peers = self.p2p_trust.list_peers()
@@ -88,12 +119,14 @@ class NodeRuntime:
 
     def start_native_p2p(self, host: str = "127.0.0.1", port: int = 0) -> tuple[str, int]:
         """Start the native P2P listener using the current persistent trust allowlist."""
+        from node_core.p2p.service import NodePeerService, PeerServiceError
+
         if self.p2p_service is not None:
             try:
                 return self.p2p_service.address
             except PeerServiceError:
                 self.p2p_service = None
-        identity = self.p2p_identity.initialize()
+        self.p2p_identity.initialize()
         certificates = self.p2p_trust.trusted_certificates()
         if not certificates:
             raise PeerServiceError(
@@ -121,16 +154,14 @@ class NodeRuntime:
         """Trust a certificate explicitly after the operator verifies its fingerprint out of band."""
         certificate = Path(certificate_path).expanduser().read_bytes()
         result = self.p2p_trust.add(node_id, certificate, label=label)
-        # The running service has an immutable allowlist; restart it explicitly
-        # after trust changes so it cannot continue using stale authorization.
+        # The running service has an immutable allowlist; stop it after trust
+        # changes so it cannot continue using stale authorization.
         self.stop_native_p2p()
         return result
 
     def revoke_trusted_peer(self, node_id: str) -> dict[str, str]:
         """Persist peer revocation and stop the listener so its allowlist cannot stay stale."""
         result = self.p2p_trust.revoke(node_id)
-        # The current service takes an immutable allowlist at construction. Stop it
-        # after trust changes so a restart is required to load the updated allowlist.
         self.stop_native_p2p()
         return result
 
