@@ -228,11 +228,15 @@ ensure_python_environment() {
       return 1
     }
   fi
-  "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
-    printf 'Could not install Node Core OS Python dependencies.\n' >&2
-    return 1
-  }
-  "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
+  if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
+    "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+      printf 'Could not install Node Core OS Python dependencies.\n' >&2
+      return 1
+    }
+  fi
+  if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
+    "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
+  fi
 }
 
 ensure_launchers() {
