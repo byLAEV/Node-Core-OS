@@ -96,6 +96,19 @@ class NativeP2PRuntimeTests(unittest.TestCase):
             self.assertIsNone(self.runtime._p2p_discovery_error)
             self.runtime.stop_native_discovery()
 
+    def test_discovery_does_not_advertise_an_unbound_or_loopback_listener(self):
+        self.assertEqual(self.runtime._native_p2p_advertised_port(), 0)
+
+        class FakeService:
+            @property
+            def address(self):
+                return ("127.0.0.1", 45678)
+
+        self.runtime.p2p_service = FakeService()
+        self.assertEqual(self.runtime._native_p2p_advertised_port(), 0)
+
+        self.runtime.p2p_service = None
+
     def test_listener_requires_an_explicit_trusted_peer(self):
         from node_core.p2p.service import PeerServiceError
         with self.assertRaises(PeerServiceError):
