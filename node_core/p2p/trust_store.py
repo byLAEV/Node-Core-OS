@@ -50,7 +50,7 @@ class PeerTrustStore:
             pem = record.get("certificate_pem")
             if not isinstance(pem, str):
                 raise PeerTrustStoreError("Peer trust record has no PEM certificate.")
-            self._validate_certificate(node_id, pem.encode("ascii"))
+            self._validate_certificate(node_id, pem.encode("ascii"), check_validity=False)
         return data
 
     def add(
@@ -63,7 +63,7 @@ class PeerTrustStore:
         """Explicitly trust a certificate after matching its Ed25519 key to node_id."""
         self._validate_node_id(node_id)
         self._validate_label(label)
-        fingerprint = self._validate_certificate(node_id, certificate_pem)
+        fingerprint = self._validate_certificate(node_id, certificate_pem, check_validity=True)
         data = self.load()
         existing = data["peers"].get(node_id)
         pem_text = certificate_pem.decode("ascii")
@@ -138,7 +138,9 @@ class PeerTrustStore:
             raise PeerTrustStoreError("Peer label must be text of at most 128 printable characters.")
 
     @staticmethod
-    def _validate_certificate(node_id: str, certificate_pem: bytes) -> str:
+    def _validate_certificate(
+        node_id: str, certificate_pem: bytes, check_validity: bool = True
+    ) -> str:
         if not isinstance(certificate_pem, bytes) or not certificate_pem:
             raise PeerTrustStoreError("A PEM certificate is required.")
         try:
@@ -152,11 +154,18 @@ class PeerTrustStore:
             derived_id = "sha256:" + hashlib.sha256(raw).hexdigest()
             if derived_id != node_id:
                 raise PeerTrustStoreError("Certificate public key does not match the node ID.")
-            now = datetime.now(timezone.utc)
-            not_before = getattr(cert, "not_valid_before_utc", cert.not_valid_before.replace(tzinfo=timezone.utc))
-            not_after = getattr(cert, "not_valid_after_utc", cert.not_valid_after.replace(tzinfo=timezone.utc))
-            if now < not_before or now > not_after:
-                raise PeerTrustStoreError("Peer certificate is outside its validity period.")
+            if check_validity:
+                now = datetime.now(timezone.utc)
+                not_before = getattr(
+                    cert, "not_valid_before_utc",
+                    cert.not_valid_before.replace(tzinfo=timezone.utc),
+                )
+                not_after = getattr(
+                    cert, "not_valid_after_utc",
+                    cert.not_valid_after.replace(tzinfo=timezone.utc),
+                )
+                if now < not_before or now > not_after:
+                    raise PeerTrustStoreError("Peer certificate is outside its validity period.")
             return hashlib.sha256(cert.public_bytes(serialization.Encoding.DER)).hexdigest()
         except (ValueError, TypeError, UnicodeError) as exc:
             raise PeerTrustStoreError("Peer certificate is malformed.") from exc
