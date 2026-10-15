@@ -116,17 +116,37 @@ class NodePeerService:
             self._active_peers.pop(session_id, None)
 
     def revoke_peer(self, node_id: str) -> int:
-        """Remove one peer from the live allowlist and close only its inbound sessions."""
+        """Revoke a peer and synchronously remove and close its inbound sessions."""
         with self._trusted_peers_lock:
             if node_id not in self.trusted_peers:
                 return 0
+
+            # Remove trust first while holding the same lock used by the
+            # handshake's final trust check. A handshake racing with revocation
+            # therefore cannot register a new active session after this point.
             self.trusted_peers.pop(node_id, None)
+
+            with self._active_peers_lock:
+                session_ids = [
+                    session_id
+                    for session_id, peer in self._active_peers.items()
+                    if peer.get("node_id") == node_id
+                ]
+                for session_id in session_ids:
+                    self._active_peers.pop(session_id, None)
+
             with self._active_connections_lock:
                 connections = [
                     connection
                     for connection, peer_node_id in self._connection_peers.items()
                     if peer_node_id == node_id
                 ]
+                for connection in connections:
+                    self._connection_peers.pop(connection, None)
+                    self._active_connections.discard(connection)
+
+        # Close outside locks: shutdown/close may wake worker threads that
+        # need these locks during their finally cleanup.
         for connection in connections:
             try:
                 connection.shutdown(socket.SHUT_RDWR)
@@ -136,7 +156,8 @@ class NodePeerService:
                 connection.close()
             except OSError:
                 pass
-        return len(connections)
+
+        return len(session_ids)
 
     def start(self) -> tuple[str, int]:
         """Start listening; the port may be zero to request an OS-assigned port."""
