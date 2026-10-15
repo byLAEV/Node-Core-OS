@@ -4,8 +4,6 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from cryptography.exceptions import InvalidSignature
-
 from node_core.identity.node_identity import NodeIdentityError, NodeIdentityStore
 
 
@@ -27,10 +25,10 @@ class NodeIdentityStoreTests(unittest.TestCase):
 
     def test_initialization_is_idempotent(self):
         first = self.store.initialize()
+        original_key = self.store.private_key_path.read_bytes()
         second = self.store.initialize()
         self.assertEqual(first, second)
-        self.assertEqual(self.store.private_key_path.read_bytes(),
-                         self.store.private_key_path.read_bytes())
+        self.assertEqual(self.store.private_key_path.read_bytes(), original_key)
 
     def test_independent_data_directories_get_different_identities(self):
         first = self.store.initialize()
