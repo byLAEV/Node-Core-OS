@@ -217,16 +217,16 @@ require_no_pending_recovery() {
 ensure_python_environment() {
   local requirements_file="$NODE_CORE_APP_DIR/requirements.txt"
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
-  [[ -f "$requirements_file" ]] || {
-    printf 'Node Core OS requirements file is missing: %s\n' "$requirements_file" >&2
-    return 1
-  }
   mkdir -p "$NODE_CORE_DATA_DIR/runtime"
   if [[ ! -x "$python_environment/bin/python" ]]; then
     python3 -m venv "$python_environment" || {
       printf 'Could not create the private Python environment. Install python3-venv and retry.\n' >&2
       return 1
     }
+  fi
+  if [[ ! -f "$requirements_file" ]]; then
+    printf 'No requirements.txt in the current installation; preserving compatibility until the update archive is installed.\n'
+    return 0
   fi
   if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
     "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
@@ -467,6 +467,10 @@ update_application() (
   rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
   rm -f "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-python-matrix.yml"
 
+  [[ -f "$NODE_CORE_APP_DIR/requirements.txt" ]] || {
+    printf 'Update is missing requirements.txt; refusing activation.\n' >&2
+    return 1
+  }
   ensure_python_environment || return 1
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
 
