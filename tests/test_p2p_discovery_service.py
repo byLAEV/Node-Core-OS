@@ -56,8 +56,11 @@ class NodeDiscoveryServiceTests(unittest.TestCase):
         self.assertFalse(service.running)
 
     def test_rejects_invalid_configuration(self):
+        # Port zero means the identity can be discovered before a listener is ready.
+        service = NodeDiscoveryService(self.identity, p2p_port=0)
+        self.assertFalse(service.running)
         with self.assertRaises(ValueError):
-            NodeDiscoveryService(self.identity, p2p_port=0)
+            NodeDiscoveryService(self.identity, p2p_port=-1)
         with self.assertRaises(ValueError):
             NodeDiscoveryService(
                 self.identity, p2p_port=4242, multicast_group="192.168.1.1"
