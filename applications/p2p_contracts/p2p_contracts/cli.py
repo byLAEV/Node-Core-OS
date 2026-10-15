@@ -98,6 +98,7 @@ class P2PContractsCLI:
             own_status = "AUTOMATICALLY SENT" if state and state.get("owner_request_sent") else ("ENABLED" if enabled else "LOCKED")
             print(f"4. Create This Node's BTC Exchange Request ({own_status})")
             print("5. Submit a BTC Exchange Request to the Active Propagation")
+            print("6. Create a Local Request and Manifest (works without peers)")
             print("0. Back")
             choice = input("\nSelect an option: ").strip()
             if choice == "0":
@@ -116,6 +117,8 @@ class P2PContractsCLI:
                     self.create_request_form()
             elif choice == "5":
                 self.submit_to_active_propagation()
+            elif choice == "6":
+                self.create_request_form(local_only=True)
             else:
                 print("Choose an available option.")
 
@@ -141,30 +144,58 @@ class P2PContractsCLI:
             print("An active proposal was reported by a peer. It is not safe to create a competing proposal in this prototype.")
             print("Submit to the currently active proposal instead of opening a competing propagation window.")
             return
+
         manifest = self.service.current_manifest()
-        bootstrap = manifest is None
+        bootstrap = manifest is None and not result["responses"]
         if not result["responses"] and not bootstrap:
-            print("Cannot safely accept a later propagation: no peer responded. A local timeout is not proof of network-wide availability.")
+            print("Cannot start a later propagation without peer responses when a local manifest already exists.")
+            print("A genesis-only single-node bootstrap is allowed; subsequent network coordination remains experimental.")
             return
-        if bootstrap and not result["responses"]:
-            print("No peers responded. This is the initial genesis bootstrap, so the local node may explicitly accept H0; this does not prove that other nodes are online.")
-        parent_hash = manifest.get("propagation_hash") if manifest else GENESIS_HASH
-        print("No active proposal was reported by the responding peers.")
+
+        if bootstrap:
+            genesis = self.service._ensure_genesis_manifest()
+            parent_hash = genesis["genesis_hash"]
+            print("GENESIS BOOTSTRAP: no peer responses are required to initialize logical block 1.")
+            print(f"Verified genesis root hash: {parent_hash}")
+            print("This explicitly accepts the bundled, validated genesis reference locally.")
+        else:
+            parent_hash = manifest.get("manifest_hash") if manifest else self.service._ensure_genesis_manifest()["genesis_hash"]
+            print("No active proposal was reported by responding peers.")
+
         print("WARNING: this experimental version cannot prove global absence or enforce a network-wide exclusive lease.")
-        if not self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?"):
+        if bootstrap:
+            accepted = self._yes(
+                f"Accept genesis hash {parent_hash} as the root reference and initialize block 1 on this node alone?"
+            )
+        else:
+            accepted = self._yes("Accept a local ten-minute propagation window and announce it to Kubo PubSub?")
+        if not accepted:
             print("Propagation acceptance cancelled.")
             return
+
         print("Before accepting propagation, prepare this node's own public BTC exchange request.")
         if not self.create_request_form(draft_only=True):
             print("Propagation acceptance cancelled because the owner request draft was not saved.")
             return
+
         recheck = self.propagation.query_status()
         if recheck["active_proposals"]:
             print("Another active propagation appeared while this node's request was being prepared. This node will not open a competing window.")
             return
+        if not recheck["responses"] and not bootstrap:
+            print("Peer responses disappeared before acceptance. This node will not start a non-genesis propagation.")
+            return
+
         state = self.propagation.accept_new_propagation(parent_hash, require_owner_request=True)
+        if bootstrap:
+            state["bootstrap_from_genesis"] = True
+            state["genesis_hash_accepted"] = parent_hash
+            self.propagation._save_state(state)
         print("\nPROPAGATION ACCEPTED")
         print(f"Propagation hash: {state['proposal_hash']}")
+        if bootstrap:
+            print(f"Accepted genesis root hash: {parent_hash}")
+            print("Single-node genesis bootstrap accepted; peer discovery is not a prerequisite for logical block 1.")
         print(f"Accepted at: {state['accepted_at']}")
         print(f"Automatic batch submission time: {state['send_enabled_at']}")
         print("Incoming peer requests and this node's prepared request will be included in one manifest transition.")
@@ -224,7 +255,7 @@ class P2PContractsCLI:
             return
         self.create_request_form(remote_proposal=proposal)
 
-    def create_request_form(self, remote_proposal: dict[str, Any] | None = None, draft_only: bool = False) -> bool:
+    def create_request_form(self, remote_proposal: dict[str, Any] | None = None, draft_only: bool = False, local_only: bool = False) -> bool:
         profile = self.runtime.identity_profile.load() or {}
         node = self.runtime.network.identity()
         print("\n--- PUBLIC BTC EXCHANGE REQUEST ---")
@@ -262,8 +293,12 @@ class P2PContractsCLI:
         print(f"Request: {receive_amount} {asset.upper()}")
         print(f"Contact methods: {len(contacts)}")
         print("Identity fields to publish: " + (", ".join(sorted(selected)) if selected else "none"))
-        confirm_text = ("Save this request as a local draft for automatic propagation submission?"
-                        if draft_only else "Create this request in the local append-only manifest?")
+        if draft_only:
+            confirm_text = "Save this request as a local draft for automatic propagation submission?"
+        elif local_only:
+            confirm_text = "Create and save this request in a local manifest without requiring peer responses?"
+        else:
+            confirm_text = "Create this request in the local append-only manifest?"
         if not self._yes(confirm_text):
             print("Request creation cancelled.")
             return False
@@ -300,6 +335,10 @@ class P2PContractsCLI:
             else:
                 print("Request remains saved locally but was NOT acknowledged by the propagation node.")
                 print(f"Reason: {acknowledgement.get('reason', 'No reason provided.')}")
+        elif local_only:
+            print("Local manifest created successfully. No peer discovery or PubSub response was required.")
+            print("Status: LOCAL_ONLY_UNCORROBORATED")
+            print("The manifest can be shared and corroborated when other nodes join.")
         else:
             broadcast = self.propagation.publish_request(request_document, result["manifest_document"])
             print(f"Network acknowledgements received: {len(broadcast['peer_acknowledgements'])}")

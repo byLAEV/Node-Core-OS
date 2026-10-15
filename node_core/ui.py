@@ -792,13 +792,22 @@ class MainMenu:
                 input("\n> ")
 
     def network_nodes(self) -> None:
+        """Manage native authenticated P2P and the separate Kubo/IPFS network."""
         while True:
             print("\nNode Core OS — Network / Nodes")
             print("0. Back")
-            print("1. Refresh network status")
-            print("2. Connect to peer")
-            print("3. Ping a peer")
-            print("4. Identity Presence / Shared Report")
+            print("1. Native P2P status")
+            print("2. List trusted native peers")
+            print("3. Trust peer certificate")
+            print("4. Revoke trusted peer")
+            print("5. Start native P2P listener")
+            print("6. Stop native P2P listener")
+            print("7. Refresh Kubo/IPFS network status")
+            print("8. Connect to Kubo/IPFS peer")
+            print("9. Ping Kubo/IPFS peer")
+            print("10. Identity Presence / Shared Report")
+            print("11. Query trusted native peer status")
+            print("12. Exchange known native peer IDs")
             choice = input("\n> ").strip()
 
             if choice == "0":
@@ -806,32 +815,125 @@ class MainMenu:
 
             try:
                 if choice == "1":
-                    status = self.runtime.network.status()
-                    print("\nLocal node")
-                    print(f"Peer ID: {status.identity.peer_id}")
-                    print(f"Directly connected peers: {len(status.connected_peers)}")
-                    print(f"Nodes observed (this node + direct peers): {len(status.connected_peers) + 1}")
-                    if status.connected_peers:
-                        print("\nConnected peer IDs:")
-                        for peer_id in status.connected_peers:
-                            print(f"- {peer_id}")
-                    else:
-                        print("No directly connected peers were reported.")
-                    print("\nNote: this is not a count of every node on the IPFS network.")
+                    status = self.runtime.native_p2p_status()
+                    print("\nNative Node Core OS P2P")
+                    print(f"Local node ID: {status['node_id']}")
+                    print(f"Service: {'RUNNING' if status['service_running'] else 'STOPPED'}")
+                    address = status["listen_address"]
+                    print(f"Listen address: {address[0]}:{address[1]}" if address else "Listen address: -")
+                    print(f"Trusted peers: {status['trusted_count']}")
+                    print(f"Revoked peers: {status['revoked_count']}")
+                    active_peers = status["active_peers"]
+                    print(f"Authenticated inbound sessions: {len(active_peers)}")
+                    for peer in active_peers:
+                        print(f"- {peer['node_id']}")
+                        print(f"  Connected at (UTC): {peer['connected_at']}")
+                        print(f"  Last seen (UTC): {peer['last_seen']}")
+                    print(f"Local certificate: {status['certificate_path']}")
+                    if status["last_error"]:
+                        print(f"Last service error: {status['last_error']}")
+                    print("This is native P2P status; it is separate from Kubo/IPFS.")
                     input("\n> ")
                 elif choice == "2":
-                    address = input("Complete peer multiaddress: ").strip()
-                    result = self.runtime.network.connect(address)
-                    print("\nConnection request completed.")
-                    print(result)
-                    print("Use Refresh network status to verify the peer appears.")
+                    peers = self.runtime.p2p_trust.list_peers()
+                    print("\nTrusted native peers")
+                    if not peers:
+                        print("No peers registered.")
+                    for peer in peers:
+                        print(f"- {peer['node_id']} [{peer['status']}]")
+                        print(f"  Label: {peer['label'] or '-'}")
+                        print(f"  Certificate SHA-256: {peer['fingerprint_sha256']}")
+                        print(f"  Added: {peer['added_at']}")
+                        if peer["revoked_at"]:
+                            print(f"  Revoked: {peer['revoked_at']}")
                     input("\n> ")
                 elif choice == "3":
-                    peer_id = input("Peer ID: ").strip()
-                    print(self.runtime.network.ping(peer_id))
+                    print("Verify the certificate fingerprint with the peer operator through a separate trusted channel.")
+                    node_id = input("Peer node ID (sha256:...): ").strip()
+                    certificate_path = input("Path to peer certificate PEM: ").strip()
+                    label = input("Optional peer label: ").strip()
+                    result = self.runtime.trust_peer_certificate(
+                        node_id, Path(certificate_path), label
+                    )
+                    print("Peer certificate trusted.")
+                    print(f"Node ID: {result['node_id']}")
+                    print(f"Certificate SHA-256: {result['fingerprint_sha256']}")
+                    print("Keep the peer certificate file public; never copy a private key.")
                     input("\n> ")
                 elif choice == "4":
+                    node_id = input("Node ID to revoke (sha256:...): ").strip()
+                    confirm = input(f"Type REVOKE to revoke {node_id}: ").strip()
+                    if confirm != "REVOKE":
+                        print("Revocation cancelled.")
+                    else:
+                        result = self.runtime.revoke_trusted_peer(node_id)
+                        print(f"Peer revoked: {result['node_id']}")
+                        print("Native P2P listener stopped; restart only after reviewing its trust list.")
+                    input("\n> ")
+                elif choice == "5":
+                    host = input("Listen host [127.0.0.1; use 0.0.0.0 only when intentionally exposing the service]: ").strip() or "127.0.0.1"
+                    raw_port = input("Listen port [0 for OS-assigned]: ").strip() or "0"
+                    address = self.runtime.start_native_p2p(host, int(raw_port))
+                    print(f"Native P2P listener running at {address[0]}:{address[1]}")
+                    print("Only explicitly trusted peer certificates are accepted.")
+                    input("\n> ")
+                elif choice == "6":
+                    self.runtime.stop_native_p2p()
+                    print("Native P2P listener stopped.")
+                    input("\n> ")
+                elif choice == "7":
+                    status = self.runtime.network.status()
+                    print("\nKubo / IPFS network")
+                    print(f"Local peer ID: {status.identity.peer_id}")
+                    print(f"Directly connected peers: {len(status.connected_peers)}")
+                    print(f"Nodes observed (local + direct peers): {len(status.connected_peers) + 1}")
+                    for peer_id in status.connected_peers:
+                        print(f"- {peer_id}")
+                    if not status.connected_peers:
+                        print("No directly connected Kubo peers were reported.")
+                    print("This is not a count of every node on the IPFS network.")
+                    input("\n> ")
+                elif choice == "8":
+                    address = input("Complete Kubo peer multiaddress: ").strip()
+                    result = self.runtime.network.connect(address)
+                    print("Kubo connection request completed.")
+                    print(result)
+                    input("\n> ")
+                elif choice == "9":
+                    peer_id = input("Kubo peer ID: ").strip()
+                    print(self.runtime.network.ping(peer_id))
+                    input("\n> ")
+                elif choice == "10":
                     self.identity_presence_menu()
-            except Exception as exc:
+                elif choice == "11":
+                    node_id = input("Trusted peer node ID (sha256:...): ").strip()
+                    host = input("Peer host/IP: ").strip()
+                    port = int(input("Peer TCP port: ").strip())
+                    result = self.runtime.query_native_peer_status(host, port, node_id)
+                    print("\nAuthenticated native peer status")
+                    print(f"Node ID: {result['node_id']}")
+                    print(f"State: {result['state']}")
+                    print(f"Observed at (UTC): {result['observed_at']}")
+                    print(f"Request ID: {result['request_id']}")
+                    input("\n> ")
+                elif choice == "12":
+                    node_id = input("Trusted peer node ID (sha256:...): ").strip()
+                    host = input("Peer host/IP: ").strip()
+                    port = int(input("Peer TCP port: ").strip())
+                    result = self.runtime.query_native_peer_peers(host, port, node_id)
+                    print("\nAuthenticated PEERS response")
+                    print(f"Responding node: {result['node_id']}")
+                    print(f"Observed at (UTC): {result['observed_at']}")
+                    print(f"Request ID: {result['request_id']}")
+                    print("Suggested peer IDs (not trusted automatically):")
+                    if result["peers"]:
+                        for suggested_node_id in result["peers"]:
+                            print(f"- {suggested_node_id}")
+                    else:
+                        print("No additional peer IDs were advertised.")
+                    print("Trust remains unchanged; verify certificates out of band before trusting a node.")
+                    input("\n> ")
+            except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
                 input("\n> ")
+

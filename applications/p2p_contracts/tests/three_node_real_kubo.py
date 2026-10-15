@@ -318,6 +318,23 @@ class TestThreeNodeRealKubo(unittest.TestCase):
             shared_hashes = {services[index].current_manifest()["manifest_hash"] for index in range(3)}
             self.assertEqual(len(shared_hashes), 1, "All three nodes must accept the exact same batch manifest hash.")
 
+            # The first BTC-exchange request batch must be logical block 1,
+            # anchored to the bundled genesis on every independent node.
+            genesis_hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+            for index in range(3):
+                manifest = services[index].current_manifest()
+                self.assertEqual(manifest["sequence"], 1,
+                                 f"Node {index + 1} must publish the first request batch as block 1.")
+                self.assertEqual(manifest["genesis_hash"], genesis_hash,
+                                 f"Node {index + 1} manifest must identify the expected genesis.")
+                self.assertEqual(manifest["previous_manifest_hash"], genesis_hash,
+                                 f"Node {index + 1} block 1 must reference the genesis as its parent.")
+                self.assertTrue(services[index].genesis_path.is_file(),
+                                f"Node {index + 1} must store the genesis in its synchronized manifests directory.")
+                genesis_document = services[index]._read_json(services[index].genesis_path)
+                self.assertEqual(genesis_document["genesis_hash"], genesis_hash,
+                                 f"Node {index + 1} synchronized genesis document has the wrong hash.")
+
             # Verify the actual BTC exchange fields, not only request IDs, on every node.
             expected_exchanges = {
                 request_a["request_id"]: {

@@ -57,6 +57,56 @@ class P2PContractsServiceTests(unittest.TestCase):
                 publish_identity=False,
             )
 
+    def test_genesis_is_in_manifest_directory_and_anchors_block_one(self):
+        expected_bundled_path = Path(__file__).resolve().parents[1] / "genesis-manifest.json"
+        self.assertEqual(self.service.bundled_genesis_path, expected_bundled_path)
+        self.assertTrue(expected_bundled_path.is_file())
+
+        genesis_path = self.root / "storage" / "p2p_contracts" / "manifests" / "genesis-manifest.json"
+        self.assertTrue(genesis_path.is_file())
+        genesis = json.loads(genesis_path.read_text(encoding="utf-8"))
+        root_hash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+        self.assertEqual(genesis["genesis_hash"], root_hash)
+        self.assertEqual(genesis["references"]["bitcoin_genesis_block"]["block_hash"], root_hash)
+
+        result = self.service.create_btc_exchange_request(
+            btc_amount="0.025", receive_asset="USDT", receive_amount="1500",
+            receive_network="TRON", description="Genesis reference test",
+            contacts=[{"type": "email", "value": "test@example.invalid"}],
+            publish_identity=True,
+        )
+        manifest = result["manifest_document"]
+        self.assertEqual(manifest["sequence"], 1)
+        self.assertEqual(manifest["genesis_hash"], root_hash)
+        self.assertEqual(manifest["previous_manifest_hash"], root_hash)
+        self.assertEqual(Path(result["manifest_path"]).parent, genesis_path.parent)
+
+    def test_multiple_local_manifests_do_not_require_peer_responses(self):
+        first = self.service.create_btc_exchange_request(
+            btc_amount="0.01", receive_asset="USDT", receive_amount="100",
+            receive_network="", description="Offline manifest one",
+            contacts=[{"type": "email", "value": "first@example.invalid"}],
+            publish_identity=False,
+        )
+        second = self.service.create_btc_exchange_request(
+            btc_amount="0.02", receive_asset="EUR", receive_amount="200",
+            receive_network="", description="Offline manifest two",
+            contacts=[{"type": "email", "value": "second@example.invalid"}],
+            publish_identity=False,
+        )
+
+        genesis = json.loads(self.service.genesis_path.read_text(encoding="utf-8"))
+        first_manifest = first["manifest_document"]
+        second_manifest = second["manifest_document"]
+
+        self.assertEqual(first_manifest["sequence"], 1)
+        self.assertEqual(first_manifest["previous_manifest_hash"], genesis["genesis_hash"])
+        self.assertEqual(second_manifest["sequence"], 2)
+        self.assertEqual(second_manifest["previous_manifest_hash"], first_manifest["manifest_hash"])
+        self.assertEqual(second_manifest["genesis_hash"], genesis["genesis_hash"])
+        self.assertTrue(Path(first["manifest_path"]).is_file())
+        self.assertTrue(Path(second["manifest_path"]).is_file())
+
     def test_create_request_and_find_request(self):
         result = self.service.create_btc_exchange_request(
             btc_amount="0.025", receive_asset="USDT", receive_amount="1500",
@@ -201,6 +251,8 @@ class P2PContractsServiceTests(unittest.TestCase):
                 "identity_verification": {"status": "NOT_CRYPTOGRAPHICALLY_VERIFIED"},
                 "public_profile": {}, "contact": [],
             },
+            "genesis_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+            "previous_manifest_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
             "created_at": "2026-01-01T00:00:00Z",
             "requests": [None],
             "evidence": [],

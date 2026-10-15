@@ -38,6 +38,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Python dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
       - name: Verify supported platform
         run: |
           set -euo pipefail
@@ -78,7 +83,7 @@ jobs:
       - name: Run P2P Contracts unit tests
         run: |
           set -euo pipefail
-          python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
+          python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v
 
   three-kubo-node-integration:
     name: Three independent Kubo nodes — P2P Contracts end-to-end
@@ -99,12 +104,23 @@ jobs:
       - name: Download pinned Kubo CLI
         run: |
           set -euo pipefail
-          if ! curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 --retry 1 --retry-delay 2 \
-            https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
-            --output "$RUNNER_TEMP/kubo.tar.gz"; then
-            curl --fail --location --silent --show-error --connect-timeout 15 --max-time 90 \
-              https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz \
-              --output "$RUNNER_TEMP/kubo.tar.gz"
+          archive="$RUNNER_TEMP/kubo.tar.gz"
+          dist_url="https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz"
+          github_url="https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz"
+          downloaded=false
+          for url in "$dist_url" "$github_url"; do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 20 --max-time 180 \
+              --retry 5 --retry-all-errors --retry-delay 3 \
+              "$url" --output "$archive"; then
+              downloaded=true
+              break
+            fi
+            rm -f "$archive"
+          done
+          if [[ "$downloaded" != true ]]; then
+            echo "Unable to download pinned Kubo v0.32.1 from either official source after retries." >&2
+            exit 1
           fi
           mkdir -p "$RUNNER_TEMP/kubo-unpack"
           tar -xzf "$RUNNER_TEMP/kubo.tar.gz" -C "$RUNNER_TEMP/kubo-unpack"
@@ -186,7 +202,7 @@ jobs:
           set -euo pipefail
           test "$(id -u)" -ne 0
           ./installer/install.sh
-          grep -qx '1.4.0' "$NODE_CORE_DATA_DIR/app/VERSION"
+          cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
           grep -qx '1.0.0' "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/VERSION"
           test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
           test -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests/three_vm_p2p_contracts.py"
@@ -554,7 +570,7 @@ jobs:
   verify-cross-vm-convergence:
     name: Assert three separate VMs converged to the same manifest
     needs: cross-vm-node
-    if: always() && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
+    if: always() && needs.cross-vm-node.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-24.04
     defaults:
       run:

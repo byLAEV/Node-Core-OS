@@ -67,6 +67,10 @@ main() {
     printf 'Installed Node Core P2P Contracts CLI is missing.\n' >&2
     exit 1
   }
+  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/genesis-manifest.json" ]] || {
+    printf 'Installed Node Core P2P Contracts genesis manifest is missing.\n' >&2
+    exit 1
+  }
   [[ -d "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests" ]] || {
     printf 'Installed Node Core P2P Contracts tests are missing.\n' >&2
     exit 1

@@ -331,8 +331,20 @@ PY
     printf 'Update metadata source failed; trying the next official source.\n' >&2
   done
   if [[ "$downloaded" != 1 ]]; then
+    # GitHub REST API requests can be rate-limited for unauthenticated users.
+    # Fall back to the public Git remote-ref protocol without requiring root.
+    if command -v git >/dev/null 2>&1; then
+      local remote_commit
+      if remote_commit="$(git ls-remote "$NODE_CORE_REPOSITORY" "refs/heads/$NODE_CORE_BRANCH" 2>/dev/null | awk 'NR == 1 { print $1 }')" &&
+         [[ "$remote_commit" =~ ^[0-9a-fA-F]{40}$ ]]; then
+        rm -f -- "$temporary_response"
+        printf '%s\n' "${remote_commit,,}"
+        return 0
+      fi
+      printf 'Git remote-ref fallback failed.\n' >&2
+    fi
     rm -f -- "$temporary_response"
-    printf 'Could not retrieve update metadata from any official GitHub API endpoint.\n' >&2
+    printf 'Could not retrieve update metadata from any official GitHub source.\n' >&2
     return 1
   fi
 
@@ -438,6 +450,10 @@ update_application() (
     printf 'Update is missing P2P Contracts CLI; refusing activation.\n' >&2
     return 1
   }
+  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || {
+    printf 'Update is missing the P2P Contracts genesis manifest; refusing activation.\n' >&2
+    return 1
+  }
   [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || {
     printf 'Update is missing P2P Contracts tests; refusing activation.\n' >&2
     return 1
@@ -453,7 +469,7 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
 print("Node Core OS version:", version)
 PY
   python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
-  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v); then
+  if ! (cd "$NODE_CORE_APP_DIR" && python3 -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v); then
     printf 'P2P Contracts tests failed after update; refusing to mark the update successful.\n' >&2
     return 1
   fi
