@@ -64,8 +64,8 @@ jobs:
             "$stage/$package/.github/workflows/hashpaper-python-matrix.yml"
 
           tar -czf "dist/$package.tar.gz" -C "$stage" "$package"
-          if tar -tzf "dist/$package.tar.gz" | grep -Eq 'applications/hashpaper/|installer/hashpaper-(install|update)\.sh|installer/opentimestamps-server-install\.sh|installer/tests/hashpaper-(install|update)\.sh|docs/HASHPAPER(-FUNCTIONAL-MANIFEST)?\.md|tests/test_hashpaper_storage_layout\.py|\.github/workflows/hashpaper-(opentimestamps-live|python-matrix)\.yml'; then
-            printf '%s\n' 'The Node Core OS source package contains a separate HashPaper component.' >&2
+          if tar -tzf "dist/$package.tar.gz" | grep -E 'applications/hashpaper|hashpaper-install|hashpaper-update|opentimestamps-server-install|HASHPAPER|test_hashpaper_storage_layout|hashpaper-opentimestamps-live|hashpaper-python-matrix' >/dev/null; then
+            echo 'The Node Core OS source package contains a separate HashPaper component.' >&2
             exit 1
           fi
           sha512sum "dist/$package.tar.gz" > "dist/$package.tar.gz.sha512"
