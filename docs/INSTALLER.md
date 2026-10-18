@@ -24,17 +24,14 @@ Node Core launcher
 verification
 ```
 
-## Official platform
+## Supported entry points
 
-Only GNU/Linux is accepted.
+- **GNU/Linux:** run `bash installer/install.sh` as the normal user.
+- **Termux on Android ARM64:** run `bash installer/termux-install.sh` as the normal Termux user. This dedicated entry point installs only missing Termux packages with `pkg`, including the Android-native `kubo` package, then invokes the same Node Core installer. Debian and PRoot are not required.
 
-The installer must stop before making changes when:
+Both entry points require a Linux kernel. The generic installer is not an Android installer by itself; Termux-specific dependency preparation is isolated in `installer/termux-install.sh`.
 
-```
-uname -s != Linux
-```
-
-There is no Android, Termux, Windows, macOS, GUI, or web installer path.
+Windows and macOS are not supported.
 
 ## Installation phases
 
@@ -122,7 +119,9 @@ The updater installs this behavior by replacing the application code from the se
 
 ## Kubo
 
-The Kubo installer performs:
+On GNU/Linux, the installer downloads the pinned Kubo release and verifies its SHA-512 checksum. On Termux, the dedicated entry point uses Termux's Android-native `kubo` package and never attempts to run the GNU/Linux Kubo binary. The executable is expected at `$PREFIX/bin/ipfs`.
+
+The GNU/Linux Kubo installer performs:
 
 ```
 detect architecture
@@ -146,14 +145,15 @@ ipfs init
 health check
 ```
 
-The initial implementation pins Kubo v0.43.1.
+The GNU/Linux installer pins Kubo v0.43.1. Termux uses the version provided by the configured Termux package repository so that the executable is built for Android's runtime.
 
-Supported installer architectures:
+Supported Kubo installation paths:
 
-- Linux AMD64
-- Linux ARM64
+- GNU/Linux AMD64
+- GNU/Linux ARM64
+- Termux Android ARM64 using the Termux `kubo` package
 
-Other Linux architectures fail explicitly until their archive mapping is implemented and tested.
+Other architectures fail explicitly until their installation path is implemented and tested.
 
 ## Kubo configuration
 
@@ -232,7 +232,9 @@ The installer intentionally avoids:
 
 ## Host package resolution
 
-The installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths. CI tests explicitly exercise the root-rejection and HOME-boundary guards.
+The generic GNU/Linux installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths.
+
+The Termux-only wrapper is an explicit exception: it installs only missing user-space packages with `pkg install -y`. It does not use root or sudo. CI tests exercise Termux platform checks and dependency selection as well as the root-rejection and HOME-boundary guards.
 
 ## Third-party installation boundary
 
