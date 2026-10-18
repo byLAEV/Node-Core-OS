@@ -5,7 +5,7 @@ set -euo pipefail
 # The generic GNU/Linux installer remains package-manager agnostic.
 
 termux_require_environment() {
-  if [[ -z "${TERMUX_VERSION:-}" || -z "${PREFIX:-}" || ! -d "$PREFIX" ]]; then
+  if [[ -z "${TERMUX_VERSION:-}" || -z "${PREFIX:-}" || ! -d "${PREFIX:-}" ]]; then
     printf 'This installer must be run inside Termux on Android.\n' >&2
     return 1
   fi
