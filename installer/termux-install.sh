@@ -95,14 +95,9 @@ termux_main() {
   if [[ -f "$data_dir/app/main.py" && -d "$data_dir/app/node_core" ]]; then
     printf 'Existing Node Core OS installation detected.\n'
     printf 'Delegating to the existing updater; it will request confirmation and preserve persistent data.\n'
-    if [[ -x "$data_dir/bin/node-core-update" ]]; then
-      exec "$data_dir/bin/node-core-update" "$@"
-    elif [[ -f "$data_dir/app/installer/update.sh" ]]; then
-      exec bash "$data_dir/app/installer/update.sh" "$@"
-    else
-      printf 'Existing application found but no updater is available. Nothing was changed.\n' >&2
-      return 1
-    fi
+    # Use the updater shipped with this verified source package, not a possibly
+    # older updater from the existing installation.
+    exec bash "$project_root/installer/update.sh" "$@"
   fi
 
   if [[ -e "$data_dir/config.json" || -f "$data_dir/ipfs/config" || -n "$(find "$data_dir/storage" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null || true)" ]]; then
