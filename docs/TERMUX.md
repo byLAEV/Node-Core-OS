@@ -11,9 +11,11 @@ This is the direct Termux installation path. It does not install Debian, Ubuntu,
 
 ## Install from the versioned source archive
 
-Download the official Node Core OS 1.5.2 source installer archive and its SHA-512 file from the [v1.5.2 release](https://github.com/byLAEV/Node-Core-OS/releases/tag/v1.5.2). Verify the archive before extracting it. From the directory containing both files, run:
+Use a published source installer archive that includes `installer/termux-install.sh`. The original v1.5.2 release archive predates this Termux wrapper, so it must not be assumed to contain it. After a package including this change is published, download its archive and matching SHA-512 file from the [official releases page](https://github.com/byLAEV/Node-Core-OS/releases). From the directory containing both files, verify the checksum path as follows:
 
 ```bash
+mkdir -p dist
+ln -sf ../node-core-os-installer-1.5.2.tar.gz dist/node-core-os-installer-1.5.2.tar.gz
 sha512sum -c node-core-os-installer-1.5.2.tar.gz.sha512
 tar -tzf node-core-os-installer-1.5.2.tar.gz >/dev/null
 tar -xzf node-core-os-installer-1.5.2.tar.gz
