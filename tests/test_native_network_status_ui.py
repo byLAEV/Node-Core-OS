@@ -27,9 +27,10 @@ class NativeNetworkStatusUITests(unittest.TestCase):
             menu._print_native_network_indicator()
 
         rendered = output.getvalue()
-        self.assertIn("Native P2P LAN discovery: NODES DETECTED", rendered)
-        self.assertIn("Discovered identities: 1", rendered)
-        self.assertIn("Authenticated inbound sessions: 1", rendered)
+        self.assertIn("Nodos locales detectados (incluido este nodo): 2", rendered)
+        self.assertIn("Identidades remotas detectadas: 1", rendered)
+        self.assertIn("Sesiones entrantes autenticadas: 1", rendered)
+        self.assertIn("Manifiesto de consenso: PENDIENTE DE FIRMAS UNÁNIMES", rendered)
         self.assertIn("Native P2P worldwide discovery: NOT CONFIGURED", rendered)
         self.assertIn("configured rendezvous/bootstrap service", rendered)
         self.assertNotIn("worldwide discovery: ACTIVE", rendered)
@@ -52,7 +53,7 @@ class NativeNetworkStatusUITests(unittest.TestCase):
             menu._print_native_network_indicator()
 
         rendered = output.getvalue()
-        self.assertIn("Native P2P LAN discovery: UNAVAILABLE", rendered)
+        self.assertIn("Node Core OS P2P LAN: UNAVAILABLE", rendered)
         self.assertIn("LAN discovery detail: multicast unavailable", rendered)
         self.assertIn("Native P2P worldwide discovery: ACTIVE", rendered)
 
