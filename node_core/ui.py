@@ -77,11 +77,16 @@ class MainMenu:
                 lan_state = "RUNNING" if discovered == 0 else "NODES DETECTED"
             else:
                 lan_state = "UNAVAILABLE"
+            active_sessions = len(status.get("active_peers", []))
             print(
-                f"Native P2P LAN discovery: {lan_state} | "
-                f"Discovered identities: {discovered} | "
-                f"Authenticated inbound sessions: {len(status.get('active_peers', []))}"
+                f"Node Core OS P2P LAN: {lan_state} | "
+                f"Nodos locales detectados (incluido este nodo): {discovered + 1} | "
+                f"Identidades remotas detectadas: {discovered} | "
+                f"Sesiones entrantes autenticadas: {active_sessions}"
             )
+            # Never label discovery as consensus. The manifest is unanimous only
+            # after every roster member signs the same canonical roster.
+            print("Manifiesto de consenso: PENDIENTE DE FIRMAS UNÁNIMES")
             if status.get("discovery_error") and not status.get("discovery_running"):
                 print(f"LAN discovery detail: {status['discovery_error']}")
             if status.get("wan_discovery_running"):
