@@ -10,6 +10,7 @@ class NativeNetworkStatusUITests(unittest.TestCase):
     def test_menu_labels_lan_and_wan_independently_and_truthfully(self):
         runtime = SimpleNamespace(
             native_p2p_status=lambda: {
+                "node_id": "sha256:" + "c" * 64,
                 "discovered_peers": [{"node_id": "sha256:" + "a" * 64}],
                 "discovery_running": True,
                 "discovery_error": None,
@@ -27,9 +28,9 @@ class NativeNetworkStatusUITests(unittest.TestCase):
             menu._print_native_network_indicator()
 
         rendered = output.getvalue()
-        self.assertIn("Nodos locales detectados (incluido este nodo): 2", rendered)
-        self.assertIn("Identidades remotas detectadas: 1", rendered)
-        self.assertIn("Sesiones entrantes autenticadas: 1", rendered)
+        self.assertIn("Nodos online (sesión autenticada): 2 (incluido este nodo)", rendered)
+        self.assertIn("Pares remotos online: 1", rendered)
+        self.assertIn("Nodos detectados en LAN (anuncio firmado, sesión no autenticada):", rendered)
         self.assertIn("Manifiesto de consenso: PENDIENTE DE FIRMAS UNÁNIMES", rendered)
         self.assertIn("Native P2P worldwide discovery: NOT CONFIGURED", rendered)
         self.assertIn("configured rendezvous/bootstrap service", rendered)
@@ -38,6 +39,7 @@ class NativeNetworkStatusUITests(unittest.TestCase):
     def test_menu_shows_lan_unavailable_and_worldwide_active_only_when_reported(self):
         runtime = SimpleNamespace(
             native_p2p_status=lambda: {
+                "node_id": "sha256:" + "c" * 64,
                 "discovered_peers": [],
                 "discovery_running": False,
                 "discovery_error": "multicast unavailable",
