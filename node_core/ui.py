@@ -69,25 +69,45 @@ class MainMenu:
                 self.network_nodes()
 
     def _print_native_network_indicator(self) -> None:
-        """Show verified scope-specific status without implying global connectivity."""
+        """Show live node counts and identifiers without confusing discovery with sessions."""
         try:
             status = self.runtime.native_p2p_status()
-            discovered = len(status.get("discovered_peers", []))
-            if status.get("discovery_running"):
-                lan_state = "RUNNING" if discovered == 0 else "NODES DETECTED"
-            else:
-                lan_state = "UNAVAILABLE"
-            active_sessions = len(status.get("active_peers", []))
+            discovered_peers = status.get("discovered_peers", [])
+            discovered_ids = {
+                peer.get("node_id")
+                for peer in discovered_peers
+                if isinstance(peer, dict) and isinstance(peer.get("node_id"), str)
+            }
+            active_peers = status.get("active_peers", [])
+            active_ids = {
+                peer.get("node_id")
+                for peer in active_peers
+                if isinstance(peer, dict) and isinstance(peer.get("node_id"), str)
+            }
+            # Discovery is LAN-scoped and announcements can be stale. Only active
+            # authenticated sessions count as connected/online peers.
+            online_ids = sorted(active_ids)
+            discovered_only_ids = sorted(discovered_ids - active_ids)
+            local_node_id = status.get("node_id", "unknown")
+            discovery_running = bool(status.get("discovery_running"))
             print(
-                f"Node Core OS P2P LAN: {lan_state} | "
-                f"Nodos locales detectados (incluido este nodo): {discovered + 1} | "
-                f"Identidades remotas detectadas: {discovered} | "
-                f"Sesiones entrantes autenticadas: {active_sessions}"
+                f"Node Core OS P2P LAN: {'RUNNING' if discovery_running else 'UNAVAILABLE'} | "
+                f"Nodos online (sesión autenticada): {len(online_ids) + 1} "
+                f"(incluido este nodo) | Pares remotos online: {len(online_ids)}"
             )
-            # Never label discovery as consensus. The manifest is unanimous only
-            # after every roster member signs the same canonical roster.
+            print(f"Este nodo: {local_node_id}")
+            if online_ids:
+                print("Nodos online:")
+                for node_id in online_ids:
+                    print(f"  ONLINE  {node_id}")
+            else:
+                print("Nodos online: ninguno remoto con sesión autenticada")
+            if discovered_only_ids:
+                print("Nodos detectados en LAN (anuncio firmado, sesión no autenticada):")
+                for node_id in discovered_only_ids:
+                    print(f"  DETECTADO  {node_id}")
             print("Manifiesto de consenso: PENDIENTE DE FIRMAS UNÁNIMES")
-            if status.get("discovery_error") and not status.get("discovery_running"):
+            if status.get("discovery_error") and not discovery_running:
                 print(f"LAN discovery detail: {status['discovery_error']}")
             if status.get("wan_discovery_running"):
                 print("Native P2P worldwide discovery: ACTIVE")
