@@ -93,7 +93,7 @@ class MainMenu:
             # Live inbound sessions and recent authenticated outbound STATUS checks
             # both prove reachability, but the menu labels the evidence separately.
             online_ids = sorted(active_ids | recent_ids)
-            discovered_only_ids = sorted(discovered_ids - online_ids)
+            discovered_only_ids = sorted(discovered_ids - set(online_ids))
             local_node_id = status.get("node_id", "unknown")
             discovery_running = bool(status.get("discovery_running"))
             print(
