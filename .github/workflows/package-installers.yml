@@ -54,7 +54,7 @@ jobs:
           curl --fail --location --retry 3 --retry-all-errors --output "installer/vendor/kubo/$archive" "$base/$archive"
           curl --fail --location --retry 3 --retry-all-errors --output "installer/vendor/kubo/$archive.sha512" "$base/$archive.sha512"
           (cd installer/vendor/kubo && sha512sum --check "$archive.sha512")
-          test -s installer/vendor/python-wheels/cryptography*.whl
+          find installer/vendor/python-wheels -maxdepth 1 -type f -name 'cryptography*.whl' -print -quit | grep -q .
           test -s "installer/vendor/kubo/$archive"
 
       - name: Build fresh-install source package
