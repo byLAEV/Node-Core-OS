@@ -31,7 +31,7 @@ if not errors:
     e2e_workflow = (ROOT / ".github" / "workflows" / "installer-e2e.yml").read_text(encoding="utf-8")
     ci_workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
-    for token in ('<html lang="en">', '<meta name="viewport"', 'id="workflow-runs"',
+    for token in ('<html lang="es">', '<meta name="viewport"', 'id="workflow-runs"',
                   'id="run-status"', 'assets/styles.css', 'assets/app.js'):
         if token not in html:
             errors.append(f"index.html is missing required marker: {token}")
