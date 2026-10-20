@@ -108,7 +108,7 @@ class MainMenu:
                     if node_id in active_ids:
                         print(f"  ONLINE (sesión entrante autenticada)  {node_id}")
                     else:
-                        print(f"  ONLINE (comprobación autenticada reciente)  {node_id}")
+                        print(f"  ONLINE (sesión saliente autenticada)  {node_id}")
             else:
                 print("Nodos online: ninguno remoto con sesión autenticada")
             if discovered_only_ids:
