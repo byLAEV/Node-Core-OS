@@ -124,6 +124,16 @@ class NodePeerService:
                         connection.close()
                     except OSError:
                         pass
+                self._outbound_status[expected_peer_node_id] = {
+                    "node_id": expected_peer_node_id,
+                    "state": "reconnecting",
+                    "host": host,
+                    "port": str(port),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                # Let the old worker unwind before creating a replacement. Starting
+                # both at once could race their status and socket ownership.
+                return False
             stop_event = threading.Event()
             self._outbound_stop_events[expected_peer_node_id] = stop_event
             self._outbound_status[expected_peer_node_id] = {
