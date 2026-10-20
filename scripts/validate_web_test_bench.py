@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Structural checks for the static Node Core OS Web Test Bench."""
 from pathlib import Path
+from html.parser import HTMLParser
+from urllib.parse import unquote, urlsplit
 import re
 import sys
 
@@ -15,6 +17,23 @@ REQUIRED = [
     SITE / "identity.html",
 ]
 errors = []
+
+class LocalLinkParser(HTMLParser):
+    """Collect IDs and href/src attributes for static-site link validation."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.references = []
+        self.ids = set()
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if values.get("id"):
+            self.ids.add(values["id"])
+        if tag.lower() == "a" and values.get("name"):
+            self.ids.add(values["name"])
+        for attribute in ("href", "src"):
+            if values.get(attribute):
+                self.references.append((attribute, values[attribute]))
 
 for path in REQUIRED:
     if not path.is_file():
@@ -49,6 +68,38 @@ if not errors:
             errors.append(f"Asset escapes site directory: {target}")
         elif not local.is_file():
             errors.append(f"Missing referenced local asset: {target}")
+
+    # Validate relative links, assets, and fragments on every HTML page.
+    html_pages = sorted(SITE.rglob("*.html"))
+    parsed_pages = {}
+    for page in html_pages:
+        parser = LocalLinkParser()
+        parser.feed(page.read_text(encoding="utf-8"))
+        parser.close()
+        parsed_pages[page.resolve()] = parser
+
+    site_root = SITE.resolve()
+    for page_path, parser in parsed_pages.items():
+        for attribute, raw_target in parser.references:
+            parts = urlsplit(raw_target)
+            if parts.scheme or parts.netloc or raw_target.startswith("//"):
+                continue
+            if parts.path:
+                target_path = (page_path.parent / unquote(parts.path)).resolve()
+                if target_path.is_dir():
+                    target_path = (target_path / "index.html").resolve()
+                if not target_path.is_relative_to(site_root):
+                    errors.append(f"Local {attribute} escapes site directory in {page_path.name}: {raw_target}")
+                    continue
+                if not target_path.is_file():
+                    errors.append(f"Broken local {attribute} in {page_path.name}: {raw_target}")
+                    continue
+            else:
+                target_path = page_path
+            if parts.fragment:
+                target_parser = parsed_pages.get(target_path.resolve())
+                if target_parser is not None and unquote(parts.fragment) not in target_parser.ids:
+                    errors.append(f"Broken fragment in {page_path.name}: {raw_target}")
 
     for token in ("External CID Library", "Read Content by CID", "Remove Reference from History", "does not unpin or delete IPFS content"):
         if token.casefold() not in menus.casefold():
@@ -88,4 +139,4 @@ if errors:
     sys.exit(1)
 
 print("Web Test Bench validation: PASSED")
-print("Checked required files, HTML markers, local assets, responsive CSS, live API logic, and deployment workflow.")
+print("Checked required files, HTML markers, local links and fragments across all pages, responsive CSS, live API logic, and deployment workflow.")
