@@ -15,6 +15,7 @@ REQUIRED = [
     SITE / "README.md",
     SITE / "menus.html",
     SITE / "identity.html",
+    SITE / "remembering.html",
 ]
 errors = []
 
