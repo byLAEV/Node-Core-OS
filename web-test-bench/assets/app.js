@@ -3,8 +3,9 @@
 const owner = "byLAEV";
 const repo = "Node-Core-OS";
 const workflows = [
-  { name: "GNU/Linux terminal CI", file: "ci.yml" },
-  { name: "Installer end-to-end", file: "installer-e2e.yml" }
+  { name: "Integración continua", file: "ci.yml" },
+  { name: "Instalador E2E", file: "installer-e2e.yml" },
+  { name: "Pruebas P2P de tres nodos", file: "three-independent-ubuntu-p2p-e2e.yml" }
 ];
 
 const statusEl = document.getElementById("run-status");
@@ -19,11 +20,12 @@ function makeElement(tag, className, text) {
 }
 
 function stateLabel(run) {
-  if (run.status !== "completed") return "In progress";
-  if (run.conclusion === "success") return "Success";
-  if (run.conclusion === "failure") return "Failure";
-  if (run.conclusion === "cancelled") return "Cancelled";
-  return run.conclusion || "Completed";
+  if (run.status !== "completed") return "En curso";
+  if (run.conclusion === "success") return "Correcto";
+  if (run.conclusion === "failure") return "Falló";
+  if (run.conclusion === "cancelled") return "Cancelado";
+  if (run.conclusion === "skipped") return "Omitido";
+  return run.conclusion || "Finalizado";
 }
 
 function badgeClass(run) {
@@ -34,14 +36,14 @@ function badgeClass(run) {
 }
 
 function formatDate(value) {
-  if (!value) return "Date unavailable";
+  if (!value) return "Fecha no disponible";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat(undefined, {
+  if (Number.isNaN(date.getTime())) return "Fecha no disponible";
+  return new Intl.DateTimeFormat("es-CR", {
     dateStyle: "medium",
     timeStyle: "short",
-    timeZone: "UTC"
-  }).format(date) + " UTC";
+    timeZone: "America/Costa_Rica"
+  }).format(date) + " (Costa Rica)";
 }
 
 async function loadWorkflow(workflow) {
@@ -50,7 +52,7 @@ async function loadWorkflow(workflow) {
     headers: { Accept: "application/vnd.github+json" }
   });
   if (!response.ok) {
-    throw new Error(`${workflow.name}: GitHub API returned HTTP ${response.status}`);
+    throw new Error(`${workflow.name}: la API de GitHub respondió HTTP ${response.status}`);
   }
   const data = await response.json();
   return (data.workflow_runs || []).map(run => ({ ...run, workflowLabel: workflow.name }));
@@ -59,7 +61,7 @@ async function loadWorkflow(workflow) {
 function renderRuns(runs) {
   listEl.replaceChildren();
   if (!runs.length) {
-    statusEl.textContent = "No workflow runs were returned. Open GitHub Actions to inspect the workflows.";
+    statusEl.textContent = "No se devolvieron ejecuciones. Abre GitHub Actions para revisar los workflows.";
     return;
   }
 
@@ -70,9 +72,9 @@ function renderRuns(runs) {
     const meta = makeElement(
       "p",
       "run-meta",
-      `${run.workflowLabel} · Run #${run.run_number} · ${formatDate(run.updated_at || run.created_at)} · ${run.head_branch || "branch unknown"} · ${String(run.head_sha || "").slice(0, 7)}`
+      `${run.workflowLabel} · Ejecución #${run.run_number} · ${formatDate(run.updated_at || run.created_at)} · rama ${run.head_branch || "desconocida"} · ${String(run.head_sha || "").slice(0, 7)}`
     );
-    const link = makeElement("a", "", "View run ↗");
+    const link = makeElement("a", "", "Ver ejecución ↗");
     link.href = run.html_url;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
@@ -81,13 +83,13 @@ function renderRuns(runs) {
     item.append(details, badge);
     listEl.append(item);
   }
-  statusEl.textContent = `Showing ${runs.length} recent runs. Status is supplied by the public GitHub Actions API; timestamps are displayed in UTC.`;
+  statusEl.textContent = `Se muestran ${runs.length} ejecuciones recientes. El estado procede de la API pública de GitHub; las fechas se muestran en hora de Costa Rica.`;
 }
 
 async function refresh() {
   refreshButton.disabled = true;
-  refreshButton.textContent = "Refreshing…";
-  statusEl.textContent = "Loading public workflow runs…";
+  refreshButton.textContent = "Actualizando…";
+  statusEl.textContent = "Consultando ejecuciones públicas…";
   listEl.replaceChildren();
   try {
     const responses = await Promise.allSettled(workflows.map(loadWorkflow));
@@ -98,17 +100,17 @@ async function refresh() {
       .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
 
     if (!runs.length) {
-      throw new Error(failures.map(item => item.reason.message).join("; ") || "No workflow results are available.");
+      throw new Error(failures.map(item => item.reason.message).join("; ") || "No hay resultados disponibles.");
     }
     renderRuns(runs);
     if (failures.length) {
-      statusEl.textContent += ` Some workflow results could not be loaded: ${failures.map(item => item.reason.message).join("; ")}.`;
+      statusEl.textContent += ` Algunos resultados no pudieron cargarse: ${failures.map(item => item.reason.message).join("; ")}.`;
     }
   } catch (error) {
-    statusEl.textContent = `Could not load live results: ${error.message} Use the direct workflow links above.`;
+    statusEl.textContent = `No se pudieron cargar los resultados: ${error.message} Usa los enlaces directos a los workflows.`;
   } finally {
     refreshButton.disabled = false;
-    refreshButton.textContent = "Refresh results";
+    refreshButton.textContent = "Actualizar resultados";
   }
 }
 
