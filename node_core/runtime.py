@@ -152,7 +152,7 @@ class NodeRuntime:
             elif authenticated_inbound:
                 state = "trusted_and_authenticated_inbound"
             elif trust_status == "trusted" and recent_peer_status.get(peer.node_id, {}).get("state") == "online":
-                state = "trusted_and_recently_authenticated_outbound"
+                state = "trusted_and_authenticated_outbound"
             elif trust_status == "trusted":
                 state = "trusted_not_connected"
             else:
@@ -326,7 +326,7 @@ class NodeRuntime:
             return True
 
     def _run_native_peer_monitor(self) -> None:
-        """Check discovered trusted peers with bounded timeouts and periodic retries."""
+        """Maintain sessions to discovered trusted peers and retry with bounded intervals."""
         interval_seconds = 5.0
         while not self._p2p_peer_monitor_stop_event.is_set():
             try:
@@ -354,7 +354,7 @@ class NodeRuntime:
                 break
 
     def stop_native_peer_monitor(self) -> None:
-        """Stop automatic outbound checks cleanly."""
+        """Stop the automatic trusted-peer session manager cleanly."""
         self._p2p_peer_monitor_stop_event.set()
         thread = self._p2p_peer_monitor_thread
         if thread is not None and thread is not threading.current_thread():
