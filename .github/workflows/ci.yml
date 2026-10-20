@@ -69,6 +69,7 @@ jobs:
           bash installer/tests/hashpaper-install.sh
           bash installer/tests/kubo-download-sources.sh
           bash installer/tests/termux-update-preservation.sh
+          bash installer/tests/termux-installer.sh
 
       - name: Run terminal test suite
         run: |

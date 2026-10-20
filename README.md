@@ -1278,7 +1278,7 @@ Technical installation and dependency documentation is maintained in:
 - `docs/INSTALLER.md`;
 - `installer/install.sh`.
 
-Termux is **not an official target platform**. Constraints observed in environments such as Termux are considered only as engineering references to avoid assuming root privileges, system service managers, or protected system paths.
+Termux on Android ARM64 has a dedicated experimental installation entry point: `bash installer/termux-install.sh`. It uses Termux's native `kubo` package and does not require Debian or PRoot. See `docs/TERMUX.md` for the exact procedure and data-preservation behavior. GNU/Linux remains the primary CI-tested platform; an actual Android device smoke test is still required before claiming full Termux validation.
 
 ---
 
