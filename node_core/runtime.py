@@ -53,6 +53,11 @@ class NodeRuntime:
         self._p2p_discovery_retry_thread: threading.Thread | None = None
         self._p2p_discovery_stop_event = threading.Event()
         self._p2p_discovery_lock = threading.RLock()
+        self._p2p_peer_monitor_thread: threading.Thread | None = None
+        self._p2p_peer_monitor_stop_event = threading.Event()
+        self._p2p_peer_monitor_lock = threading.RLock()
+        self._p2p_peer_monitor_status: dict[str, dict[str, str]] = {}
+        self._p2p_peer_monitor_error: str | None = None
         self._booted = False
 
     @property
@@ -98,6 +103,9 @@ class NodeRuntime:
         # Discovery is independent of Kubo/IPFS and must not prevent the core
         # CLI from booting when multicast is unavailable on this network.
         self.start_native_discovery()
+        # Start the authenticated listener automatically only when an explicit
+        # trust allowlist already exists. The listener accepts no unknown identities.
+        self._start_native_p2p_automation()
 
     def native_p2p_status(self) -> dict[str, object]:
         """Return local identity, trust, and listener state without requiring Kubo."""
@@ -113,6 +121,8 @@ class NodeRuntime:
         authenticated_inbound_node_ids = {
             peer["node_id"] for peer in (service.active_peers if service else [])
         }
+        with self._p2p_peer_monitor_lock:
+            recent_peer_status = {key: dict(value) for key, value in self._p2p_peer_monitor_status.items()}
         discovered_peer_status = []
         for peer in discovered_peers:
             trust_status = trust_by_node_id.get(peer.node_id, "not_trusted")
@@ -124,6 +134,8 @@ class NodeRuntime:
                 state = "revoked"
             elif authenticated_inbound:
                 state = "trusted_and_authenticated_inbound"
+            elif trust_status == "trusted" and recent_peer_status.get(peer.node_id, {}).get("state") == "online":
+                state = "trusted_and_recently_authenticated_outbound"
             elif trust_status == "trusted":
                 state = "trusted_not_connected"
             else:
@@ -137,6 +149,7 @@ class NodeRuntime:
                 "identity_authenticated": authenticated_inbound,
                 "trust_status": trust_status,
                 "authenticated_inbound_session": authenticated_inbound,
+                "recent_outbound_check": recent_peer_status.get(peer.node_id),
                 "state": state,
             })
         listening = False
@@ -156,6 +169,9 @@ class NodeRuntime:
             "service_running": listening,
             "listen_address": address,
             "active_peers": service.active_peers if service else [],
+            "recently_authenticated_peers": [value for value in recent_peer_status.values() if value.get("state") == "online"],
+            "peer_monitor_running": bool(self._p2p_peer_monitor_thread and self._p2p_peer_monitor_thread.is_alive()),
+            "peer_monitor_error": self._p2p_peer_monitor_error,
             "last_error": service.last_error if service else None,
             # The current built-in discovery service is LAN multicast only.
             # Keep WAN explicitly unavailable until a rendezvous/bootstrap service
@@ -260,8 +276,83 @@ class NodeRuntime:
 
     def shutdown(self) -> None:
         """Stop all native P2P services owned by this runtime."""
+        self.stop_native_peer_monitor()
         self.stop_native_p2p()
         self.stop_native_discovery()
+
+    def _start_native_p2p_automation(self) -> None:
+        """Start the allowlisted LAN listener and peer monitor when trust is configured."""
+        try:
+            if not self.p2p_trust.trusted_certificates():
+                return
+            if self.p2p_service is None:
+                # Bind all local interfaces so other LAN nodes can reach this node.
+                # NodePeerService still requires a trusted certificate and authenticated session.
+                self.start_native_p2p(host="0.0.0.0", port=0)
+            self.start_native_peer_monitor()
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:
+            self._p2p_peer_monitor_error = str(exc)
+
+    def start_native_peer_monitor(self) -> bool:
+        """Periodically authenticate reachable, already-trusted LAN peers."""
+        with self._p2p_peer_monitor_lock:
+            if self._p2p_peer_monitor_thread is not None and self._p2p_peer_monitor_thread.is_alive():
+                return True
+            self._p2p_peer_monitor_stop_event.clear()
+            self._p2p_peer_monitor_thread = threading.Thread(
+                target=self._run_native_peer_monitor,
+                name="node-core-p2p-peer-monitor",
+                daemon=True,
+            )
+            self._p2p_peer_monitor_thread.start()
+            return True
+
+    def _run_native_peer_monitor(self) -> None:
+        """Check discovered trusted peers with bounded timeouts and periodic retries."""
+        interval_seconds = 5.0
+        while not self._p2p_peer_monitor_stop_event.is_set():
+            try:
+                discovery = self.p2p_discovery
+                discovered = list(discovery.snapshot()) if discovery is not None else []
+                trusted = self.p2p_trust.trusted_certificates()
+                for peer in discovered:
+                    if self._p2p_peer_monitor_stop_event.is_set():
+                        break
+                    if peer.node_id not in trusted or not peer.host or not 1 <= peer.port <= 65535:
+                        continue
+                    try:
+                        result = self.query_native_peer_status(peer.host, peer.port, peer.node_id)
+                        state = {
+                            "node_id": peer.node_id,
+                            "state": "online",
+                            "checked_at": result["observed_at"],
+                            "host": peer.host,
+                            "port": str(peer.port),
+                        }
+                    except (OSError, RuntimeError, ValueError) as exc:
+                        state = {
+                            "node_id": peer.node_id,
+                            "state": "offline",
+                            "checked_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+                            "host": peer.host,
+                            "port": str(peer.port),
+                            "error": str(exc),
+                        }
+                    with self._p2p_peer_monitor_lock:
+                        self._p2p_peer_monitor_status[peer.node_id] = state
+                self._p2p_peer_monitor_error = None
+            except (ImportError, OSError, RuntimeError, ValueError) as exc:
+                self._p2p_peer_monitor_error = str(exc)
+            if self._p2p_peer_monitor_stop_event.wait(interval_seconds):
+                break
+
+    def stop_native_peer_monitor(self) -> None:
+        """Stop automatic outbound checks cleanly."""
+        self._p2p_peer_monitor_stop_event.set()
+        thread = self._p2p_peer_monitor_thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=2.0)
+        self._p2p_peer_monitor_thread = None
 
     def start_native_p2p(self, host: str = "127.0.0.1", port: int = 0) -> tuple[str, int]:
         """Start the native P2P listener using the current persistent trust allowlist."""
@@ -337,6 +428,9 @@ class NodeRuntime:
         # The running service has an immutable allowlist; stop it after trust
         # changes so it cannot continue using stale authorization.
         self.stop_native_p2p()
+        # Rebuild the listener from the updated allowlist and resume automation.
+        if self._booted:
+            self._start_native_p2p_automation()
         return result
 
     def revoke_trusted_peer(self, node_id: str) -> dict[str, str]:
@@ -350,6 +444,10 @@ class NodeRuntime:
                 # A listener with an empty allowlist has no useful authenticated
                 # sessions to serve, so stop it rather than leave it misleadingly active.
                 self.stop_native_p2p()
+        if self._booted and self.p2p_trust.trusted_certificates() and self.p2p_service is None:
+            self._start_native_p2p_automation()
+        elif not self.p2p_trust.trusted_certificates():
+            self.stop_native_peer_monitor()
         return result
 
     def menu(self) -> None:
