@@ -316,6 +316,7 @@ class NodePeerService:
                 outbound_stop = self._outbound_stop_events.get(node_id)
                 if outbound_stop is not None:
                     outbound_stop.set()
+                outbound_thread = self._outbound_threads.get(node_id)
                 outbound_connection = self._outbound_connections.pop(node_id, None)
                 if outbound_connection is not None:
                     connections.append(outbound_connection)
@@ -336,6 +337,8 @@ class NodePeerService:
                 connection.close()
             except OSError:
                 pass
+        if outbound_thread is not None and outbound_thread is not threading.current_thread():
+            outbound_thread.join(timeout=self.timeout_seconds + 1.0)
 
         return len(session_ids)
 
@@ -378,6 +381,7 @@ class NodePeerService:
                 stop_event.set()
             connections.extend(self._outbound_connections.values())
             self._outbound_connections.clear()
+            outbound_workers = list(self._outbound_threads.values())
         for active_connection in connections:
             try:
                 active_connection.shutdown(socket.SHUT_RDWR)
@@ -394,6 +398,9 @@ class NodePeerService:
             workers = list(self._workers)
         for worker in workers:
             worker.join(timeout=0.2)
+        for worker in outbound_workers:
+            if worker is not threading.current_thread():
+                worker.join(timeout=0.2)
 
     def connect(self, host: str, port: int, expected_peer_node_id: str) -> dict[str, str]:
         """Connect to one configured peer and complete TLS plus P2P authentication."""
