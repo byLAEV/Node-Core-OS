@@ -5,7 +5,7 @@ const repo = "Node-Core-OS";
 const workflows = [
   { name: "Integración continua", file: "ci.yml" },
   { name: "Instalador E2E", file: "installer-e2e.yml" },
-  { name: "Pruebas P2P de tres nodos", file: "three-independent-ubuntu-p2p-contracts.yml" }
+  { name: "Pruebas P2P de tres nodos", file: "three-independent-ubuntu-p2p-e2e.yml" }
 ];
 
 const statusEl = document.getElementById("run-status");
