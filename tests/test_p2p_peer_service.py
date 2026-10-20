@@ -1,5 +1,6 @@
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -50,6 +51,55 @@ class NodePeerServiceTests(unittest.TestCase):
         self.assertEqual(peer["node_id"], self.meta_b["node_id"])
         self.assertTrue(accepted_event.wait(3))
         self.assertEqual(accepted[0]["node_id"], self.meta_a["node_id"])
+
+    def test_persistent_outbound_session_maintains_authenticated_heartbeat(self):
+        server = NodePeerService(
+            self.store_b,
+            self.tls_b,
+            {self.meta_a["node_id"]: self.cert_a},
+            host="127.0.0.1",
+            port=0,
+            timeout_seconds=3,
+        )
+        host, port = server.start()
+        self.addCleanup(server.stop)
+        client = NodePeerService(
+            self.store_a,
+            self.tls_a,
+            {self.meta_b["node_id"]: self.cert_b},
+            timeout_seconds=3,
+        )
+        self.addCleanup(client.stop)
+
+        self.assertTrue(client.connect_persistent(host, port, self.meta_b["node_id"]))
+        deadline = time.monotonic() + 4
+        while time.monotonic() < deadline:
+            outbound = {
+                peer["node_id"]: peer for peer in client.outbound_peers
+            }.get(self.meta_b["node_id"])
+            if outbound and outbound.get("state") == "online" and server.active_peers:
+                break
+            time.sleep(0.05)
+
+        self.assertIsNotNone(outbound)
+        self.assertEqual(outbound["state"], "online")
+        self.assertEqual(outbound["node_id"], self.meta_b["node_id"])
+        self.assertTrue(server.active_peers)
+
+        # Heartbeats keep the responder's authenticated session alive beyond
+        # the one-shot request timeout.
+        time.sleep(1.0)
+        outbound = {
+            peer["node_id"]: peer for peer in client.outbound_peers
+        }[self.meta_b["node_id"]]
+        self.assertEqual(outbound["state"], "online")
+        self.assertIn("last_seen", outbound)
+
+        client.revoke_peer(self.meta_b["node_id"])
+        self.assertEqual(
+            next(peer for peer in client.outbound_peers if peer["node_id"] == self.meta_b["node_id"])["state"],
+            "revoked",
+        )
 
     def test_client_rejects_peer_not_in_allowlist(self):
         client = NodePeerService(

@@ -123,17 +123,23 @@ class NodeRuntime:
             peer["node_id"] for peer in (service.active_peers if service else [])
         }
         now = datetime.now(timezone.utc)
-        with self._p2p_peer_monitor_lock:
-            recent_peer_status = {}
-            for key, value in self._p2p_peer_monitor_status.items():
-                try:
-                    checked_at = datetime.fromisoformat(value["checked_at"])
-                    if checked_at.tzinfo is None:
-                        checked_at = checked_at.replace(tzinfo=timezone.utc)
-                    if (now - checked_at).total_seconds() <= 20:
-                        recent_peer_status[key] = dict(value)
-                except (KeyError, TypeError, ValueError):
-                    continue
+        outbound_peer_status = service.outbound_peers if service is not None else []
+        recent_peer_status = {}
+        for value in outbound_peer_status:
+            if value.get("state") != "online":
+                continue
+            try:
+                last_seen = datetime.fromisoformat(value["last_seen"])
+                if last_seen.tzinfo is None:
+                    last_seen = last_seen.replace(tzinfo=timezone.utc)
+                if (now - last_seen).total_seconds() <= 20:
+                    recent_peer_status[value["node_id"]] = {
+                        **value,
+                        "checked_at": value["last_seen"],
+                        "state": "online",
+                    }
+            except (KeyError, TypeError, ValueError):
+                continue
         discovered_peer_status = []
         for peer in discovered_peers:
             trust_status = trust_by_node_id.get(peer.node_id, "not_trusted")
@@ -146,7 +152,7 @@ class NodeRuntime:
             elif authenticated_inbound:
                 state = "trusted_and_authenticated_inbound"
             elif trust_status == "trusted" and recent_peer_status.get(peer.node_id, {}).get("state") == "online":
-                state = "trusted_and_recently_authenticated_outbound"
+                state = "trusted_and_authenticated_outbound"
             elif trust_status == "trusted":
                 state = "trusted_not_connected"
             else:
@@ -180,6 +186,7 @@ class NodeRuntime:
             "service_running": listening,
             "listen_address": address,
             "active_peers": service.active_peers if service else [],
+            "active_outbound_peers": outbound_peer_status,
             "recently_authenticated_peers": [value for value in recent_peer_status.values() if value.get("state") == "online"],
             "peer_monitor_running": bool(self._p2p_peer_monitor_thread and self._p2p_peer_monitor_thread.is_alive()),
             "peer_monitor_error": self._p2p_peer_monitor_error,
@@ -319,38 +326,27 @@ class NodeRuntime:
             return True
 
     def _run_native_peer_monitor(self) -> None:
-        """Check discovered trusted peers with bounded timeouts and periodic retries."""
+        """Maintain sessions to discovered trusted peers and retry with bounded intervals."""
         interval_seconds = 5.0
         while not self._p2p_peer_monitor_stop_event.is_set():
             try:
                 discovery = self.p2p_discovery
                 discovered = list(discovery.snapshot()) if discovery is not None else []
                 trusted = self.p2p_trust.trusted_certificates()
-                for peer in discovered:
-                    if self._p2p_peer_monitor_stop_event.is_set():
-                        break
-                    if peer.node_id not in trusted or not peer.host or not 1 <= peer.port <= 65535:
-                        continue
-                    try:
-                        result = self.query_native_peer_status(peer.host, peer.port, peer.node_id)
-                        state = {
-                            "node_id": peer.node_id,
-                            "state": "online",
-                            "checked_at": datetime.now(timezone.utc).isoformat(),
-                            "host": peer.host,
-                            "port": str(peer.port),
-                        }
-                    except (OSError, RuntimeError, ValueError) as exc:
-                        state = {
-                            "node_id": peer.node_id,
-                            "state": "offline",
-                            "checked_at": datetime.now(timezone.utc).isoformat(),
-                            "host": peer.host,
-                            "port": str(peer.port),
-                            "error": str(exc),
-                        }
+                if trusted and self.p2p_service is None:
+                    self._start_native_p2p_automation()
+                service = self.p2p_service
+                if service is not None:
+                    for peer in discovered:
+                        if self._p2p_peer_monitor_stop_event.is_set():
+                            break
+                        if peer.node_id not in trusted or not peer.host or not 1 <= peer.port <= 65535:
+                            continue
+                        service.connect_persistent(peer.host, peer.port, peer.node_id)
                     with self._p2p_peer_monitor_lock:
-                        self._p2p_peer_monitor_status[peer.node_id] = state
+                        self._p2p_peer_monitor_status = {
+                            peer["node_id"]: dict(peer) for peer in service.outbound_peers
+                        }
                 self._p2p_peer_monitor_error = None
             except (ImportError, OSError, RuntimeError, ValueError) as exc:
                 self._p2p_peer_monitor_error = str(exc)
@@ -358,7 +354,7 @@ class NodeRuntime:
                 break
 
     def stop_native_peer_monitor(self) -> None:
-        """Stop automatic outbound checks cleanly."""
+        """Stop the automatic trusted-peer session manager cleanly."""
         self._p2p_peer_monitor_stop_event.set()
         thread = self._p2p_peer_monitor_thread
         if thread is not None and thread is not threading.current_thread():

@@ -71,6 +71,11 @@ class NodePeerService:
         self._active_connections: set[socket.socket] = set()
         self._active_connections_lock = threading.Lock()
         self._connection_peers: dict[socket.socket, str] = {}
+        self._outbound_lock = threading.RLock()
+        self._outbound_status: dict[str, dict[str, str]] = {}
+        self._outbound_connections: dict[str, socket.socket] = {}
+        self._outbound_stop_events: dict[str, threading.Event] = {}
+        self._outbound_threads: dict[str, threading.Thread] = {}
         self.last_error: str | None = None
 
     @property
@@ -85,6 +90,169 @@ class NodePeerService:
         """Return a snapshot of currently authenticated inbound peer sessions."""
         with self._active_peers_lock:
             return [dict(peer) for peer in self._active_peers.values()]
+
+    @property
+    def outbound_peers(self) -> list[dict[str, str]]:
+        """Return the current snapshot of outbound authenticated peer sessions."""
+        with self._outbound_lock:
+            return [dict(peer) for peer in self._outbound_status.values()]
+
+    def connect_persistent(self, host: str, port: int, expected_peer_node_id: str) -> bool:
+        """Start or retain one authenticated outbound session with automatic retries."""
+        if not host or not 1 <= port <= 65535:
+            raise ValueError("A reachable peer host and port are required.")
+        with self._trusted_peers_lock:
+            if expected_peer_node_id not in self.trusted_peers:
+                raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
+        with self._outbound_lock:
+            current = self._outbound_threads.get(expected_peer_node_id)
+            if current is not None and current.is_alive():
+                status = self._outbound_status.get(expected_peer_node_id, {})
+                if status.get("host") == host and status.get("port") == str(port):
+                    return True
+                # A fresh signed LAN announcement may report a changed address.
+                stop_event = self._outbound_stop_events.get(expected_peer_node_id)
+                if stop_event is not None:
+                    stop_event.set()
+                connection = self._outbound_connections.pop(expected_peer_node_id, None)
+                if connection is not None:
+                    try:
+                        connection.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
+                    try:
+                        connection.close()
+                    except OSError:
+                        pass
+                self._outbound_status[expected_peer_node_id] = {
+                    "node_id": expected_peer_node_id,
+                    "state": "reconnecting",
+                    "host": host,
+                    "port": str(port),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                # Let the old worker unwind before creating a replacement. Starting
+                # both at once could race their status and socket ownership.
+                return False
+            stop_event = threading.Event()
+            self._outbound_stop_events[expected_peer_node_id] = stop_event
+            self._outbound_status[expected_peer_node_id] = {
+                "node_id": expected_peer_node_id,
+                "state": "connecting",
+                "host": host,
+                "port": str(port),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            worker = threading.Thread(
+                target=self._run_outbound_peer,
+                args=(host, port, expected_peer_node_id, stop_event),
+                name=f"node-core-p2p-outbound-{expected_peer_node_id[-8:]}",
+                daemon=True,
+            )
+            self._outbound_threads[expected_peer_node_id] = worker
+            worker.start()
+        return True
+
+    def _run_outbound_peer(
+        self, host: str, port: int, expected_peer_node_id: str, stop_event: threading.Event
+    ) -> None:
+        """Maintain a mutually authenticated connection, heartbeat, and bounded retries."""
+        retry_delay = 1.0
+        heartbeat_seconds = min(5.0, max(0.5, self.timeout_seconds / 2.0))
+        while not self._stop.is_set() and not stop_event.is_set():
+            tls_socket: socket.socket | None = None
+            raw_socket: socket.socket | None = None
+            try:
+                with self._trusted_peers_lock:
+                    certificate = self.trusted_peers.get(expected_peer_node_id)
+                if certificate is None:
+                    raise PeerServiceError("Peer authorization was revoked.")
+                raw_socket = socket.create_connection((host, port), timeout=self.timeout_seconds)
+                tls_socket = self.tls_transport.client_context([certificate]).wrap_socket(
+                    raw_socket, server_hostname=None
+                )
+                raw_socket = None
+                tls_socket.settimeout(self.timeout_seconds)
+                session = AuthenticatedPeerSession(
+                    self.identity_store, self.tls_transport, expected_peer_node_id,
+                    timeout_seconds=self.timeout_seconds,
+                )
+                peer = session.establish(tls_socket, "initiator")
+                with self._trusted_peers_lock:
+                    if expected_peer_node_id not in self.trusted_peers:
+                        raise PeerServiceError("Peer authorization was revoked.")
+                    with self._outbound_lock:
+                        self._outbound_connections[expected_peer_node_id] = tls_socket
+                        self._outbound_status[expected_peer_node_id] = {
+                            "node_id": peer["node_id"],
+                            "state": "online",
+                            "host": host,
+                            "port": str(port),
+                            "connected_at": datetime.now(timezone.utc).isoformat(),
+                            "last_seen": datetime.now(timezone.utc).isoformat(),
+                        }
+                if self.on_peer:
+                    self.on_peer(peer, tls_socket)
+                retry_delay = 1.0
+                while not self._stop.is_set() and not stop_event.is_set():
+                    request_id = uuid.uuid4().hex
+                    send_application_message(tls_socket, {
+                        "version": 1, "type": "STATUS", "action": "request",
+                        "request_id": request_id,
+                    })
+                    response = receive_application_message(tls_socket)
+                    if (response.get("type") != "STATUS"
+                            or response.get("action") != "response"
+                            or response.get("request_id") != request_id
+                            or response.get("state") != "running"):
+                        raise PeerServiceError("Peer returned an invalid STATUS heartbeat.")
+                    with self._outbound_lock:
+                        status = self._outbound_status.get(expected_peer_node_id)
+                        if status is not None:
+                            status["last_seen"] = datetime.now(timezone.utc).isoformat()
+                            status["state"] = "online"
+                            status.pop("error", None)
+                    if stop_event.wait(heartbeat_seconds):
+                        break
+            except (OSError, PeerSessionError, TLSTransportError, PeerServiceError, KeyError) as exc:
+                if not self._stop.is_set() and not stop_event.is_set():
+                    with self._outbound_lock:
+                        self._outbound_status[expected_peer_node_id] = {
+                            "node_id": expected_peer_node_id,
+                            "state": "reconnecting",
+                            "host": host,
+                            "port": str(port),
+                            "updated_at": datetime.now(timezone.utc).isoformat(),
+                            "error": str(exc),
+                        }
+            finally:
+                if tls_socket is not None:
+                    with self._outbound_lock:
+                        if self._outbound_connections.get(expected_peer_node_id) is tls_socket:
+                            self._outbound_connections.pop(expected_peer_node_id, None)
+                    try:
+                        tls_socket.close()
+                    except OSError:
+                        pass
+                if raw_socket is not None:
+                    try:
+                        raw_socket.close()
+                    except OSError:
+                        pass
+            if self._stop.is_set() or stop_event.is_set():
+                break
+            if stop_event.wait(retry_delay):
+                break
+            retry_delay = min(retry_delay * 2.0, 30.0)
+        with self._outbound_lock:
+            status = self._outbound_status.get(expected_peer_node_id)
+            if status is not None and status.get("state") not in ("revoked",):
+                status["state"] = "disconnected"
+                status["updated_at"] = datetime.now(timezone.utc).isoformat()
+            if self._outbound_stop_events.get(expected_peer_node_id) is stop_event:
+                self._outbound_stop_events.pop(expected_peer_node_id, None)
+            if self._outbound_threads.get(expected_peer_node_id) is threading.current_thread():
+                self._outbound_threads.pop(expected_peer_node_id, None)
 
     def _register_peer(self, peer: dict[str, str]) -> str:
         session_id = uuid.uuid4().hex
@@ -144,6 +312,19 @@ class NodePeerService:
                 for connection in connections:
                     self._connection_peers.pop(connection, None)
                     self._active_connections.discard(connection)
+            with self._outbound_lock:
+                outbound_stop = self._outbound_stop_events.get(node_id)
+                if outbound_stop is not None:
+                    outbound_stop.set()
+                outbound_thread = self._outbound_threads.get(node_id)
+                outbound_connection = self._outbound_connections.pop(node_id, None)
+                if outbound_connection is not None:
+                    connections.append(outbound_connection)
+                self._outbound_status[node_id] = {
+                    "node_id": node_id,
+                    "state": "revoked",
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
 
         # Close outside locks: shutdown/close may wake worker threads that
         # need these locks during their finally cleanup.
@@ -156,6 +337,8 @@ class NodePeerService:
                 connection.close()
             except OSError:
                 pass
+        if outbound_thread is not None and outbound_thread is not threading.current_thread():
+            outbound_thread.join(timeout=self.timeout_seconds + 1.0)
 
         return len(session_ids)
 
@@ -190,10 +373,15 @@ class NodePeerService:
                 listener.close()
             except OSError:
                 pass
-        # Revocation and shutdown must terminate established sessions as well
-        # as the listening socket; otherwise an old allowlist could remain usable.
+        # Shutdown terminates inbound and outbound sessions as well as the listener.
         with self._active_connections_lock:
             connections = list(self._active_connections)
+        with self._outbound_lock:
+            for stop_event in self._outbound_stop_events.values():
+                stop_event.set()
+            connections.extend(self._outbound_connections.values())
+            self._outbound_connections.clear()
+            outbound_workers = list(self._outbound_threads.values())
         for active_connection in connections:
             try:
                 active_connection.shutdown(socket.SHUT_RDWR)
@@ -210,6 +398,9 @@ class NodePeerService:
             workers = list(self._workers)
         for worker in workers:
             worker.join(timeout=0.2)
+        for worker in outbound_workers:
+            if worker is not threading.current_thread():
+                worker.join(timeout=0.2)
 
     def connect(self, host: str, port: int, expected_peer_node_id: str) -> dict[str, str]:
         """Connect to one configured peer and complete TLS plus P2P authentication."""
