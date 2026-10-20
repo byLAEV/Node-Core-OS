@@ -28,8 +28,8 @@ class NativeNetworkStatusUITests(unittest.TestCase):
             menu._print_native_network_indicator()
 
         rendered = output.getvalue()
-        self.assertIn("Nodos online (sesión autenticada): 2 (incluido este nodo)", rendered)
-        self.assertIn("Pares remotos online: 1", rendered)
+        self.assertIn("Nodos online verificados: 2 (incluido este nodo)", rendered)
+        self.assertIn("Pares remotos: 1", rendered)
         self.assertIn("Nodos detectados en LAN (anuncio firmado, sesión no autenticada):", rendered)
         self.assertIn("Manifiesto de consenso: PENDIENTE DE FIRMAS UNÁNIMES", rendered)
         self.assertIn("Native P2P worldwide discovery: NOT CONFIGURED", rendered)

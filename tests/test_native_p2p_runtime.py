@@ -191,10 +191,13 @@ class NativeP2PRuntimeTests(unittest.TestCase):
         certificate_path.write_bytes(certificate)
         self.runtime.trust_peer_certificate(remote_meta["node_id"], certificate_path)
 
+        # Trusting a peer now starts the allowlisted listener automatically on LAN interfaces.
         host, port = self.runtime.start_native_p2p()
-        self.assertEqual(host, "127.0.0.1")
+        self.assertEqual(host, "0.0.0.0")
         self.assertGreater(port, 0)
-        self.assertTrue(self.runtime.native_p2p_status()["service_running"])
+        status = self.runtime.native_p2p_status()
+        self.assertTrue(status["service_running"])
+        self.assertTrue(status["peer_monitor_running"])
 
         self.runtime.stop_native_p2p()
         self.assertFalse(self.runtime.native_p2p_status()["service_running"])
