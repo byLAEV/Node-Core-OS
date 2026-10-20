@@ -84,22 +84,31 @@ class MainMenu:
                 for peer in active_peers
                 if isinstance(peer, dict) and isinstance(peer.get("node_id"), str)
             }
-            # Discovery is LAN-scoped and announcements can be stale. Only active
-            # authenticated sessions count as connected/online peers.
-            online_ids = sorted(active_ids)
-            discovered_only_ids = sorted(discovered_ids - active_ids)
+            recent_checks = status.get("recently_authenticated_peers", [])
+            recent_ids = {
+                peer.get("node_id")
+                for peer in recent_checks
+                if isinstance(peer, dict) and isinstance(peer.get("node_id"), str)
+            }
+            # Live inbound sessions and recent authenticated outbound STATUS checks
+            # both prove reachability, but the menu labels the evidence separately.
+            online_ids = sorted(active_ids | recent_ids)
+            discovered_only_ids = sorted(discovered_ids - online_ids)
             local_node_id = status.get("node_id", "unknown")
             discovery_running = bool(status.get("discovery_running"))
             print(
                 f"Node Core OS P2P LAN: {'RUNNING' if discovery_running else 'UNAVAILABLE'} | "
-                f"Nodos online (sesión autenticada): {len(online_ids) + 1} "
-                f"(incluido este nodo) | Pares remotos online: {len(online_ids)}"
+                f"Nodos online verificados: {len(online_ids) + 1} "
+                f"(incluido este nodo) | Pares remotos: {len(online_ids)}"
             )
             print(f"Este nodo: {local_node_id}")
             if online_ids:
-                print("Nodos online:")
+                print("Nodos online verificados:")
                 for node_id in online_ids:
-                    print(f"  ONLINE  {node_id}")
+                    if node_id in active_ids:
+                        print(f"  ONLINE (sesión entrante autenticada)  {node_id}")
+                    else:
+                        print(f"  ONLINE (comprobación autenticada reciente)  {node_id}")
             else:
                 print("Nodos online: ninguno remoto con sesión autenticada")
             if discovered_only_ids:
@@ -107,6 +116,8 @@ class MainMenu:
                 for node_id in discovered_only_ids:
                     print(f"  DETECTADO  {node_id}")
             print("Manifiesto de consenso: PENDIENTE DE FIRMAS UNÁNIMES")
+            if status.get("peer_monitor_error"):
+                print(f"Automatización P2P: {status['peer_monitor_error']}")
             if status.get("discovery_error") and not discovery_running:
                 print(f"LAN discovery detail: {status['discovery_error']}")
             if status.get("wan_discovery_running"):
