@@ -1,50 +1,53 @@
-# Node Core OS Web Test Bench
+# Portal público de Node Core OS byLAEV
 
-A static, mobile-friendly public portal for project documentation and recent GitHub Actions status. It does not execute the installer in the browser. Real tests run in GitHub-hosted Ubuntu runners.
+Sitio estático, adaptable a móviles, para presentar el proyecto, sus dominios de almacenamiento, documentación, descargas oficiales y ejecuciones recientes de GitHub Actions. El portal no ejecuta instaladores en el navegador ni afirma que una función esté terminada únicamente porque aparezca documentada.
 
-## Files
+## Archivos
 
-- `index.html`: accessible dashboard structure and direct links to the repository/workflows.
-- `menus.html`: English visual guide to the actual terminal menu labels and the documented installer phases. The mock interface is illustrative and does not control a running node.
-- `identity.html`: English architecture page explaining personhood assessment, activity constancy, longest valid evidence history, preference voting versus consensus, evidence categories, selective disclosure, privacy, and the future implementation roadmap. It clearly labels unimplemented capabilities.
-- `remembering.html`: English architecture page covering requirement-driven recall, forgetting context, restriction, expiry, revocation, deletion, unpinning, and distributed-storage limitations.
-- `menus.html`: documents the External CID Library submenu, its implemented operations, and the limits of what unit tests establish.
-- `assets/styles.css`: responsive styles and reduced-motion support.
-- `assets/app.js`: reads public workflow run metadata from the GitHub REST API; no token or secret is embedded in the page.
+- `index.html`: portada en español, arquitectura, áreas de trabajo, pruebas, descargas y estado de CI.
+- `identity.html`: explicación de arquitectura de identidad y evidencias, con límites explícitos entre propuestas y funciones verificadas.
+- `remembering.html`: principios de memoria, olvido, restricciones, expiración y límites de la distribución.
+- `menus.html`: guía visual de menús documentados; la interfaz gráfica es ilustrativa y no controla un nodo en ejecución.
+- `assets/styles.css`: estilos adaptables, foco accesible y soporte de movimiento reducido.
+- `assets/app.js`: consulta la API pública de GitHub para mostrar ejecuciones de CI, instalador E2E y pruebas P2P de tres nodos. No incluye tokens ni secretos.
 
-## Identity and evidence architecture
+## Previsualización local
 
-The identity page is a public explanation of the planned design, not a live personhood-verification product. It distinguishes personhood assessment from activity constancy, node availability, propagation, consensus, and credential validity. It describes future evidence categories and zero-knowledge selective disclosure while documenting the limits of CIDs and distributed storage for confidentiality. It does not claim that distributed consensus, anti-Sybil controls, credential issuance, or ZKP cryptography are implemented.
-
-## Local preview
-
-From the repository root, run:
+Desde la raíz del repositorio:
 
 ```bash
 python3 -m http.server 8000 --directory web-test-bench
 ```
 
-Open `http://localhost:8000` in a browser. The live results panel needs network access to the public GitHub API.
+Abre `http://localhost:8000`. El panel de ejecuciones requiere conexión a la API pública de GitHub.
 
-## Manual test runs
+## Validación
 
-The terminal CI and installer E2E workflows support `workflow_dispatch`. Open the repository's Actions tab, select the workflow, and use **Run workflow** on the default branch. GitHub permissions still apply. This dashboard links to those workflows but intentionally does not invoke workflow runs directly from public JavaScript.
+Ejecuta desde la raíz del repositorio:
 
-## Deployment
+```bash
+python3 scripts/validate_web_test_bench.py
+node --check web-test-bench/assets/app.js
+```
 
-The `.github/workflows/pages.yml` workflow validates the site and publishes this directory to GitHub Pages on pushes to `main`. The repository's Pages publishing source must be set to **GitHub Actions** in Settings → Pages. The workflow uses the official Pages actions and minimal deployment permissions.
+La validación estructural no sustituye una prueba completa en navegador ni los workflows reales de instalación y P2P.
 
-A deployment can still fail if GitHub Pages is disabled or restricted by repository/organization policy. Confirm Settings → Pages after merging this change.
+## Publicación
 
-## Live results and limits
+El workflow `.github/workflows/pages.yml` valida el portal y publica el directorio `web-test-bench` en GitHub Pages al recibir cambios en `main`. En Settings → Pages, la fuente de publicación debe ser **GitHub Actions**. Confirma el resultado de la ejecución de Pages después del commit.
 
-- The dashboard displays recent runs for the terminal CI and installer E2E workflows, linking each row to its GitHub Actions run.
-- The GitHub API is public and unauthenticated; rate limits or network restrictions may temporarily prevent loading results. Direct workflow links remain available.
-- Timestamps are explicitly displayed in UTC.
-- Run state comes from GitHub's API; the site does not claim unrun tests passed.
-- This is a status dashboard, not a trigger interface. Start or rerun tests through GitHub Actions, which applies GitHub's own access controls.
-- This page intentionally does not display raw logs, secrets, environment variables, or test artifacts.
+## Estado en vivo y límites
 
-## Validation
+- Los estados y enlaces de ejecución proceden de la API pública de GitHub.
+- El sitio muestra hasta cuatro ejecuciones recientes por workflow configurado.
+- La API puede limitar solicitudes o no estar disponible temporalmente; los enlaces directos siguen siendo útiles.
+- Las fechas se presentan en la zona horaria de Costa Rica.
+- El portal no inicia ni reejecuta workflows. Usa GitHub Actions y sus controles de acceso.
+- Los resultados aplican al commit probado por cada ejecución; no prueban funciones que el workflow no cubra.
+- Descubrimiento de pares no es autorización; presencia online no demuestra confianza; firmas locales no prueban por sí solas consenso distribuido.
+- IPFS no cifra automáticamente los datos. Eliminar una referencia local o quitar un pin no garantiza la eliminación de copias remotas.
+- La versión 1.5.4 declara Ubuntu 24.04 x86-64 como objetivo; Termux/Android requieren validación independiente.
 
-Run `python3 scripts/validate_web_test_bench.py` from the repository root. It checks expected files, key HTML structure, relative asset references, absence of inline scripts, and expected workflow/deployment configuration. It is a structural check, not a full browser test.
+## Accesibilidad y seguridad
+
+Los enlaces externos abren con `rel="noopener noreferrer"`. Los resultados se crean con APIs DOM y texto sin interpretar datos de GitHub como HTML. No se incorpora credencial alguna al JavaScript público.
