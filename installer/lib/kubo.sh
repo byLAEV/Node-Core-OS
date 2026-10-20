@@ -73,8 +73,21 @@ install_kubo() {
     asset="$(kubo_asset)"
     archive="kubo_v${version}_${asset}.tar.gz"
     work_dir="$(mktemp -d)"
-    printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
-    download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
+    local bundled_archive="$NODE_CORE_DATA_DIR/app/installer/vendor/kubo/$archive"
+    local bundled_checksum="$bundled_archive.sha512"
+    if [[ -f "$bundled_archive" && -f "$bundled_checksum" ]]; then
+      printf 'Using bundled Kubo %s (%s); verifying SHA-512...\n' "$version" "$asset"
+      cp "$bundled_archive" "$work_dir/$archive"
+      cp "$bundled_checksum" "$work_dir/$archive.sha512"
+      if ! (cd "$work_dir" && sha512sum --check "$archive.sha512"); then
+        printf 'Bundled Kubo checksum verification failed.\n' >&2
+        rm -rf "$work_dir"
+        return 1
+      fi
+    else
+      printf 'Downloading Kubo %s (%s)...\n' "$version" "$asset"
+      download_kubo_release "$version" "$archive" "$work_dir/$archive" "$work_dir/$archive.sha512"
+    fi
     tar -xzf "$work_dir/$archive" -C "$work_dir"
     cp "$work_dir/kubo/ipfs" "$NODE_CORE_DATA_DIR/bin/ipfs"
     chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"

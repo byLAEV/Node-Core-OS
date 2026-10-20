@@ -21,10 +21,18 @@ ensure_python_environment() {
     }
   fi
   if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
-    "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+    local wheel_dir="$NODE_CORE_DATA_DIR/app/installer/vendor/python-wheels"
+    if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
+      "$environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file" || {
+        printf 'Bundled Python dependencies could not be installed offline.\n' >&2
+        return 1
+      }
+    else
+      "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
       printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
       return 1
-    }
+      }
+    fi
   fi
   if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
     "$environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || {

@@ -20,6 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python for platform-specific offline dependencies
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Read and validate versions
         id: versions
         shell: bash
@@ -38,6 +43,20 @@ jobs:
           bash installer/tests/user-context.sh
           python -m compileall -q main.py node_core applications/p2p_contracts
 
+      - name: Download and verify bundled runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p installer/vendor/python-wheels installer/vendor/kubo
+          python -m pip download --only-binary=:all: --dest installer/vendor/python-wheels -r requirements.txt
+          archive="kubo_v${NODE_CORE_KUBO_VERSION:-0.43.1}_linux-amd64.tar.gz"
+          base="https://github.com/ipfs/kubo/releases/download/v${NODE_CORE_KUBO_VERSION:-0.43.1}"
+          curl --fail --location --retry 3 --retry-all-errors --output "installer/vendor/kubo/$archive" "$base/$archive"
+          curl --fail --location --retry 3 --retry-all-errors --output "installer/vendor/kubo/$archive.sha512" "$base/$archive.sha512"
+          (cd installer/vendor/kubo && sha512sum --check "$archive.sha512")
+          find installer/vendor/python-wheels -maxdepth 1 -type f -name 'cryptography*.whl' -print -quit | grep -q .
+          test -s "installer/vendor/kubo/$archive"
+
       - name: Build fresh-install source package
         shell: bash
         run: |
@@ -47,6 +66,8 @@ jobs:
           stage="$(mktemp -d)"
           trap 'rm -rf "$stage"' EXIT
           git archive --format=tar --prefix="$package/" HEAD | tar -xf - -C "$stage"
+          mkdir -p "$stage/$package/installer/vendor"
+          cp -R installer/vendor/. "$stage/$package/installer/vendor/"
 
           # HashPaper is a separate application and must not ship inside the
           # Node Core OS installer source package.
