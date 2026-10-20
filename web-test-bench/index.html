@@ -1,93 +1,120 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Public documentation and verified CI status for Node Core OS.">
+  <meta name="description" content="Portal público de Node Core OS: arquitectura, identidad, almacenamiento local e IPFS, pruebas automatizadas y descargas oficiales.">
   <meta name="theme-color" content="#101827">
-  <title>Node Core OS — Web Test Bench</title>
+  <title>Node Core OS byLAEV — Portal público</title>
   <link rel="stylesheet" href="./assets/styles.css">
   <script src="./assets/app.js" defer></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
   <header class="site-header">
-    <a class="brand" href="./" aria-label="Node Core OS Web Test Bench home">
+    <a class="brand" href="./" aria-label="Inicio de Node Core OS">
       <span class="brand-mark" aria-hidden="true">N</span>
-      <span><strong>NODE CORE OS</strong><small>WEB TEST BENCH</small></span>
+      <span><strong>NODE CORE OS</strong><small>BYLAEV · PORTAL PÚBLICO</small></span>
     </a>
-    <nav aria-label="Main navigation">
-      <a href="#overview">Overview</a>
-      <a href="#tests">Tests</a>
-      <a href="#results">Live results</a>
-      <a href="#components">Components</a>
-      <a href="./identity.html">Identity &amp; evidence</a>
-      <a href="./remembering.html">Remembering &amp; Forgetting</a>
-      <a href="./menus.html">Menu guide</a>
+    <nav aria-label="Navegación principal">
+      <a href="#overview">Proyecto</a>
+      <a href="#capabilities">Capacidades</a>
+      <a href="#tests">Pruebas</a>
+      <a href="#downloads">Descargas</a>
+      <a href="#results">Estado CI</a>
+      <a href="./identity.html">Identidad</a>
+      <a href="./remembering.html">Memoria</a>
+      <a href="./menus.html">Menús</a>
     </nav>
   </header>
-
   <main id="main">
     <section class="hero" id="overview">
-      <p class="eyebrow">PUBLIC TEST & DOCUMENTATION PORTAL</p>
-      <h1>Verify the node.<br><span>Understand the results.</span></h1>
-      <p class="hero-copy">A browser-based window into the Node Core OS repository, automated Linux installer tests, and local-first storage components. Real installation tests run in isolated GitHub-hosted runners—not in your browser.</p>
+      <p class="eyebrow">INFRAESTRUCTURA PERSONAL · LOCAL-FIRST · DISTRIBUIDA</p>
+      <h1>Tu núcleo digital.<br><span>Tus datos, tus decisiones.</span></h1>
+      <p class="hero-copy">Node Core OS byLAEV es una infraestructura personal en desarrollo para administrar almacenamiento local y almacenamiento distribuido mediante Kubo/IPFS, y construir sobre esa base aplicaciones, protocolos, registros, evidencias e identidades.</p>
       <div class="hero-actions">
-        <a class="button primary" href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Open installer tests ↗</a>
-        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Explore repository ↗</a>
+        <a class="button primary" href="https://github.com/byLAEV/Node-Core-OS/releases/latest" target="_blank" rel="noopener noreferrer">Última versión publicada ↗</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Explorar código fuente ↗</a>
+        <a class="button secondary" href="https://github.com/byLAEV/Node-Core-OS/blob/main/README.md" target="_blank" rel="noopener noreferrer">Leer documentación ↗</a>
       </div>
-      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span> Results link to GitHub Actions; this page does not claim a test passed unless GitHub reports success.</div>
+      <div class="trust-note"><span class="status-dot" aria-hidden="true"></span> Transparencia primero: las capacidades implementadas, las pruebas y las propuestas futuras deben distinguirse claramente.</div>
+    </section>
+
+    <section class="section" id="capabilities">
+      <div class="section-heading"><div><p class="eyebrow">ARQUITECTURA BASE</p><h2>Un nodo. Dos dominios de almacenamiento.</h2></div><p>El almacenamiento local y el distribuido tienen propiedades diferentes; publicar o fijar contenido en IPFS no equivale a mantenerlo privado.</p></div>
+      <div class="architecture">
+        <article><h3>01 · Almacenamiento local</h3><p>Archivos, registros, configuraciones y datos persistentes bajo el control del usuario. Los instaladores y actualizadores deben preservar los datos existentes.</p></article>
+        <div class="architecture-link" aria-hidden="true">↔</div>
+        <article><h3>02 · Kubo / IPFS</h3><p>Almacenamiento direccionado por contenido y distribución entre pares. La disponibilidad depende de la red y del pinning; un CID no cifra el contenido.</p></article>
+      </div>
+      <div class="component-links">
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer">Arquitectura técnica ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/BASIC_NODE_NETWORK.md" target="_blank" rel="noopener noreferrer">Red básica de nodos ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/DOWNLOAD-SOURCES.md" target="_blank" rel="noopener noreferrer">Fuentes e integridad de descargas ↗</a>
+      </div>
+    </section>
+
+    <section class="section" id="modules">
+      <div class="section-heading"><div><p class="eyebrow">ECOSISTEMA</p><h2>Áreas de trabajo</h2></div><p>Las páginas explican diseños, requisitos y límites. Consulta el código y las pruebas para conocer el estado real de cada función.</p></div>
+      <div class="test-grid">
+        <article class="test-card"><span class="card-number">01</span><h3>Red P2P y nodos</h3><p>Separación entre descubrimiento, presencia en línea, sesiones autenticadas y confianza. Encontrar un nodo no lo autoriza automáticamente.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/BASIC_NODE_NETWORK.md" target="_blank" rel="noopener noreferrer">Leer diseño de red ↗</a></article>
+        <article class="test-card"><span class="card-number">02</span><h3>Identidad y evidencias</h3><p>Principios para identidad personal, historial de evidencias, divulgación selectiva y evaluación contextual. La página distingue propuestas de funciones verificadas.</p><a href="./identity.html">Explorar identidad ↗</a></article>
+        <article class="test-card"><span class="card-number">03</span><h3>Consenso y manifiestos</h3><p>Documentación sobre manifiestos, hashes, firmas y validación. La presencia de firmas locales no demuestra por sí sola consenso distribuido operativo.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md" target="_blank" rel="noopener noreferrer">Leer auditoría técnica ↗</a></article>
+        <article class="test-card"><span class="card-number">04</span><h3>HashPaper y evidencia temporal</h3><p>Flujos para preservar huellas y pruebas OpenTimestamps. Una prueba pendiente no debe describirse como confirmación final en Bitcoin.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/HASHPAPER.md" target="_blank" rel="noopener noreferrer">Leer HashPaper ↗</a></article>
+        <article class="test-card"><span class="card-number">05</span><h3>Recordar y olvidar</h3><p>Principios para retención, restricciones, expiración y eliminación, teniendo en cuenta que quitar una referencia local no elimina copias distribuidas.</p><a href="./remembering.html">Explorar principios ↗</a></article>
+        <article class="test-card"><span class="card-number">06</span><h3>Biblioteca externa CID</h3><p>Referencias a contenido direccionado por CID, recuperación con Kubo y operaciones de pinning con límites explícitos.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/EXTERNAL-CID-LIBRARY.md" target="_blank" rel="noopener noreferrer">Leer especificación ↗</a></article>
+        <article class="test-card"><span class="card-number">07</span><h3>Menú de la aplicación</h3><p>Guía visual para entender las opciones documentadas del menú de terminal. Es una referencia gráfica, no un control remoto del nodo.</p><a href="./menus.html">Abrir guía de menús ↗</a></article>
+        <article class="test-card"><span class="card-number">08</span><h3>Instalación y actualización</h3><p>Paquetes publicados, comprobaciones SHA-512 y alcance de compatibilidad indicado por cada versión.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/INSTALLER-PACKAGES.md" target="_blank" rel="noopener noreferrer">Leer paquetes ↗</a></article>
+      </div>
     </section>
 
     <section class="section" id="tests">
-      <div class="section-heading">
-        <div><p class="eyebrow">TEST CATALOG</p><h2>What can be verified?</h2></div>
-        <p>Use GitHub Actions to run available workflows and inspect their complete logs.</p>
-      </div>
+      <div class="section-heading"><div><p class="eyebrow">VALIDACIÓN AUTOMATIZADA</p><h2>Pruebas y trazabilidad</h2></div><p>Los resultados reales se ejecutan y registran en GitHub Actions, no en el navegador de esta página.</p></div>
       <div class="test-grid">
-        <article class="test-card"><span class="card-number">01</span><h3>Terminal CI</h3><p>Python source compilation, shell syntax checks, installer unit checks, and the Python test suite.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/ci.yml" target="_blank" rel="noopener noreferrer">Open CI workflow ↗</a></article>
-        <article class="test-card"><span class="card-number">02</span><h3>Installer E2E</h3><p>Clean installation and uninstall scenarios on Ubuntu 24.04, including supported service modes.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Open E2E workflow ↗</a></article>
-        <article class="test-card"><span class="card-number">03</span><h3>Evidence</h3><p>Inspect automated coverage for evidence records and storage behavior. Coverage shown here is not a substitute for reviewing individual tests.</p><a href="https://github.com/byLAEV/Node-Core-OS/tree/main/tests" target="_blank" rel="noopener noreferrer">Review test files ↗</a></article>
-        <article class="test-card"><span class="card-number">04</span><h3>My Life / Node Blog</h3><p>Review local-first entries, persistence, and optional IPFS publishing tests as implemented in the repository.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/tests/test_my_life.py" target="_blank" rel="noopener noreferrer">Review blog tests ↗</a></article>
-        <article class="test-card"><span class="card-number">05</span><h3>Identity &amp; evidence</h3><p>Explore the proposed model for personhood assessment, constancy history, evidence categories, consensus, privacy, and future zero-knowledge proofs.</p><a href="./identity.html">Explore architecture ↗</a></article>
-        <article class="test-card"><span class="card-number">06</span><h3>Remembering &amp; Forgetting</h3><p>Explore requirement-driven memory, context forgetting, privacy boundaries, local storage, Kubo/IPFS limitations, and the proposed implementation roadmap.</p><a href="./remembering.html">Explore memory roadmap ↗</a></article>
-        <article class="test-card"><span class="card-number">07</span><h3>External CID Library</h3><p>Review the local CID-reference index, Kubo-backed retrieval and pin operations, and the distinction between removing a reference and deleting distributed content.</p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/EXTERNAL-CID-LIBRARY.md" target="_blank" rel="noopener noreferrer">Read feature specification ↗</a></article>
+        <article class="test-card"><span class="card-number">CI</span><h3>Integración continua</h3><p>Consulta la ejecución de comprobaciones de código, scripts y pruebas incluidas en el workflow.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/ci.yml" target="_blank" rel="noopener noreferrer">Abrir CI ↗</a></article>
+        <article class="test-card"><span class="card-number">E2E</span><h3>Instalador de extremo a extremo</h3><p>Revisa los escenarios de instalación y actualización en los entornos que declara el workflow.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/installer-e2e.yml" target="_blank" rel="noopener noreferrer">Abrir pruebas E2E ↗</a></article>
+        <article class="test-card"><span class="card-number">P2P</span><h3>Pruebas de varios nodos</h3><p>Consulta los resultados de integración entre nodos. No se debe inferir convergencia o consenso si el run no lo valida.</p><a href="https://github.com/byLAEV/Node-Core-OS/actions/workflows/three-independent-ubuntu-p2p-e2e.yml" target="_blank" rel="noopener noreferrer">Abrir pruebas P2P ↗</a></article>
+        <article class="test-card"><span class="card-number">SRC</span><h3>Código y casos de prueba</h3><p>Lee las pruebas fuente para comprobar qué escenarios están cubiertos y cuáles siguen pendientes.</p><a href="https://github.com/byLAEV/Node-Core-OS/tree/main/tests" target="_blank" rel="noopener noreferrer">Revisar tests ↗</a></article>
       </div>
-      <p class="section-note">A workflow can only validate behavior covered by its actual steps. Review the run logs and test source before treating a capability as fully verified.</p>
+    </section>
+
+    <section class="section" id="downloads">
+      <div class="section-heading"><div><p class="eyebrow">DISTRIBUCIÓN OFICIAL</p><h2>Versiones y descargas</h2></div><p>Descarga únicamente desde las publicaciones oficiales y verifica los checksums suministrados junto al paquete.</p></div>
+      <div class="architecture">
+        <article><h3>Última publicación</h3><p>Consulta las notas de la versión, los archivos disponibles, la fecha de publicación y los requisitos específicos antes de instalar.</p><p><a href="https://github.com/byLAEV/Node-Core-OS/releases/latest" target="_blank" rel="noopener noreferrer">Ver última versión ↗</a></p></article>
+        <div class="architecture-link" aria-hidden="true">↗</div>
+        <article><h3>Compatibilidad</h3><p>La versión 1.5.4 declara como objetivo Ubuntu 24.04 x86-64. Termux y Android requieren validación de compatibilidad independiente; no se presumen compatibles.</p><p><a href="https://github.com/byLAEV/Node-Core-OS/blob/main/docs/RELEASE-READINESS-1.5.4.md" target="_blank" rel="noopener noreferrer">Ver criterios de publicación ↗</a></p></article>
+      </div>
+      <p class="section-note">Antes de ejecutar un instalador, lee las instrucciones de la publicación correspondiente. No ejecutes como root o con sudo si el paquete documenta operación exclusiva en el espacio del usuario.</p>
     </section>
 
     <section class="section results-section" id="results">
-      <div class="section-heading">
-        <div><p class="eyebrow">GITHUB ACTIONS API</p><h2>Recent workflow runs</h2></div>
-        <button class="button secondary" id="refresh-results" type="button">Refresh results</button>
-      </div>
-      <p class="results-explainer">Live status is fetched from the public GitHub API. The API may be rate-limited; use the workflow links above if results cannot be loaded.</p>
-      <div id="run-status" class="run-status" role="status" aria-live="polite">Loading public workflow runs…</div>
+      <div class="section-heading"><div><p class="eyebrow">API PÚBLICA DE GITHUB</p><h2>Ejecuciones recientes de CI</h2></div><button class="button secondary" id="refresh-results" type="button">Actualizar resultados</button></div>
+      <p class="results-explainer">El estado se consulta en la API pública de GitHub. Puede haber límites de uso o fallos temporales; utiliza los enlaces directos si no carga.</p>
+      <div id="run-status" class="run-status" role="status" aria-live="polite">Cargando ejecuciones públicas…</div>
       <div id="workflow-runs" class="run-list"></div>
-      <noscript><p>This live panel needs JavaScript. You can still open the public workflow pages above.</p></noscript>
+      <noscript><p>Este panel necesita JavaScript. Los enlaces a los workflows siguen disponibles arriba.</p></noscript>
     </section>
 
-    <section class="section" id="components">
-      <div class="section-heading"><div><p class="eyebrow">ARCHITECTURE</p><h2>One node, two storage domains</h2></div></div>
+    <section class="section">
+      <div class="section-heading"><div><p class="eyebrow">PRINCIPIOS</p><h2>Transparencia antes de promesas</h2></div></div>
       <div class="architecture">
-        <article><h3>Local storage</h3><p>Persistent records and application data remain under the node owner's control. Installation and updates must preserve existing user data.</p></article>
-        <div class="architecture-link" aria-hidden="true">↔</div>
-        <article><h3>Kubo / IPFS</h3><p>Content can be added to IPFS when requested. Publishing content to a content-addressed network may expose it; pinning is not a privacy feature.</p></article>
+        <article><h3>Lo que muestran las pruebas</h3><p>Una prueba demuestra únicamente el comportamiento que ejecuta y verifica. Revisa el código, los logs, el commit probado y las limitaciones documentadas.</p></article>
+        <div class="architecture-link" aria-hidden="true">≠</div>
+        <article><h3>Lo que no debe suponerse</h3><p>Una página publicada no prueba que todas las funciones estén terminadas. Descubrimiento no es autorización; almacenamiento distribuido no es privacidad; firmas no son automáticamente consenso.</p></article>
       </div>
       <div class="component-links">
-        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/README.md" target="_blank" rel="noopener noreferrer">Project overview ↗</a>
-        <a href="https://github.com/byLAEV/Node-Core-OS/tree/main/docs" target="_blank" rel="noopener noreferrer">Documentation ↗</a>
-        <a href="./identity.html">Identity and evidence roadmap ↗</a>
-        <a href="./remembering.html">Remembering &amp; Forgetting roadmap ↗</a>
-        <a href="https://github.com/byLAEV/Node-Core-OS/actions" target="_blank" rel="noopener noreferrer">All workflows ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/blob/main/README.md" target="_blank" rel="noopener noreferrer">README del proyecto ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/tree/main/docs" target="_blank" rel="noopener noreferrer">Toda la documentación ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/actions" target="_blank" rel="noopener noreferrer">Todas las acciones ↗</a>
+        <a href="https://github.com/byLAEV/Node-Core-OS/issues" target="_blank" rel="noopener noreferrer">Incidencias y seguimiento ↗</a>
       </div>
     </section>
   </main>
-
   <footer class="site-footer">
-    <span>Node Core OS · Web Test Bench</span>
-    <span>Static interface · Automated tests run separately</span>
-    <a href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Source on GitHub ↗</a>
+    <span>Node Core OS byLAEV · Portal público</span>
+    <span>Interfaz estática · Pruebas ejecutadas por separado</span>
+    <a href="https://github.com/byLAEV/Node-Core-OS" target="_blank" rel="noopener noreferrer">Código fuente en GitHub ↗</a>
   </footer>
 </body>
 </html>
