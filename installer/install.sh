@@ -37,6 +37,18 @@ main() {
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   ensure_python_environment "$NODE_CORE_DATA_DIR/app/requirements.txt"
+
+  # Validate the cryptographic engine inside the exact virtual environment used
+  # by the installed application, then create this node's persistent identity.
+  if ! "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; print("Verified cryptographic engine:", cryptography.__version__, "| Ed25519: available")'; then
+    printf 'Cryptographic engine verification failed; refusing to finish installation.\n' >&2
+    exit 1
+  fi
+  (
+    cd "$NODE_CORE_DATA_DIR/app"
+    "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest tests.test_node_identity -v
+    NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import os; from pathlib import Path; from node_core.identity.node_identity import NodeIdentityStore; store = NodeIdentityStore(Path(os.environ["NODE_CORE_DATA_DIR"])); identity = store.initialize(); assert store.load()["node_id"] == identity["node_id"]; print("Initialized persistent Ed25519 node identity:", identity["node_id"])'
+  )
   # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
   rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
