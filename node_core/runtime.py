@@ -1,5 +1,6 @@
 """Runtime orchestration for Node Core OS."""
 from pathlib import Path
+from datetime import datetime, timezone
 import threading
 from typing import Any
 
@@ -121,8 +122,18 @@ class NodeRuntime:
         authenticated_inbound_node_ids = {
             peer["node_id"] for peer in (service.active_peers if service else [])
         }
+        now = datetime.now(timezone.utc)
         with self._p2p_peer_monitor_lock:
-            recent_peer_status = {key: dict(value) for key, value in self._p2p_peer_monitor_status.items()}
+            recent_peer_status = {}
+            for key, value in self._p2p_peer_monitor_status.items():
+                try:
+                    checked_at = datetime.fromisoformat(value["checked_at"])
+                    if checked_at.tzinfo is None:
+                        checked_at = checked_at.replace(tzinfo=timezone.utc)
+                    if (now - checked_at).total_seconds() <= 20:
+                        recent_peer_status[key] = dict(value)
+                except (KeyError, TypeError, ValueError):
+                    continue
         discovered_peer_status = []
         for peer in discovered_peers:
             trust_status = trust_by_node_id.get(peer.node_id, "not_trusted")
@@ -325,7 +336,7 @@ class NodeRuntime:
                         state = {
                             "node_id": peer.node_id,
                             "state": "online",
-                            "checked_at": result["observed_at"],
+                            "checked_at": datetime.now(timezone.utc).isoformat(),
                             "host": peer.host,
                             "port": str(peer.port),
                         }
@@ -333,7 +344,7 @@ class NodeRuntime:
                         state = {
                             "node_id": peer.node_id,
                             "state": "offline",
-                            "checked_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+                            "checked_at": datetime.now(timezone.utc).isoformat(),
                             "host": peer.host,
                             "port": str(peer.port),
                             "error": str(exc),
@@ -456,4 +467,5 @@ class NodeRuntime:
         try:
             MainMenu(self).run()
         finally:
+            self.stop_native_peer_monitor()
             self.stop_native_p2p()
