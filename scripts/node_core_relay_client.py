@@ -81,7 +81,7 @@ class GitHubRelayClient:
         # Fetch through the authenticated GitHub API instead of following an
         # arbitrary download_url supplied by branch content (SSRF protection).
         name = item.get("name")
-        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}\\.json", name):
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}\.json", name):
             raise RelayClientError("Relay request filename is invalid.")
         expected_path = f".node-core-relay/requests/{name}"
         if item.get("path") != expected_path:
