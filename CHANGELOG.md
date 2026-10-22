@@ -2,6 +2,27 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Node Core OS [1.5.5] - 2026-10-22
+
+### Added
+- Add the main-menu `6. Refresh` action to re-check Kubo/IPFS, native LAN discovery, authenticated native peers, bootstrap configuration, DNS resolution, default-route visibility, and outbound TCP reachability.
+- Add a concise `Report:` footer to the main menu showing the most recently observed network state, remote authenticated peers, Kubo connectivity, system-network diagnostics, and refresh warnings.
+- Show Kubo connected peers and configured bootstrap entries separately from Node Core OS native P2P peers.
+- Add a non-root Kubo network integration workflow that checks two independent local Kubo nodes, retrieves synthetic content by CID, and verifies byte-for-byte equality and SHA-256.
+- Keep signed-receipt helper tests in the automated suite and explicitly distinguish runner-side integration from validation on a physical Termux device.
+
+### Network status and security
+- Continue starting Kubo and signed LAN discovery automatically when the required local components are installed and available.
+- Preserve the user-only installation and runtime contract: root and `sudo` are not required.
+- Do not claim worldwide native P2P discovery is active unless a real rendezvous/bootstrap service is configured and running. Kubo bootstrap entries do not, by themselves, establish native Node Core OS WAN discovery.
+- Treat network diagnostic results as observations, not as proof of global reachability; Android/Termux may restrict access to kernel route, socket, or interface tables for ordinary apps.
+
+### Validation scope
+- GNU/Linux terminal CI and Ubuntu installer E2E checks are run as unprivileged users.
+- The automated Kubo workflow validates user-only transport on its CI runner; it does not claim a physical Android/Termux device participated.
+- A live Termux receipt test is only complete after the actual device sends a valid signed receipt.
+- Release validation targets Ubuntu 24.04 x86_64 GNU/Linux. Termux/Android support is not declared by this release.
+
 ## Node Core OS [1.5.2] - 2026-10-15
 
 - Make LAN discovery and worldwide discovery independent, explicitly labeled states in the network menu.
