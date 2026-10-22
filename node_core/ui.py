@@ -207,6 +207,18 @@ class MainMenu:
             )
         else:
             print("  Kubo/IPFS: status unavailable.")
+        if result is not None:
+            system_network = result.get("network_diagnostics", {})
+            if isinstance(system_network, dict):
+                route = system_network.get("default_route", {})
+                dns = system_network.get("dns_resolution", {})
+                probes = system_network.get("tcp_connectivity", [])
+                print("  System interfaces: " + str(system_network.get("interface_count", 0)))
+                print("  Default route: " + ("AVAILABLE" if route.get("available") else "NOT VERIFIED"))
+                print("  DNS resolution: " + str(dns.get("status", "NOT CHECKED")))
+                if probes:
+                    reachable = sum(1 for probe in probes if probe.get("status") == "PASS")
+                    print("  External TCP reachability: " + str(reachable) + "/" + str(len(probes)) + " endpoints")
         if result is None:
             print("  Refresh detail: press 6. Refresh to query peers, bootstrap entries and errors.")
         elif not errors:
