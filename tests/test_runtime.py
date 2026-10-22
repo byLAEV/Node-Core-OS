@@ -244,6 +244,7 @@ class RuntimeTests(unittest.TestCase):
         runtime.network = SimpleNamespace(connected_peers=lambda: ("QmRemotePeer",))
         runtime.native_p2p_status = lambda: native_status
         runtime._p2p_peer_monitor_error = None
+        runtime.config = SimpleNamespace(auto_start_kubo=False)
 
         result = runtime.refresh_network_status()
 
