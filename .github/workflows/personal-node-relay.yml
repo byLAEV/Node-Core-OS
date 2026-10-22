@@ -57,6 +57,8 @@ jobs:
   deliver-to-personal-node:
     if: github.event_name == 'workflow_dispatch'
     needs: relay-unit-tests
+    permissions:
+      contents: write
     name: Deliver synthetic manifest and verify receiver signature
     runs-on: ubuntu-24.04
     timeout-minutes: 35
