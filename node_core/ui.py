@@ -90,9 +90,32 @@ class MainMenu:
                     print(f"Kubo version: {kubo.version}")
                 if kubo.detail:
                     print(f"Kubo detail: {kubo.detail}")
+            kubo_peers = result.get("kubo_connected_peers", [])
+            bootstrap_peers = result.get("kubo_bootstrap_peers", [])
+            print(f"Kubo connected peers: {len(kubo_peers)}")
+            for peer_id in kubo_peers:
+                print(f"  KUBO PEER {peer_id}")
+            print(f"Kubo configured bootstrap entries: {len(bootstrap_peers)}")
+            for address in bootstrap_peers:
+                print(f"  BOOTSTRAP {address}")
+            native = result.get("native_p2p")
+            if isinstance(native, dict):
+                print(
+                    "Native P2P LAN discovery: "
+                    + ("RUNNING" if native.get("discovery_running") else "UNAVAILABLE")
+                )
+                print(
+                    "Native P2P authenticated remote peers: "
+                    + str(len(native.get("recently_authenticated_peers", [])) + len(native.get("active_peers", [])))
+                )
+                if native.get("wan_discovery_running"):
+                    print("Native P2P worldwide discovery: CONFIGURED — ACTIVE")
+                else:
+                    reason = native.get("wan_discovery_error") or "No verified WAN rendezvous/bootstrap service is active."
+                    print(f"Native P2P worldwide discovery: NOT CONFIGURED — {reason}")
             for error in result.get("errors", []):
                 print(f"Network refresh warning: {error}")
-            print("\nNetwork refresh complete. The header will show the refreshed status.")
+            print("\nNetwork refresh complete. The header will be recalculated on return.")
         except Exception as exc:
             print(f"Network refresh failed: {exc}")
         input("\nPress Enter to return to the main menu...")
