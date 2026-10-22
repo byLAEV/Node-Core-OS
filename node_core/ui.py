@@ -552,10 +552,59 @@ class MainMenu:
                 input("\n> ")
 
     def storage_bios(self) -> None:
-        print("\nStorage")
-        print(f"Root: {self.runtime.config.local_storage_path}")
-        print("Status: Ready" if self.runtime.storage.root.exists() else "Missing")
-        input("\n> ")
+        """Open the Storage BIOS menu and navigate the two local storage areas."""
+        storage = self.runtime.storage
+        try:
+            storage.initialize()
+            status = "Ready"
+        except OSError as exc:
+            print("\nStorage")
+            print(f"Root: {self.runtime.config.local_storage_path}")
+            print(f"Status: ERROR ({exc})")
+            input("\nPress Enter to return...")
+            return
+
+        while True:
+            print("\nStorage")
+            print(f"Root: {storage.root}")
+            print(f"Status: {status}")
+            print("1. Enter Private Local Storage")
+            print("2. Enter Shared Node Storage")
+            print("0. Back")
+            choice = input("\n> ").strip()
+
+            if choice == "0":
+                return
+            if choice == "1":
+                self._browse_storage_area(
+                    "Private Local Storage",
+                    storage.private_path,
+                )
+            elif choice == "2":
+                self._browse_storage_area(
+                    "Shared Node Storage",
+                    storage.shared_path,
+                )
+
+    @staticmethod
+    def _browse_storage_area(title: str, path: Path) -> None:
+        """Display a storage directory and its direct children without executing them."""
+        print(f"\n{title}")
+        print(f"Path: {path}")
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            entries = sorted(path.iterdir(), key=lambda item: (not item.is_dir(), item.name.casefold()))
+            if not entries:
+                print("Directory is empty.")
+            else:
+                print("Contents:")
+                for entry in entries:
+                    kind = "DIR " if entry.is_dir() else "FILE"
+                    print(f"  {kind}  {entry.name}")
+            print("Access: OK")
+        except OSError as exc:
+            print(f"Access: ERROR ({exc})")
+        input("\nPress Enter to return to Storage...")
 
     def kubo_bios(self) -> None:
         while True:
@@ -1302,4 +1351,3 @@ class MainMenu:
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
                 input("\n> ")
-
