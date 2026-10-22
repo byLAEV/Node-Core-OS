@@ -23,7 +23,7 @@ jobs:
     env:
       PYTHONUNBUFFERED: "1"
       KUBO_VERSION: "0.42.0"
-      TEST_ROOT: ${{ runner.temp }}/node-core-user-only-network
+      TEST_ROOT: ${{ github.workspace }}/.node-core-user-only-network
 
     steps:
       - name: Checkout repository without persisted credentials
