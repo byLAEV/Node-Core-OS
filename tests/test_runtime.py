@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 from node_core.evidence import EvidenceManager
@@ -44,6 +45,59 @@ class FakeKubo:
 
 
 class RuntimeTests(unittest.TestCase):
+
+    def test_boot_starts_installed_kubo_by_default_without_root(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = NodeConfig(
+                data_dir=root,
+                local_storage_path=root / "storage",
+                ipfs_repo_path=root / "ipfs",
+            )
+            with patch("node_core.runtime.NodeConfig.load", return_value=config):
+                runtime = NodeRuntime()
+            runtime.storage.initialize = Mock()
+            runtime.config.save = Mock()
+            runtime.kubo.is_installed = Mock(return_value=True)
+            runtime.kubo.start = Mock()
+            runtime.start_native_discovery = Mock(return_value=True)
+            runtime._start_native_p2p_automation = Mock()
+
+            runtime.boot()
+
+            runtime.kubo.start.assert_called_once_with()
+            self.assertIsNone(runtime._kubo_start_error)
+            runtime.start_native_discovery.assert_called_once_with()
+            runtime._start_native_p2p_automation.assert_called_once_with()
+
+    def test_boot_does_not_fail_when_kubo_auto_start_fails(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = NodeConfig(
+                data_dir=root,
+                local_storage_path=root / "storage",
+                ipfs_repo_path=root / "ipfs",
+            )
+            with patch("node_core.runtime.NodeConfig.load", return_value=config):
+                runtime = NodeRuntime()
+            runtime.storage.initialize = Mock()
+            runtime.config.save = Mock()
+            runtime.kubo.is_installed = Mock(return_value=True)
+            runtime.kubo.start = Mock(side_effect=RuntimeError("daemon unavailable"))
+            runtime.start_native_discovery = Mock(return_value=True)
+            runtime._start_native_p2p_automation = Mock()
+
+            runtime.boot()
+
+            self.assertEqual(runtime._kubo_start_error, "daemon unavailable")
+            runtime.start_native_discovery.assert_called_once_with()
+
     def test_storage_stays_inside_root(self):
         with self.subTest():
             from tempfile import TemporaryDirectory
