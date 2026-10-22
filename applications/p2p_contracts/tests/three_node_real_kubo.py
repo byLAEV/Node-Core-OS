@@ -55,11 +55,43 @@ class RealKuboAdapter:
         )
 
     def pubsub_publish(self, topic, encoded):
-        subprocess.run(
-            [self.executable, "pubsub", "pub", topic, "-"],
-            env=self.env, input=encoded, text=True, capture_output=True,
-            check=True, timeout=15,
-        )
+        """Publish one immutable payload, retrying transient Kubo PubSub failures."""
+        command = [self.executable, "pubsub", "pub", topic, "-"]
+        last_error = None
+        for attempt in range(3):
+            try:
+                subprocess.run(
+                    command,
+                    env=self.env,
+                    input=encoded,
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                    timeout=15,
+                )
+                return
+            except subprocess.CalledProcessError as exc:
+                last_error = exc
+                detail = (exc.stderr or exc.stdout or str(exc)).strip()
+                # Kubo can briefly reject a publish while its PubSub mesh is
+                # converging. Retrying the identical message is safe because the
+                # protocol assigns a stable message_id to this encoded payload.
+                if attempt < 2:
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+                raise RuntimeError(
+                    f"Kubo PubSub publish failed after {attempt + 1} attempts: {detail}"
+                ) from exc
+            except subprocess.TimeoutExpired as exc:
+                last_error = exc
+                if attempt < 2:
+                    time.sleep(0.25 * (attempt + 1))
+                    continue
+                raise RuntimeError(
+                    f"Kubo PubSub publish timed out after {attempt + 1} attempts."
+                ) from exc
+        if last_error is not None:
+            raise RuntimeError(f"Kubo PubSub publish failed: {last_error}") from last_error
 
     def status(self):
         self._run("swarm", "peers")
