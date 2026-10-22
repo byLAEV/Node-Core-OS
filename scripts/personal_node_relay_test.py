@@ -122,6 +122,13 @@ def main() -> int:
             expected_node_id = "sha256:" + hashlib.sha256(public_bytes).hexdigest()
             if receipt.get("node_id") != expected_node_id:
                 raise RuntimeError("Receipt node_id does not match the pinned Ed25519 public key.")
+            persisted_path = receipt.get("persisted_path", "")
+            normalized_path = persisted_path.replace("\\\\", "/") if isinstance(persisted_path, str) else ""
+            expected_suffix = f"/storage/relay/inbox/{RUN_ID}.json"
+            if not normalized_path.endswith(expected_suffix):
+                raise RuntimeError("Receipt does not prove persistence under storage/relay/inbox for this run.")
+            if not isinstance(receipt.get("received_at_utc"), str) or not receipt["received_at_utc"]:
+                raise RuntimeError("Receipt is missing its receiver timestamp.")
             if not re.fullmatch(r"[0-9a-fA-F]{128}", signature_hex):
                 raise RuntimeError("Receiver Ed25519 signature is missing or malformed.")
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
