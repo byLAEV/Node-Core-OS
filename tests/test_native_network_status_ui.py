@@ -1,5 +1,6 @@
 import io
 import unittest
+from unittest.mock import patch
 from contextlib import redirect_stdout
 from types import SimpleNamespace
 
@@ -58,6 +59,39 @@ class NativeNetworkStatusUITests(unittest.TestCase):
         self.assertIn("Node Core OS P2P LAN: UNAVAILABLE", rendered)
         self.assertIn("LAN discovery detail: multicast unavailable", rendered)
         self.assertIn("Native P2P worldwide discovery: ACTIVE", rendered)
+
+    def test_main_menu_option_six_refreshes_network_and_returns_to_updated_header(self):
+        status_calls = []
+        runtime = SimpleNamespace(
+            identity_profile=SimpleNamespace(load=lambda: None),
+            native_p2p_status=lambda: status_calls.append(True) or {
+                "node_id": "sha256:" + "c" * 64,
+                "discovered_peers": [],
+                "discovery_running": True,
+                "discovery_error": None,
+                "active_peers": [],
+                "wan_discovery_running": False,
+                "wan_discovery_error": "No rendezvous service is configured.",
+            },
+            refresh_network_status=lambda: {"kubo": None, "errors": []},
+        )
+        menu = MainMenu(runtime)
+        update_status = SimpleNamespace(
+            available=False, checked=True, local_version="1.5.4",
+            remote_version=None, message="current"
+        )
+        output = io.StringIO()
+        with (
+            patch("node_core.ui.check_for_updates", return_value=update_status),
+            patch("builtins.input", side_effect=["6", "", "0"]),
+            redirect_stdout(output),
+        ):
+            menu.run()
+        rendered = output.getvalue()
+        self.assertIn("6. Refresh", rendered)
+        self.assertIn("Refreshing Node Core OS network status...", rendered)
+        self.assertIn("Network refresh complete.", rendered)
+        self.assertGreaterEqual(len(status_calls), 2)
 
 
 if __name__ == "__main__":

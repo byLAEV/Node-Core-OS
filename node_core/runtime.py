@@ -108,6 +108,40 @@ class NodeRuntime:
         # trust allowlist already exists. The listener accepts no unknown identities.
         self._start_native_p2p_automation()
 
+    def refresh_network_status(self) -> dict[str, object]:
+        """Retry local discovery and peer automation, then collect fresh network status.
+
+        Worldwide native discovery is deliberately not marked active unless an actual
+        rendezvous/bootstrap implementation is configured and running.
+        """
+        errors: list[str] = []
+        try:
+            if not self.start_native_discovery():
+                detail = self._p2p_discovery_error or "LAN discovery could not start."
+                errors.append(f"LAN discovery: {detail}")
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:
+            errors.append(f"LAN discovery: {exc}")
+        try:
+            self._start_native_p2p_automation()
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:
+            self._p2p_peer_monitor_error = str(exc)
+            errors.append(f"Native P2P automation: {exc}")
+        try:
+            kubo_status = self.kubo.status()
+        except Exception as exc:
+            kubo_status = None
+            errors.append(f"Kubo status: {exc}")
+        try:
+            native_status = self.native_p2p_status()
+        except Exception as exc:
+            native_status = None
+            errors.append(f"Native P2P status: {exc}")
+        return {
+            "kubo": kubo_status,
+            "native_p2p": native_status,
+            "errors": errors,
+        }
+
     def native_p2p_status(self) -> dict[str, object]:
         """Return local identity, trust, and listener state without requiring Kubo."""
         from node_core.p2p.service import PeerServiceError
