@@ -101,6 +101,7 @@ class MainMenu:
             print(f"Kubo configured bootstrap entries: {len(bootstrap_peers)}")
             for address in bootstrap_peers:
                 print(f"  BOOTSTRAP {address}")
+            self._print_system_network_diagnostics(result.get("network_diagnostics", {}))
             native = result.get("native_p2p")
             if isinstance(native, dict):
                 print(
@@ -123,6 +124,35 @@ class MainMenu:
             print(f"Network refresh failed: {exc}")
         input("\nPress Enter to return to the main menu...")
 
+
+    @staticmethod
+    def _print_system_network_diagnostics(diagnostics: object) -> None:
+        """Show best-effort network facts without treating permission limits as outages."""
+        print("\nSystem network diagnostics:")
+        if not isinstance(diagnostics, dict):
+            print("  Status: unavailable.")
+            return
+        print("  Interfaces detected: " + str(diagnostics.get("interface_count", 0)))
+        for interface in diagnostics.get("interfaces", [])[:8]:
+            print("    - " + str(interface.get("name", "unknown")) + ": " + str(interface.get("state", "unknown")) + "; MTU " + str(interface.get("mtu", "unknown")))
+        route = diagnostics.get("default_route", {})
+        if route.get("available"):
+            print("  Default route: AVAILABLE; interface=" + str(route.get("interface", "unknown")) + "; gateway=" + str(route.get("gateway", "not reported")))
+        else:
+            print("  Default route: NOT VERIFIED; " + str(route.get("detail", "route information unavailable")))
+        dns = diagnostics.get("dns_resolution", {})
+        print("  DNS resolution (example.com): " + str(dns.get("status", "NOT CHECKED")))
+        if dns.get("detail"):
+            print("    DNS detail: " + str(dns["detail"]))
+        probes = diagnostics.get("tcp_connectivity", [])
+        if probes:
+            reachable = sum(1 for probe in probes if probe.get("status") == "PASS")
+            print("  External TCP checks: " + str(reachable) + "/" + str(len(probes)) + " endpoints reachable")
+        proc_net = diagnostics.get("proc_net", {})
+        unavailable = [name for name, status in proc_net.items() if not status.get("available")]
+        if unavailable:
+            print("  Kernel tables unavailable to this user: " + ", ".join(unavailable))
+        print("  Read-only checks; no root privileges or system network changes required.")
 
     def _print_network_report(self) -> None:
         """Print a concise footer based on the latest refresh or a live startup snapshot."""
