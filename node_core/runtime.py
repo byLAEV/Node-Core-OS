@@ -131,6 +131,24 @@ class NodeRuntime:
         except Exception as exc:
             kubo_status = None
             errors.append(f"Kubo status: {exc}")
+        kubo_peers: list[str] = []
+        kubo_bootstrap: list[str] = []
+        if kubo_status is not None and kubo_status.running:
+            try:
+                kubo_peers = list(self.network.connected_peers())
+            except Exception as exc:
+                errors.append(f"Kubo connected peers: {exc}")
+            try:
+                result = self.kubo._run("bootstrap", "list")
+                kubo_bootstrap = [
+                    line.strip()
+                    for line in result.stdout.splitlines()
+                    if line.strip()
+                ]
+            except Exception as exc:
+                errors.append(f"Kubo bootstrap configuration: {exc}")
+        else:
+            errors.append("Kubo peer and bootstrap checks skipped because Kubo is not running.")
         try:
             native_status = self.native_p2p_status()
         except Exception as exc:
@@ -138,6 +156,8 @@ class NodeRuntime:
             errors.append(f"Native P2P status: {exc}")
         return {
             "kubo": kubo_status,
+            "kubo_connected_peers": kubo_peers,
+            "kubo_bootstrap_peers": kubo_bootstrap,
             "native_p2p": native_status,
             "errors": errors,
         }
