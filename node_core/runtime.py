@@ -61,6 +61,7 @@ class NodeRuntime:
         self._p2p_peer_monitor_status: dict[str, dict[str, str]] = {}
         self._p2p_peer_monitor_error: str | None = None
         self._booted = False
+        self._kubo_start_error: str | None = None
 
     @property
     def ipfs(self) -> KuboManager:
@@ -102,6 +103,15 @@ class NodeRuntime:
         self.storage.initialize()
         self.config.save()
         self._booted = True
+        # Start Kubo automatically with its initialized default bootstrap list.
+        # This is outbound, non-root networking; it does not alter Android routes,
+        # DNS, firewall rules, or native Node Core peer trust.
+        if self.config.auto_start_kubo and self.kubo.is_installed():
+            try:
+                self.kubo.start()
+                self._kubo_start_error = None
+            except Exception as exc:
+                self._kubo_start_error = str(exc)
         # Discovery is independent of Kubo/IPFS and must not prevent the core
         # CLI from booting when multicast is unavailable on this network.
         self.start_native_discovery()
@@ -129,6 +139,20 @@ class NodeRuntime:
             errors.append(f"Native P2P automation: {exc}")
         try:
             kubo_status = self.kubo.status()
+            if (
+                self.config.auto_start_kubo
+                and kubo_status.installed
+                and not kubo_status.running
+            ):
+                try:
+                    self.kubo.start()
+                    self._kubo_start_error = None
+                    kubo_status = self.kubo.status()
+                except Exception as start_exc:
+                    self._kubo_start_error = str(start_exc)
+                    errors.append(f"Kubo automatic startup: {start_exc}")
+            elif self._kubo_start_error:
+                errors.append(f"Kubo automatic startup: {self._kubo_start_error}")
         except Exception as exc:
             kubo_status = None
             errors.append(f"Kubo status: {exc}")
