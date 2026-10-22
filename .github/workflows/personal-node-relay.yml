@@ -24,7 +24,7 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: node-core-personal-relay
