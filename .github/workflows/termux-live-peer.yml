@@ -1,0 +1,206 @@
+name: Node Core OS — Live Termux Kubo Peer Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-peer:
+    name: Temporary Kubo peer for a real Termux read test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    env:
+      IPFS_PATH: ${{ runner.temp }}/node-core-termux-live/ipfs
+
+    steps:
+      - name: Verify ordinary-user execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          printf 'runner=%s\nuid=%s\n' "$(hostname)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Download pinned Kubo CLI
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/kubo-v0.42.0-linux-amd64.tar.gz"
+          urls=(
+            "https://dist.ipfs.tech/kubo/v0.42.0/kubo_v0.42.0_linux-amd64.tar.gz"
+            "https://github.com/ipfs/kubo/releases/download/v0.42.0/kubo_v0.42.0_linux-amd64.tar.gz"
+          )
+          downloaded=false
+          for url in "${urls[@]}"; do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 20 --max-time 180 --retry 3 --retry-all-errors \
+              "$url" --output "$archive"; then
+              downloaded=true
+              break
+            fi
+            rm -f "$archive"
+          done
+          if [[ "$downloaded" != true ]]; then
+            echo "Unable to download Kubo v0.42.0 from official sources." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/kubo-unpack"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/kubo-unpack"
+          test -x "$RUNNER_TEMP/kubo-unpack/kubo/ipfs"
+          echo "IPFS_BIN=$RUNNER_TEMP/kubo-unpack/kubo/ipfs" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/kubo-unpack/kubo/ipfs" version
+
+      - name: Initialize isolated Kubo repository and synthetic document
+        run: |
+          set -euo pipefail
+          mkdir -p "$IPFS_PATH"
+          "$IPFS_BIN" init --profile=test
+          "$IPFS_BIN" config Addresses.API /ip4/127.0.0.1/tcp/5001
+          "$IPFS_BIN" config Addresses.Gateway /ip4/127.0.0.1/tcp/8080
+          "$IPFS_BIN" config --json Addresses.Swarm '["/ip4/127.0.0.1/tcp/4001"]'
+          "$IPFS_BIN" config --json Bootstrap '[]'
+          "$IPFS_BIN" config --json Discovery.MDNS.Enabled false
+          mkdir -p "$RUNNER_TEMP/node-core-termux-live"
+          cat > "$RUNNER_TEMP/node-core-termux-live/termux-live-test.txt" <<'EOF'
+          Node Core OS byLAEV — synthetic live Termux peer test
+          Purpose: verify a real remote Kubo connection and content read.
+          Data classification: synthetic public test fixture; no personal data.
+          Expected result: the receiver's SHA-256 must match the source fixture.
+          EOF
+          nohup "$IPFS_BIN" daemon > "$RUNNER_TEMP/kubo-daemon.log" 2>&1 </dev/null &
+          echo "$!" > "$RUNNER_TEMP/kubo-daemon.pid"
+          ready=false
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent --show-error --max-time 2 \
+              -X POST http://127.0.0.1:5001/api/v0/id >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/kubo-daemon.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/kubo-daemon.log" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            cat "$RUNNER_TEMP/kubo-daemon.log" >&2
+            echo "Kubo API did not become ready." >&2
+            exit 1
+          fi
+          cid="$("$IPFS_BIN" add -Q "$RUNNER_TEMP/node-core-termux-live/termux-live-test.txt")"
+          peer_id="$("$IPFS_BIN" id -f='<id>')"
+          printf '%s\n' "$cid" > "$RUNNER_TEMP/node-core-termux-live/content-cid.txt"
+          printf '%s\n' "$peer_id" > "$RUNNER_TEMP/node-core-termux-live/peer-id.txt"
+          sha256sum "$RUNNER_TEMP/node-core-termux-live/termux-live-test.txt" > "$RUNNER_TEMP/node-core-termux-live/source-sha256.txt"
+          {
+            echo "## Live Termux peer test"
+            echo
+            echo "Kubo peer ID: $peer_id"
+            echo
+            echo "Synthetic document CID: $cid"
+            echo
+            echo "Source fixture SHA-256:"
+            echo
+            echo "    $(cat "$RUNNER_TEMP/node-core-termux-live/source-sha256.txt")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Download and verify pinned bore TCP tunnel
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --location --silent --show-error --retry 3 --connect-timeout 15 \
+            --max-time 120 \
+            'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz' \
+            --output "$archive"
+          printf '%s  %s\n' \
+            'e484d1e3acba77169b773f31a5bfb34192d4b660f44a094a658a2522cd2270f7' \
+            "$archive" | sha256sum --check -
+          mkdir -p "$RUNNER_TEMP/bore-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bore-bin"
+          test -f "$RUNNER_TEMP/bore-bin/bore"
+          chmod +x "$RUNNER_TEMP/bore-bin/bore"
+          "$RUNNER_TEMP/bore-bin/bore" --version
+
+      - name: Publish temporary peer endpoint and wait for Termux
+        run: |
+          set -euo pipefail
+          nohup "$RUNNER_TEMP/bore-bin/bore" local 4001 --local-host 127.0.0.1 --to bore.pub \
+            > "$RUNNER_TEMP/bore-live.log" 2>&1 </dev/null &
+          echo "$!" > "$RUNNER_TEMP/bore-live.pid"
+          port=""
+          for attempt in $(seq 1 60); do
+            port="$(grep -Eo 'bore\.pub:[0-9]+' "$RUNNER_TEMP/bore-live.log" 2>/dev/null | tail -n 1 | cut -d: -f2 || true)"
+            if [[ "$port" =~ ^[0-9]+$ ]]; then
+              break
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/bore-live.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/bore-live.log" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          if [[ ! "$port" =~ ^[0-9]+$ ]]; then
+            cat "$RUNNER_TEMP/bore-live.log" >&2
+            echo "The temporary TCP tunnel did not receive a public port." >&2
+            exit 1
+          fi
+          peer_id="$(cat "$RUNNER_TEMP/node-core-termux-live/peer-id.txt")"
+          cid="$(cat "$RUNNER_TEMP/node-core-termux-live/content-cid.txt")"
+          address="/dns4/bore.pub/tcp/$port/p2p/$peer_id"
+          printf 'PEER_MULTIADDR=%s\n' "$address" >> "$GITHUB_ENV"
+          printf '%s\n' "$address" > "$RUNNER_TEMP/node-core-termux-live/peer-multiaddr.txt"
+          {
+            echo
+            echo "## Connect from Termux now"
+            echo
+            echo "This temporary endpoint remains available for up to 15 minutes after setup."
+            echo "Only use this address for this test run; it expires when the job ends."
+            echo
+            echo "Peer multiaddress:"
+            echo
+            echo "    $address"
+            echo
+            echo "Synthetic content CID:"
+            echo
+            echo "    $cid"
+            echo
+            echo "The Kubo HTTP API remains bound to 127.0.0.1. The public tunnel exposes only the libp2p swarm TCP port."
+            echo "Do not send personal data or private keys to this temporary test peer."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Temporary peer endpoint ready: $address"
+          echo "Waiting up to 15 minutes for the manual Termux connection/read check."
+          for attempt in $(seq 1 900); do
+            sleep 1
+            if ! kill -0 "$(cat "$RUNNER_TEMP/bore-live.pid")" 2>/dev/null; then
+              echo "The temporary tunnel process stopped unexpectedly." >&2
+              cat "$RUNNER_TEMP/bore-live.log" >&2
+              exit 1
+            fi
+          done
+          echo "The 15-minute manual test window has ended."
+
+      - name: Upload test connection details
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-live-peer-details
+          path: |
+            ${{ runner.temp }}/node-core-termux-live/peer-multiaddr.txt
+            ${{ runner.temp }}/node-core-termux-live/content-cid.txt
+            ${{ runner.temp }}/node-core-termux-live/source-sha256.txt
+            ${{ runner.temp }}/node-core-termux-live/termux-live-test.txt
+          if-no-files-found: warn
+
+      - name: Stop temporary public tunnel and Kubo daemon
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ -f "$RUNNER_TEMP/bore-live.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/bore-live.pid")" 2>/dev/null || true
+          fi
+          if [[ -f "$RUNNER_TEMP/kubo-daemon.pid" ]]; then
+            kill "$(cat "$RUNNER_TEMP/kubo-daemon.pid")" 2>/dev/null || true
+          fi
+          echo "Temporary test services stopped."
