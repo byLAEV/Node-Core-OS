@@ -9,9 +9,7 @@ import tempfile
 import unittest
 from argparse import Namespace
 from types import SimpleNamespace
-from unittest.mock import patch
-
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from unittest.mock import MagicMock, patch
 
 from node_core.identity.node_identity import NodeIdentityStore
 from tools import termux_remote_kubo_read as helper
@@ -46,9 +44,10 @@ class TermuxRemoteKuboReadTests(unittest.TestCase):
             SimpleNamespace(returncode=0, stdout="", stderr=""),
             SimpleNamespace(returncode=0, stdout=self.content, stderr=b""),
         ]
-        response = SimpleNamespace(status=200, read=lambda limit: b"PASS: signed receipt verified")
-        response.__enter__ = lambda self: self
-        response.__exit__ = lambda self, *args: False
+        response = MagicMock()
+        response.status = 200
+        response.read.return_value = b"PASS: signed receipt verified"
+        response.__enter__.return_value = response
 
         with (
             patch.object(helper, "parse_args", return_value=self.args),
