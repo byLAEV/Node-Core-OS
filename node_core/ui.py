@@ -73,7 +73,7 @@ class MainMenu:
 
     def refresh_network(self) -> None:
         """Refresh network services and report observed status without overstating reachability."""
-        print("\\nRefreshing Node Core OS network status...")
+        print("\nRefreshing Node Core OS network status...")
         try:
             result = self.runtime.refresh_network_status()
             kubo = result.get("kubo")
@@ -92,10 +92,10 @@ class MainMenu:
                     print(f"Kubo detail: {kubo.detail}")
             for error in result.get("errors", []):
                 print(f"Network refresh warning: {error}")
-            print("\\nNetwork refresh complete. The header will show the refreshed status.")
+            print("\nNetwork refresh complete. The header will show the refreshed status.")
         except Exception as exc:
             print(f"Network refresh failed: {exc}")
-        input("\\nPress Enter to return to the main menu...")
+        input("\nPress Enter to return to the main menu...")
 
     def _print_native_network_indicator(self) -> None:
         """Show live node counts and identifiers without confusing discovery with sessions."""
