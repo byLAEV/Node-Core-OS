@@ -78,6 +78,8 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(loaded.ipfs_repo_path, root / "ipfs")
             stored = json.loads(config.config_path.read_text(encoding="utf-8"))
             self.assertEqual(stored["ipfs_profile"], "unixfs-v1-2025")
+            self.assertIs(stored["auto_start_kubo"], True)
+            self.assertIs(loaded.auto_start_kubo, True)
 
     def test_kubo_status_without_binary(self):
         from tempfile import TemporaryDirectory
