@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from types import SimpleNamespace
 
 from node_core.evidence import EvidenceManager
 
@@ -8,6 +9,7 @@ from node_core.config import NodeConfig
 from node_core.content import ContentManager
 from node_core.ipfs import AddedContent, KuboManager
 from node_core.storage import StorageManager
+from node_core.runtime import NodeRuntime
 
 
 class FakeKubo:
@@ -168,6 +170,41 @@ class RuntimeTests(unittest.TestCase):
             self.assertFalse(manager.get(result.cid).pinned)
             manager.unpublish(result.cid)
             self.assertIsNone(manager.get(result.cid).published_at)
+
+    def test_refresh_network_status_retries_discovery_and_returns_live_status(self):
+        runtime = NodeRuntime.__new__(NodeRuntime)
+        kubo_status = SimpleNamespace(
+            installed=True, initialized=True, running=True,
+            peer_id="QmTestPeer", version="0.42.0", detail=None
+        )
+        native_status = {"discovery_running": True, "wan_discovery_running": False}
+        calls = []
+        runtime.start_native_discovery = lambda: calls.append("discovery") or True
+        runtime._start_native_p2p_automation = lambda: calls.append("automation")
+        runtime.kubo = SimpleNamespace(status=lambda: kubo_status)
+        runtime.native_p2p_status = lambda: native_status
+        runtime._p2p_peer_monitor_error = None
+
+        result = runtime.refresh_network_status()
+
+        self.assertEqual(calls, ["discovery", "automation"])
+        self.assertIs(result["kubo"], kubo_status)
+        self.assertIs(result["native_p2p"], native_status)
+        self.assertEqual(result["errors"], [])
+
+    def test_refresh_network_status_reports_discovery_failure_without_claiming_wan(self):
+        runtime = NodeRuntime.__new__(NodeRuntime)
+        runtime._p2p_discovery_error = "multicast unavailable"
+        runtime.start_native_discovery = lambda: False
+        runtime._start_native_p2p_automation = lambda: None
+        runtime.kubo = SimpleNamespace(status=lambda: None)
+        runtime.native_p2p_status = lambda: {"wan_discovery_running": False}
+        runtime._p2p_peer_monitor_error = None
+
+        result = runtime.refresh_network_status()
+
+        self.assertIn("LAN discovery: multicast unavailable", result["errors"])
+        self.assertFalse(result["native_p2p"]["wan_discovery_running"])
 
 
 if __name__ == "__main__":
