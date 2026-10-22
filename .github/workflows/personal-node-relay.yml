@@ -1,6 +1,15 @@
 name: Node Core OS — Personal Node Relay Delivery
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "node_core/relay_delivery.py"
+      - "scripts/node_core_relay_client.py"
+      - "scripts/personal_node_relay_test.py"
+      - "tests/test_relay_delivery.py"
+      - ".github/workflows/personal-node-relay.yml"
+      - "docs/PERSONAL_NODE_RELAY.md"
   workflow_dispatch:
     inputs:
       timeout_seconds:
@@ -22,10 +31,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deliver-to-personal-node:
-    name: Deliver synthetic manifest and verify receiver signature
+  relay-unit-tests:
+    name: Relay authentication and persistence tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,7 +52,27 @@ jobs:
         run: python -m py_compile node_core/relay_delivery.py scripts/node_core_relay_client.py scripts/personal_node_relay_test.py tests/test_relay_delivery.py
 
       - name: Test authentication, persistence, tamper rejection, and Ed25519 receipt
-        run: python -m unittest tests.test_relay_delivery -v
+        run: python -m unittest discover -s tests -p 'test_relay_delivery.py' -v
+
+  deliver-to-personal-node:
+    if: github.event_name == 'workflow_dispatch'
+    needs: relay-unit-tests
+    name: Deliver synthetic manifest and verify receiver signature
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
 
       - name: Send real request through GitHub relay and require receiver proof
         env:
