@@ -13,6 +13,7 @@ from node_core.identity.profile import IdentityProfileStore
 from node_core.identity_presence import IdentityPresence
 from node_core.my_life import MyLifeBlog
 from node_core.network import NodeNetwork
+from node_core.network_diagnostics import collect_network_diagnostics
 from node_core.storage import StorageManager
 from node_core.ui import MainMenu
 
@@ -60,6 +61,7 @@ class NodeRuntime:
         self._p2p_peer_monitor_status: dict[str, dict[str, str]] = {}
         self._p2p_peer_monitor_error: str | None = None
         self._booted = False
+        self._kubo_start_error: str | None = None
 
     @property
     def ipfs(self) -> KuboManager:
@@ -101,6 +103,15 @@ class NodeRuntime:
         self.storage.initialize()
         self.config.save()
         self._booted = True
+        # Start Kubo automatically with its initialized default bootstrap list.
+        # This is outbound, non-root networking; it does not alter Android routes,
+        # DNS, firewall rules, or native Node Core peer trust.
+        if self.config.auto_start_kubo and self.kubo.is_installed():
+            try:
+                self.kubo.start()
+                self._kubo_start_error = None
+            except Exception as exc:
+                self._kubo_start_error = str(exc)
         # Discovery is independent of Kubo/IPFS and must not prevent the core
         # CLI from booting when multicast is unavailable on this network.
         self.start_native_discovery()
@@ -128,9 +139,46 @@ class NodeRuntime:
             errors.append(f"Native P2P automation: {exc}")
         try:
             kubo_status = self.kubo.status()
+            if (
+                self.config.auto_start_kubo
+                and kubo_status.installed
+                and not kubo_status.running
+            ):
+                try:
+                    self.kubo.start()
+                    self._kubo_start_error = None
+                    kubo_status = self.kubo.status()
+                except Exception as start_exc:
+                    self._kubo_start_error = str(start_exc)
+                    errors.append(f"Kubo automatic startup: {start_exc}")
+            elif self._kubo_start_error:
+                errors.append(f"Kubo automatic startup: {self._kubo_start_error}")
         except Exception as exc:
             kubo_status = None
             errors.append(f"Kubo status: {exc}")
+        kubo_peers: list[str] = []
+        kubo_bootstrap: list[str] = []
+        if kubo_status is not None and kubo_status.running:
+            try:
+                kubo_peers = list(self.network.connected_peers())
+            except Exception as exc:
+                errors.append(f"Kubo connected peers: {exc}")
+            try:
+                result = self.kubo._run("bootstrap", "list")
+                kubo_bootstrap = [
+                    line.strip()
+                    for line in result.stdout.splitlines()
+                    if line.strip()
+                ]
+            except Exception as exc:
+                errors.append(f"Kubo bootstrap configuration: {exc}")
+        else:
+            errors.append("Kubo peer and bootstrap checks skipped because Kubo is not running.")
+        try:
+            network_diagnostics = collect_network_diagnostics()
+        except Exception as exc:
+            network_diagnostics = {"error": str(exc)}
+            errors.append(f"System network diagnostics: {exc}")
         try:
             native_status = self.native_p2p_status()
         except Exception as exc:
@@ -138,7 +186,10 @@ class NodeRuntime:
             errors.append(f"Native P2P status: {exc}")
         return {
             "kubo": kubo_status,
+            "kubo_connected_peers": kubo_peers,
+            "kubo_bootstrap_peers": kubo_bootstrap,
             "native_p2p": native_status,
+            "network_diagnostics": network_diagnostics,
             "errors": errors,
         }
 

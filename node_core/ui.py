@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class MainMenu:
     def __init__(self, runtime: "NodeRuntime") -> None:
         self.runtime = runtime
+        self._last_refresh_result: dict[str, object] | None = None
 
     def run(self) -> None:
         update_status = check_for_updates()
@@ -30,6 +31,7 @@ class MainMenu:
             print("5. Network / Nodes")
             print("6. Refresh")
             print("Type Update to install an available Node Core OS update.")
+            self._print_network_report()
             choice = input("\n> ").strip()
             if choice.lower() == "update":
                 if not update_status.available:
@@ -76,6 +78,7 @@ class MainMenu:
         print("\nRefreshing Node Core OS network status...")
         try:
             result = self.runtime.refresh_network_status()
+            self._last_refresh_result = result
             kubo = result.get("kubo")
             if kubo is not None:
                 print(
@@ -90,12 +93,141 @@ class MainMenu:
                     print(f"Kubo version: {kubo.version}")
                 if kubo.detail:
                     print(f"Kubo detail: {kubo.detail}")
+            kubo_peers = result.get("kubo_connected_peers", [])
+            bootstrap_peers = result.get("kubo_bootstrap_peers", [])
+            print(f"Kubo connected peers: {len(kubo_peers)}")
+            for peer_id in kubo_peers:
+                print(f"  KUBO PEER {peer_id}")
+            print(f"Kubo configured bootstrap entries: {len(bootstrap_peers)}")
+            for address in bootstrap_peers:
+                print(f"  BOOTSTRAP {address}")
+            self._print_system_network_diagnostics(result.get("network_diagnostics", {}))
+            native = result.get("native_p2p")
+            if isinstance(native, dict):
+                print(
+                    "Native P2P LAN discovery: "
+                    + ("RUNNING" if native.get("discovery_running") else "UNAVAILABLE")
+                )
+                print(
+                    "Native P2P authenticated remote peers: "
+                    + str(len(native.get("recently_authenticated_peers", [])) + len(native.get("active_peers", [])))
+                )
+                if native.get("wan_discovery_running"):
+                    print("Native P2P worldwide discovery: CONFIGURED — ACTIVE")
+                else:
+                    reason = native.get("wan_discovery_error") or "No verified WAN rendezvous/bootstrap service is active."
+                    print(f"Native P2P worldwide discovery: NOT CONFIGURED — {reason}")
             for error in result.get("errors", []):
                 print(f"Network refresh warning: {error}")
-            print("\nNetwork refresh complete. The header will show the refreshed status.")
+            print("\nNetwork refresh complete. The header will be recalculated on return.")
         except Exception as exc:
             print(f"Network refresh failed: {exc}")
         input("\nPress Enter to return to the main menu...")
+
+
+    @staticmethod
+    def _print_system_network_diagnostics(diagnostics: object) -> None:
+        """Show best-effort network facts without treating permission limits as outages."""
+        print("\nSystem network diagnostics:")
+        if not isinstance(diagnostics, dict):
+            print("  Status: unavailable.")
+            return
+        print("  Interfaces detected: " + str(diagnostics.get("interface_count", 0)))
+        for interface in diagnostics.get("interfaces", [])[:8]:
+            print("    - " + str(interface.get("name", "unknown")) + ": " + str(interface.get("state", "unknown")) + "; MTU " + str(interface.get("mtu", "unknown")))
+        route = diagnostics.get("default_route", {})
+        if route.get("available"):
+            print("  Default route: AVAILABLE; interface=" + str(route.get("interface", "unknown")) + "; gateway=" + str(route.get("gateway", "not reported")))
+        else:
+            print("  Default route: NOT VERIFIED; " + str(route.get("detail", "route information unavailable")))
+        dns = diagnostics.get("dns_resolution", {})
+        print("  DNS resolution (example.com): " + str(dns.get("status", "NOT CHECKED")))
+        if dns.get("detail"):
+            print("    DNS detail: " + str(dns["detail"]))
+        probes = diagnostics.get("tcp_connectivity", [])
+        if probes:
+            reachable = sum(1 for probe in probes if probe.get("status") == "PASS")
+            print("  External TCP checks: " + str(reachable) + "/" + str(len(probes)) + " endpoints reachable")
+        proc_net = diagnostics.get("proc_net", {})
+        unavailable = [name for name, status in proc_net.items() if not status.get("available")]
+        if unavailable:
+            print("  Kernel tables unavailable to this user: " + ", ".join(unavailable))
+        print("  Read-only checks; no root privileges or system network changes required.")
+
+    def _print_network_report(self) -> None:
+        """Print a concise footer based on the latest refresh or a live startup snapshot."""
+        print("\nReport:")
+        result = self._last_refresh_result
+        if result is None:
+            try:
+                native = self.runtime.native_p2p_status()
+            except Exception as exc:
+                native = None
+                print(f"  Native P2P status: UNAVAILABLE ({exc})")
+            try:
+                kubo = self.runtime.kubo.status()
+            except Exception as exc:
+                kubo = None
+                print(f"  Kubo status: UNAVAILABLE ({exc})")
+            errors = []
+            kubo_peers = []
+            bootstrap_peers = []
+        else:
+            native = result.get("native_p2p")
+            kubo = result.get("kubo")
+            errors = result.get("errors", [])
+            kubo_peers = result.get("kubo_connected_peers", [])
+            bootstrap_peers = result.get("kubo_bootstrap_peers", [])
+
+        if isinstance(native, dict):
+            active = native.get("active_peers", [])
+            recent = native.get("recently_authenticated_peers", [])
+            peer_ids = {
+                peer.get("node_id")
+                for peer in list(active) + list(recent)
+                if isinstance(peer, dict) and isinstance(peer.get("node_id"), str)
+            }
+            lan_state = "RUNNING" if native.get("discovery_running") else "UNAVAILABLE"
+            print(f"  Native P2P LAN: {lan_state}; authenticated remote nodes: {len(peer_ids)}")
+            if native.get("discovery_error") and not native.get("discovery_running"):
+                print(f"  Attention: LAN discovery error: {native['discovery_error']}")
+            if native.get("wan_discovery_running"):
+                print("  Native P2P worldwide discovery: ACTIVE")
+            else:
+                reason = native.get("wan_discovery_error") or "No verified WAN rendezvous service is active."
+                print(f"  Native P2P worldwide discovery: NOT CONFIGURED ({reason})")
+        else:
+            print("  Native P2P: status unavailable; communication is not verified.")
+
+        if kubo is not None:
+            print(
+                f"  Kubo/IPFS: {'RUNNING' if getattr(kubo, 'running', False) else 'NOT RUNNING'}"
+                f"; connected Kubo peers: {len(kubo_peers)}"
+                f"; configured bootstrap entries: {len(bootstrap_peers)}"
+            )
+        else:
+            print("  Kubo/IPFS: status unavailable.")
+        if result is not None:
+            system_network = result.get("network_diagnostics", {})
+            if isinstance(system_network, dict):
+                route = system_network.get("default_route", {})
+                dns = system_network.get("dns_resolution", {})
+                probes = system_network.get("tcp_connectivity", [])
+                print("  System interfaces: " + str(system_network.get("interface_count", 0)))
+                print("  Default route: " + ("AVAILABLE" if route.get("available") else "NOT VERIFIED"))
+                print("  DNS resolution: " + str(dns.get("status", "NOT CHECKED")))
+                if probes:
+                    reachable = sum(1 for probe in probes if probe.get("status") == "PASS")
+                    print("  External TCP reachability: " + str(reachable) + "/" + str(len(probes)) + " endpoints")
+        if result is None:
+            print("  Refresh detail: press 6. Refresh to query peers, bootstrap entries and errors.")
+        elif not errors:
+            print("  Refresh result: completed without reported errors.")
+        else:
+            print(f"  Refresh result: {len(errors)} warning/error(s) require attention.")
+            for error in errors:
+                print(f"    - {error}")
+        print("  Note: configured bootstrap entries are not proof of an active native WAN connection.")
 
     def _print_native_network_indicator(self) -> None:
         """Show live node counts and identifiers without confusing discovery with sessions."""

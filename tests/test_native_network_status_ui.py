@@ -93,6 +93,92 @@ class NativeNetworkStatusUITests(unittest.TestCase):
         self.assertIn("Network refresh complete.", rendered)
         self.assertGreaterEqual(len(status_calls), 2)
 
+    def test_refresh_displays_kubo_peers_bootstrap_and_wan_truthfully(self):
+        runtime = SimpleNamespace(
+            refresh_network_status=lambda: {
+                "kubo": SimpleNamespace(
+                    running=True, installed=True, initialized=True,
+                    peer_id="QmLocalPeer", version="0.42.0", detail=None
+                ),
+                "kubo_connected_peers": ["QmRemotePeer"],
+                "kubo_bootstrap_peers": ["/dnsaddr/bootstrap.example/p2p/QmBootstrap"],
+                "native_p2p": {
+                    "discovery_running": True,
+                    "recently_authenticated_peers": [],
+                    "active_peers": [],
+                    "wan_discovery_running": False,
+                    "wan_discovery_error": "No verified rendezvous service is configured.",
+                },
+                "errors": [],
+            }
+        )
+        menu = MainMenu(runtime)
+        output = io.StringIO()
+        with patch("builtins.input", return_value=""), redirect_stdout(output):
+            menu.refresh_network()
+        rendered = output.getvalue()
+        self.assertIn("Kubo connected peers: 1", rendered)
+        self.assertIn("KUBO PEER QmRemotePeer", rendered)
+        self.assertIn("Kubo configured bootstrap entries: 1", rendered)
+        self.assertIn("Native P2P worldwide discovery: NOT CONFIGURED", rendered)
+        self.assertNotIn("Native P2P worldwide discovery: CONFIGURED — ACTIVE", rendered)
+
+
+    def test_main_menu_footer_summarizes_live_network_state_before_first_refresh(self):
+        runtime = SimpleNamespace(
+            native_p2p_status=lambda: {
+                "discovery_running": True,
+                "active_peers": [{"node_id": "sha256:" + "a" * 64}],
+                "recently_authenticated_peers": [],
+                "wan_discovery_running": False,
+                "wan_discovery_error": "No verified rendezvous service is active.",
+            },
+            kubo=SimpleNamespace(
+                status=lambda: SimpleNamespace(running=True)
+            ),
+        )
+        menu = MainMenu(runtime)
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            menu._print_network_report()
+
+        rendered = output.getvalue()
+        self.assertIn("Report:", rendered)
+        self.assertIn("Native P2P LAN: RUNNING; authenticated remote nodes: 1", rendered)
+        self.assertIn("Native P2P worldwide discovery: NOT CONFIGURED", rendered)
+        self.assertIn("Kubo/IPFS: RUNNING", rendered)
+        self.assertIn("press 6. Refresh", rendered)
+        self.assertIn("not proof of an active native WAN connection", rendered)
+
+    def test_main_menu_footer_reports_refresh_warnings(self):
+        runtime = SimpleNamespace(
+            native_p2p_status=lambda: {},
+            kubo=SimpleNamespace(status=lambda: None),
+        )
+        menu = MainMenu(runtime)
+        menu._last_refresh_result = {
+            "native_p2p": {
+                "discovery_running": False,
+                "active_peers": [],
+                "recently_authenticated_peers": [],
+                "wan_discovery_running": False,
+                "wan_discovery_error": "WAN service missing",
+            },
+            "kubo": None,
+            "kubo_connected_peers": [],
+            "kubo_bootstrap_peers": [],
+            "errors": ["Kubo status: daemon not running"],
+        }
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            menu._print_network_report()
+
+        rendered = output.getvalue()
+        self.assertIn("Refresh result: 1 warning/error(s) require attention.", rendered)
+        self.assertIn("Kubo status: daemon not running", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,6 +16,7 @@ class NodeConfig:
     ipfs_gateway: str = "http://127.0.0.1:8080"
     ipfs_executable: str = "ipfs"
     ipfs_profile: str = "unixfs-v1-2025"
+    auto_start_kubo: bool = True
 
     @property
     def config_path(self) -> Path:
@@ -45,6 +46,7 @@ class NodeConfig:
             ipfs_gateway=data.get("ipfs_gateway", defaults.ipfs_gateway),
             ipfs_executable=data.get("ipfs_executable", defaults.ipfs_executable),
             ipfs_profile=data.get("ipfs_profile", defaults.ipfs_profile),
+            auto_start_kubo=bool(data.get("auto_start_kubo", defaults.auto_start_kubo)),
         )
 
     def ensure_directories(self) -> None:
@@ -63,5 +65,8 @@ class NodeConfig:
 
     def save(self) -> None:
         self.ensure_directories()
-        payload = {key: str(value) for key, value in asdict(self).items()}
+        payload = {
+            key: str(value) if isinstance(value, Path) else value
+            for key, value in asdict(self).items()
+        }
         self.config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

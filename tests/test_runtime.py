@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
 
 from node_core.evidence import EvidenceManager
@@ -44,6 +45,59 @@ class FakeKubo:
 
 
 class RuntimeTests(unittest.TestCase):
+
+    def test_boot_starts_installed_kubo_by_default_without_root(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = NodeConfig(
+                data_dir=root,
+                local_storage_path=root / "storage",
+                ipfs_repo_path=root / "ipfs",
+            )
+            with patch("node_core.runtime.NodeConfig.load", return_value=config):
+                runtime = NodeRuntime()
+            runtime.storage.initialize = Mock()
+            runtime.config.save = Mock()
+            runtime.kubo.is_installed = Mock(return_value=True)
+            runtime.kubo.start = Mock()
+            runtime.start_native_discovery = Mock(return_value=True)
+            runtime._start_native_p2p_automation = Mock()
+
+            runtime.boot()
+
+            runtime.kubo.start.assert_called_once_with()
+            self.assertIsNone(runtime._kubo_start_error)
+            runtime.start_native_discovery.assert_called_once_with()
+            runtime._start_native_p2p_automation.assert_called_once_with()
+
+    def test_boot_does_not_fail_when_kubo_auto_start_fails(self):
+        from tempfile import TemporaryDirectory
+        from pathlib import Path
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = NodeConfig(
+                data_dir=root,
+                local_storage_path=root / "storage",
+                ipfs_repo_path=root / "ipfs",
+            )
+            with patch("node_core.runtime.NodeConfig.load", return_value=config):
+                runtime = NodeRuntime()
+            runtime.storage.initialize = Mock()
+            runtime.config.save = Mock()
+            runtime.kubo.is_installed = Mock(return_value=True)
+            runtime.kubo.start = Mock(side_effect=RuntimeError("daemon unavailable"))
+            runtime.start_native_discovery = Mock(return_value=True)
+            runtime._start_native_p2p_automation = Mock()
+
+            runtime.boot()
+
+            self.assertEqual(runtime._kubo_start_error, "daemon unavailable")
+            runtime.start_native_discovery.assert_called_once_with()
+
     def test_storage_stays_inside_root(self):
         with self.subTest():
             from tempfile import TemporaryDirectory
@@ -78,6 +132,8 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(loaded.ipfs_repo_path, root / "ipfs")
             stored = json.loads(config.config_path.read_text(encoding="utf-8"))
             self.assertEqual(stored["ipfs_profile"], "unixfs-v1-2025")
+            self.assertIs(stored["auto_start_kubo"], True)
+            self.assertIs(loaded.auto_start_kubo, True)
 
     def test_kubo_status_without_binary(self):
         from tempfile import TemporaryDirectory
@@ -181,15 +237,23 @@ class RuntimeTests(unittest.TestCase):
         calls = []
         runtime.start_native_discovery = lambda: calls.append("discovery") or True
         runtime._start_native_p2p_automation = lambda: calls.append("automation")
-        runtime.kubo = SimpleNamespace(status=lambda: kubo_status)
+        runtime.kubo = SimpleNamespace(
+            status=lambda: kubo_status,
+            _run=lambda *args: SimpleNamespace(stdout="/dnsaddr/bootstrap.example/p2p/QmExample\n"),
+        )
+        runtime.network = SimpleNamespace(connected_peers=lambda: ("QmRemotePeer",))
         runtime.native_p2p_status = lambda: native_status
         runtime._p2p_peer_monitor_error = None
+        runtime.config = SimpleNamespace(auto_start_kubo=False)
+        runtime._kubo_start_error = None
 
         result = runtime.refresh_network_status()
 
         self.assertEqual(calls, ["discovery", "automation"])
         self.assertIs(result["kubo"], kubo_status)
         self.assertIs(result["native_p2p"], native_status)
+        self.assertEqual(result["kubo_connected_peers"], ["QmRemotePeer"])
+        self.assertEqual(result["kubo_bootstrap_peers"], ["/dnsaddr/bootstrap.example/p2p/QmExample"])
         self.assertEqual(result["errors"], [])
 
     def test_refresh_network_status_reports_discovery_failure_without_claiming_wan(self):
@@ -198,6 +262,7 @@ class RuntimeTests(unittest.TestCase):
         runtime.start_native_discovery = lambda: False
         runtime._start_native_p2p_automation = lambda: None
         runtime.kubo = SimpleNamespace(status=lambda: None)
+        runtime.network = SimpleNamespace(connected_peers=lambda: ())
         runtime.native_p2p_status = lambda: {"wan_discovery_running": False}
         runtime._p2p_peer_monitor_error = None
 
