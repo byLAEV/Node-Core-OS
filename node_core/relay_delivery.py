@@ -71,7 +71,11 @@ def persist_and_sign_receipt(
     if not _RUN_ID.fullmatch(run_id):
         raise ValueError("Invalid run_id.")
     inbox = Path(data_dir).expanduser() / "storage" / "relay" / "inbox"
-    inbox.mkdir(parents=True, exist_ok=True)
+    inbox.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        os.chmod(inbox, 0o700)
+    except OSError:
+        pass
     target = inbox / f"{run_id}.json"
     stored = {
         "schema": SCHEMA,
@@ -102,11 +106,30 @@ def persist_and_sign_receipt(
                 handle.write(encoded)
                 handle.flush()
                 os.fsync(handle.fileno())
-            os.replace(temporary, target)
+            # A hard link publishes the fully-written file atomically without
+            # replacing a file created concurrently for the same run ID.
             try:
-                os.chmod(target, 0o600)
-            except OSError:
-                pass
+                os.link(temporary, target)
+            except FileExistsError:
+                try:
+                    existing = json.loads(target.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError) as exc:
+                    raise RuntimeError("Concurrent relay inbox file is unreadable; refusing overwrite.") from exc
+                if (existing.get("run_id") != run_id or
+                        existing.get("payload_sha256") != verified["payload_sha256"] or
+                        existing.get("payload") != verified["payload"]):
+                    raise RuntimeError("run_id already exists with different content; refusing overwrite.")
+                stored = existing
+            else:
+                try:
+                    os.chmod(target, 0o600)
+                except OSError:
+                    pass
+                directory_fd = os.open(inbox, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
