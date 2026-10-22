@@ -13,6 +13,7 @@ from node_core.identity.profile import IdentityProfileStore
 from node_core.identity_presence import IdentityPresence
 from node_core.my_life import MyLifeBlog
 from node_core.network import NodeNetwork
+from node_core.network_diagnostics import collect_network_diagnostics
 from node_core.storage import StorageManager
 from node_core.ui import MainMenu
 
@@ -150,6 +151,11 @@ class NodeRuntime:
         else:
             errors.append("Kubo peer and bootstrap checks skipped because Kubo is not running.")
         try:
+            network_diagnostics = collect_network_diagnostics()
+        except Exception as exc:
+            network_diagnostics = {"error": str(exc)}
+            errors.append(f"System network diagnostics: {exc}")
+        try:
             native_status = self.native_p2p_status()
         except Exception as exc:
             native_status = None
@@ -159,6 +165,7 @@ class NodeRuntime:
             "kubo_connected_peers": kubo_peers,
             "kubo_bootstrap_peers": kubo_bootstrap,
             "native_p2p": native_status,
+            "network_diagnostics": network_diagnostics,
             "errors": errors,
         }
 
