@@ -49,6 +49,11 @@ jobs:
           set -euo pipefail
           python -m pip install --disable-pip-version-check -r requirements.txt
 
+      - name: Run helper unit tests before network integration
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_termux_remote_kubo_read.py' -v
+
       - name: Download pinned Kubo and initialize isolated synthetic peer
         run: |
           set -euo pipefail
