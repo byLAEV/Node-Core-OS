@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 class MainMenu:
     def __init__(self, runtime: "NodeRuntime") -> None:
         self.runtime = runtime
+        self._last_refresh_result: dict[str, object] | None = None
 
     def run(self) -> None:
         update_status = check_for_updates()
@@ -30,6 +31,7 @@ class MainMenu:
             print("5. Network / Nodes")
             print("6. Refresh")
             print("Type Update to install an available Node Core OS update.")
+            self._print_network_report()
             choice = input("\n> ").strip()
             if choice.lower() == "update":
                 if not update_status.available:
@@ -76,6 +78,7 @@ class MainMenu:
         print("\nRefreshing Node Core OS network status...")
         try:
             result = self.runtime.refresh_network_status()
+            self._last_refresh_result = result
             kubo = result.get("kubo")
             if kubo is not None:
                 print(
@@ -119,6 +122,70 @@ class MainMenu:
         except Exception as exc:
             print(f"Network refresh failed: {exc}")
         input("\nPress Enter to return to the main menu...")
+
+
+    def _print_network_report(self) -> None:
+        """Print a concise footer based on the latest refresh or a live startup snapshot."""
+        print("\\nReport:")
+        result = self._last_refresh_result
+        if result is None:
+            try:
+                native = self.runtime.native_p2p_status()
+            except Exception as exc:
+                native = None
+                print(f"  Native P2P status: UNAVAILABLE ({exc})")
+            try:
+                kubo = self.runtime.kubo.status()
+            except Exception as exc:
+                kubo = None
+                print(f"  Kubo status: UNAVAILABLE ({exc})")
+            errors = []
+            kubo_peers = []
+            bootstrap_peers = []
+        else:
+            native = result.get("native_p2p")
+            kubo = result.get("kubo")
+            errors = result.get("errors", [])
+            kubo_peers = result.get("kubo_connected_peers", [])
+            bootstrap_peers = result.get("kubo_bootstrap_peers", [])
+
+        if isinstance(native, dict):
+            active = native.get("active_peers", [])
+            recent = native.get("recently_authenticated_peers", [])
+            peer_ids = {
+                peer.get("node_id")
+                for peer in list(active) + list(recent)
+                if isinstance(peer, dict) and isinstance(peer.get("node_id"), str)
+            }
+            lan_state = "RUNNING" if native.get("discovery_running") else "UNAVAILABLE"
+            print(f"  Native P2P LAN: {lan_state}; authenticated remote nodes: {len(peer_ids)}")
+            if native.get("discovery_error") and not native.get("discovery_running"):
+                print(f"  Attention: LAN discovery error: {native['discovery_error']}")
+            if native.get("wan_discovery_running"):
+                print("  Native P2P worldwide discovery: ACTIVE")
+            else:
+                reason = native.get("wan_discovery_error") or "No verified WAN rendezvous service is active."
+                print(f"  Native P2P worldwide discovery: NOT CONFIGURED ({reason})")
+        else:
+            print("  Native P2P: status unavailable; communication is not verified.")
+
+        if kubo is not None:
+            print(
+                f"  Kubo/IPFS: {'RUNNING' if getattr(kubo, 'running', False) else 'NOT RUNNING'}"
+                f"; connected Kubo peers: {len(kubo_peers)}"
+                f"; configured bootstrap entries: {len(bootstrap_peers)}"
+            )
+        else:
+            print("  Kubo/IPFS: status unavailable.")
+        if result is None:
+            print("  Refresh detail: press 6. Refresh to query peers, bootstrap entries and errors.")
+        elif not errors:
+            print("  Refresh result: completed without reported errors.")
+        else:
+            print(f"  Refresh result: {len(errors)} warning/error(s) require attention.")
+            for error in errors:
+                print(f"    - {error}")
+        print("  Note: configured bootstrap entries are not proof of an active native WAN connection.")
 
     def _print_native_network_indicator(self) -> None:
         """Show live node counts and identifiers without confusing discovery with sessions."""
