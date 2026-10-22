@@ -1,1598 +1,300 @@
-# Node Core OS
+> “I am mentally retarded, but not so mentally retarded that I don't know how to make the original the original and the copy the copy.”
 
-**Node Core OS** is a personal infrastructure designed to give a person or entity its own digital core from which to preserve, manage, verify, corroborate, and use digital resources, identity, records, evidence, and, progressively, reputation.
+# Node Core OS byLAEV
 
-The project starts from a fundamental premise:
+**Personal digital infrastructure for local storage, decentralized content, identity, evidence, and reusable protocols.**
 
-> **A person should have access to their own infrastructure before depending on external applications, services, or systems to represent who they are, what they have done, what they do, or what they intend to do.**
+Node Core OS is an infrastructure project designed to give people and entities a digital core from which to manage resources, records, identity-related data, and applications. It combines local storage with integration for Kubo/IPFS and provides a foundation on which additional protocols and applications can be developed.
 
-Node Core OS manages two fundamental storage domains:
+- **Repository:** https://github.com/byLAEV/Node-Core-OS/
+- **Version recorded in `VERSION`:** 1.5.4
+- **Primary environment:** GNU/Linux terminal
+- **Project status:** Active development; individual capabilities have different implementation and verification states.
 
-- **Local storage** — resources preserved directly on the Node.
-- **Decentralized storage** — resources managed through technologies such as Kubo/IPFS.
+> **Implementation status matters:** architectural goals and proposals in this README are not claims that every described protocol, public API, or distributed feature is already implemented or production-ready.
 
-Distributed and decentralized protocols, services, and applications can progressively operate on top of these storage foundations.
+## 1. Project idea
 
-Node Core OS is therefore not merely a file-storage system.
+Node Core OS is intended to be more than a file-storage application. It is a personal digital infrastructure that can support records, content, identity, evidence, corroboration, and eventually a broader ecosystem of protocols and applications.
 
-Its long-term objective is to provide a **personal infrastructure for records, evidence, identity, corroboration, reputation, protocols, and participation**, while preserving the person's ability to decide what to record, why it should be recorded, what should be corroborated, what may be shared, and when information should be used.
-
----
-
-# 1. Fundamental Idea
-
-Node Core OS is not conceived primarily as an application.
-
-It is conceived as a **personal infrastructure and digital core**.
-
-The fundamental relationship is:
+The core relationship is:
 
 ```text
-PERSON
-  │
-  ▼
-NODE CORE OS
-  │
-  ├── Local Storage
-  ├── Decentralized Storage
-  ├── Records
-  ├── Evidence
-  ├── Identity
-  ├── Corroboration
-  ├── Reputation
-  ├── Protocols
-  └── Applications
+PERSON OR ENTITY
+       |
+       v
+  NODE CORE OS
+       |
+       +-- Local storage
+       +-- Kubo / IPFS integration
+       +-- Content registry
+       +-- Technical node identity
+       +-- Personal and institutional identity models
+       +-- Protocols and evidence
+       +-- Applications and integrations
 ```
 
-The infrastructure should exist before applications determine how it is used.
+The infrastructure should exist independently of any single application. Applications should use explicit, documented capabilities rather than duplicating the core or relying on undocumented internal details.
 
-Therefore:
+## 2. Design principles
 
-> **Node Core OS does not intend to define in advance what a person must do. It intends to provide a place from which the person can decide what to do.**
+- **User control:** users should be able to understand and control what is recorded, retained, verified, used, or shared.
+- **Transparency:** operations, data formats, errors, and limitations should be documented and testable.
+- **Local-first foundations:** local storage and decentralized storage are separate domains with explicit behavior.
+- **Explicit publication:** storing information locally must not silently publish it or authorize its propagation.
+- **Identity clarity:** user-declared information, cryptographic control, third-party verification, evidence, and decisions are different concepts.
+- **Least privilege:** applications and nodes should receive only the access required for a defined operation.
+- **Interoperability:** public interfaces should have stable, versioned contracts and documented compatibility.
+- **Testable implementation:** features should be described as implemented or verified only when code and appropriate tests support that claim.
+- **Incremental security:** security mechanisms should follow a clear threat model and functional requirements. Advanced cryptographic techniques, including zero-knowledge proofs, must be used only where their guarantees are understood and relevant.
 
----
+## 3. Architecture
 
-# 2. The Person as the Core
+At a high level, Node Core OS is organized around infrastructure, runtime and BIOS-level administration, storage, content management, identity, protocols, and applications.
 
-The Node exists to serve the person or entity that chooses to use it.
+### Node Core BIOS and services
 
-The infrastructure should provide continuity for information that the person considers important, including:
+The BIOS layer provides an administrative boundary for node configuration and core services. The architecture documentation describes service management and the separation between Node Core storage and Kubo's own repository.
 
-- who they are;
-- which identifiers they use;
-- which records they have created;
-- which facts they can substantiate;
-- which activities they have performed;
-- which relationships they have established;
-- which knowledge or capabilities they can demonstrate;
-- what reputation they have built in particular contexts;
-- what they intend to do in the future.
+Kubo is an external infrastructure dependency; Node Core OS does not reimplement IPFS and should not expose Kubo's administrative RPC as a substitute for a documented application API.
 
-This does not mean that Node Core OS should publish all of this information.
+See [Implementation Architecture](docs/ARCHITECTURE.md).
 
-On the contrary:
+### Local storage
 
-> **Preservation does not mean publication. Recording does not mean sharing. Possessing evidence does not mean being obligated to disclose it.**
+Local storage is used for resources and application data managed by the Node Core OS installation. The installed data directory is normally under `~/.node-core/`, with separate areas for application code, configuration, storage, logs, runtime files, and IPFS data.
 
-The person should retain control over how records are used.
+### Kubo / IPFS content
 
----
+The content layer works with content identifiers (CIDs) and Kubo/IPFS operations. The architecture documentation describes a content path that includes adding content, registering metadata, retrieving content, pinning or unpinning, publishing, and sharing references.
 
-# 3. Request-Driven Operation
+A CID identifies content; it does not by itself identify its author, prove a claim about that author, guarantee permanent network availability, or grant access permissions.
 
-One of the fundamental principles of Node Core OS is:
+Pinning asks a particular Kubo node to retain content. Unpinning or deleting a local copy does not guarantee that other network participants have removed their copies.
 
-> **The system should not autonomously decide to represent, propagate, evaluate, or use personal information when doing so affects the person's agency. Such operations should originate from an explicit request or a defined authorization.**
+Publishing is a distinct operation. Users should consider privacy before publishing personal or confidential information.
 
-A request is therefore a fundamental unit of the system.
+See [Implementation Architecture](docs/ARCHITECTURE.md) and [My Life / Node Blog](docs/MY-LIFE-BLOG.md).
 
-A conceptual interaction may look like:
+## 4. Identity: technical node identity and human identity
+
+Node Core OS distinguishes a technical node identity from personal or institutional identity information.
+
+### Technical node identity
+
+The current technical identity implementation uses Ed25519 keys and creates a persistent node identifier with a `sha256:` prefix. The identity store includes code and tests for initialization, persistence, and handling an incomplete identity.
+
+A cryptographic node identity can support operations that depend on control of a key. It does **not** independently establish a person's civil identity, uniqueness, legal status, or trustworthiness.
+
+The implementation documentation also notes that the private key is stored as a PEM file protected by filesystem permissions. Those permissions are a baseline safeguard, not protection against every threat, including a compromised process running as the same user.
+
+### Personal and institutional identity
+
+The broader design aims to support personal, professional, business, legal, institutional, and governmental identity use cases. Identity information may be declared by a user or supported by evidence from an identified issuer or verification procedure.
+
+A locally entered profile is a declaration, not proof that the person holds a document or that the document is valid. Any future verification process should state who or what performed the check, what evidence was checked, the scope of the result, and when it occurred.
+
+### SHA-256 and the Identity API
+
+The project's design direction includes SHA-256 as a stable root identifier. A public identity contract must specify exactly what bytes or canonical representation are hashed, how versions and normalization are handled, and how the identifier relates to keys, credentials, and identity records.
+
+SHA-256 alone does not authenticate a person, prove human uniqueness, or replace digital signatures and issuer verification.
+
+**API status:** the repository's [API Contract](docs/API-CONTRACT.md) is explicitly a proposed contract, not a claim that a stable public API is implemented. The [SDK Integration Guide](docs/SDK-INTEGRATION.md) is a guide and roadmap, not evidence of a released official SDK.
+
+## 5. Node networking, corroboration, and consensus
+
+The long-term architecture contemplates multiple nodes exchanging references, records, and evidence through explicit protocols. These capabilities must be treated as distinct concerns:
+
+- Node identification.
+- Authentication of communications.
+- Authorization between nodes.
+- Peer discovery.
+- Data exchange and synchronization.
+- Corroboration of records.
+- Agreement on a defined state or evidence set.
+
+A network connection does not by itself make a peer trustworthy. Likewise, a collection of signatures is not automatically a valid consensus. Each protocol needs a defined purpose, trust model, failure behavior, and testable acceptance criteria.
+
+Consensus-related work is intended to make states and supporting evidence comparable across nodes, including references to external repository states. The exact scope and implementation status of each consensus feature must be established by its code, tests, and documentation. Global peer discovery or production-grade distributed consensus should not be inferred from the existence of architectural plans.
+
+## 6. Records and My Life / Node Blog
+
+My Life / Node Blog is documented as a local-first personal record feature. Entries are stored as Markdown files under the local Node Core data directory, with metadata maintained in a local index.
+
+The documented interface supports paginated browsing, search, and opening an individual entry. Publishing an entry to IPFS is a separate, explicit action. The feature does not imply that every local entry is published automatically.
+
+A published CID can be associated with an entry, and the user can choose whether the local Kubo node pins the content. Publication and pinning have privacy and availability implications.
+
+See [My Life / Node Blog documentation](docs/MY-LIFE-BLOG.md).
+
+## 7. Remembering, forgetting, and data lifecycle
+
+The proposed future architecture separates historical retention from applying historical information to a current request.
 
 ```text
-PERSON
-  │
-  │ "I need to create an evidence record"
-  ▼
-REQUEST
-  │
-  ▼
-NODE CORE OS
-  │
-  ├── determines what information is required
-  ├── records the requested data
-  ├── preserves the evidence
-  ├── requests corroboration when appropriate
-  └── prepares the result
-  │
-  ▼
-RESULT
-  │
-  ▼
-PERSON
-  │
-  └── decides whether to use, share, or preserve it
+CURRENT REQUEST
+      |
+      v
+PURPOSE AND REQUIREMENT
+      |
+      v
+IS HISTORICAL CONTEXT NEEDED?
+      |
+      +-- NO --> Do not apply history by default
+      |
+      +-- YES -> Retrieve the minimum relevant evidence
 ```
 
-A request may define:
+The design distinguishes several operations:
 
-- actor;
-- intention;
-- purpose;
-- context;
-- scope;
-- duration;
-- required information;
-- required evidence;
-- required corroboration;
-- storage policy;
-- privacy posture;
-- expected result.
+- **Preserve:** retain a record.
+- **Remember:** retrieve and apply historical context for a particular purpose.
+- **Restrict:** prevent specified access or use.
+- **Expire:** mark a record or credential beyond its validity boundary.
+- **Revoke:** invalidate a credential or authorization under its governing policy.
+- **Delete or purge:** remove data from storage locations controlled by the system, subject to the defined policy.
+- **Unpin:** stop requesting local Kubo persistence for a CID.
+- **Publish or share:** make content or a reference available to others.
 
-The request expresses **what the person wants to accomplish**.
+These operations are not interchangeable. In particular, forgetting from an active context is not the same as deleting a record, and unpinning is not proof of network-wide deletion.
 
-Applications may generate requests, but they should not thereby receive unrestricted access to the Node.
+**Status:** [Remembering & Forgetting](docs/REMEMBERING-FORGETTING.md) is a proposed future architecture, not a claim that a complete selective-memory system is implemented.
 
----
+## 8. Public APIs and third-party applications
 
-# 4. Forget / Remember Context Model
+Node Core OS aims to expose documented interfaces through which external applications can request supported core capabilities.
 
-Node Core OS distinguishes between **preserving historical information** and **actively using that information as context**.
+A public API should define inputs, outputs, structured errors, authorization requirements, version compatibility, and tests. Integrating an application must not grant unrestricted access to private files, identity records, credentials, keys, or administrative services.
 
-> **To forget is to stop considering historical context by default. To remember is to selectively apply historical context when a present requirement requires it.**
-
-A Node may retain records, evidence, identity information, credentials, reputation history, and other historical data while entering a state in which that history is **not actively applied to the current context**.
-
-Conceptually:
+The expected integration pattern is:
 
 ```text
-                     NODE
-                       │
-                       ▼
-                  PRESENT STATE
-                       │
-                       ▼
-                   FORGOTTEN
-                       │
-          historical context is
-          not applied by default
-                       │
-                       ▼
-              CURRENT REQUIREMENT
-                       │
-                       │ requires historical evidence?
-                       ▼
-                    REMEMBER
-                       │
-                       ▼
-             RELEVANT MEMORY ONLY
-                       │
-                       ▼
-               CURRENT DECISION
+EXTERNAL APPLICATION
+        |
+        v
+VERSIONED PUBLIC API
+        |
+        v
+VALIDATION AND AUTHORIZATION
+        |
+        v
+NODE CORE OS CAPABILITY
+        |
+        v
+DOCUMENTED RESULT
 ```
 
-## 4.1 Forgotten Does Not Mean Deleted
+Do not treat proposed endpoints or SDKs as available until they are implemented, tested, and documented as supported.
 
-The `FORGOTTEN` state does not imply that information has been destroyed.
+- [API Contract](docs/API-CONTRACT.md)
+- [SDK Integration Guide](docs/SDK-INTEGRATION.md)
 
-It means that historical information is not automatically incorporated into the active context of the Node.
+## 9. Installation
 
-Therefore:
+### GNU/Linux
 
-```text
-FORGOTTEN
-    ≠
-DELETED
+The documented primary platform is a GNU/Linux terminal environment. The installer is designed to run as the normal user and refuses root execution.
+
+Requirements include GNU/Linux, Bash, Python 3.10 or later, standard terminal utilities, and the required download and verification tools. Kubo is required for IPFS-dependent features. See [Dependencies](docs/DEPENDENCIES.md) for the full contract.
+
+From a local checkout of the repository:
+
+```bash
+git clone https://github.com/byLAEV/Node-Core-OS.git
+cd Node-Core-OS
+bash installer/install.sh
 ```
 
-and:
+Run the installer as your normal user, without `sudo`. The installer checks the platform and dependencies, prepares the user-owned data directory, installs the application and required runtime components, verifies the installation, and prints first-start instructions.
 
-```text
-PRESERVED
-    ≠
-ACTIVELY USED
+If an installation already exists, use its documented updater rather than running a fresh installation over existing data.
+
+See [Installer Specification](docs/INSTALLER.md).
+
+### Termux on Android
+
+The repository also contains a Termux-specific installer entry point for Android ARM64:
+
+```bash
+bash installer/termux-install.sh
 ```
 
-This distinction is fundamental to Node Core OS.
+This command is intended to be run from the appropriate Termux environment, not from a generic GNU/Linux shell. It checks the Termux environment and installs missing Termux packages before invoking the main installer.
 
-A Node may preserve information for continuity, evidence, integrity, auditability, or future requirements while not using that information to define the Node's current state.
+The repository's platform documents have not always described Termux consistently. Check [Termux documentation](docs/TERMUX.md) and [Dependencies](docs/DEPENDENCIES.md) for current restrictions and release-specific prerequisites before relying on a published package. Do not assume a release archive contains a wrapper added after that release was built.
 
-## 4.2 The Present Is the Default Context
+Windows and macOS are not documented as supported targets.
 
-Node Core OS should evaluate the current state of a Node from its **present context** by default.
+## 10. Implementation status and roadmap
 
-Historical information should not automatically become a permanent representation of the current state.
+Node Core OS includes executable infrastructure alongside proposals and future architecture. A document or catalog entry is not, by itself, evidence that a feature is implemented, tested, audited, or deployed.
 
-```text
-CURRENT STATE
-    =
-CURRENT EVIDENCE
-    +
-CURRENT CONDITIONS
-```
+Use these meanings when describing project status:
 
-rather than:
+| Status | Meaning |
+| --- | --- |
+| **Implemented** | Relevant code exists. |
+| **Verified** | Defined tests passed in the stated environment. |
+| **In development** | Implementation work remains in progress. |
+| **Proposed** | A design or contract exists, but the capability is not implemented as a complete supported feature. |
+| **Future** | The capability depends on later work or architectural decisions. |
 
-```text
-CURRENT STATE
-    =
-CURRENT CONDITIONS
-    +
-ENTIRE HISTORICAL RECORD
-```
+The project's broad development directions include:
 
-The past remains available, but it is not presumed to be relevant to every present operation.
+1. Maintain the node runtime, installer, and lifecycle.
+2. Improve local storage and Kubo/IPFS content management.
+3. Maintain persistent technical node identity.
+4. Define personal and institutional identity contracts.
+5. Implement and test public API contracts.
+6. Establish authorized node-to-node communication and discovery.
+7. Develop evidence, provenance, corroboration, and consensus protocols.
+8. Build reusable domain applications on top of tested core capabilities.
+9. Evaluate advanced cryptographic mechanisms where requirements justify them.
 
-> **The Node is considered according to what is relevant now. Its history becomes relevant when a current requirement makes it relevant.**
+This list describes development direction, not a statement that every item is complete.
 
-## 4.3 Remember Is Requirement-Driven
+## 11. Development and contribution principles
 
-`REMEMBER` is not intended to mean:
+Contributions should favor explicit, understandable, reproducible, and testable implementation.
 
-> "Load everything this Node has ever been."
+- Inspect existing code and contracts before adding a new interface.
+- Preserve user data and compatibility with existing installations.
+- Test successful operations, invalid inputs, authorization failures, and relevant backend failures.
+- Document whether an operation changes local data, publishes content, or affects a distributed reference.
+- Never claim verification without supporting test results.
+- Keep public contracts separate from internal implementation details.
+- Avoid unnecessary dependencies and hard-coded secrets.
+- Document known limitations and supported environments.
 
-Instead, `REMEMBER` means:
+Before proposing a new protocol, define its purpose, participants, inputs, outputs, trust assumptions, failure cases, and acceptance tests.
 
-> **"Apply the historical context necessary to evaluate a specific present requirement."**
+## 12. Documentation
 
-A request may therefore cause a selective memory operation:
+| Document | Purpose |
+| --- | --- |
+| [Implementation Architecture](docs/ARCHITECTURE.md) | Core components and implementation boundaries. |
+| [Dependencies](docs/DEPENDENCIES.md) | Platform and runtime requirements. |
+| [Installer Specification](docs/INSTALLER.md) | Installation and update behavior. |
+| [Termux Guide](docs/TERMUX.md) | Android Termux installation path. |
+| [API Contract](docs/API-CONTRACT.md) | Proposed public API contract. |
+| [SDK Integration](docs/SDK-INTEGRATION.md) | Integration requirements and roadmap. |
+| [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |
+| [Remembering & Forgetting](docs/REMEMBERING-FORGETTING.md) | Proposed contextual-history architecture. |
+| [Use Cases](docs/USE-CASES.md) | Protocol and application catalog. |
+| [My Life / Node Blog](docs/MY-LIFE-BLOG.md) | Personal records and IPFS publication behavior. |
 
-```text
-REQUEST
-   │
-   ▼
-REQUIREMENT
-   │
-   ▼
-Does the requirement require historical context?
-   │
-   ├── NO ──► Continue using present context
-   │
-   └── YES
-          │
-          ▼
-       REMEMBER
-          │
-          ▼
-   Relevant historical evidence
-          │
-          ▼
-    Requirement evaluation
-```
+## 13. License and repository information
 
-The requirement determines the scope of the memory that needs to be considered.
+Check the repository's [LICENSE](LICENSE) file for the terms that apply to this project, and review the repository for contribution guidance before submitting changes.
 
-For example:
+- **Repository:** https://github.com/byLAEV/Node-Core-OS/
+- **Issues and development:** use the repository's GitHub issue and pull request workflows.
 
-```text
-Requirement:
-"Does this Node possess credential X?"
-```
+## 14. Long-term vision
 
-does not necessarily require:
+Node Core OS byLAEV aims to provide reusable digital infrastructure on which people, organizations, and applications can manage resources, identity-related information, and evidence through explicit protocols.
 
-```text
-All identity history
-All reputation history
-All records
-All previous activities
-```
+The core should provide shared capabilities so that applications do not each need to recreate their own storage, identity, and resource-management systems. The long-term direction is an interoperable, distributed, and decentralized ecosystem that maintains clear distinctions between data, evidence, identity, authorization, and decisions.
 
-It may require only:
-
-```text
-Credential X
-+
-Proof of validity
-+
-Proof of association
-```
-
-This makes memory **requirement-driven rather than globally active**.
-
-## 4.4 Selective Memory
-
-Node Core OS should prefer the smallest historical context necessary to satisfy a requirement.
-
-```text
-ENTIRE HISTORY
-      │
-      │ requirement
-      ▼
-RELEVANT HISTORY
-      │
-      ▼
-REQUIRED EVIDENCE
-      │
-      ▼
-CURRENT DECISION
-```
-
-This creates an architectural distinction between:
-
-```text
-Memory Available
-```
-
-and:
-
-```text
-Memory Applied
-```
-
-The existence of historical information does not by itself authorize its use.
-
-## 4.5 Memory, Identity, and Reputation
-
-This model also separates three concepts that should not be treated as equivalent:
-
-```text
-IDENTITY
-   │
-   └── Who or what is being represented?
-
-HISTORY
-   │
-   └── What has been recorded about that identity?
-
-REPUTATION
-   │
-   └── What can be inferred from relevant evidence
-       within a particular context?
-```
-
-A Node does not automatically receive its entire historical reputation whenever it enters the system.
-
-Instead:
-
-```text
-NODE
-  │
-  ▼
-PRESENT
-  │
-  ▼
-FORGOTTEN
-  │
-  ▼
-CURRENT REQUIREMENT
-  │
-  ▼
-REMEMBER
-  │
-  ▼
-RELEVANT HISTORY
-  │
-  ▼
-CONTEXTUAL REPUTATION
-```
-
-Reputation can therefore remain historical evidence without becoming a permanent and universal label.
-
-## 4.6 Forgetting as Context Control
-
-The `FORGOTTEN` state should be understood as a **context-control mechanism**, not as a data-destruction mechanism.
-
-It allows Node Core OS to distinguish:
-
-```text
-STORE
-   ≠
-REMEMBER
-   ≠
-USE
-   ≠
-SHARE
-   ≠
-PUBLISH
-   ≠
-AUTHORIZE
-```
-
-These operations may have different requirements, permissions, scopes, and lifetimes.
-
-A record may remain stored while being:
-
-- forgotten from the active context;
-- unavailable to a particular application;
-- restricted to a particular requirement;
-- selectively recalled;
-- used only to generate a proof;
-- or, when required by a specific policy, actually deleted or anonymized.
-
-Therefore, Node Core OS should not treat "forgetting" and "deletion" as synonymous operations.
-
-## 4.7 The Right to Forget Without Necessarily Erasing
-
-This architecture provides a technical interpretation of an important distinction related to the concept of a **right to forget**:
-
-> **Forgetting can mean ceasing to actively use historical information, rather than necessarily destroying every underlying record.**
-
-This is an architectural principle, not a universal legal definition of a right to erasure or right to be forgotten.
-
-Where a legal, contractual, security, or policy requirement requires actual deletion, anonymization, restriction, or retention, Node Core OS must be capable of applying that separate policy.
-
-The architectural distinction is therefore:
-
-```text
-FORGET
-    │
-    └── stop applying historical context
-
-RESTRICT
-    │
-    └── prevent specified uses of historical context
-
-PURGE
-    │
-    └── delete or irreversibly remove information
-```
-
-These are different operations.
-
-## 4.8 Present-First Principle
-
-Node Core OS adopts the following conceptual principle:
-
-> **The present is the default context. The past is available as evidence, but it is not automatically applied. A current requirement determines whether historical context should be remembered.**
-
-Formally:
-
-```text
-Present
-   │
-   ▼
-Default Context
-   │
-   ▼
-Requirement
-   │
-   ├── historical context unnecessary
-   │        │
-   │        ▼
-   │     continue
-   │
-   └── historical context necessary
-            │
-            ▼
-         REMEMBER
-            │
-            ▼
-     Relevant Evidence
-            │
-            ▼
-      Current Evaluation
-```
-
-This principle allows Node Core OS to preserve continuity without making historical information an unavoidable permanent context.
-
-## 4.9 Requirement-Driven Memory
-
-The resulting model can be summarized as:
-
-```text
-REQUIREMENT
-     │
-     ▼
-MEMORY REQUIREMENT
-     │
-     ▼
-SELECTIVE RECALL
-     │
-     ▼
-RELEVANT EVIDENCE
-     │
-     ▼
-CURRENT DECISION
-```
-
-Not:
-
-```text
-HISTORY
-   │
-   ▼
-PERMANENT IDENTITY
-   │
-   ▼
-AUTOMATIC TRUST
-```
-
-This distinction is particularly important for systems involving identity, reputation, authorization, governance, distributed participation, credentials, and privacy.
-
-## 4.10 Core Principle
-
-> **Node Core OS does not need to erase the past in order to forget it. It can preserve historical memory while choosing not to apply that memory to the present until a current requirement explicitly makes the relevant history necessary.**
-
-Or, more concisely:
-
-```text
-FORGET
-=
-Do not apply the past by default.
-
-REMEMBER
-=
-Apply only the relevant past when the present requires it.
-```
-
-This establishes **requirement-driven memory** as a fundamental architectural capability of Node Core OS.
-
----
-# 6. Records
-
-Records are a fundamental component of a person's digital continuity.
-
-A record should not be treated merely as a file.
-
-Conceptually, a record may contain:
-
-```text
-RECORD
-├── Associated Identity
-├── Intention
-├── Purpose
-├── Context
-├── Importance
-├── Time
-├── Duration
-├── Provenance
-├── Integrity
-├── Relationships
-├── Evidence
-├── Corroborations
-└── Storage Policy
-```
-
-Not every record needs the same lifetime.
-
-A record may be:
-
-- temporary;
-- ephemeral;
-- persistent;
-- historical;
-- archived;
-- canonical;
-- derived.
-
-The architecture should allow the person to determine which records should remain and which should not.
-
----
-
-# 6. Local and Decentralized Storage
-
-Storage is the first infrastructure layer of Node Core OS.
-
-```text
-                    NODE CORE OS
-                         │
-                    Storage Layer
-                         │
-                ┌────────┴────────┐
-                ▼                 ▼
-          Local Storage       Kubo / IPFS
-```
-
-## Local Storage
-
-Local storage can preserve:
-
-- files;
-- configurations;
-- keys;
-- records;
-- databases;
-- states;
-- temporary data;
-- private information.
-
-## Kubo / IPFS
-
-Kubo provides the IPFS implementation used by Node Core OS.
-
-It enables operations involving:
-
-- content-addressed data and CIDs;
-- distributed storage;
-- content retrieval;
-- pinning;
-- publishing;
-- exchange between Nodes.
-
-Kubo is an infrastructure component used by Node Core OS. It is **not the complete definition of Node Core OS**.
-
----
-
-# 7. Content and Evidence
-
-A file can become a content reference independent of its original local path:
-
-```text
-File
- │
- ▼
-Add
- │
- ▼
-IPFS
- │
- ▼
-CID
- │
- ├── Pin
- ├── Retrieve
- ├── Publish
- └── Share
-```
-
-This allows evidence to be referenced through content-addressed integrity mechanisms without depending exclusively on a local filesystem path.
-
-Evidence may subsequently be associated with:
-
-- an identity;
-- a request;
-- an event;
-- an action;
-- a protocol;
-- a context;
-- a corroboration.
-
----
-
-# 8. Identity
-
-Identity in Node Core OS should not be reduced to a username.
-
-Identity should be capable of representing continuity across identifiers, records, credentials, and evidence associated with a person or entity.
-
-Conceptually:
-
-```text
-INDIVIDUAL
-  │
-  ├── Individual Identity
-  │
-  ├── Personal Identity
-  │
-  └── Professional Identity
-         │
-         ├── Public Posture
-         └── Private Posture
-```
-
-These identities do not necessarily represent different people.
-
-They may represent different legitimate expressions of the same individual within different contexts.
-
-The architecture should support relationships between:
-
-```text
-Identity
-  │
-  ├── Identifiers
-  ├── Keys
-  ├── Credentials
-  ├── Records
-  ├── Evidence
-  └── Relationships
-```
-
-Cryptography can demonstrate control over an identifier or key.
-
-However, cryptographic control alone does not prove that one unique physical person exists behind all identifiers.
-
-For that reason, Node Core OS considers an additional layer of **corroboration and consistency**.
-
----
-
-# 9. Individuality and Consistency
-
-A central idea of the proposal is that the same identity should not be able to receive mutually incompatible attributions as though they all belonged to one coherent individual continuity.
-
-Identity-related information can therefore be examined against constraints involving:
-
-- time;
-- space;
-- physical feasibility;
-- mathematics;
-- causality;
-- logic;
-- context.
-
-For example, if the same identity is recorded performing an activity that is physically incompatible with another activity attributed to that identity during the same time interval, the system should identify a contradiction that requires investigation.
-
-```text
-IDENTITY
-  │
-  ├── Event A
-  │     │
-  │     └── location / time
-  │
-  └── Event B
-        │
-        └── location / time
-               │
-               ▼
-           CONSISTENCY
-               │
-        ┌──────┴──────┐
-        ▼             ▼
-    Compatible    Contradiction
-```
-
-This does not mean that physical laws or mathematics, by themselves, prove who a person is.
-
-They can instead provide a **contradiction-detection and corroboration layer**.
-
-The purpose is to prevent the system from treating an identity history as coherent when the attributed events contain impossible or mutually incompatible conditions, subject to the assumptions and trustworthiness of the underlying evidence.
-
----
-
-# 10. Evidence
-
-Evidence is the relationship between a claim and the records that can support it.
-
-A conceptual chain is:
-
-```text
-IDENTITY
-   ↓
-RECORD
-   ↓
-EVIDENCE
-   ↓
-CORROBORATION
-   ↓
-CONSISTENCY
-   ↓
-HISTORY
-   ↓
-REPUTATION
-```
-
-The architecture should be able to answer questions such as:
-
-- What is being claimed?
-- Who recorded it?
-- When was it recorded?
-- What is its origin?
-- What evidence exists?
-- Which identity is associated with it?
-- Who corroborated it?
-- In what context?
-- Are there contradictions?
-- Is it still valid?
-
-Reputation should not appear magically as a number.
-
-It should be derivable from a history of evidence.
-
----
-
-# 11. Reputation
-
-Node Core OS distinguishes:
-
-```text
-IDENTITY
-  │
-  └── Who?
-
-EVIDENCE
-  │
-  └── What can be substantiated?
-
-REPUTATION
-  │
-  └── What can be inferred about a history within a context?
-```
-
-Reputation does not need to be a universal score.
-
-It can be contextual, such as:
-
-- personal;
-- professional;
-- contractual;
-- service-related;
-- participation-based;
-- reliability-related;
-- compliance-related;
-- protocol-specific.
-
-Therefore:
-
-> **Reputation belongs to context and should be explainable through evidence.**
-
-A reputation may be accepted by one system and not necessarily by another.
-
-Node Core OS does not intend to become a universal judge of reputation.
-
----
-
-# 12. Distributed Corroboration
-
-A Node Core OS network may use other Nodes to corroborate information.
-
-The intention is not:
-
-> "The network decides who you are."
-
-The intention is:
-
-> **"The network helps establish what evidence exists regarding an identity and which other Nodes can corroborate it."**
-
-Conceptually:
-
-```text
-IDENTITY
-  │
-  ▼
-Corroboration Request
-  │
-  ▼
-Node Network
-  │
-  ├── Evidence
-  ├── Manifests
-  ├── Signatures
-  ├── CIDs
-  ├── Versions
-  ├── Attestations
-  └── Known inconsistencies
-  │
-  ▼
-Corroboration Result
-  │
-  ▼
-PERSON
-```
-
-Propagation should also not be confused with publication.
-
-The network may propagate:
-
-- a CID;
-- a hash;
-- a signature;
-- a manifest;
-- an attestation;
-- a reference;
-- a proof;
-- minimal metadata.
-
-The original content may remain local or protected.
-
-A future Node Core OS network is therefore intended to support distributed identity and reputation manifests that allow Nodes to ask, in effect:
-
-> **"How do we know this reputation is corroborated?"**
-
-Other Nodes may respond with independently held evidence, attestations, references, or records showing why a claim can or cannot be corroborated.
-
-This is distributed corroboration, not necessarily centralized identity governance.
-
----
-
-# 13. Privacy
-
-Decentralization does not mean that everything should be public.
-
-Node Core OS must preserve a distinction between:
-
-```text
-PRESERVE
-   ≠
-PROPAGATE
-   ≠
-PUBLISH
-   ≠
-AUTHORIZE
-   ≠
-USE
-```
-
-A person may preserve evidence locally and, when necessary, present only a sufficient proof, reference, or attestation for a specific purpose.
-
-This makes it possible to design distributed systems that can corroborate claims without requiring the complete exposure of personal information.
-
-Privacy is therefore treated as an architectural property rather than merely an application setting.
-
----
-
-# 14. Individual Decision
-
-The goal is not to force a person to build a reputation or participate in external systems.
-
-The goal is to allow the infrastructure to be ready when participation becomes necessary or desirable.
-
-A person may eventually need to:
-
-- prove who they are;
-- prove that they performed an activity;
-- demonstrate experience;
-- demonstrate a contractual relationship;
-- demonstrate a history;
-- satisfy requirements for a service;
-- participate in a protocol;
-- request an opportunity;
-- establish trust with another person;
-- demonstrate historical continuity.
-
-Node Core OS seeks to prevent that person from having to start from zero every time.
-
-There should be a personal place where they can preserve:
-
-> **who I am, what I have done, what I do, and what I intend to do.**
-
-The decision to use that information remains with the person.
-
----
-
-# 15. Architecture
-
-The architecture is organized around three visible levels:
-
-```text
-Node Core OS
-│
-├── Node Core BIOS
-├── Node Core
-└── Applications
-```
-
-## Node Core BIOS
-
-BIOS manages the infrastructure:
-
-- Storage;
-- Kubo/IPFS;
-- Network;
-- Services;
-- Configuration;
-- Security;
-- Diagnostics;
-- Updates;
-- Lifecycle.
-
-> **BIOS configures the Node.**
-
-## Node Core
-
-Node Core provides operational capabilities:
-
-- Storage;
-- Files;
-- IPFS;
-- CID;
-- Publish;
-- Retrieve;
-- Pin;
-- Unpin;
-- Share;
-- Identity;
-- Evidence;
-- Reputation;
-- Protocols;
-- Services;
-- Utilities.
-
-> **Node Core operates the Node.**
-
-## Applications
-
-Applications consume Node Core capabilities.
-
-```text
-Applications
-      │
-      ▼
-Protocols
-      │
-      ▼
-Node Core
-      │
-      ▼
-Node Core Runtime
-      │
-      ├── Local Storage
-      ├── Kubo / IPFS
-      ├── Network
-      └── Services
-```
-
-A Node installation should be able to exist without applications.
-
----
-
-# 16. Protocol and Application Layer
-
-Node Core OS is intended to provide infrastructure on which other projects can build.
-
-An application may request Node capabilities without directly managing every internal implementation detail.
-
-```text
-Node Core OS
-      │
-      ▼
-Node Core
-      │
-      ├── Storage
-      ├── Identity
-      ├── Evidence
-      ├── Reputation
-      ├── Network
-      └── Services
-              │
-              ▼
-          Protocols
-              │
-              ▼
-         Applications
-```
-
-This allows different protocols and applications to share a common personal infrastructure.
-
-The long-term goal is for **other systems to be able to integrate Node Core OS wherever they need it**, rather than requiring a person to migrate their entire personal infrastructure into every application.
-
-In other words:
-
-> **If the mountain will not go to Muhammad, the mountain comes to Muhammad.**
-
-Node Core OS aims to make personal infrastructure portable enough to reach the systems that need it, while allowing those systems to use Node capabilities without taking ownership of the personal core.
-
----
-
-# 17. Architecture Principles
-
-## 1. The person is the center
-
-The infrastructure exists to preserve the person's agency and decision-making capacity.
-
-## 2. The Node is infrastructure
-
-The Node should be useful before applications are installed.
-
-## 3. Requests are fundamental
-
-Operations that represent the person's intent should originate from explicit requests or defined authorizations.
-
-## 4. Local and decentralized storage are complementary
-
-Local storage and Kubo/IPFS serve different purposes and can coexist.
-
-## 5. Recording does not mean publishing
-
-Evidence can be preserved without being automatically propagated.
-
-## 6. Identity is not reputation
-
-Identity represents continuity and identification; reputation is derived from contextual evidence and history.
-
-## 7. Reputation should be explainable
-
-Meaningful reputation should be traceable to evidence and corroboration.
-
-## 8. Consistency matters
-
-Temporal, spatial, physical, mathematical, causal, or logical contradictions can help detect incompatible attributions.
-
-## 9. The network corroborates; it does not govern identity
-
-The network can contribute evidence and corroboration without becoming a universal authority over the person.
-
-## 10. Applications are a higher layer
-
-Applications should use Node Core rather than replace it.
-
-## 11. Privacy is architectural
-
-There must be a meaningful distinction between preservation, sharing, propagation, publication, authorization, and use.
-
-## 12. Infrastructure should be reusable
-
-Node Core OS should be capable of becoming a foundation that other projects can integrate or implement.
-
-## 13. The present is the default context
-
-Historical information should not automatically define the current state of a Node.
-
-## 14. Forgetting is not deletion
-
-A Node may stop applying historical information without necessarily destroying the underlying record.
-
-## 15. Memory is requirement-driven
-
-Historical context should be recalled selectively when a current requirement requires it.
-
----
-
-# 18. Complete Model
-
-The complete conceptual model can be expressed as:
-
-```text
-                              PERSON
-                                 │
-                                 ▼
-                         ┌───────────────┐
-                         │ NODE CORE OS  │
-                         └───────┬───────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    │                         │
-                    ▼                         ▼
-               REQUESTS                INFRASTRUCTURE
-                    │                         │
-                    │              ┌──────────┼──────────┐
-                    │              ▼          ▼          ▼
-                    │           LOCAL       KUBO       NETWORK
-                    │          STORAGE      / IPFS
-                    │              │          │
-                    └──────────────┴──────────┘
-                                 │
-                                 ▼
-                              RECORDS
-                                 │
-                                 ▼
-                              EVIDENCE
-                                 │
-                                 ▼
-                           CORROBORATION
-                                 │
-                                 ▼
-                              PRESENT
-                                 │
-                                 ▼
-                           REQUIREMENT
-                                 │
-                                 ▼
-                             REMEMBER
-                                 │
-                                 ▼
-                         RELEVANT HISTORY
-                                 │
-                                 ▼
-                            REPUTATION
-                                 │
-                                 ▼
-                              PROTOCOLS
-                                 │
-                                 ▼
-                            APPLICATIONS
-                                 │
-                                 ▼
-                         PERSON'S DECISION
-```
-
----
-
-# 19. Final Goal of Node Core OS
-
-The final goal of Node Core OS is to build infrastructure that gives a person a **personal digital core**, based on local and decentralized storage, from which they can preserve and manage their records, identity, evidence, history, and reputation.
-
-That core should allow the person to:
-
-- build digital continuity;
-- preserve evidence of their own history;
-- corroborate information when necessary;
-- demonstrate specific facts without necessarily exposing all personal information;
-- maintain contextual identities without losing the relationship to their individual continuity;
-- detect contradictions in information attributed to an identity;
-- participate in distributed networks without automatically surrendering control of personal information;
-- decide when to use identity or reputation;
-- respond to requirements from people, organizations, services, territories, or protocols;
-- maintain personal infrastructure even as the applications they use change.
-
-The goal is not to create a mandatory identity.
-
-The goal is not to create a universal reputation.
-
-The goal is not to create a network that judges people.
-
-The goal is to create **the infrastructure that allows a person to decide whether to participate in what the world requires or offers, while carrying the information and evidence necessary to do so.**
-
----
-
-# 20. Export and Interoperability Goal
-
-Once the core infrastructure is consolidated, Node Core OS should be capable of becoming a reusable architecture or standard for other projects.
-
-The intended direction is:
-
-```text
-OTHER PROJECT
-      │
-      ▼
-Integrates / Implements
-      │
-      ▼
-NODE CORE OS
-      │
-      ├── Storage
-      ├── Identity
-      ├── Evidence
-      ├── Reputation
-      ├── Protocols
-      └── Services
-      │
-      ▼
-APPLICATION / PROTOCOL
-```
-
-This would prevent Node Core OS from becoming an isolated system.
-
-The long-term objective is a **portable personal infrastructure layer** that can be implemented where it is needed and can host or integrate applications and protocols where the person needs them.
-
-The desired relationship is therefore bidirectional:
-
-- external projects can implement or integrate Node Core OS;
-- Node Core OS can provide the infrastructure required by external applications and protocols.
-
----
-
-# 21. Official Platform
-
-**Node Core OS is a GNU/Linux, terminal-first project.**
-
-The official target is:
-
-```text
-GNU/Linux
-   │
-   ▼
-Terminal
-   │
-   ▼
-Node Core OS
-```
-
-The project does not currently define a graphical desktop application, mobile application, web application, Windows implementation, or macOS implementation as its official target.
-
-The system is designed to operate without root privileges and without requiring a global system installation.
-
-This constraint is intentional: the Node should belong to and operate within the user's own environment.
-
----
-
-# 22. Installation and Dependency Contract
-
-Node Core OS is installed and operated from a GNU/Linux terminal.
-
-The installer is designed around the following principles:
-
-- no root required;
-- no sudo required;
-- no systemd dependency;
-- user-owned paths;
-- user-space installation;
-- isolated Kubo/IPFS configuration;
-- dependency verification;
-- explicit installation validation;
-- no unnecessary modification of the host operating system.
-
-The project should prefer official dependency sources and resilient fallback mechanisms. Large downloads should not be constrained by arbitrary total-transfer time limits.
-
-Technical installation and dependency documentation is maintained in:
-
-- `docs/DEPENDENCIES.md`;
-- `docs/INSTALLER.md`;
-- `installer/install.sh`.
-
-Termux on Android ARM64 has a dedicated experimental installation entry point: `bash installer/termux-install.sh`. It uses Termux's native `kubo` package and does not require Debian or PRoot. See `docs/TERMUX.md` for the exact procedure and data-preservation behavior. GNU/Linux remains the primary CI-tested platform; an actual Android device smoke test is still required before claiming full Termux validation.
-
----
-
-# 23. Applications and Use Cases
-
-Node Core OS is designed as a horizontal infrastructure. Its core capabilities and trust protocols can be composed into domain-specific applications across enterprise, government, finance, education, health, logistics, industry, AI, decentralized networks, and other sectors.
-
-The architecture is intentionally separated into three levels:
-
-CORE INFRASTRUCTURE
-        ↓
-TRUST / EVIDENCE PROTOCOLS
-        ↓
-NC-* APPLICATIONS
-
-Examples include:
-- Enterprise: NC-SUPPLIER, NC-CONTRACT, NC-PROCUREMENT
-- Finance: NC-BANK-KYC, NC-CREDIT, NC-LENDING
-- Government: NC-GOV, NC-BENEFIT, NC-TAX, NC-LICENSE
-- Civic: NC-ELECTOR-ID, NC-VOTING-PARTICIPATION
-- Education: NC-CREDENTIAL, NC-UNIVERSITY, NC-TRAINING
-- Health: NC-HEALTH, NC-MEDICAL-CREDENTIAL
-- Logistics: NC-SUPPLY-CHAIN, NC-LOGISTICS, NC-CARGO
-- Pharmaceutical / Food: NC-PHARMA, NC-FOOD, NC-COLD-CHAIN
-- Agriculture: NC-AGRI
-- Energy / Utilities: NC-ENERGY, NC-WATER, NC-GRID
-- Industrial / IoT: NC-MANUFACTURING, NC-IOT, NC-ROBOTICS, NC-DIGITAL-TWIN
-- Software / Provenance: NC-SOFTWARE-SUPPLY-CHAIN, NC-DOCUMENT, NC-CONTENT-PROVENANCE
-- AI: NC-AI, NC-AI-AGENT, NC-MODEL-PROVENANCE
-- Legal / Compliance: NC-LEGAL, NC-COMPLIANCE, NC-AUDIT
-- Decentralized systems: NC-P2P, NC-CONSORTIUM, NC-DAO
-- Research / Creative: NC-RESEARCH, NC-DATA-PROVENANCE, NC-CREATOR, NC-IP
-
-These names describe proposed reference applications unless a separate document identifies a higher implementation status.
-
-### Common application model
-
-REQUEST → REQUIREMENT → POLICY → CURRENT CONTEXT → REMEMBER only if required → MINIMUM NECESSARY EVIDENCE → CORROBORATION / SOURCE DIVERSITY → TEMPORAL CHECKS → PROOF → DECISION → MINIMUM CONTEXT RELEASE → FORGOTTEN
-
-The central memory principle is:
-
-> **The present is the default context. The past remains available as evidence, but it is not automatically applied. A current requirement determines whether relevant historical context should be remembered.**
-
-FORGOTTEN ≠ DELETED
-PRESERVED ≠ ACTIVELY USED
-STORE ≠ REMEMBER ≠ USE ≠ SHARE ≠ PUBLISH
-
-The complete cross-sector catalog, protocol composition model, application template, architectural limits, and implementation-status model are maintained in docs/USE-CASES.md.
-
----
-# 23. Project Status
-
-Node Core OS is under active development.
-
-This README deliberately distinguishes between:
-
-- **Implemented** — functionality currently available;
-- **In development** — functionality currently being implemented;
-- **Architectural goal** — a designed capability that has not yet been fully materialized;
-- **Future** — an extension that depends on previous architectural layers.
-
-The initial foundation is:
-
-```text
-Installation
-   ↓
-Boot
-   ↓
-Node Core OS
-   ↓
-BIOS
-   ↓
-Local Storage
-   ↓
-Kubo / IPFS
-   ↓
-Node Core
-   ↓
-Add → CID → Pin → Retrieve
-```
-
-The architecture is then intended to progress toward:
-
-```text
-Records
-   ↓
-Identity
-   ↓
-Evidence
-   ↓
-Corroboration
-   ↓
-Reputation
-   ↓
-Protocols
-   ↓
-Applications
-   ↓
-Interoperability
-```
-
-The architecture described in this document represents the **long-term design direction** and does not imply that every described component is currently implemented.
-
----
-
-# 24. Conceptual Roadmap
-
-## Phase 1 — Node Infrastructure
-
-- rootless installation;
-- runtime;
-- configuration;
-- local storage;
-- Kubo/IPFS;
-- service lifecycle;
-- networking;
-- diagnostics.
-
-## Phase 2 — Node Core
-
-- storage abstraction;
-- files;
-- CID;
-- Add;
-- Retrieve;
-- Pin / Unpin;
-- Publish;
-- Share;
-- utilities.
-
-## Phase 3 — Requests and Records
-
-- Request model;
-- records;
-- intention;
-- purpose;
-- context;
-- duration;
-- storage policies;
-- access control.
-
-## Phase 4 — Identity
-
-- Node identity;
-- individual identity;
-- personal identity;
-- professional identity;
-- public and private postures;
-- identifiers;
-- keys;
-- credentials;
-- linked records.
-
-## Phase 5 — Evidence and Corroboration
-
-- evidence model;
-- provenance;
-- attestations;
-- corroboration;
-- temporal consistency;
-- spatial consistency;
-- causal consistency;
-- logical and mathematical consistency;
-- contradiction detection.
-
-## Phase 6 — Reputation
-
-- history;
-- contextual reputation;
-- trust relationships;
-- evidence-derived reputation;
-- verification;
-- reputation explanations.
-
-## Phase 7 — Node Network
-
-- propagation;
-- discovery;
-- Node-to-Node corroboration;
-- manifests;
-- references;
-- proofs;
-- synchronization;
-- distributed trust mechanisms.
-
-## Phase 8 — Protocols
-
-- protocol model;
-- lifecycle;
-- services;
-- Node-to-Node communication;
-- distributed coordination;
-- protocol-specific identity and reputation.
-
-## Phase 9 — Applications
-
-- installation;
-- permissions;
-- storage;
-- identity;
-- requests;
-- services;
-- networking;
-- lifecycle.
-
-## Phase 10 — Standardization and Interoperability
-
-- APIs;
-- schemas;
-- export formats;
-- integration mechanisms;
-- embedding Node Core OS into other projects;
-- implementing applications and protocols on top of Node Core OS.
-
----
-
-# 25. Final Principle
-
-Node Core OS can be summarized as:
-
-```text
-PERSON
-   ↓
-REQUEST
-   ↓
-NODE CORE OS
-   ↓
-RECORD
-   ↓
-EVIDENCE
-   ↓
-CORROBORATION
-   ↓
-IDENTITY / HISTORY / REPUTATION
-   ↓
-PROTOCOL
-   ↓
-APPLICATION
-   ↓
-PERSON'S DECISION
-```
-
-The Node does not decide who a person must be.
-
-It does not decide what reputation a person must have.
-
-It does not decide what a person must publish.
-
-It does not decide what a person must participate in.
-
-**It provides the infrastructure through which a person can make those decisions with information, evidence, continuity, and the ability to seek corroboration.**
-
-That is the long-term purpose of **Node Core OS**.
-
----
-
-
----
-
-
-## License and community development
-
-Node Core OS uses the Apache License 2.0. The license permits use, modification, redistribution, and integration subject to its terms; it does not prohibit forks or copying. The project's preferred development model is nevertheless collaborative improvement of the canonical repository through issues, reviewed pull requests, tests, and documented API/SDK contracts.
-
-- See [LICENSE](LICENSE) for legal terms.
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution and review process.
-- See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for collaboration expectations.
-
-External projects should integrate through documented APIs and SDKs where available. Proposed interfaces must not be presented as implemented until they exist and are tested.
-
-
-## API and SDK integration
-
-Node Core OS is intended to be reusable by external projects through documented, versioned APIs and SDKs. The public API and SDK work is being defined incrementally; proposed interfaces must not be mistaken for implemented features.
-
-- [API Contract](docs/API-CONTRACT.md) — proposed capability boundary, authorization, versioning, and criteria for declaring an API stable.
-- [SDK Integration Guide](docs/SDK-INTEGRATION.md) — requirements and workflow for official SDKs and external integrations.
-- [Contributing](CONTRIBUTING.md) — how to propose, test, review, and contribute improvements.
-
-# Project
-
-**Node Core OS**  
-byLAEV
-
-Repository: https://github.com/byLAEV/Node-Core-OS/
-
-
-## Remembering & Forgetting (future architecture)
-
-Node Core OS distinguishes **preserving historical information** from **actively applying it to the present context**. The present is the default context; historical information should be selectively recalled only when a current, authorized requirement needs it.
-
-- **Remember** means selectively applying the minimum relevant historical context to a specific request.
-- **Forget context** means not applying historical context by default. It does not, by itself, delete the underlying record.
-- **Restrict, expire, revoke, and delete** are separate operations with different meanings and effects.
-- Local storage and Kubo/IPFS have different deletion boundaries. Removing a local reference or unpinning a CID cannot guarantee deletion of copies held by other nodes or third parties.
-- Identity, evidence, credentials, validity, authorization, reputation, and active context must not be treated as interchangeable concepts.
-
-This is a proposed future capability, not a claim that a complete memory and deletion lifecycle is implemented. The implementation must begin with an audit of current storage and content contracts, followed by schemas, local tests, Kubo/IPFS integration, privacy safeguards, and explicit reporting of verified outcomes.
-
-- [Remembering & Forgetting specification](docs/REMEMBERING-FORGETTING.md)
-- [Remembering & Forgetting web roadmap](web-test-bench/remembering.html)
-
-## My Life / Node Blog entry management
-
-My Life / Node Blog supports paginated browsing (10 entries per page), searching by title/content/entry ID, and selecting an individual entry before publication. Publishing acts only on the selected entry, asks whether to pin it on this node, records its Kubo/IPFS CID, and preserves the local Markdown file. See [My Life / Node Blog documentation](docs/MY-LIFE-BLOG.md) for the behavior and update contract.
-
-
-
----
-
-# Identity Registration Design and Initial Profile
-
-Identity registration follows the principles in [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md): design the ordinary, good-faith workflow first; distinguish user-declared data from verified evidence; preserve a logical identity across corrections; and keep personal data private by default.
-
-The initial terminal profile is available from **Node Core BIOS → Identity Profile**. It accepts text fields, stores the profile locally under the user's Node Core OS data directory, and allows explicit association with an available Kubo Peer ID. The main menu displays the saved identity fields as entered locally, including the document number, logical identity ID, nationality, document type, node association, and a clear statement that Node Core OS network-consensus verification has not yet occurred.
-
-This initial profile is a local declaration only. It does not verify a civil identity, authenticate an identity document, prove that the user is its legitimate holder, or establish personhood or uniqueness. The profile is not published to IPFS. File permissions are a baseline safeguard, not a substitute for a future reviewed encryption, key-management, recovery, and threat-model design.
+**Node Core OS provides the infrastructure. Protocols define reusable rules. Applications compose those capabilities for specific purposes. Code and tests determine which capabilities are actually available.**
