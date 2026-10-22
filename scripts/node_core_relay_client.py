@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -77,18 +78,28 @@ class GitHubRelayClient:
                 and item.get("type") == "file" and item.get("name", "").endswith(".json")]
 
     def read_request(self, item: dict) -> dict:
-        download_url = item.get("download_url")
-        if not isinstance(download_url, str) or not download_url.startswith("https://"):
-            raise RelayClientError("Relay request has no valid HTTPS download URL.")
-        req = Request(download_url, headers={"User-Agent": "Node-Core-OS-Relay-Client"})
+        # Fetch through the authenticated GitHub API instead of following an
+        # arbitrary download_url supplied by branch content (SSRF protection).
+        name = item.get("name")
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}\\.json", name):
+            raise RelayClientError("Relay request filename is invalid.")
+        expected_path = f".node-core-relay/requests/{name}"
+        if item.get("path") != expected_path:
+            raise RelayClientError("Relay request path is outside the configured inbox.")
+        status, item_data = self.request(
+            "GET", f"contents/{quote(expected_path, safe='/')}?ref={RELAY_BRANCH}"
+        )
+        if status != 200 or not isinstance(item_data, dict):
+            raise RelayClientError("Unable to fetch relay request through the GitHub API.")
+        if item_data.get("encoding") != "base64" or not isinstance(item_data.get("content"), str):
+            raise RelayClientError("GitHub relay request content is not base64 encoded.")
         try:
-            with urlopen(req, timeout=self.timeout) as response:
-                raw = response.read(MAX_RESPONSE_BYTES + 1)
+            raw = base64.b64decode(item_data["content"], validate=False)
             if len(raw) > MAX_RESPONSE_BYTES:
                 raise RelayClientError("Relay manifest exceeds the size limit.")
             value = json.loads(raw.decode("utf-8"))
-        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError, UnicodeError) as exc:
-            raise RelayClientError(f"Unable to download relay request: {exc}") from exc
+        except (ValueError, UnicodeError, json.JSONDecodeError) as exc:
+            raise RelayClientError(f"Relay request is malformed: {exc}") from exc
         if not isinstance(value, dict):
             raise RelayClientError("Relay request is not a JSON object.")
         return value
