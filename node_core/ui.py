@@ -126,7 +126,7 @@ class MainMenu:
 
     def _print_network_report(self) -> None:
         """Print a concise footer based on the latest refresh or a live startup snapshot."""
-        print("\\nReport:")
+        print("\nReport:")
         result = self._last_refresh_result
         if result is None:
             try:
