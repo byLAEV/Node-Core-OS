@@ -20,7 +20,7 @@ jobs:
       run:
         shell: bash
     env:
-      EXPECTED_NODE_ID: \${{ inputs.expected_node_id }}
+      EXPECTED_NODE_ID: ${{ inputs.expected_node_id }}
       PYTHONUNBUFFERED: "1"
 
     steps:
@@ -81,10 +81,6 @@ jobs:
           printf '%s' 'Node Core OS synthetic remote-read test document. No personal data. Schema: node-core-os/termux-remote-read/v1.' \
             > "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt"
           expected_hash="$(sha256sum "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt" | cut -d' ' -f1)"
-          cid="$("$IPFS_BIN" add -Q "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt")"
-          echo "EXPECTED_SHA256=$expected_hash" >> "$GITHUB_ENV"
-          echo "TEST_CID=$cid" >> "$GITHUB_ENV"
-          printf 'Synthetic CID: %s\nSHA-256: %s\n' "$cid" "$expected_hash" >> "$GITHUB_STEP_SUMMARY"
           nohup "$IPFS_BIN" daemon > "$RUNNER_TEMP/kubo-daemon.log" 2>&1 </dev/null &
           echo "$!" > "$RUNNER_TEMP/kubo-daemon.pid"
           ready=false
@@ -104,12 +100,16 @@ jobs:
             echo "Kubo daemon did not become ready." >&2
             exit 1
           fi
+          cid="$("$IPFS_BIN" add -Q "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt")"
+          echo "EXPECTED_SHA256=$expected_hash" >> "$GITHUB_ENV"
+          echo "TEST_CID=$cid" >> "$GITHUB_ENV"
+          printf 'Synthetic CID: %s\\nSHA-256: %s\\n' "$cid" "$expected_hash" >> "$GITHUB_STEP_SUMMARY"
           "$IPFS_BIN" id
           echo "Kubo API remains localhost-only; only the swarm TCP port is tunneled."
 
       - name: Start one-run Ed25519 receipt verifier
         env:
-          EXPECTED_NODE_ID: \${{ inputs.expected_node_id }}
+          EXPECTED_NODE_ID: ${{ inputs.expected_node_id }}
         run: |
           set -euo pipefail
           nonce="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
@@ -324,9 +324,9 @@ jobs:
         with:
           name: termux-remote-kubo-read-evidence
           path: |
-            \${{ runner.temp }}/termux-remote-read/ack.json
-            \${{ runner.temp }}/termux-remote-read/ack-server.log
-            \${{ runner.temp }}/termux-remote-read/synthetic-document.txt
+            ${{ runner.temp }}/termux-remote-read/ack.json
+            ${{ runner.temp }}/termux-remote-read/ack-server.log
+            ${{ runner.temp }}/termux-remote-read/synthetic-document.txt
           if-no-files-found: warn
           retention-days: 3
 
