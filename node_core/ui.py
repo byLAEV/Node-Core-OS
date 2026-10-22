@@ -742,25 +742,6 @@ class MainMenu:
             elif choice == "2" and page > 0:
                 page -= 1
 
-    def _browse_storage_area(title: str, path: Path) -> None:
-        """Display a storage directory and its direct children without executing them."""
-        print(f"\n{title}")
-        print(f"Path: {path}")
-        try:
-            path.mkdir(parents=True, exist_ok=True)
-            entries = sorted(path.iterdir(), key=lambda item: (not item.is_dir(), item.name.casefold()))
-            if not entries:
-                print("Directory is empty.")
-            else:
-                print("Contents:")
-                for entry in entries:
-                    kind = "DIR " if entry.is_dir() else "FILE"
-                    print(f"  {kind}  {entry.name}")
-            print("Access: OK")
-        except OSError as exc:
-            print(f"Access: ERROR ({exc})")
-        input("\nPress Enter to return to Storage...")
-
     def kubo_bios(self) -> None:
         while True:
             status = self.runtime.kubo.status()
