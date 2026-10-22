@@ -34,6 +34,7 @@ class RelayDeliveryTests(unittest.TestCase):
         saved = Path(receipt["persisted_path"])
         self.assertTrue(saved.is_file())
         self.assertEqual(saved.parent, self.root / "data" / "storage" / "relay" / "inbox")
+        self.assertEqual(saved.name, "gha-123-1.json")
         record = json.loads(saved.read_text(encoding="utf-8"))
         self.assertEqual(record["run_id"], "gha-123-1")
         self.assertEqual(record["payload"], self.payload)
