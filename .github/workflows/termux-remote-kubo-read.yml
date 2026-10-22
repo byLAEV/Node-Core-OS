@@ -103,7 +103,7 @@ jobs:
           cid="$("$IPFS_BIN" add -Q "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt")"
           echo "EXPECTED_SHA256=$expected_hash" >> "$GITHUB_ENV"
           echo "TEST_CID=$cid" >> "$GITHUB_ENV"
-          printf 'Synthetic CID: %s\\nSHA-256: %s\\n' "$cid" "$expected_hash" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Synthetic CID: %s\nSHA-256: %s\n' "$cid" "$expected_hash" >> "$GITHUB_STEP_SUMMARY"
           "$IPFS_BIN" id
           echo "Kubo API remains localhost-only; only the swarm TCP port is tunneled."
 
@@ -256,7 +256,7 @@ jobs:
             echo '    test "$(id -u)" -ne 0'
             echo '    mkdir -p "$HOME/.node-core/runtime"'
             echo "    curl --fail --location --silent --show-error 'https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA/tools/termux_remote_kubo_read.py' -o \"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\""
-            echo "    printf '%s  %s\\\\n' '$helper_sha' \"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\" | sha256sum --check -"
+            echo "    echo '$helper_sha  '\"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\" | sha256sum --check -"
             echo '    "$HOME/.node-core/runtime/node-core-venv/bin/python" "$HOME/.node-core/runtime/termux_remote_kubo_read.py" \\'
             echo "      --peer-address '$peer_address' \\"
             echo "      --cid '$TEST_CID' \\"
