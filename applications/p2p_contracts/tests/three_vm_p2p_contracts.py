@@ -482,13 +482,45 @@ def main():
                 lambda: len(protocol._pending_requests) >= 1,
                 timeout=35.0,
             )
-            wait_until(
+            state2 = wait_until(
                 "second proposal window to become ready",
                 lambda: protocol.current_state()
                 if protocol.current_state() and protocol.current_state().get("status") == "READY_TO_SUBMIT"
                 else False,
                 timeout=60.0,
             )
+
+            # The protocol derives required batch acknowledgements from peers that
+            # reported observing this proposal. Re-announce with fresh message IDs
+            # until both connected peers have explicitly reported this proposal;
+            # otherwise a delayed PubSub event can make the batch appear complete
+            # after only one peer ACKs.
+            proposal_status_peers = set()
+            status_deadline = time.monotonic() + 25.0
+            while time.monotonic() < status_deadline:
+                protocol._publish("PROPOSAL_ANNOUNCE", proposal=state2)
+                with protocol._lock:
+                    proposal_status_peers = {
+                        item.get("sender_node_id")
+                        for item in protocol._received
+                        if item.get("type") == "PROPOSAL_STATUS"
+                        and item.get("proposal_id") == state2.get("proposal_id")
+                        and item.get("sender_node_id") in expected_peer_ids
+                    }
+                if expected_peer_ids.issubset(proposal_status_peers):
+                    break
+                time.sleep(0.5)
+            if not expected_peer_ids.issubset(proposal_status_peers):
+                print_protocol_diagnostics(
+                    role, protocol, service,
+                    "second proposal did not receive status from every connected peer",
+                )
+                raise AssertionError(
+                    "Node B did not receive PROPOSAL_STATUS from both connected peers "
+                    f"for the second proposal: received={sorted(proposal_status_peers)}, "
+                    f"expected={sorted(expected_peer_ids)}"
+                )
+
             request_b2, request_b2_doc = create_request(
                 service, "node-b-round-2", "0.010", "ETH", "2", "ETHEREUM"
             )
