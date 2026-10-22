@@ -552,14 +552,13 @@ class MainMenu:
                 input("\n> ")
 
     def storage_bios(self) -> None:
-        """Open the Storage BIOS menu and navigate the two local storage areas."""
+        """Open Storage BIOS and navigate isolated local storage areas."""
         storage = self.runtime.storage
         try:
             storage.initialize()
-            status = "Ready"
         except OSError as exc:
             print("\nStorage")
-            print(f"Root: {self.runtime.config.local_storage_path}")
+            print(f"Root: {storage.root}")
             print(f"Status: ERROR ({exc})")
             input("\nPress Enter to return...")
             return
@@ -567,26 +566,182 @@ class MainMenu:
         while True:
             print("\nStorage")
             print(f"Root: {storage.root}")
-            print(f"Status: {status}")
+            print("Status: Ready")
             print("1. Enter Private Local Storage")
             print("2. Enter Shared Node Storage")
             print("0. Back")
             choice = input("\n> ").strip()
-
             if choice == "0":
                 return
             if choice == "1":
-                self._browse_storage_area(
-                    "Private Local Storage",
-                    storage.private_path,
-                )
+                self._storage_area_menu("Private Local Storage", storage.private_path)
             elif choice == "2":
-                self._browse_storage_area(
-                    "Shared Node Storage",
-                    storage.shared_path,
-                )
+                self._storage_area_menu("Shared Node Storage", storage.shared_path)
+
+    def _storage_area_menu(self, title: str, path: Path) -> None:
+        """Offer text creation, file upload, and paginated directory browsing."""
+        while True:
+            print(f"\n{title}")
+            print(f"Path: {path}")
+            print("1. Create text file")
+            print("2. Enter folder (browse files)")
+            print("0. Back")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self._create_or_upload_menu(title, path)
+            elif choice == "2":
+                self._browse_storage_area(title, path)
+
+    def _create_or_upload_menu(self, title: str, path: Path) -> None:
+        """Choose text creation or copy an existing local file into this area."""
+        while True:
+            print(f"\n{title} — File creation")
+            print("1. Create text file")
+            print("2. Upload file")
+            print("0. Back")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self._create_text_file(path)
+            elif choice == "2":
+                self._upload_local_file(path)
 
     @staticmethod
+    def _safe_filename(title: str) -> str:
+        """Convert a user title to a single safe text filename."""
+        name = Path(title.strip()).name.strip()
+        if not name:
+            raise ValueError("The file title cannot be empty.")
+        if name in {".", ".."}:
+            raise ValueError("Invalid file title.")
+        if not name.lower().endswith(".txt"):
+            name += ".txt"
+        return name
+
+    def _create_text_file(self, path: Path) -> None:
+        """Create a UTF-8 text file; finish pasted multiline content with :SAVE."""
+        print("\nCreate text file")
+        title = input("File title (without extension is OK): ").strip()
+        try:
+            filename = self._safe_filename(title)
+        except ValueError as exc:
+            print(f"Cannot create file: {exc}")
+            input("\nPress Enter to return...")
+            return
+
+        target = path / filename
+        if target.exists():
+            print(f"File already exists; refusing to overwrite: {target.name}")
+            input("\nPress Enter to return...")
+            return
+
+        print("Paste or type the text below.")
+        print("Finish by entering :SAVE on a line by itself.")
+        print("Multiline text is supported; paste size depends on the terminal.")
+        lines: list[str] = []
+        try:
+            while True:
+                line = input()
+                if line == ":SAVE":
+                    break
+                lines.append(line)
+        except (EOFError, KeyboardInterrupt):
+            print("\nCreation cancelled; no file was saved.")
+            return
+
+        content = "\n".join(lines)
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            with target.open("x", encoding="utf-8", newline="") as handle:
+                handle.write(content)
+                if lines:
+                    handle.write("\n")
+            print(f"Saved: {target}")
+            print(f"Characters: {len(content)}")
+        except FileExistsError:
+            print(f"File already exists; refusing to overwrite: {target.name}")
+        except OSError as exc:
+            print(f"Could not save file: {exc}")
+        input("\nPress Enter to return...")
+
+    @staticmethod
+    def _upload_local_file(path: Path) -> None:
+        """Copy a user-selected file from a local path without overwriting files."""
+        import shutil
+
+        source_text = input("Path of the file to upload/copy into this storage: ").strip()
+        if not source_text:
+            print("No source path provided.")
+            input("\nPress Enter to return...")
+            return
+        source = Path(source_text).expanduser()
+        try:
+            if not source.is_file():
+                raise FileNotFoundError(f"Not a regular file: {source}")
+            path.mkdir(parents=True, exist_ok=True)
+            target = path / source.name
+            if target.exists():
+                raise FileExistsError(f"Destination already exists: {target.name}")
+            shutil.copy2(source, target)
+            print(f"File copied: {target}")
+            print(f"Bytes: {target.stat().st_size}")
+        except OSError as exc:
+            print(f"Upload/copy failed: {exc}")
+        input("\nPress Enter to return...")
+
+    @staticmethod
+    def _browse_storage_area(title: str, path: Path) -> None:
+        """List ten files per page and allow navigation through directory pages."""
+        print(f"\n{title}")
+        print(f"Path: {path}")
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            files = sorted(
+                (entry for entry in path.iterdir() if entry.is_file()),
+                key=lambda item: item.name.casefold(),
+            )
+            directories = sorted(
+                (entry for entry in path.iterdir() if entry.is_dir()),
+                key=lambda item: item.name.casefold(),
+            )
+        except OSError as exc:
+            print(f"Access: ERROR ({exc})")
+            input("\nPress Enter to return...")
+            return
+
+        page = 0
+        page_size = 10
+        while True:
+            total_pages = max(1, (len(files) + page_size - 1) // page_size)
+            start = page * page_size
+            visible = files[start:start + page_size]
+            print(f"\nPage {page + 1}/{total_pages} — {len(files)} file(s)")
+            for directory in directories:
+                print(f"  [DIR]  {directory.name}/")
+            if not visible and not directories:
+                print("Directory is empty.")
+            for index, entry in enumerate(visible, start=start + 1):
+                try:
+                    size = entry.stat().st_size
+                except OSError:
+                    size = -1
+                print(f"  {index}. {entry.name} ({size} bytes)")
+            print("1. Next page")
+            print("2. Previous page")
+            print("0. Back")
+            if total_pages == 1:
+                print("Only one file page is available.")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1" and page + 1 < total_pages:
+                page += 1
+            elif choice == "2" and page > 0:
+                page -= 1
+
     def _browse_storage_area(title: str, path: Path) -> None:
         """Display a storage directory and its direct children without executing them."""
         print(f"\n{title}")
