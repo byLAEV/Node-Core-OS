@@ -1,0 +1,348 @@
+name: Node Core OS - Termux remote Kubo read
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_node_id:
+        description: "Expected technical node ID shown in Termux: sha256: plus 64 lowercase hex characters"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  termux-remote-read:
+    name: Read remote synthetic CID from Termux and verify signed receipt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      EXPECTED_NODE_ID: \${{ inputs.expected_node_id }}
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout repository without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate expected identity and user-only execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          [[ "$EXPECTED_NODE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo "expected_node_id must be sha256: followed by 64 lowercase hexadecimal characters." >&2
+            exit 1
+          }
+          python3 -m py_compile tools/termux_remote_kubo_read.py
+
+      - name: Set up Python and install Ed25519 verification dependency
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project Python dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Download pinned Kubo and initialize isolated synthetic peer
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          archive="$RUNNER_TEMP/kubo.tar.gz"
+          downloaded=false
+          for url in \
+            "https://dist.ipfs.tech/kubo/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz" \
+            "https://github.com/ipfs/kubo/releases/download/v0.32.1/kubo_v0.32.1_linux-amd64.tar.gz"; do
+            if curl --fail --location --silent --show-error --connect-timeout 20 --max-time 180 \
+              --retry 4 --retry-all-errors --retry-delay 3 "$url" --output "$archive"; then
+              downloaded=true
+              break
+            fi
+            rm -f "$archive"
+          done
+          test "$downloaded" = true || { echo "Unable to download pinned Kubo v0.32.1." >&2; exit 1; }
+          mkdir -p "$RUNNER_TEMP/kubo-unpack" "$RUNNER_TEMP/termux-remote-read"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/kubo-unpack"
+          IPFS_BIN="$RUNNER_TEMP/kubo-unpack/kubo/ipfs"
+          test -x "$IPFS_BIN"
+          echo "IPFS_BIN=$IPFS_BIN" >> "$GITHUB_ENV"
+          export IPFS_PATH="$RUNNER_TEMP/kubo-repo"
+          "$IPFS_BIN" version
+          "$IPFS_BIN" init --profile server
+          "$IPFS_BIN" config --json Addresses.API '"/ip4/127.0.0.1/tcp/5001"'
+          "$IPFS_BIN" config --json Addresses.Gateway '"/ip4/127.0.0.1/tcp/8080"'
+          "$IPFS_BIN" config --json Addresses.Swarm '["/ip4/127.0.0.1/tcp/4001"]'
+          "$IPFS_BIN" config --json Bootstrap '[]'
+          printf '%s' 'Node Core OS synthetic remote-read test document. No personal data. Schema: node-core-os/termux-remote-read/v1.' \
+            > "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt"
+          expected_hash="$(sha256sum "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt" | cut -d' ' -f1)"
+          cid="$("$IPFS_BIN" add -Q "$RUNNER_TEMP/termux-remote-read/synthetic-document.txt")"
+          echo "EXPECTED_SHA256=$expected_hash" >> "$GITHUB_ENV"
+          echo "TEST_CID=$cid" >> "$GITHUB_ENV"
+          printf 'Synthetic CID: %s\nSHA-256: %s\n' "$cid" "$expected_hash" >> "$GITHUB_STEP_SUMMARY"
+          nohup "$IPFS_BIN" daemon > "$RUNNER_TEMP/kubo-daemon.log" 2>&1 </dev/null &
+          echo "$!" > "$RUNNER_TEMP/kubo-daemon.pid"
+          ready=false
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent --max-time 2 -X POST http://127.0.0.1:5001/api/v0/id >/dev/null 2>&1; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/kubo-daemon.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/kubo-daemon.log" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            cat "$RUNNER_TEMP/kubo-daemon.log" >&2
+            echo "Kubo daemon did not become ready." >&2
+            exit 1
+          fi
+          "$IPFS_BIN" id
+          echo "Kubo API remains localhost-only; only the swarm TCP port is tunneled."
+
+      - name: Start one-run Ed25519 receipt verifier
+        env:
+          EXPECTED_NODE_ID: \${{ inputs.expected_node_id }}
+        run: |
+          set -euo pipefail
+          nonce="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          echo "TEST_NONCE=$nonce" >> "$GITHUB_ENV"
+          export TEST_NONCE="$nonce"
+          export EXPECTED_SHA256="$EXPECTED_SHA256"
+          export TEST_CID="$TEST_CID"
+          export ACK_FILE="$RUNNER_TEMP/termux-remote-read/ack.json"
+          nohup python3 -u - > "$RUNNER_TEMP/termux-remote-read/ack-server.log" 2>&1 </dev/null <<'PY' &
+          import hashlib, json, os
+          from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+          from pathlib import Path
+          from cryptography.exceptions import InvalidSignature
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+          expected_node = os.environ["EXPECTED_NODE_ID"]
+          expected_hash = os.environ["EXPECTED_SHA256"]
+          expected_cid = os.environ["TEST_CID"]
+          expected_nonce = os.environ["TEST_NONCE"]
+          ack_file = Path(os.environ["ACK_FILE"])
+          signed_names = {"schema", "run_nonce", "node_id", "cid", "sha256"}
+          all_names = signed_names | {"public_key", "signature"}
+
+          def canonical(value):
+              return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+          class Handler(BaseHTTPRequestHandler):
+              def log_message(self, fmt, *args):
+                  print("callback:", fmt % args, flush=True)
+              def reply(self, status, message):
+                  body = (message + "\n").encode()
+                  self.send_response(status)
+                  self.send_header("Content-Type", "text/plain; charset=utf-8")
+                  self.send_header("Content-Length", str(len(body)))
+                  self.end_headers()
+                  self.wfile.write(body)
+              def do_GET(self):
+                  return self.reply(200, "ready") if self.path == "/health" else self.reply(404, "not found")
+              def do_POST(self):
+                  if self.path != "/ack":
+                      return self.reply(404, "not found")
+                  if ack_file.exists():
+                      return self.reply(409, "receipt already accepted")
+                  try:
+                      length = int(self.headers.get("Content-Length", "0"))
+                      if length < 1 or length > 16384:
+                          return self.reply(413, "invalid body length")
+                      value = json.loads(self.rfile.read(length).decode("utf-8"))
+                      if not isinstance(value, dict) or set(value) != all_names:
+                          return self.reply(400, "invalid receipt fields")
+                      signed = {key: value[key] for key in signed_names}
+                      expected = {
+                          "schema": "node-core-os/termux-remote-read-ack/v1",
+                          "run_nonce": expected_nonce,
+                          "node_id": expected_node,
+                          "cid": expected_cid,
+                          "sha256": expected_hash,
+                      }
+                      if signed != expected:
+                          return self.reply(400, "receipt does not match this run")
+                      public = bytes.fromhex(value["public_key"])
+                      signature = bytes.fromhex(value["signature"])
+                      if len(public) != 32 or len(signature) != 64:
+                          return self.reply(400, "invalid Ed25519 key or signature length")
+                      if "sha256:" + hashlib.sha256(public).hexdigest() != expected_node:
+                          return self.reply(403, "public key does not derive expected node ID")
+                      Ed25519PublicKey.from_public_bytes(public).verify(signature, canonical(signed))
+                      ack_file.write_text(json.dumps(value, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+                      print("PASS: signed receipt verified for expected Termux node.", flush=True)
+                      return self.reply(200, "PASS: signed receipt verified")
+                  except (ValueError, TypeError, UnicodeError, json.JSONDecodeError, InvalidSignature) as exc:
+                      return self.reply(400, "invalid signed receipt: " + type(exc).__name__)
+
+          ThreadingHTTPServer(("127.0.0.1", 8765), Handler).serve_forever()
+          PY
+          echo "$!" > "$RUNNER_TEMP/termux-remote-read/ack-server.pid"
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:8765/health >/dev/null; then
+              echo "Signed ACK verifier is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/termux-remote-read/ack-server.log" >&2
+          exit 1
+
+      - name: Download and verify bore TCP tunnel binary
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --location --silent --show-error --retry 3 --connect-timeout 15 --max-time 120 \
+            'https://github.com/ekzhang/bore/releases/download/v0.6.0/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz' \
+            --output "$archive"
+          printf '%s  %s\n' \
+            'e484d1e3acba77169b773f31a5bfb34192d4b660f44a094a658a2522cd2270f7' \
+            "$archive" | sha256sum --check -
+          mkdir -p "$RUNNER_TEMP/bore-bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bore-bin"
+          test -f "$RUNNER_TEMP/bore-bin/bore"
+          chmod +x "$RUNNER_TEMP/bore-bin/bore"
+          "$RUNNER_TEMP/bore-bin/bore" --version
+
+      - name: Publish temporary Kubo peer and ACK callback endpoints
+        run: |
+          set -euo pipefail
+          nohup "$RUNNER_TEMP/bore-bin/bore" local 4001 --local-host 127.0.0.1 --to bore.pub \
+            > "$RUNNER_TEMP/termux-remote-read/bore-swarm.log" 2>&1 </dev/null &
+          echo "$!" > "$RUNNER_TEMP/termux-remote-read/bore-swarm.pid"
+          nohup "$RUNNER_TEMP/bore-bin/bore" local 8765 --local-host 127.0.0.1 --to bore.pub \
+            > "$RUNNER_TEMP/termux-remote-read/bore-ack.log" 2>&1 </dev/null &
+          echo "$!" > "$RUNNER_TEMP/termux-remote-read/bore-ack.pid"
+          swarm_port=""
+          ack_port=""
+          for attempt in $(seq 1 60); do
+            swarm_port="$(grep -Eo 'bore\.pub:[0-9]+' "$RUNNER_TEMP/termux-remote-read/bore-swarm.log" 2>/dev/null | tail -n 1 | cut -d: -f2 || true)"
+            ack_port="$(grep -Eo 'bore\.pub:[0-9]+' "$RUNNER_TEMP/termux-remote-read/bore-ack.log" 2>/dev/null | tail -n 1 | cut -d: -f2 || true)"
+            if [[ "$swarm_port" =~ ^[0-9]+$ && "$ack_port" =~ ^[0-9]+$ ]]; then break; fi
+            sleep 1
+          done
+          if [[ ! "$swarm_port" =~ ^[0-9]+$ || ! "$ack_port" =~ ^[0-9]+$ ]]; then
+            cat "$RUNNER_TEMP/termux-remote-read/bore-swarm.log" >&2
+            cat "$RUNNER_TEMP/termux-remote-read/bore-ack.log" >&2
+            echo "Could not obtain both temporary tunnel ports." >&2
+            exit 1
+          fi
+          export IPFS_PATH="$RUNNER_TEMP/kubo-repo"
+          peer_id="$("$IPFS_BIN" id -f='<id>')"
+          peer_address="/dns4/bore.pub/tcp/$swarm_port/p2p/$peer_id"
+          ack_url="http://bore.pub:$ack_port/ack"
+          helper_sha="$(sha256sum tools/termux_remote_kubo_read.py | cut -d' ' -f1)"
+          {
+            echo "## Termux remote-read test"
+            echo
+            echo "Expected Node Core OS ID: $EXPECTED_NODE_ID"
+            echo "Remote Kubo peer ID: $peer_id"
+            echo "Synthetic CID: $TEST_CID"
+            echo "Expected SHA-256: $EXPECTED_SHA256"
+            echo "Helper SHA-256: $helper_sha"
+            echo "Challenge nonce: $TEST_NONCE"
+            echo
+            echo "While this workflow is waiting, run the following in Termux. It uses only synthetic content and your existing Node Core OS identity."
+            echo
+            echo "    set -eu"
+            echo '    test "$(id -u)" -ne 0'
+            echo '    mkdir -p "$HOME/.node-core/runtime"'
+            echo "    curl --fail --location --silent --show-error 'https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA/tools/termux_remote_kubo_read.py' -o \"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\""
+            echo "    printf '%s  %s\\\\n' '$helper_sha' \"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\" | sha256sum --check -"
+            echo '    "$HOME/.node-core/runtime/node-core-venv/bin/python" "$HOME/.node-core/runtime/termux_remote_kubo_read.py" \\'
+            echo "      --peer-address '$peer_address' \\"
+            echo "      --cid '$TEST_CID' \\"
+            echo "      --expected-sha256 '$EXPECTED_SHA256' \\"
+            echo "      --nonce '$TEST_NONCE' \\"
+            echo "      --ack-url '$ack_url'"
+            echo
+            echo "The helper connects to the temporary Kubo peer, retrieves the CID, verifies SHA-256, and signs the receipt with the existing Ed25519 node identity. It never prints the private key."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "REMOTE KUBO PEER: $peer_address"
+          echo "SYNTHETIC CID: $TEST_CID"
+          echo "EXPECTED SHA-256: $EXPECTED_SHA256"
+          echo "CHALLENGE NONCE: $TEST_NONCE"
+          echo "SIGNED ACK URL: $ack_url"
+          echo "HELPER SHA-256: $helper_sha"
+          echo "Workflow waits up to 10 minutes for a signed receipt from the expected Termux identity."
+
+      - name: Wait for and verify signed Termux receipt
+        run: |
+          set -euo pipefail
+          ack_file="$RUNNER_TEMP/termux-remote-read/ack.json"
+          for attempt in $(seq 1 600); do
+            if [[ -s "$ack_file" ]]; then
+              python3 - "$ack_file" "$EXPECTED_NODE_ID" "$TEST_CID" "$EXPECTED_SHA256" "$TEST_NONCE" <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+          path = Path(sys.argv[1])
+          expected_node, expected_cid, expected_hash, expected_nonce = sys.argv[2:]
+          receipt = json.loads(path.read_text(encoding="utf-8"))
+          fields = {key: receipt[key] for key in ("schema", "run_nonce", "node_id", "cid", "sha256")}
+          public = bytes.fromhex(receipt["public_key"])
+          signature = bytes.fromhex(receipt["signature"])
+          assert fields == {
+              "schema": "node-core-os/termux-remote-read-ack/v1",
+              "run_nonce": expected_nonce,
+              "node_id": expected_node,
+              "cid": expected_cid,
+              "sha256": expected_hash,
+          }
+          assert "sha256:" + hashlib.sha256(public).hexdigest() == expected_node
+          canonical = json.dumps(fields, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+          Ed25519PublicKey.from_public_bytes(public).verify(signature, canonical)
+          print("PASS: valid Ed25519 receipt from the expected Node Core OS identity.")
+          print("node_id=" + expected_node)
+          print("cid=" + expected_cid)
+          print("sha256=" + expected_hash)
+          PY
+              printf '\nPASS: Termux retrieved the remote CID and submitted a valid signed receipt for the expected identity.\n' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/termux-remote-read/ack-server.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/termux-remote-read/ack-server.log" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "FAIL: no signed receipt received from Termux within 10 minutes." >&2
+          cat "$RUNNER_TEMP/termux-remote-read/ack-server.log" >&2
+          exit 1
+
+      - name: Upload synthetic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-remote-kubo-read-evidence
+          path: |
+            \${{ runner.temp }}/termux-remote-read/ack.json
+            \${{ runner.temp }}/termux-remote-read/ack-server.log
+            \${{ runner.temp }}/termux-remote-read/synthetic-document.txt
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Stop temporary processes and tunnels
+        if: always()
+        run: |
+          set -euo pipefail
+          for pid_file in \
+            "$RUNNER_TEMP/termux-remote-read/bore-swarm.pid" \
+            "$RUNNER_TEMP/termux-remote-read/bore-ack.pid" \
+            "$RUNNER_TEMP/termux-remote-read/ack-server.pid" \
+            "$RUNNER_TEMP/kubo-daemon.pid"; do
+            if [[ -f "$pid_file" ]]; then kill "$(cat "$pid_file")" 2>/dev/null || true; fi
+          done
+          if [[ -x "$IPFS_BIN" ]]; then
+            export IPFS_PATH="$RUNNER_TEMP/kubo-repo"
+            "$IPFS_BIN" shutdown >/dev/null 2>&1 || true
+          fi
+          echo "Temporary Kubo node, callback listener and tunnels stopped."
