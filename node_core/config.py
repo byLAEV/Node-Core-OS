@@ -65,5 +65,8 @@ class NodeConfig:
 
     def save(self) -> None:
         self.ensure_directories()
-        payload = {key: str(value) for key, value in asdict(self).items()}
+        payload = {
+            key: str(value) if isinstance(value, Path) else value
+            for key, value in asdict(self).items()
+        }
         self.config_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
