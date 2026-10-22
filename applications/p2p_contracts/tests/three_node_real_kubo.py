@@ -16,6 +16,9 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
+
+if hasattr(os, "getuid") and os.getuid() == 0:
+    raise SystemExit("ERROR: the real Kubo integration test must run as an ordinary user, never UID 0.")
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
