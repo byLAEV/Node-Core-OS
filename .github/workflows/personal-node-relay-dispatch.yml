@@ -1,0 +1,81 @@
+name: Node Core OS — Personal Node Relay Delivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      timeout_seconds:
+        description: Maximum wait for the personal node's signed receipt
+        required: true
+        default: "300"
+        type: string
+      poll_interval_seconds:
+        description: Seconds between receipt checks
+        required: true
+        default: "10"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node-core-personal-relay-delivery
+  cancel-in-progress: false
+
+jobs:
+  relay-unit-tests:
+    name: Validate relay before delivery
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Compile relay implementation
+        run: python -m py_compile node_core/relay_delivery.py scripts/node_core_relay_client.py scripts/personal_node_relay_test.py tests/test_relay_delivery.py tests/test_relay_client.py
+      - name: Test authentication, persistence, tamper rejection, and Ed25519 receipt
+        run: python -m unittest discover -s tests -p 'test_relay_*.py' -v
+
+  deliver-to-personal-node:
+    needs: relay-unit-tests
+    permissions:
+      contents: write
+    name: Deliver synthetic manifest and verify receiver signature
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Validate delivery settings without printing secrets
+        env:
+          NODE_CORE_RELAY_HMAC_KEY: ${{ secrets.NODE_CORE_RELAY_HMAC_KEY }}
+          NODE_CORE_RELAY_NODE_PUBLIC_KEY: ${{ secrets.NODE_CORE_RELAY_NODE_PUBLIC_KEY }}
+          RELAY_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+          RELAY_POLL_SECONDS: ${{ inputs.poll_interval_seconds }}
+        run: |
+          set -euo pipefail
+          [[ "$NODE_CORE_RELAY_HMAC_KEY" =~ ^[a-fA-F0-9]{64}$ ]] || { echo "Missing or invalid NODE_CORE_RELAY_HMAC_KEY (64 hex characters)." >&2; exit 1; }
+          [[ "$NODE_CORE_RELAY_NODE_PUBLIC_KEY" =~ ^[a-fA-F0-9]{64}$ ]] || { echo "Missing or invalid NODE_CORE_RELAY_NODE_PUBLIC_KEY (64 hex characters)." >&2; exit 1; }
+          [[ "$RELAY_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] && (( RELAY_TIMEOUT_SECONDS >= 30 && RELAY_TIMEOUT_SECONDS <= 1800 )) || { echo "timeout_seconds must be 30..1800." >&2; exit 1; }
+          [[ "$RELAY_POLL_SECONDS" =~ ^[0-9]+$ ]] && (( RELAY_POLL_SECONDS >= 5 && RELAY_POLL_SECONDS <= 60 )) || { echo "poll_interval_seconds must be 5..60." >&2; exit 1; }
+      - name: Send real request through GitHub relay and require receiver proof
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_CORE_RELAY_HMAC_KEY: ${{ secrets.NODE_CORE_RELAY_HMAC_KEY }}
+          NODE_CORE_RELAY_NODE_PUBLIC_KEY: ${{ secrets.NODE_CORE_RELAY_NODE_PUBLIC_KEY }}
+          RELAY_TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+          RELAY_POLL_SECONDS: ${{ inputs.poll_interval_seconds }}
+        run: python scripts/personal_node_relay_test.py
