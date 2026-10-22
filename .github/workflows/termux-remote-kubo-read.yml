@@ -262,7 +262,7 @@ jobs:
             echo '    mkdir -p "$HOME/.node-core/runtime"'
             echo "    curl --fail --location --silent --show-error 'https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA/tools/termux_remote_kubo_read.py' -o \"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\""
             echo "    echo '$helper_sha  '\"\$HOME/.node-core/runtime/termux_remote_kubo_read.py\" | sha256sum --check -"
-            echo '    "$HOME/.node-core/runtime/node-core-venv/bin/python" "$HOME/.node-core/runtime/termux_remote_kubo_read.py" \\'
+            echo '    "$HOME/.node-core/runtime/node-core-venv/bin/python" "$HOME/.node-core/runtime/termux_remote_kubo_read.py" \'
             echo "      --peer-address '$peer_address' \\"
             echo "      --cid '$TEST_CID' \\"
             echo "      --expected-sha256 '$EXPECTED_SHA256' \\"
