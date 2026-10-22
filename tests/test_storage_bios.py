@@ -47,7 +47,7 @@ class StorageBiosTests(unittest.TestCase):
             path = Path(temp_dir)
             inputs = ["notes", "first line", "second line", ":SAVE", ""]
             with patch("builtins.input", side_effect=inputs), patch("builtins.print"):
-                MainMenu._create_text_file(None, path)
+                object.__new__(MainMenu)._create_text_file(path)
             self.assertEqual((path / "notes.txt").read_text(encoding="utf-8"), "first line\nsecond line\n")
 
     def test_create_text_file_refuses_to_overwrite(self):
@@ -56,7 +56,7 @@ class StorageBiosTests(unittest.TestCase):
             target = path / "notes.txt"
             target.write_text("original", encoding="utf-8")
             with patch("builtins.input", side_effect=["notes", ""]), patch("builtins.print"):
-                MainMenu._create_text_file(None, path)
+                object.__new__(MainMenu)._create_text_file(path)
             self.assertEqual(target.read_text(encoding="utf-8"), "original")
 
     def test_browse_storage_area_shows_ten_files_per_page(self):
