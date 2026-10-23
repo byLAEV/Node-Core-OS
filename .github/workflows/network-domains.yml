@@ -1,0 +1,110 @@
+name: Independent Network Domains
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "node_core/network.py"
+      - "node_core/p2p/**"
+      - "node_core/runtime.py"
+      - "node_core/ui.py"
+      - "node_core/ipfs.py"
+      - "tools/termux_remote_kubo_read.py"
+      - "tests/**"
+      - "docs/*NETWORK*"
+      - "docs/*P2P*"
+      - "docs/*MESH*"
+      - "docs/*KUBO*"
+      - ".github/workflows/network-domains.yml"
+  push:
+    branches: [main]
+    paths:
+      - "node_core/network.py"
+      - "node_core/p2p/**"
+      - "node_core/runtime.py"
+      - "node_core/ui.py"
+      - "node_core/ipfs.py"
+      - "tools/termux_remote_kubo_read.py"
+      - "tests/**"
+      - "docs/*NETWORK*"
+      - "docs/*P2P*"
+      - "docs/*MESH*"
+      - "docs/*KUBO*"
+      - ".github/workflows/network-domains.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: network-domains-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-unit:
+    name: Validate network domain docs and Python tests (non-root)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Require ordinary user
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0 || { echo "::error::Network tests must not run as UID 0"; exit 1; }
+          if command -v sudo >/dev/null 2>&1; then
+            echo "sudo is present on the hosted image, but this workflow never invokes it."
+          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python source
+        run: python -m compileall -q node_core tools tests
+      - name: Validate required documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            docs/NETWORK-DOMAIN-ARCHITECTURE.md \
+            docs/P2P-LOCAL-LINK-VERIFICATION.md \
+            docs/LOCAL-MESH-CONSENSUS-VERIFICATION.md \
+            docs/TERMUX-REMOTE-KUBO-VERIFICATION.md \
+            docs/NETWORK-TEST-EVIDENCE.md; do
+            test -s "$file" || { echo "::error::Missing or empty required document: $file"; exit 1; }
+          done
+      - name: Run test suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -v
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-domain-validation-${{ github.run_id }}
+          path: |
+            docs/NETWORK-DOMAIN-ARCHITECTURE.md
+            docs/P2P-LOCAL-LINK-VERIFICATION.md
+            docs/LOCAL-MESH-CONSENSUS-VERIFICATION.md
+            docs/TERMUX-REMOTE-KUBO-VERIFICATION.md
+            docs/NETWORK-TEST-EVIDENCE.md
+          if-no-files-found: error
+          retention-days: 14
+
+  result-contract:
+    name: Check honest test-state contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require ordinary user
+        run: test "$(id -u)" -ne 0
+      - name: Verify status definitions and no skipped-as-pass rule
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'SKIPPED.*never a pass' docs/NETWORK-DOMAIN-ARCHITECTURE.md
+          grep -q 'INCOMPLETE' docs/NETWORK-TEST-EVIDENCE.md
+          grep -q 'must not be mapped to PASS' docs/NETWORK-TEST-EVIDENCE.md
