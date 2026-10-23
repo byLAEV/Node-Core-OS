@@ -365,7 +365,7 @@ class MainMenu:
                     input("\n> ")
                 elif choice == "4":
                     result = self.runtime.refresh_network_status()
-                    print("\\nNetwork status refreshed.")
+                    print("\nNetwork status refreshed.")
                     for error in result.get("errors", []):
                         print("WARNING: " + str(error))
                     native = result.get("native_p2p")
@@ -375,7 +375,7 @@ class MainMenu:
                     kubo = result.get("kubo")
                     if kubo is not None:
                         print("Kubo daemon: " + ("RUNNING" if getattr(kubo, "running", False) else "NOT RUNNING"))
-                    input("\\n> ")
+                    input("\n> ")
                 elif choice == "5":
                     print("\nDocumentation:")
                     print("docs/NETWORK-DOMAIN-ARCHITECTURE.md")
