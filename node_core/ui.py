@@ -312,6 +312,7 @@ class MainMenu:
             print("8. Updates")
             print("9. Lifecycle")
             print("10. Identity Profile")
+            print("11. Network Domain Verification")
             choice = input("\n> ").strip()
             if choice == "0":
                 return
@@ -321,6 +322,62 @@ class MainMenu:
                 self.kubo_bios()
             elif choice == "10":
                 self.identity_bios()
+            elif choice == "11":
+                self.network_domain_verification_menu()
+
+    def network_domain_verification_menu(self) -> None:
+        """Explain the three independent network domains and show observed local status."""
+        while True:
+            print("\nNetwork Domain Verification")
+            print("Evidence rule: a result from one domain never proves another domain.")
+            print("0. Back")
+            print("1. Local P2P link status")
+            print("2. Local mesh / state synchronization status")
+            print("3. IPFS / Kubo status")
+            print("4. Refresh observed network status")
+            print("5. Show verification documentation paths")
+            choice = input("\n> ").strip()
+            try:
+                if choice == "0":
+                    return
+                if choice == "1":
+                    status = self.runtime.native_p2p_status()
+                    print("\nDOMAIN 01 — LOCAL P2P")
+                    print("Discovery: " + ("RUNNING" if status.get("discovery_running") else "UNAVAILABLE"))
+                    print("Authenticated active peers: " + str(len(status.get("active_peers", []))))
+                    print("Recently authenticated peers: " + str(len(status.get("recently_authenticated_peers", []))))
+                    print("This status is not a mesh-consensus proof.")
+                    input("\n> ")
+                elif choice == "2":
+                    print("\nDOMAIN 02 — LOCAL DECENTRALIZED MESH")
+                    print("State convergence: NOT VERIFIED by this status screen.")
+                    print("A separate multi-node propagation and state-root test is required.")
+                    print("A discovered peer or direct session does not prove consensus.")
+                    input("\n> ")
+                elif choice == "3":
+                    status = self.runtime.kubo.status()
+                    print("\nDOMAIN 03 — IPFS / KUBO")
+                    print(f"Installed: {'YES' if status.installed else 'NO'}")
+                    print(f"Initialized: {'YES' if status.initialized else 'NO'}")
+                    print(f"Daemon: {'RUNNING' if status.running else 'NOT RUNNING'}")
+                    print(f"Peer ID: {status.peer_id or 'UNAVAILABLE'}")
+                    print("This does not prove remote content retrieval or signed-receipt verification.")
+                    input("\n> ")
+                elif choice == "4":
+                    self.refresh_network()
+                elif choice == "5":
+                    print("\nDocumentation:")
+                    print("docs/NETWORK-DOMAIN-ARCHITECTURE.md")
+                    print("docs/P2P-LOCAL-LINK-VERIFICATION.md")
+                    print("docs/LOCAL-MESH-CONSENSUS-VERIFICATION.md")
+                    print("docs/TERMUX-REMOTE-KUBO-VERIFICATION.md")
+                    print("docs/NETWORK-TEST-EVIDENCE.md")
+                    print("\nCI workflow: .github/workflows/network-domains.yml")
+                    print("Live-device tests are not implied by this menu.")
+                    input("\n> ")
+            except (OSError, RuntimeError, ValueError) as exc:
+                print(f"Network domain status unavailable: {exc}")
+                input("\n> ")
 
     def identity_presence_menu(self) -> None:
         """Create and exchange public identity-presence claims and shared reports."""
