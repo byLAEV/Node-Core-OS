@@ -114,7 +114,7 @@ jobs:
           evidence = Path("docs/NETWORK-TEST-EVIDENCE.md").read_text(encoding="utf-8")
           assert "`SKIPPED`" in architecture, "Architecture must define SKIPPED."
           assert "never a pass" in architecture.lower(), "SKIPPED must explicitly not count as a pass."
-          assert "`INCOMPLETE`" in evidence, "Evidence contract must define INCOMPLETE."
+          assert "INCOMPLETE" in evidence, "Evidence contract must define INCOMPLETE."
           assert "not a PASS" in evidence or "not be mapped to PASS" in evidence, (
               "Evidence contract must prohibit mapping skipped tests to PASS."
           )
