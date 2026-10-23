@@ -9,7 +9,7 @@ Each domain test should produce a machine-readable JSON record with:
 - workflow run ID and commit SHA
 - test start/end timestamps in UTC
 - effective UID (must not be zero)
-- test status: PASS, FAIL, SKIPPED, or INCOMPLETE
+- test status: `PASS`, `FAIL`, `SKIPPED`, or `INCOMPLETE`
 - checks performed and individual outcomes
 - node identifiers as appropriate
 - challenge/request ID and content digest where applicable
