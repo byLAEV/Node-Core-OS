@@ -60,8 +60,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install project dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
       - name: Compile Python source
-        run: python -m compileall -q node_core tools tests
+        run: python -m compileall -q main.py node_core tools tests applications/p2p_contracts
       - name: Validate required documentation
         shell: bash
         run: |
@@ -105,6 +107,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q 'SKIPPED.*never a pass' docs/NETWORK-DOMAIN-ARCHITECTURE.md
-          grep -q 'INCOMPLETE' docs/NETWORK-TEST-EVIDENCE.md
-          grep -q 'must not be mapped to PASS' docs/NETWORK-TEST-EVIDENCE.md
+          python - <<'PY'
+          from pathlib import Path
+
+          architecture = Path("docs/NETWORK-DOMAIN-ARCHITECTURE.md").read_text(encoding="utf-8")
+          evidence = Path("docs/NETWORK-TEST-EVIDENCE.md").read_text(encoding="utf-8")
+          assert "`SKIPPED`" in architecture, "Architecture must define SKIPPED."
+          assert "never a pass" in architecture.lower(), "SKIPPED must explicitly not count as a pass."
+          assert "`INCOMPLETE`" in evidence, "Evidence contract must define INCOMPLETE."
+          assert "not a PASS" in evidence or "not be mapped to PASS" in evidence, (
+              "Evidence contract must prohibit mapping skipped tests to PASS."
+          )
+          print("Evidence status contract is consistent.")
+          PY
