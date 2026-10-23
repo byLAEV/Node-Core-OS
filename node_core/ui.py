@@ -364,7 +364,18 @@ class MainMenu:
                     print("This does not prove remote content retrieval or signed-receipt verification.")
                     input("\n> ")
                 elif choice == "4":
-                    self.refresh_network()
+                    result = self.runtime.refresh_network_status()
+                    print("\\nNetwork status refreshed.")
+                    for error in result.get("errors", []):
+                        print("WARNING: " + str(error))
+                    native = result.get("native_p2p")
+                    if isinstance(native, dict):
+                        print("Native P2P discovery: " + ("RUNNING" if native.get("discovery_running") else "UNAVAILABLE"))
+                        print("Native P2P listener: " + ("RUNNING" if native.get("service_running") else "NOT RUNNING"))
+                    kubo = result.get("kubo")
+                    if kubo is not None:
+                        print("Kubo daemon: " + ("RUNNING" if getattr(kubo, "running", False) else "NOT RUNNING"))
+                    input("\\n> ")
                 elif choice == "5":
                     print("\nDocumentation:")
                     print("docs/NETWORK-DOMAIN-ARCHITECTURE.md")
