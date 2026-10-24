@@ -28,11 +28,17 @@ Fingerprint is SHA-256 of the DER-encoded SubjectPublicKeyInfo, not a hash of PE
 From this directory:
 
     node index.js help
-    NODE_CORE_EULORA2_PASSPHRASE='use-a-long-unique-secret-here' npm run generate-key
+    read -r -s -p 'OpenPGP passphrase: ' NODE_CORE_EULORA2_PASSPHRASE; printf '\\n'
+    export NODE_CORE_EULORA2_PASSPHRASE
+    npm run generate-key
+    unset NODE_CORE_EULORA2_PASSPHRASE
 
 Provide a declaration file and optional evidence artifacts:
 
-    NODE_CORE_EULORA2_PASSPHRASE='use-a-long-unique-secret-here' npm run build-payload -- --alias byLAEV-Applicant --manifesto ./declaration.txt --evidence ./build/client-binary --claimed-toolchain 'GNAT version verified locally' --target-node UNCONFIRMED_RECIPIENT --output ./payload_eulora2_dossier.json
+    read -r -s -p 'OpenPGP passphrase: ' NODE_CORE_EULORA2_PASSPHRASE; printf '\\n'
+    export NODE_CORE_EULORA2_PASSPHRASE
+    npm run build-payload -- --alias byLAEV-Applicant --manifesto ./declaration.txt --evidence ./build/client-binary --claimed-toolchain 'GNAT version verified locally' --target-node UNCONFIRMED_RECIPIENT --output ./payload_eulora2_dossier.json
+    unset NODE_CORE_EULORA2_PASSPHRASE
 
 The evidence option may be repeated. Each regular file is hashed with SHA-256 and its basename and byte size are recorded. This is only a content hash, not proof that a compiler built or executed the file. If no evidence is supplied, the dossier says NO_ARTIFACTS_PROVIDED. Never assert PASSED_VERIFIED unless a real, reproducible test result has been collected and independently checked.
 
