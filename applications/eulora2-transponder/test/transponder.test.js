@@ -146,3 +146,31 @@ test('experimental transport refuses to connect without explicit protocol opt-in
   assert.notEqual(result.code, 0);
   assert.match(result.stderr, /Transmission blocked/);
 });
+
+
+test('experimental transport rejects an acknowledgement for a different payload digest', async () => {
+  const dossierPath = path.join(temporary, 'transport-dossier.json');
+  const server = net.createServer(socket => {
+    socket.setEncoding('utf8');
+    let request = '';
+    socket.on('data', chunk => {
+      request += chunk;
+      const newline = request.indexOf('\n');
+      if (newline < 0) return;
+      socket.end(JSON.stringify({
+        protocol: 'json-line-v1-ack',
+        status: 'accepted',
+        payload_sha256: '0'.repeat(64)
+      }) + '\n');
+    });
+  });
+  try {
+    await new Promise((resolve, reject) => server.once('error', reject).listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const result = await runTransmitter(['--file', dossierPath, '--host', '127.0.0.1', '--port', String(address.port), '--protocol', 'json-line-v1', '--allow-unverified-protocol']);
+    assert.notEqual(result.code, 0);
+    assert.match(result.stderr, /did not confirm acceptance of this exact payload digest/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
