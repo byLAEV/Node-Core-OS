@@ -103,6 +103,44 @@ def validate_application_message(message: dict[str, Any]) -> dict[str, Any]:
                 raise PeerSessionError("PEERS response must not contain duplicate node IDs.")
         elif "peers" in message:
             raise PeerSessionError("PEERS request must not include a peer list.")
+    elif message_type == "MESSAGE":
+        required = (
+            "message_id", "sender_node_id", "recipient_node_id",
+            "sender_rsa_public_key", "wrapped_key", "nonce", "ciphertext", "signature",
+        )
+        for field in required:
+            value = message.get(field)
+            if not isinstance(value, str) or not value or len(value) > 30_000:
+                raise PeerSessionError(f"MESSAGE field {field} is invalid or too large.")
+        if len(message["message_id"]) > 128:
+            raise PeerSessionError("MESSAGE message_id is too long.")
+        for field in ("sender_node_id", "recipient_node_id"):
+            node_id = message[field]
+            if (
+                len(node_id) != 71 or not node_id.startswith("sha256:")
+                or any(char not in "0123456789abcdef" for char in node_id[7:])
+            ):
+                raise PeerSessionError(f"MESSAGE field {field} is not a valid node ID.")
+        if len(message["nonce"]) > 32 or len(message["wrapped_key"]) > 2048:
+            raise PeerSessionError("MESSAGE key or nonce field exceeds its permitted size.")
+        if len(message["signature"]) > 2048 or len(message["sender_rsa_public_key"]) > 2048:
+            raise PeerSessionError("MESSAGE signature or public key exceeds its permitted size.")
+    elif message_type == "MESSAGE_ACK":
+        for field in ("message_id", "sender_node_id", "receiver_node_id", "status", "received_at", "signature"):
+            value = message.get(field)
+            if not isinstance(value, str) or not value:
+                raise PeerSessionError(f"MESSAGE_ACK field {field} is required.")
+        if len(message["message_id"]) > 128 or message["status"] != "accepted":
+            raise PeerSessionError("MESSAGE_ACK message ID or status is invalid.")
+        for field in ("sender_node_id", "receiver_node_id"):
+            node_id = message[field]
+            if (
+                len(node_id) != 71 or not node_id.startswith("sha256:")
+                or any(char not in "0123456789abcdef" for char in node_id[7:])
+            ):
+                raise PeerSessionError(f"MESSAGE_ACK field {field} is not a valid node ID.")
+        if len(message["received_at"]) > 64 or len(message["signature"]) > 2048:
+            raise PeerSessionError("MESSAGE_ACK timestamp or signature exceeds its permitted size.")
     elif message_type == "ERROR":
         code = message.get("code")
         detail = message.get("message")
