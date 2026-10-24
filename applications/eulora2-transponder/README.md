@@ -48,7 +48,7 @@ Tests create a temporary RSA identity and synthetic evidence under the OS tempor
 
 ## OpenTimestamps
 
-If an actual proof file exists, provide --ots-proof PATH during dossier generation. The proof is included verbatim as base64, with its SHA-256. The dossier marks its verification status as NOT_VERIFIED_BY_THIS_TOOL; presence is not proof of successful anchoring or verification. A timestamp for a changing payload cannot be represented as a valid proof merely by adding a placeholder. For a rigorous workflow, timestamp the canonical unsigned dossier digest, verify it with OpenTimestamps, and record the verified result in a separately specified schema version.
+If an actual proof file exists, provide --ots-proof PATH during dossier generation. The proof is included verbatim as base64, with its own SHA-256. The dossier marks its verification status as NOT_VERIFIED_BY_THIS_TOOL. This first version does not assert which digest the supplied proof timestamps and does not claim that the proof is bound to this dossier. Presence is not proof of successful anchoring or verification. A later version must define a non-circular timestamp target, verify the proof with OpenTimestamps, and only then record a verified binding.
 
 ## Transmission (explicit opt-in, generic protocol only)
 

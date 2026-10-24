@@ -134,12 +134,11 @@ function validateDossier(dossier) {
     const proof = proofs.ots_timestamp_proof;
     if (!isObject(proof)) errors.push('declaration_and_proofs.ots_timestamp_proof must be null or an object');
     else {
-      exactKeys(proof, ['file_name', 'encoding', 'proof_base64', 'proof_sha256', 'attested_digest_sha256', 'verification_status'], 'ots_timestamp_proof');
+      exactKeys(proof, ['file_name', 'encoding', 'proof_base64', 'proof_sha256', 'verification_status'], 'ots_timestamp_proof');
       if (typeof proof.file_name !== 'string' || !proof.file_name) errors.push('OTS proof file_name is required');
       if (proof.encoding !== 'base64') errors.push('OTS proof encoding must be base64');
       if (typeof proof.proof_base64 !== 'string' || !proof.proof_base64) errors.push('OTS proof data is required');
       if (typeof proof.proof_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(proof.proof_sha256)) errors.push('OTS proof hash is invalid');
-      if (typeof proof.attested_digest_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(proof.attested_digest_sha256)) errors.push('OTS attested digest is invalid');
       if (proof.verification_status !== 'NOT_VERIFIED_BY_THIS_TOOL') errors.push('OTS proof status is invalid');
     }
   }
@@ -186,7 +185,6 @@ function buildDossier({
     dossier.declaration_and_proofs.ots_timestamp_proof = {
       file_name: path.basename(otsProofPath), encoding: 'base64', proof_base64: proof.toString('base64'),
       proof_sha256: crypto.createHash('sha256').update(proof).digest('hex'),
-      attested_digest_sha256: crypto.createHash('sha256').update(canonicalJson(unsignedDossier(dossier))).digest('hex'),
       verification_status: 'NOT_VERIFIED_BY_THIS_TOOL'
     };
   }

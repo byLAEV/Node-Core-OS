@@ -124,7 +124,6 @@
                 "encoding",
                 "proof_base64",
                 "proof_sha256",
-                "attested_digest_sha256",
                 "verification_status"
               ],
               "properties": {
@@ -139,10 +138,6 @@
                   "minLength": 1
                 },
                 "proof_sha256": {
-                  "type": "string",
-                  "pattern": "^[a-f0-9]{64}$"
-                },
-                "attested_digest_sha256": {
                   "type": "string",
                   "pattern": "^[a-f0-9]{64}$"
                 },
