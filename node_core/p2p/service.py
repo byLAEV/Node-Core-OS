@@ -20,6 +20,14 @@ from node_core.p2p.session import (
     send_application_message,
 )
 from node_core.p2p.tls_transport import NodeTLSTransport, TLSTransportError
+from node_core.p2p.secure_messaging import (
+    NodeRSAIdentityStore,
+    SecureMessagingError,
+    create_ack,
+    open_message,
+    seal_message,
+    verify_ack,
+)
 
 
 class PeerServiceError(RuntimeError):
@@ -27,6 +35,7 @@ class PeerServiceError(RuntimeError):
 
 
 PeerHandler = Callable[[dict[str, str], Any], None]
+MessageHandler = Callable[[dict[str, str], str, str], None]
 
 
 class NodePeerService:
@@ -41,6 +50,9 @@ class NodePeerService:
         port: int = 0,
         timeout_seconds: float = 10.0,
         on_peer: PeerHandler | None = None,
+        rsa_identity_store: NodeRSAIdentityStore | None = None,
+        trusted_rsa_public_keys: Mapping[str, bytes] | None = None,
+        on_message: MessageHandler | None = None,
     ) -> None:
         if not trusted_peers:
             raise ValueError("At least one explicitly trusted peer is required.")
@@ -60,6 +72,16 @@ class NodePeerService:
         self.port = port
         self.timeout_seconds = timeout_seconds
         self.on_peer = on_peer
+        self.rsa_identity_store = rsa_identity_store
+        self.trusted_rsa_public_keys = dict(trusted_rsa_public_keys or {})
+        for node_id, public_key in self.trusted_rsa_public_keys.items():
+            if node_id not in self.trusted_peers:
+                raise ValueError("RSA message keys may only be configured for explicitly trusted peers.")
+            if not isinstance(public_key, bytes) or b"-----BEGIN PUBLIC KEY-----" not in public_key:
+                raise ValueError("Trusted RSA message keys must be PEM public-key bytes.")
+        self.on_message = on_message
+        self._received_messages: list[dict[str, str]] = []
+        self._received_messages_lock = threading.Lock()
         self._listener: socket.socket | None = None
         self._accept_thread: threading.Thread | None = None
         self._stop = threading.Event()
@@ -96,6 +118,12 @@ class NodePeerService:
         """Return the current snapshot of outbound authenticated peer sessions."""
         with self._outbound_lock:
             return [dict(peer) for peer in self._outbound_status.values()]
+
+    @property
+    def received_messages(self) -> list[dict[str, str]]:
+        """Return messages accepted by this process; this is an in-memory inbox."""
+        with self._received_messages_lock:
+            return [dict(message) for message in self._received_messages]
 
     def connect_persistent(self, host: str, port: int, expected_peer_node_id: str) -> bool:
         """Start or retain one authenticated outbound session with automatic retries."""
@@ -433,6 +461,57 @@ class NodePeerService:
                 raw_socket.close()
 
 
+    def send_secure_message(
+        self,
+        host: str,
+        port: int,
+        expected_peer_node_id: str,
+        recipient_rsa_public_key_pem: bytes,
+        text: str,
+    ) -> dict[str, Any]:
+        """Send one encrypted message and require a cryptographically verified receipt."""
+        if self.rsa_identity_store is None:
+            raise PeerServiceError("Local RSA message identity is not configured.")
+        with self._trusted_peers_lock:
+            certificate = self.trusted_peers.get(expected_peer_node_id)
+        if certificate is None:
+            raise PeerServiceError("Target node is not in the explicit trusted-peer list.")
+        message_id = uuid.uuid4().hex
+        raw_socket: socket.socket | None = None
+        try:
+            envelope = seal_message(
+                self.rsa_identity_store, expected_peer_node_id,
+                recipient_rsa_public_key_pem, message_id, text,
+            )
+            raw_socket = socket.create_connection((host, port), timeout=self.timeout_seconds)
+            tls_socket = self.tls_transport.client_context([certificate]).wrap_socket(
+                raw_socket, server_hostname=None
+            )
+            raw_socket = None
+            with tls_socket:
+                AuthenticatedPeerSession(
+                    self.identity_store, self.tls_transport, expected_peer_node_id,
+                    timeout_seconds=self.timeout_seconds,
+                ).establish(tls_socket, "initiator")
+                send_application_message(tls_socket, envelope)
+                ack = receive_application_message(tls_socket)
+                if not verify_ack(
+                    ack,
+                    self.identity_store.initialize()["node_id"],
+                    expected_peer_node_id,
+                    message_id,
+                    recipient_rsa_public_key_pem,
+                ):
+                    raise PeerServiceError("Peer did not return a valid signed receipt for this message.")
+                return ack
+        except (OSError, PeerSessionError, TLSTransportError, SecureMessagingError, KeyError) as exc:
+            if isinstance(exc, PeerServiceError):
+                raise
+            raise PeerServiceError("Secure P2P message delivery or receipt verification failed.") from exc
+        finally:
+            if raw_socket is not None:
+                raw_socket.close()
+
     def request_status(
         self, host: str, port: int, expected_peer_node_id: str
     ) -> dict[str, str]:
@@ -651,6 +730,49 @@ class NodePeerService:
                         "observed_at": datetime.now(timezone.utc).isoformat(),
                     },
                 )
+                continue
+            if message["type"] == "MESSAGE":
+                sender_node_id = self._active_peer_node_id(session_id)
+                if self.rsa_identity_store is None or sender_node_id is None:
+                    send_application_message(tls_socket, {
+                        "version": 1, "type": "ERROR", "code": "MESSAGING_DISABLED",
+                        "message": "Secure message reception is not configured.",
+                    })
+                    return
+                sender_public_key = self.trusted_rsa_public_keys.get(sender_node_id)
+                if sender_public_key is None:
+                    send_application_message(tls_socket, {
+                        "version": 1, "type": "ERROR", "code": "UNTRUSTED_RSA_KEY",
+                        "message": "No pinned RSA message key exists for this peer.",
+                    })
+                    return
+                try:
+                    plaintext = open_message(
+                        self.rsa_identity_store, message, sender_node_id, sender_public_key
+                    )
+                    message_id = message["message_id"]
+                    accepted = {
+                        "message_id": message_id,
+                        "sender_node_id": sender_node_id,
+                        "recipient_node_id": self.identity_store.initialize()["node_id"],
+                        "text": plaintext,
+                        "received_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    if self.on_message:
+                        self.on_message({"node_id": sender_node_id}, message_id, plaintext)
+                    with self._received_messages_lock:
+                        self._received_messages.append(accepted)
+                    ack = create_ack(
+                        self.rsa_identity_store, sender_node_id, message_id
+                    )
+                    send_application_message(tls_socket, ack)
+                except (SecureMessagingError, KeyError, ValueError) as exc:
+                    self.last_error = str(exc)
+                    send_application_message(tls_socket, {
+                        "version": 1, "type": "ERROR", "code": "MESSAGE_REJECTED",
+                        "message": "Secure message authentication or acceptance failed.",
+                    })
+                    return
                 continue
             if message["type"] == "PEERS" and message["action"] == "request":
                 local_node_id = self.identity_store.initialize()["node_id"]
