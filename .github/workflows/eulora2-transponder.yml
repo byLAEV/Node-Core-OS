@@ -1,0 +1,65 @@
+name: Node Core OS — Eulora 2 Transponder tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "applications/eulora2-transponder/**"
+      - ".github/workflows/eulora2-transponder.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "applications/eulora2-transponder/**"
+      - ".github/workflows/eulora2-transponder.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  transponder-linux:
+    name: Transponder unit and cryptographic tests (ordinary user)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Enforce ordinary-user execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test -n "$HOME"
+          test -w "$HOME"
+          printf 'Execution user: %s (uid=%s)\n' "$(id -un)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check applications/eulora2-transponder/index.js
+          node --check applications/eulora2-transponder/lib/transponder.js
+          node --check applications/eulora2-transponder/scripts/generate_keys.js
+          node --check applications/eulora2-transponder/scripts/build_payload.js
+          node --check applications/eulora2-transponder/scripts/verify_dossier.js
+          node --check applications/eulora2-transponder/scripts/transmit_payload.js
+
+      - name: Run reproducible tests
+        shell: bash
+        working-directory: applications/eulora2-transponder
+        run: npm test
+
+      - name: Confirm tests did not create the user's default keyring
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test ! -d "$HOME/.node-core/eulora2-transponder/identity"
+          printf 'PASS: tests used temporary synthetic identities; transport integration used loopback only and made no external network connections.\n' >> "$GITHUB_STEP_SUMMARY"
