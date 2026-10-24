@@ -1,0 +1,19 @@
+{
+  "name": "bylaev-eulora2-applicant-transponder",
+  "version": "1.0.0",
+  "description": "Local evidence dossier builder and explicitly authorized Eulora 2 admission transponder",
+  "private": true,
+  "license": "UNLICENSED",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "generate-key": "node scripts/generate_keys.js",
+    "build-payload": "node scripts/build_payload.js",
+    "verify-dossier": "node scripts/verify_dossier.js",
+    "transmit": "node scripts/transmit_payload.js",
+    "test": "node --test"
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Eulora2_Admission_Payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dossier_version",
+    "created_at_utc",
+    "identity",
+    "technical_evidence",
+    "declaration_and_proofs",
+    "bootstrap_routing"
+  ],
+  "properties": {
+    "dossier_version": {
+      "const": "1.0.0"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "rsa_public_key_pem",
+        "fingerprint_sha256"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "rsa_public_key_pem": {
+          "type": "string",
+          "pattern": "^-----BEGIN PUBLIC KEY-----"
+        },
+        "fingerprint_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "technical_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimed_toolchain",
+        "artifacts",
+        "evidence_status"
+      ],
+      "properties": {
+        "claimed_toolchain": {
+          "type": "string"
+        },
+        "evidence_status": {
+          "enum": [
+            "HASHED_NOT_INDEPENDENTLY_ATTESTED",
+            "NO_ARTIFACTS_PROVIDED"
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "size_bytes",
+              "sha256"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "size_bytes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "declaration_and_proofs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifesto_text",
+        "signature_algorithm",
+        "rsa_signature_base64",
+        "ots_timestamp_proof"
+      ],
+      "properties": {
+        "manifesto_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signature_algorithm": {
+          "const": "RSA-PSS-SHA256"
+        },
+        "rsa_signature_base64": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+        },
+        "ots_timestamp_proof": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "file_name",
+                "encoding",
+                "proof_base64",
+                "proof_sha256",
+                "attested_digest_sha256",
+                "verification_status"
+              ],
+              "properties": {
+                "file_name": {
+                  "type": "string"
+                },
+                "encoding": {
+                  "const": "base64"
+                },
+                "proof_base64": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "proof_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "attested_digest_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "verification_status": {
+                  "const": "NOT_VERIFIED_BY_THIS_TOOL"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "bootstrap_routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_node_alias",
+        "endpoint_address",
+        "connection_protocol"
+      ],
+      "properties": {
+        "target_node_alias": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endpoint_address": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "connection_protocol": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
