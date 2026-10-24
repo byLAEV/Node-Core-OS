@@ -5,6 +5,9 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const net = require('node:net');
+const crypto = require('node:crypto');
+const { spawn } = require('node:child_process');
 const {
   generateIdentity, buildDossier, verifyDossier, publicKeyFingerprint, canonicalJson
 } = require('../lib/transponder');
@@ -92,4 +95,54 @@ test('malformed dossier and substituted public key are rejected', () => {
   const changed = structuredClone(dossier);
   changed.identity.rsa_public_key_pem = 'not a public key';
   assert.equal(verifyDossier(changed).valid, false);
+});
+
+
+function runTransmitter(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [
+      path.join(__dirname, '..', 'scripts', 'transmit_payload.js'), ...args
+    ], { cwd: path.join(__dirname, '..'), env: { ...process.env }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', code => resolve({ code, stdout, stderr }));
+  });
+}
+
+test('experimental transport succeeds only with a matching loopback acknowledgement', async () => {
+  const dossierPath = path.join(temporary, 'transport-dossier.json');
+  fs.writeFileSync(dossierPath, JSON.stringify(dossier) + '\n', { mode: 0o600, flag: 'wx' });
+  const digest = crypto.createHash('sha256').update(canonicalJson(dossier)).digest('hex');
+  const server = net.createServer(socket => {
+    let request = '';
+    socket.setEncoding('utf8');
+    socket.on('data', chunk => {
+      request += chunk;
+      const newline = request.indexOf('\n');
+      if (newline < 0) return;
+      const message = JSON.parse(request.slice(0, newline));
+      assert.equal(message.protocol, 'json-line-v1');
+      assert.equal(message.payload_sha256, digest);
+      socket.end(JSON.stringify({ protocol: 'json-line-v1-ack', status: 'accepted', payload_sha256: digest }) + '\n');
+    });
+  });
+  try {
+    await new Promise((resolve, reject) => server.once('error', reject).listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const result = await runTransmitter(['--file', dossierPath, '--host', '127.0.0.1', '--port', String(address.port), '--protocol', 'json-line-v1', '--allow-unverified-protocol']);
+    assert.equal(result.code, 0, result.stderr);
+    assert.match(result.stdout, new RegExp(digest));
+    assert.match(result.stdout, /does not establish Eulora admission/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('experimental transport refuses to connect without explicit protocol opt-in', async () => {
+  const result = await runTransmitter(['--file', path.join(temporary, 'transport-dossier.json'), '--host', '127.0.0.1', '--port', '1', '--protocol', 'json-line-v1']);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /Transmission blocked/);
 });

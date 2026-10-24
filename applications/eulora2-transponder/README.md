@@ -28,14 +28,14 @@ Fingerprint is SHA-256 of the DER-encoded SubjectPublicKeyInfo, not a hash of PE
 From this directory:
 
     node index.js help
-    read -r -s -p 'OpenPGP passphrase: ' NODE_CORE_EULORA2_PASSPHRASE; printf '\\n'
+    read -r -s -p 'Identity passphrase: ' NODE_CORE_EULORA2_PASSPHRASE; printf '\n'
     export NODE_CORE_EULORA2_PASSPHRASE
     npm run generate-key
     unset NODE_CORE_EULORA2_PASSPHRASE
 
 Provide a declaration file and optional evidence artifacts:
 
-    read -r -s -p 'OpenPGP passphrase: ' NODE_CORE_EULORA2_PASSPHRASE; printf '\\n'
+    read -r -s -p 'Identity passphrase: ' NODE_CORE_EULORA2_PASSPHRASE; printf '\n'
     export NODE_CORE_EULORA2_PASSPHRASE
     npm run build-payload -- --alias byLAEV-Applicant --manifesto ./declaration.txt --evidence ./build/client-binary --claimed-toolchain 'GNAT version verified locally' --target-node UNCONFIRMED_RECIPIENT --output ./payload_eulora2_dossier.json
     unset NODE_CORE_EULORA2_PASSPHRASE
