@@ -84,13 +84,24 @@ function validateDossier(dossier) {
   const errors = [];
   const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   if (!isObject(dossier)) return ['dossier must be an object'];
+  const exactKeys = (object, keys, label) => {
+    const actual = Object.keys(object).sort();
+    const expected = [...keys].sort();
+    if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) errors.push(label + ' has missing or unexpected fields');
+  };
+  exactKeys(dossier, ['dossier_version', 'created_at_utc', 'identity', 'technical_evidence', 'declaration_and_proofs', 'bootstrap_routing'], 'dossier');
   if (dossier.dossier_version !== DOSSIER_VERSION) errors.push('dossier_version must equal 1.0.0');
+  if (typeof dossier.created_at_utc !== 'string' || Number.isNaN(Date.parse(dossier.created_at_utc)) || !dossier.created_at_utc.endsWith('Z')) errors.push('created_at_utc must be a valid UTC date-time');
   if (!isObject(dossier.identity)) errors.push('identity must be an object');
   if (!isObject(dossier.technical_evidence)) errors.push('technical_evidence must be an object');
   if (!isObject(dossier.declaration_and_proofs)) errors.push('declaration_and_proofs must be an object');
   if (!isObject(dossier.bootstrap_routing)) errors.push('bootstrap_routing must be an object');
   if (errors.length) return errors;
 
+  exactKeys(dossier.identity, ['alias', 'rsa_public_key_pem', 'fingerprint_sha256'], 'identity');
+  exactKeys(dossier.technical_evidence, ['claimed_toolchain', 'artifacts', 'evidence_status'], 'technical_evidence');
+  exactKeys(dossier.declaration_and_proofs, ['manifesto_text', 'signature_algorithm', 'rsa_signature_base64', 'ots_timestamp_proof'], 'declaration_and_proofs');
+  exactKeys(dossier.bootstrap_routing, ['target_node_alias', 'endpoint_address', 'connection_protocol'], 'bootstrap_routing');
   const identity = dossier.identity;
   const evidence = dossier.technical_evidence;
   const proofs = dossier.declaration_and_proofs;
@@ -107,7 +118,19 @@ function validateDossier(dossier) {
   if (typeof proofs.manifesto_text !== 'string' || !proofs.manifesto_text.trim()) errors.push('declaration_and_proofs.manifesto_text is required');
   if (proofs.signature_algorithm !== 'RSA-PSS-SHA256') errors.push('signature_algorithm must be RSA-PSS-SHA256');
   if (typeof proofs.rsa_signature_base64 !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(proofs.rsa_signature_base64)) errors.push('declaration_and_proofs.rsa_signature_base64 must be base64');
-  if (proofs.ots_timestamp_proof !== null && typeof proofs.ots_timestamp_proof !== 'object') errors.push('declaration_and_proofs.ots_timestamp_proof must be null or an object');
+  if (proofs.ots_timestamp_proof !== null) {
+    const proof = proofs.ots_timestamp_proof;
+    if (!isObject(proof)) errors.push('declaration_and_proofs.ots_timestamp_proof must be null or an object');
+    else {
+      exactKeys(proof, ['file_name', 'encoding', 'proof_base64', 'proof_sha256', 'attested_digest_sha256', 'verification_status'], 'ots_timestamp_proof');
+      if (typeof proof.file_name !== 'string' || !proof.file_name) errors.push('OTS proof file_name is required');
+      if (proof.encoding !== 'base64') errors.push('OTS proof encoding must be base64');
+      if (typeof proof.proof_base64 !== 'string' || !proof.proof_base64) errors.push('OTS proof data is required');
+      if (typeof proof.proof_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(proof.proof_sha256)) errors.push('OTS proof hash is invalid');
+      if (typeof proof.attested_digest_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(proof.attested_digest_sha256)) errors.push('OTS attested digest is invalid');
+      if (proof.verification_status !== 'NOT_VERIFIED_BY_THIS_TOOL') errors.push('OTS proof status is invalid');
+    }
+  }
   if (typeof routing.target_node_alias !== 'string' || !routing.target_node_alias.trim()) errors.push('bootstrap_routing.target_node_alias is required');
   if (routing.endpoint_address !== null && typeof routing.endpoint_address !== 'string') errors.push('bootstrap_routing.endpoint_address must be null or a string');
   if (routing.connection_protocol !== null && typeof routing.connection_protocol !== 'string') errors.push('bootstrap_routing.connection_protocol must be null or a string');
