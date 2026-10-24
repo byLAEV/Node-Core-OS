@@ -50,7 +50,7 @@ To run tests:
 
     npm test
 
-Tests create a temporary RSA identity and synthetic evidence under the OS temporary directory. They never read the default identity directory or contact a network.
+Tests create a temporary RSA identity and synthetic evidence under the OS temporary directory. They never read the default identity directory or contact an external network. The transport test uses only a temporary loopback TCP server on 127.0.0.1.
 
 ## OpenTimestamps
 

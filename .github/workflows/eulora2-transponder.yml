@@ -62,4 +62,4 @@ jobs:
           set -euo pipefail
           test "$(id -u)" -ne 0
           test ! -d "$HOME/.node-core/eulora2-transponder/identity"
-          printf 'PASS: tests used temporary synthetic identities and made no network connections.\n' >> "$GITHUB_STEP_SUMMARY"
+          printf 'PASS: tests used temporary synthetic identities; transport integration used loopback only and made no external network connections.\n' >> "$GITHUB_STEP_SUMMARY"
