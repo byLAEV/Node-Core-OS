@@ -22,9 +22,16 @@ function publicKeyFingerprint(publicKeyPem) {
 }
 
 function ensurePrivateDirectory(directory) {
+  if (typeof process.getuid === 'function' && process.getuid() === 0) {
+    throw new Error('This application must run as an ordinary Linux user, never as root.');
+  }
   fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  const stat = fs.lstatSync(directory);
+  if (stat.isSymbolicLink() || !stat.isDirectory()) throw new Error('Identity path must be a real directory, not a symlink.');
+  if (typeof process.getuid === 'function' && stat.uid !== process.getuid()) {
+    throw new Error('Identity directory must be owned by the current user.');
+  }
   fs.chmodSync(directory, 0o700);
-  if (!fs.statSync(directory).isDirectory()) throw new Error('Identity path is not a directory.');
 }
 
 function identityDirectory() {
@@ -111,7 +118,12 @@ function validateDossier(dossier) {
   if (typeof identity.fingerprint_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(identity.fingerprint_sha256)) errors.push('identity.fingerprint_sha256 must be a lowercase SHA-256 hex digest');
   if (!Array.isArray(evidence.artifacts)) errors.push('technical_evidence.artifacts must be an array');
   else evidence.artifacts.forEach((artifact, index) => {
-    if (!isObject(artifact) || typeof artifact.name !== 'string' || !Number.isSafeInteger(artifact.size_bytes) || artifact.size_bytes < 0 || typeof artifact.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(artifact.sha256)) errors.push('technical_evidence.artifacts[' + index + '] is invalid');
+    if (!isObject(artifact)) {
+      errors.push('technical_evidence.artifacts[' + index + '] is invalid');
+      return;
+    }
+    exactKeys(artifact, ['name', 'size_bytes', 'sha256'], 'technical_evidence.artifacts[' + index + ']');
+    if (typeof artifact.name !== 'string' || !artifact.name || !Number.isSafeInteger(artifact.size_bytes) || artifact.size_bytes < 0 || typeof artifact.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(artifact.sha256)) errors.push('technical_evidence.artifacts[' + index + '] is invalid');
   });
   if (typeof evidence.claimed_toolchain !== 'string') errors.push('technical_evidence.claimed_toolchain must be a string');
   if (!['HASHED_NOT_INDEPENDENTLY_ATTESTED', 'NO_ARTIFACTS_PROVIDED'].includes(evidence.evidence_status)) errors.push('technical_evidence.evidence_status is invalid');
