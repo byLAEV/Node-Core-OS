@@ -3,12 +3,31 @@
 from pathlib import Path
 from typing import BinaryIO
 
+
 class StorageManager:
+    """Own the local storage root and its isolated private/shared namespaces."""
+
+    PRIVATE_DIRECTORY = "private"
+    SHARED_DIRECTORY = "shared"
+
     def __init__(self, root: Path) -> None:
-        self.root = root
+        self.root = Path(root).expanduser()
+
+    @property
+    def private_path(self) -> Path:
+        """Return the private local storage directory."""
+        return self.path(self.PRIVATE_DIRECTORY)
+
+    @property
+    def shared_path(self) -> Path:
+        """Return the local directory reserved for node synchronization."""
+        return self.path(self.SHARED_DIRECTORY)
 
     def initialize(self) -> None:
+        """Create the storage root and both local storage areas."""
         self.root.mkdir(parents=True, exist_ok=True)
+        self.private_path.mkdir(parents=True, exist_ok=True)
+        self.shared_path.mkdir(parents=True, exist_ok=True)
 
     def path(self, relative: str) -> Path:
         candidate = (self.root / relative).resolve()

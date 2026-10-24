@@ -312,6 +312,7 @@ class MainMenu:
             print("8. Updates")
             print("9. Lifecycle")
             print("10. Identity Profile")
+            print("11. Network Domain Verification")
             choice = input("\n> ").strip()
             if choice == "0":
                 return
@@ -321,6 +322,73 @@ class MainMenu:
                 self.kubo_bios()
             elif choice == "10":
                 self.identity_bios()
+            elif choice == "11":
+                self.network_domain_verification_menu()
+
+    def network_domain_verification_menu(self) -> None:
+        """Explain the three independent network domains and show observed local status."""
+        while True:
+            print("\nNetwork Domain Verification")
+            print("Evidence rule: a result from one domain never proves another domain.")
+            print("0. Back")
+            print("1. Local P2P link status")
+            print("2. Local mesh / state synchronization status")
+            print("3. IPFS / Kubo status")
+            print("4. Refresh observed network status")
+            print("5. Show verification documentation paths")
+            choice = input("\n> ").strip()
+            try:
+                if choice == "0":
+                    return
+                if choice == "1":
+                    status = self.runtime.native_p2p_status()
+                    print("\nDOMAIN 01 — LOCAL P2P")
+                    print("Discovery: " + ("RUNNING" if status.get("discovery_running") else "UNAVAILABLE"))
+                    print("Authenticated active peers: " + str(len(status.get("active_peers", []))))
+                    print("Recently authenticated peers: " + str(len(status.get("recently_authenticated_peers", []))))
+                    print("This status is not a mesh-consensus proof.")
+                    input("\n> ")
+                elif choice == "2":
+                    print("\nDOMAIN 02 — LOCAL DECENTRALIZED MESH")
+                    print("State convergence: NOT VERIFIED by this status screen.")
+                    print("A separate multi-node propagation and state-root test is required.")
+                    print("A discovered peer or direct session does not prove consensus.")
+                    input("\n> ")
+                elif choice == "3":
+                    status = self.runtime.kubo.status()
+                    print("\nDOMAIN 03 — IPFS / KUBO")
+                    print(f"Installed: {'YES' if status.installed else 'NO'}")
+                    print(f"Initialized: {'YES' if status.initialized else 'NO'}")
+                    print(f"Daemon: {'RUNNING' if status.running else 'NOT RUNNING'}")
+                    print(f"Peer ID: {status.peer_id or 'UNAVAILABLE'}")
+                    print("This does not prove remote content retrieval or signed-receipt verification.")
+                    input("\n> ")
+                elif choice == "4":
+                    result = self.runtime.refresh_network_status()
+                    print("\nNetwork status refreshed.")
+                    for error in result.get("errors", []):
+                        print("WARNING: " + str(error))
+                    native = result.get("native_p2p")
+                    if isinstance(native, dict):
+                        print("Native P2P discovery: " + ("RUNNING" if native.get("discovery_running") else "UNAVAILABLE"))
+                        print("Native P2P listener: " + ("RUNNING" if native.get("service_running") else "NOT RUNNING"))
+                    kubo = result.get("kubo")
+                    if kubo is not None:
+                        print("Kubo daemon: " + ("RUNNING" if getattr(kubo, "running", False) else "NOT RUNNING"))
+                    input("\n> ")
+                elif choice == "5":
+                    print("\nDocumentation:")
+                    print("docs/NETWORK-DOMAIN-ARCHITECTURE.md")
+                    print("docs/P2P-LOCAL-LINK-VERIFICATION.md")
+                    print("docs/LOCAL-MESH-CONSENSUS-VERIFICATION.md")
+                    print("docs/TERMUX-REMOTE-KUBO-VERIFICATION.md")
+                    print("docs/NETWORK-TEST-EVIDENCE.md")
+                    print("\nCI workflow: .github/workflows/network-domains.yml")
+                    print("Live-device tests are not implied by this menu.")
+                    input("\n> ")
+            except (OSError, RuntimeError, ValueError) as exc:
+                print(f"Network domain status unavailable: {exc}")
+                input("\n> ")
 
     def identity_presence_menu(self) -> None:
         """Create and exchange public identity-presence claims and shared reports."""
@@ -552,10 +620,195 @@ class MainMenu:
                 input("\n> ")
 
     def storage_bios(self) -> None:
-        print("\nStorage")
-        print(f"Root: {self.runtime.config.local_storage_path}")
-        print("Status: Ready" if self.runtime.storage.root.exists() else "Missing")
-        input("\n> ")
+        """Open Storage BIOS and navigate isolated local storage areas."""
+        storage = self.runtime.storage
+        try:
+            storage.initialize()
+        except OSError as exc:
+            print("\nStorage")
+            print(f"Root: {storage.root}")
+            print(f"Status: ERROR ({exc})")
+            input("\nPress Enter to return...")
+            return
+
+        while True:
+            print("\nStorage")
+            print(f"Root: {storage.root}")
+            print("Status: Ready")
+            print("1. Enter Private Local Storage")
+            print("2. Enter Shared Node Storage")
+            print("0. Back")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self._storage_area_menu("Private Local Storage", storage.private_path)
+            elif choice == "2":
+                self._storage_area_menu("Shared Node Storage", storage.shared_path)
+
+    def _storage_area_menu(self, title: str, path: Path) -> None:
+        """Offer text creation, file upload, and paginated directory browsing."""
+        while True:
+            print(f"\n{title}")
+            print(f"Path: {path}")
+            print("1. Create text file")
+            print("2. Enter folder (browse files)")
+            print("0. Back")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self._create_or_upload_menu(title, path)
+            elif choice == "2":
+                self._browse_storage_area(title, path)
+
+    def _create_or_upload_menu(self, title: str, path: Path) -> None:
+        """Choose text creation or copy an existing local file into this area."""
+        while True:
+            print(f"\n{title} — File creation")
+            print("1. Create text file")
+            print("2. Upload file")
+            print("0. Back")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1":
+                self._create_text_file(path)
+            elif choice == "2":
+                self._upload_local_file(path)
+
+    @staticmethod
+    def _safe_filename(title: str) -> str:
+        """Convert a user title to a single safe text filename."""
+        name = Path(title.strip()).name.strip()
+        if not name:
+            raise ValueError("The file title cannot be empty.")
+        if name in {".", ".."}:
+            raise ValueError("Invalid file title.")
+        if not name.lower().endswith(".txt"):
+            name += ".txt"
+        return name
+
+    def _create_text_file(self, path: Path) -> None:
+        """Create a UTF-8 text file; finish pasted multiline content with :SAVE."""
+        print("\nCreate text file")
+        title = input("File title (without extension is OK): ").strip()
+        try:
+            filename = self._safe_filename(title)
+        except ValueError as exc:
+            print(f"Cannot create file: {exc}")
+            input("\nPress Enter to return...")
+            return
+
+        target = path / filename
+        if target.exists():
+            print(f"File already exists; refusing to overwrite: {target.name}")
+            input("\nPress Enter to return...")
+            return
+
+        print("Paste or type the text below.")
+        print("Finish by entering :SAVE on a line by itself.")
+        print("Multiline text is supported; paste size depends on the terminal.")
+        lines: list[str] = []
+        try:
+            while True:
+                line = input()
+                if line == ":SAVE":
+                    break
+                lines.append(line)
+        except (EOFError, KeyboardInterrupt):
+            print("\nCreation cancelled; no file was saved.")
+            return
+
+        content = "\n".join(lines)
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            with target.open("x", encoding="utf-8", newline="") as handle:
+                handle.write(content)
+                if lines:
+                    handle.write("\n")
+            print(f"Saved: {target}")
+            print(f"Characters: {len(content)}")
+        except FileExistsError:
+            print(f"File already exists; refusing to overwrite: {target.name}")
+        except OSError as exc:
+            print(f"Could not save file: {exc}")
+        input("\nPress Enter to return...")
+
+    @staticmethod
+    def _upload_local_file(path: Path) -> None:
+        """Copy a user-selected file from a local path without overwriting files."""
+        import shutil
+
+        source_text = input("Path of the file to upload/copy into this storage: ").strip()
+        if not source_text:
+            print("No source path provided.")
+            input("\nPress Enter to return...")
+            return
+        source = Path(source_text).expanduser()
+        try:
+            if not source.is_file():
+                raise FileNotFoundError(f"Not a regular file: {source}")
+            path.mkdir(parents=True, exist_ok=True)
+            target = path / source.name
+            if target.exists():
+                raise FileExistsError(f"Destination already exists: {target.name}")
+            shutil.copy2(source, target)
+            print(f"File copied: {target}")
+            print(f"Bytes: {target.stat().st_size}")
+        except OSError as exc:
+            print(f"Upload/copy failed: {exc}")
+        input("\nPress Enter to return...")
+
+    @staticmethod
+    def _browse_storage_area(title: str, path: Path) -> None:
+        """List ten files per page and allow navigation through directory pages."""
+        print(f"\n{title}")
+        print(f"Path: {path}")
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            files = sorted(
+                (entry for entry in path.iterdir() if entry.is_file()),
+                key=lambda item: item.name.casefold(),
+            )
+            directories = sorted(
+                (entry for entry in path.iterdir() if entry.is_dir()),
+                key=lambda item: item.name.casefold(),
+            )
+        except OSError as exc:
+            print(f"Access: ERROR ({exc})")
+            input("\nPress Enter to return...")
+            return
+
+        page = 0
+        page_size = 10
+        while True:
+            total_pages = max(1, (len(files) + page_size - 1) // page_size)
+            start = page * page_size
+            visible = files[start:start + page_size]
+            print(f"\nPage {page + 1}/{total_pages} — {len(files)} file(s)")
+            for directory in directories:
+                print(f"  [DIR]  {directory.name}/")
+            if not visible and not directories:
+                print("Directory is empty.")
+            for index, entry in enumerate(visible, start=start + 1):
+                try:
+                    size = entry.stat().st_size
+                except OSError:
+                    size = -1
+                print(f"  {index}. {entry.name} ({size} bytes)")
+            print("1. Next page")
+            print("2. Previous page")
+            print("0. Back")
+            if total_pages == 1:
+                print("Only one file page is available.")
+            choice = input("\n> ").strip()
+            if choice == "0":
+                return
+            if choice == "1" and page + 1 < total_pages:
+                page += 1
+            elif choice == "2" and page > 0:
+                page -= 1
 
     def kubo_bios(self) -> None:
         while True:
@@ -1302,4 +1555,3 @@ class MainMenu:
             except (ValueError, OSError, RuntimeError) as exc:
                 print(f"Network error: {exc}")
                 input("\n> ")
-

@@ -126,6 +126,9 @@ jobs:
       - name: Publish temporary peer endpoint and wait for Termux
         run: |
           set -euo pipefail
+          nonce="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+          printf 'TERMUX_ACK_NONCE=%s\n' "$nonce" >> "$GITHUB_ENV"
+          printf '%s\n' "$nonce" > "$RUNNER_TEMP/node-core-termux-live/run-nonce.txt"
           nohup "$RUNNER_TEMP/bore-bin/bore" local 4001 --local-host 127.0.0.1 --to bore.pub \
             > "$RUNNER_TEMP/bore-live.log" 2>&1 </dev/null &
           echo "$!" > "$RUNNER_TEMP/bore-live.pid"
@@ -166,6 +169,17 @@ jobs:
             echo
             echo "    $cid"
             echo
+            echo "One-run challenge nonce:"
+            echo
+            echo "    $nonce"
+            echo
+            echo "Expected SHA-256:"
+            echo
+            echo "    $(awk '{print $1}' "$RUNNER_TEMP/node-core-termux-live/source-sha256.txt")"
+            echo
+            echo "IMPORTANT: this workflow currently has no receiver ACK callback wired to the runner."
+            echo "A Termux read alone cannot make this workflow PASS; it will remain unverified until a signed ACK is collected."
+            echo
             echo "The Kubo HTTP API remains bound to 127.0.0.1. The public tunnel exposes only the libp2p swarm TCP port."
             echo "Do not send personal data or private keys to this temporary test peer."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -180,6 +194,8 @@ jobs:
             fi
           done
           echo "The 15-minute manual test window has ended."
+          echo "::error::No receiver-side signed ACK was collected by this workflow. A peer endpoint being available is not proof of a remote read; refusing to report PASS."
+          exit 1
 
       - name: Upload test connection details
         if: always()
@@ -190,6 +206,7 @@ jobs:
             ${{ runner.temp }}/node-core-termux-live/peer-multiaddr.txt
             ${{ runner.temp }}/node-core-termux-live/content-cid.txt
             ${{ runner.temp }}/node-core-termux-live/source-sha256.txt
+            ${{ runner.temp }}/node-core-termux-live/run-nonce.txt
             ${{ runner.temp }}/node-core-termux-live/termux-live-test.txt
           if-no-files-found: warn
 
