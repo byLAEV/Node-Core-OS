@@ -1,0 +1,71 @@
+name: Node Core OS — OpenPGP terminal integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "applications/openpgp/**"
+      - ".github/workflows/openpgp-cli.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "applications/openpgp/**"
+      - ".github/workflows/openpgp-cli.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  openpgp-linux:
+    name: OpenPGP CLI on ordinary Linux user
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Enforce ordinary-user execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test -n "$HOME"
+          test -w "$HOME"
+          printf 'Execution user: %s (uid=%s)\n' "$(id -un)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Confirm GnuPG is available without installing packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v gpg
+          gpg --version
+          python --version
+
+      - name: Compile OpenPGP application
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q applications/openpgp
+
+      - name: Run reproducible OpenPGP integration tests
+        shell: bash
+        env:
+          PYTHONPATH: applications/openpgp
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s applications/openpgp/tests -v
+
+      - name: Verify test artifacts contain no default keyring
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test ! -d "$HOME/.node-core/openpgp/gnupg"
+          printf 'PASS: tests used temporary keyrings and did not create the default user keyring.\n' >> "$GITHUB_STEP_SUMMARY"
