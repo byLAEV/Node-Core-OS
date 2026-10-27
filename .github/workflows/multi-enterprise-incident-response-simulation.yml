@@ -1,0 +1,61 @@
+name: Multi-enterprise incident response simulation
+
+on:
+  push:
+    branches:
+      - main
+      - "simulation/multi-enterprise-incident-response"
+    paths:
+      - "scripts/multi_enterprise_incident_response_simulation.py"
+      - "tests/test_multi_enterprise_incident_response_simulation.py"
+      - "docs/MULTI-ENTERPRISE-INCIDENT-RESPONSE-SIMULATION.md"
+      - ".github/workflows/multi-enterprise-incident-response-simulation.yml"
+  pull_request:
+    paths:
+      - "scripts/multi_enterprise_incident_response_simulation.py"
+      - "tests/test_multi_enterprise_incident_response_simulation.py"
+      - "docs/MULTI-ENTERPRISE-INCIDENT-RESPONSE-SIMULATION.md"
+      - ".github/workflows/multi-enterprise-incident-response-simulation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: multi-enterprise-response-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulation:
+    name: Pool isolation, incident authentication and peer quorum
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install simulation dependency
+        run: python -m pip install --upgrade pip cryptography
+
+      - name: Run synthetic scenario
+        run: python scripts/multi_enterprise_incident_response_simulation.py
+
+      - name: Run regression tests
+        run: python -m unittest discover -s tests -p 'test_multi_enterprise_incident_response_simulation.py' -v
+
+      - name: Record scope and limitations
+        if: always()
+        run: |
+          {
+            echo "## Multi-enterprise incident response simulation"
+            echo ""
+            echo "- Synthetic identities and incidents only."
+            echo "- No external hosts contacted; no attack traffic generated."
+            echo "- No real domains, devices, or firewalls changed."
+            echo "- A peer quorum is a simulated recommendation, not live mitigation."
+          } >> "$GITHUB_STEP_SUMMARY"
