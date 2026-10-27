@@ -140,7 +140,7 @@ The first implementation stage prioritizes transparent data structures, reproduc
 
 See [Identity Tools catalog](tools/README.md) for product boundaries, planned components, and staged acceptance criteria.
 
-## 7. Node networking, corroboration, and consensus
+## 6. Node networking, corroboration, and consensus
 
 The long-term architecture contemplates multiple nodes exchanging references, records, and evidence through explicit protocols. These capabilities must be treated as distinct concerns:
 
