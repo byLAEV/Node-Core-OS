@@ -1,0 +1,79 @@
+name: Node Core OS — CDD Security Lab
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "node_core/security/cdd.py"
+      - "tests/test_cdd_security.py"
+      - "docs/CDD-DISTRIBUTED-DEFENSE.md"
+      - ".github/workflows/cdd-security-lab.yml"
+      - "node_core/identity/node_identity.py"
+  push:
+    branches: [main]
+    paths:
+      - "node_core/security/cdd.py"
+      - "tests/test_cdd_security.py"
+      - "docs/CDD-DISTRIBUTED-DEFENSE.md"
+      - ".github/workflows/cdd-security-lab.yml"
+      - "node_core/identity/node_identity.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cdd-security-lab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cdd-local-primitives:
+    name: Signed policy and bounded anti-bot tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Enforce ordinary-user execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test -n "$HOME"
+          test -w "$HOME"
+
+      - name: Checkout source without persisted credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install declared project dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Compile CDD implementation and tests
+        run: |
+          set -euo pipefail
+          python -m py_compile node_core/security/cdd.py tests/test_cdd_security.py
+
+      - name: Run CDD unit tests
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_cdd_security.py' -v
+
+      - name: Publish accurate scope and limitations
+        if: always()
+        run: |
+          {
+            echo "## CDD Security Lab"
+            echo "- Tests signed policy validation and a bounded in-process sliding-window limiter."
+            echo "- Uses synthetic local identities; no public targets or external traffic are used."
+            echo "- Does not prove production DDoS resistance, distributed quotas, P2P failover, or Kubo/CID integration."
+            echo "- A skipped or unexecuted test is not a passing test."
+          } >> "$GITHUB_STEP_SUMMARY"
