@@ -53,7 +53,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-core-os-web2-heavy-stress-report
-          path: artifacts/web2-heavy-stress/
+          path: |
+            artifacts/web2-heavy-stress/
             artifacts/web2-persistent-stress/
           if-no-files-found: warn
           retention-days: 30
