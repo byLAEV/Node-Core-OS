@@ -19,8 +19,12 @@ import unittest
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.tls_transport import NodeTLSTransport
 from node_core.security.distributed_defense import (
+    SecurityRecordError,
     create_signed_security_event,
-    should_quarantine,
+)
+from node_core.security.shield_support import (
+    create_shield_support_certificate,
+    verify_shield_support_certificate,
 )
 
 
@@ -46,13 +50,26 @@ def _handler_for(state):
                 return
 
             node_id = peer["node_id"]
-            if should_quarantine(
-                node_id,
-                state.events,
+            try:
+                support_certificate = create_shield_support_certificate(
+                    node_id,
+                    state.events,
+                    state.trusted_reporter_keys,
+                    minimum_independent_reporters=3,
+                )
+            except SecurityRecordError:
+                support_certificate = None
+
+            if support_certificate and verify_shield_support_certificate(
+                support_certificate,
                 state.trusted_reporter_keys,
-                minimum_independent_reporters=3,
+                minimum_required_reporters=3,
             ):
-                self._reply(403, {"status": "BLOCKED", "reason": "corroborated_node_alert"})
+                self._reply(403, {
+                    "status": "BLOCKED",
+                    "reason": "corroborated_node_alert",
+                    "support_certificate": support_certificate["record_type"],
+                })
                 return
 
             with state.lock:
