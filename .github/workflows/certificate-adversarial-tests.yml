@@ -53,6 +53,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_shield_support.py' -v
           python -m unittest discover -s tests -p 'test_shield_identity_credential.py' -v
           python -m unittest discover -s tests -p 'test_shield_web_attack_lab.py' -v
+          python -m unittest discover -s tests -p 'test_shield_distributed_alert_acceptance.py' -v
           python -m unittest discover -s tests -p 'test_web_tls_profile.py' -v
           python -m unittest discover -s tests -p 'test_standard_https_validation.py' -v
           python -m unittest discover -s tests -p 'test_distributed_defense.py' -v
@@ -72,6 +73,8 @@ jobs:
             echo "- Shield support-certificate tests verify quorum, expiry, tamper rejection, and receiver-owned threshold policy"
             echo "- Shield identity-credential tests verify issuer quorum, scopes, expiry, trusted issuers, and tamper rejection"
             echo "- Shield lab verifies three signed synthetic reporter identities, support-certificate quarantine, tamper rejection, and a bounded per-node rate limit"
+            echo "- Distributed alert acceptance uses three Node Core OS identities over authenticated TLS sockets on A-to-B-to-C topology; it tests quorum, replay, expiry, tampering, reporter revocation, partition/recovery, and propagation latency"
+            echo "- The distributed alert acceptance test is a controlled loopback TLS integration, not an Internet/P2P/Kubo production deployment test"
             echo "- Signed event and revocation tests validate local primitives; they do not prove live distributed propagation"
             echo "- API abuse tests use a bounded synthetic loopback handler, not the production API"
             echo "- A failing security assertion means the tested rejection behavior is not established"
