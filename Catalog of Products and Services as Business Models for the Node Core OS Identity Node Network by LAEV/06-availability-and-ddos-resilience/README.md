@@ -1,0 +1,61 @@
+# Availability and DDoS-Resilience Assessment
+
+**Product ID:** `CERT-06`  
+**Certificate profile:** `availability-ddos-resistance`  
+**Catalog status:** Proposed service definition  
+**Economic policy:** `pending-consensus`
+
+## What this product does
+
+Assess availability objectives, resource limits, request controls, overload behavior, and recovery using safe, authorized test traffic and defined limits.
+
+This product is intended for authorized enterprise and institutional customers that need evidence-based security assessment of websites, Web2 applications, APIs, network infrastructure, or supporting services. Participating Node Core OS identities may execute approved work, submit evidence, and—where the service contract requires it—contribute to a jointly reviewed result.
+
+## Business value
+
+The service is designed to give a customer a documented view of a defined security question, including test scope, observations, evidence, limitations, and recommended corrective actions. It can support procurement, internal risk management, engineering decisions, or follow-up testing. It is not an automatic guarantee that a customer is secure.
+
+## Threats and assessment objectives
+
+- Requests exhaust CPU, memory, connections, storage, or worker capacity.
+- Rate controls fail or affect legitimate users disproportionately.
+- The service cannot recover cleanly after an overload or node failure.
+
+## Scope at a glance
+
+- Define test window, targets, maximum request rate, abort criteria, and contacts in writing.
+- Evaluate bounded load and resource-exhaustion scenarios in an isolated lab or authorized staging environment.
+- Review rate limits, quotas, timeouts, backpressure, and recovery procedures where implemented.
+
+## Expected deliverables
+
+- Service-level objectives and test envelope.
+- Metrics, error rates, resource use, and recovery time.
+- Safety log, observed limits, and recommendations.
+
+## Acceptance principles
+
+- Authorization and abort thresholds are recorded.
+- Tests remain within the approved load envelope.
+- Measurements are repeatable and include environmental limitations.
+- No uncontrolled DDoS traffic or third-party targets are used.
+
+## Current implementation and testing status
+
+The profile identifier is accepted by the certificate implementation. The repository report documents limited synthetic API-abuse tests; these do not prove DDoS resistance or capacity under internet-scale distributed traffic.
+
+The `availability-ddos-resistance` profile is defined in the project certificate implementation. A certificate profile identifier means the certificate format can name that assessment category; it does not by itself prove that all assessment methods described here are implemented or effective.
+
+See:
+- [Service specification](./SERVICE-SPECIFICATION.md)
+- [Evidence and testing guide](./EVIDENCE-AND-TESTING.md)
+- [Catalog-wide test matrix](../CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md)
+- [Certificate implementation](https://github.com/byLAEV/Node-Core-OS/blob/main/node_core/security/node_identity_certificate.py)
+
+## Commercial status
+
+This is a proposed service definition. Price, provider remuneration, verifier remuneration, fees, and allocation of revenue are **not defined**. They must be decided by the business-model consensus process. No revenue or customer demand is guaranteed.
+
+## Important limitation
+
+A certificate records defined claims made under an issuer and verification policy. A valid signature establishes integrity and key-based origin of the signed claims; it does not prove every claim is true. The final report must state the exact system, version, period, methods, results, exclusions, and known limitations.
