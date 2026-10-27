@@ -1,0 +1,60 @@
+name: Enterprise identity defense simulation
+
+on:
+  push:
+    branches:
+      - main
+      - "simulation/enterprise-identity-defense"
+    paths:
+      - "scripts/enterprise_identity_defense_simulation.py"
+      - "tests/test_enterprise_identity_defense_simulation.py"
+      - ".github/workflows/enterprise-identity-defense-simulation.yml"
+  pull_request:
+    paths:
+      - "scripts/enterprise_identity_defense_simulation.py"
+      - "tests/test_enterprise_identity_defense_simulation.py"
+      - ".github/workflows/enterprise-identity-defense-simulation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-identity-defense-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulation:
+    name: Synthetic lifecycle, incident report and peer quorum
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install simulation dependency
+        run: python -m pip install --upgrade pip cryptography
+
+      - name: Run enterprise identity defense simulation
+        run: python scripts/enterprise_identity_defense_simulation.py
+
+      - name: Run regression tests
+        run: python -m unittest -v tests.test_enterprise_identity_defense_simulation
+
+      - name: Record simulation scope
+        if: always()
+        run: |
+          {
+            echo "## Enterprise identity defense simulation"
+            echo ""
+            echo "- Mode: synthetic and in-memory."
+            echo "- External network contact: none."
+            echo "- Real devices/domains modified: none."
+            echo "- This workflow tests protocol logic and signatures, not live attack mitigation."
+          } >> "$GITHUB_STEP_SUMMARY"
