@@ -258,7 +258,15 @@ class TestWeb2HeavyStress(unittest.TestCase):
             elif vector == "oversized":
                 headers["Content-Type"] = "application/json"
                 body = b'{"data":"' + (b"X" * OVERSIZED_BODY_BYTES) + b'"}'
-                conn.request("POST", BASE_PATH + "/db-sync", body=body, headers=headers)
+                # Test early rejection using the declared length. Do not upload
+                # a body that the server is designed to reject immediately:
+                # the resulting peer close can otherwise look like a transport
+                # failure even though the 413 defense worked as intended.
+                conn.putrequest("POST", BASE_PATH + "/db-sync")
+                for key, value in headers.items():
+                    conn.putheader(key, value)
+                conn.putheader("Content-Length", str(len(body)))
+                conn.endheaders()
             else:
                 return {
                     "vector": vector, "status": 0, "duration_seconds": 0.0,
