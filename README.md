@@ -102,7 +102,45 @@ SHA-256 alone does not authenticate a person, prove human uniqueness, or replace
 
 **API status:** the repository's [API Contract](docs/API-CONTRACT.md) is explicitly a proposed contract, not a claim that a stable public API is implemented. The [SDK Integration Guide](docs/SDK-INTEGRATION.md) is a guide and roadmap, not evidence of a released official SDK.
 
-## 5. Node networking, corroboration, and consensus
+## 5. Identity Tools and Node Services byLAEV
+
+The identity-related tools are a **product and service layer within Node Core OS**, not a separate operating system and not a claim that every proposed service is already available. Their purpose is to let personal identities and their authorized nodes perform useful, verifiable work: manage credentials, verify signed claims, protect node-to-node interactions, produce evidence, and—once a real service and payment system exist—receive compensation for accepted work.
+
+The dedicated `tools/` directory is the catalog and design area for these tools. It keeps product definitions, scope, requirements, and acceptance criteria separate from the reusable Node Core runtime. Implementations should be integrated into the core only through documented interfaces, explicit authorization, and tests.
+
+### Product families
+
+- **Identity and device credentials (CMI / SCC):** a proposed lifecycle for personal identity anchors and subordinate device credentials, including issuance, verification, expiry, renewal, delegation, and revocation. A signature can authenticate a credential's issuer and integrity; it does not independently prove that a real-world identity claim is true or unique.
+- **Node trust and security services:** planned verification of credentials and signed events, revocation status, access control, abuse controls, and auditable service results. A valid credential does not, by itself, prevent denial-of-service attacks or authorize every action.
+- **Portable attestations and reputation evidence:** a planned way to carry signed, contextual attestations and evidence between services. Reputation is not a universal score; claims should be attributable, scoped, reviewable, and correctable.
+- **Operator tools and service marketplace:** a future layer through which node operators, identity holders, developers, and service providers can perform requested work and be paid for measurable, accepted service. Node uptime or registration alone does not guarantee compensation.
+
+### Participation and compensation model
+
+Node Core OS is intended to let people and their nodes participate in useful services—not to sell a person's identity. Potential paid work may include credential verification, authorized attestations, availability, data distribution, auditing, or other explicitly defined tasks. Each paid task needs a service specification, acceptance criteria, evidence of completion, a disclosed price or reward rule, and a dispute path.
+
+Payments are **a product direction, not an existing earning guarantee**. No participant should be promised income merely for registering an identity, running a node, purchasing equipment, recruiting others, or holding a token. Revenue must come from customers paying for useful services, and the distribution model must account for operating costs, payment fees, taxes, legal obligations, fraud, and disputes.
+
+### Scope and implementation boundaries
+
+The tools must preserve the distinction between:
+
+1. a person's declared identity information;
+2. cryptographic proof of control of a key;
+3. an issuer's claim and its verification evidence;
+4. authorization to perform a specific action;
+5. evidence that a service task was completed; and
+6. the business rule used to calculate and distribute payment.
+
+Multiple nodes operated by one person must not automatically multiply that person's human vote or identity uniqueness. Technical node consensus and human governance are separate mechanisms and require their own rules.
+
+The first implementation stage prioritizes transparent data structures, reproducible cryptographic verification, explicit consent, key lifecycle, expiry and revocation, access control, tests, and auditable service records. Privacy enhancements—including selective disclosure and zero-knowledge proofs—may follow when the requirements and guarantees are defined. The tools must not collect or publish sensitive personal data by default.
+
+**Current status:** the `tools/` catalog documents product direction and proposed contracts. It does not assert that CMI/SCC issuance, production PKI, global identity uniqueness, a reputation network, a service marketplace, or participant payments are complete or production-ready. Each capability must earn its status through implementation, tests, security review, and documented operational evidence.
+
+See [Identity Tools catalog](tools/README.md) for product boundaries, planned components, and staged acceptance criteria.
+
+## 6. Node networking, corroboration, and consensus
 
 The long-term architecture contemplates multiple nodes exchanging references, records, and evidence through explicit protocols. These capabilities must be treated as distinct concerns:
 
@@ -118,7 +156,7 @@ A network connection does not by itself make a peer trustworthy. Likewise, a col
 
 Consensus-related work is intended to make states and supporting evidence comparable across nodes, including references to external repository states. The exact scope and implementation status of each consensus feature must be established by its code, tests, and documentation. Global peer discovery or production-grade distributed consensus should not be inferred from the existence of architectural plans.
 
-## 6. Records and My Life / Node Blog
+## 7. Records and My Life / Node Blog
 
 My Life / Node Blog is documented as a local-first personal record feature. Entries are stored as Markdown files under the local Node Core data directory, with metadata maintained in a local index.
 
@@ -128,7 +166,7 @@ A published CID can be associated with an entry, and the user can choose whether
 
 See [My Life / Node Blog documentation](docs/MY-LIFE-BLOG.md).
 
-## 7. Remembering, forgetting, and data lifecycle
+## 8. Remembering, forgetting, and data lifecycle
 
 The proposed future architecture separates historical retention from applying historical information to a current request.
 
@@ -161,7 +199,7 @@ These operations are not interchangeable. In particular, forgetting from an acti
 
 **Status:** [Remembering & Forgetting](docs/REMEMBERING-FORGETTING.md) is a proposed future architecture, not a claim that a complete selective-memory system is implemented.
 
-## 8. Public APIs and third-party applications
+## 9. Public APIs and third-party applications
 
 Node Core OS aims to expose documented interfaces through which external applications can request supported core capabilities.
 
@@ -190,7 +228,7 @@ Do not treat proposed endpoints or SDKs as available until they are implemented,
 - [API Contract](docs/API-CONTRACT.md)
 - [SDK Integration Guide](docs/SDK-INTEGRATION.md)
 
-## 9. Installation
+## 10. Installation
 
 ### GNU/Linux
 
@@ -226,7 +264,7 @@ The repository's platform documents have not always described Termux consistentl
 
 Windows and macOS are not documented as supported targets.
 
-## 10. Implementation status and roadmap
+## 11. Implementation status and roadmap
 
 Node Core OS includes executable infrastructure alongside proposals and future architecture. A document or catalog entry is not, by itself, evidence that a feature is implemented, tested, audited, or deployed.
 
@@ -254,7 +292,7 @@ The project's broad development directions include:
 
 This list describes development direction, not a statement that every item is complete.
 
-## 11. Development and contribution principles
+## 12. Development and contribution principles
 
 Contributions should favor explicit, understandable, reproducible, and testable implementation.
 
@@ -269,7 +307,7 @@ Contributions should favor explicit, understandable, reproducible, and testable 
 
 Before proposing a new protocol, define its purpose, participants, inputs, outputs, trust assumptions, failure cases, and acceptance tests.
 
-## 12. Documentation
+## 13. Documentation
 
 | Document | Purpose |
 | --- | --- |
@@ -279,19 +317,19 @@ Before proposing a new protocol, define its purpose, participants, inputs, outpu
 | [Termux Guide](docs/TERMUX.md) | Android Termux installation path. |
 | [API Contract](docs/API-CONTRACT.md) | Proposed public API contract. |
 | [SDK Integration](docs/SDK-INTEGRATION.md) | Integration requirements and roadmap. |
-| [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |
+| [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |\n| [Identity Tools catalog](tools/README.md) | Product scope, service families, implementation boundaries, and acceptance stages. |
 | [Remembering & Forgetting](docs/REMEMBERING-FORGETTING.md) | Proposed contextual-history architecture. |
 | [Use Cases](docs/USE-CASES.md) | Protocol and application catalog. |
 | [My Life / Node Blog](docs/MY-LIFE-BLOG.md) | Personal records and IPFS publication behavior. |
 
-## 13. License and repository information
+## 14. License and repository information
 
 Check the repository's [LICENSE](LICENSE) file for the terms that apply to this project, and review the repository for contribution guidance before submitting changes.
 
 - **Repository:** https://github.com/byLAEV/Node-Core-OS/
 - **Issues and development:** use the repository's GitHub issue and pull request workflows.
 
-## 14. Long-term vision
+## 15. Long-term vision
 
 Node Core OS byLAEV aims to provide reusable digital infrastructure on which people, organizations, and applications can manage resources, identity-related information, and evidence through explicit protocols.
 

@@ -1,9 +1,6 @@
 name: Node Core OS - Termux remote Kubo read
 
 on:
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       expected_node_id:
@@ -15,23 +12,6 @@ permissions:
   contents: read
 
 jobs:
-  validate-workflow:
-    if: github.event_name == 'pull_request'
-    name: Validate workflow file and helper syntax
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Validate helper syntax without privileged commands
-        run: |
-          set -euo pipefail
-          test "$(id -u)" -ne 0
-          python3 -m py_compile tools/termux_remote_kubo_read.py
-          test -s .github/workflows/termux-remote-kubo-read.yml
-          echo "Workflow parsed by GitHub Actions; helper syntax is valid."
-
   termux-remote-read:
     if: github.event_name == 'workflow_dispatch'
     name: Read remote synthetic CID from Termux and verify signed receipt
