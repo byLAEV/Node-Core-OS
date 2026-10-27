@@ -1,6 +1,7 @@
 """Local integration tests for the CDD HTTP gateway and Kubo policy adapter."""
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import hmac
 import json
 import threading
 import unittest
@@ -38,10 +39,25 @@ class FakeKubo:
 
 
 class OriginHandler(BaseHTTPRequestHandler):
+    token = "test-origin-token-with-more-than-32-characters"
+
     def log_message(self, format, *args):
         return
 
+    def _authorized(self):
+        supplied = self.headers.get("X-Node-Core-Origin-Token", "")
+        if not hmac.compare_digest(supplied, self.token):
+            payload = b"origin access denied"
+            self.send_response(403)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+            return False
+        return True
+
     def do_GET(self):
+        if not self._authorized():
+            return
         payload = ("origin:" + self.path).encode()
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
@@ -50,6 +66,8 @@ class OriginHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def do_POST(self):
+        if not self._authorized():
+            return
         length = int(self.headers.get("Content-Length", "0"))
         payload = self.rfile.read(length)
         self.send_response(200)
@@ -92,6 +110,7 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             trusted_issuer_keys=self.trusted,
             last_sequence=0,
             timeout_seconds=2,
+            origin_auth_token=OriginHandler.token,
         )
         self.gateway = create_cdd_server(("127.0.0.1", 0), self.config)
         self.gateway_thread = threading.Thread(target=self.gateway.serve_forever, daemon=True)
@@ -130,6 +149,17 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         second = self.request("/forwarded", headers={"X-Forwarded-For": "198.51.100.8"})
         third = self.request("/forwarded", headers={"X-Forwarded-For": "203.0.113.9"})
         self.assertEqual((first.status, second.status, third.status), (200, 200, 429))
+
+    def test_direct_origin_bypass_is_denied_without_gateway_token(self):
+        try:
+            response = urlopen(
+                f"http://127.0.0.1:{self.origin.server_port}/direct",
+                timeout=2,
+            )
+        except urllib.error.HTTPError as exc:
+            response = exc
+        self.assertEqual(response.status, 403)
+        self.assertEqual(response.read(), b"origin access denied")
 
     def test_mismatched_origin_policy_fails_before_server_starts(self):
         wrong = CDDGatewayConfig(
