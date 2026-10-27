@@ -1,0 +1,36 @@
+{
+  "schema": "node-core-os.smart-tv.manifest",
+  "version": "1.0",
+  "device": {
+    "device_ref": "lab-tv-001",
+    "platform": "replace-with-authorized-oem-test-platform",
+    "manufacturer_key_id": "lab-manufacturer-key",
+    "secure_key_storage": false,
+    "verified_boot_adapter": false
+  },
+  "privacy": {
+    "external_telemetry_enabled": false,
+    "raw_sensor_data_upload": false,
+    "owner_approval_required_for_support": true
+  },
+  "alerts": {
+    "enabled": false,
+    "max_event_bytes": 8192,
+    "max_events_per_minute": 10,
+    "queue_capacity": 100,
+    "require_event_signature": true,
+    "require_authenticated_transport": true
+  },
+  "peer_defense": {
+    "enabled": false,
+    "minimum_witness_domains": 2,
+    "partition_policy": "degraded-indeterminate",
+    "automatic_remote_commands": false
+  },
+  "support": {
+    "real_payments_enabled": false,
+    "max_authorized_amount_minor_units": 0,
+    "require_accepted_work": true,
+    "settlement_mode": "dry-run"
+  }
+}
