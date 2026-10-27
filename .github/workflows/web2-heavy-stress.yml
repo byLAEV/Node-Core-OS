@@ -1,0 +1,67 @@
+name: Web2 Heavy Stress & Concurrency Defense Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tests/test_web2_heavy_stress.py"
+      - ".github/workflows/web2-heavy-stress.yml"
+      - "node_core/p2p/tls_transport.py"
+      - "node_core/identity/**"
+  push:
+    branches: [main, "security/web2-acceptance-report"]
+
+permissions:
+  contents: read
+
+jobs:
+  heavy-stress-lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Enforce unprivileged execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip install --disable-pip-version-check pytest
+
+      - name: Run bounded concurrent hybrid stress test
+        id: stress
+        run: |
+          set -euo pipefail
+          pytest tests/test_web2_heavy_stress.py -v --maxfail=1
+
+      - name: Upload stress evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-os-web2-heavy-stress-report
+          path: artifacts/web2-heavy-stress/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish stress summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if test -f artifacts/web2-heavy-stress/web2-heavy-stress-report.md; then
+            cat artifacts/web2-heavy-stress/web2-heavy-stress-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Stress report not generated; inspect pytest logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
