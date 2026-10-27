@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/tools/catalog/service.schema.json",
+  "title": "Node Core OS Product and Service Catalog Entry",
+  "description": "Descriptive schema for catalog records. It does not define prices, payment formulas, or economic policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "name",
+    "version",
+    "status",
+    "category",
+    "purpose",
+    "scope",
+    "eligibility",
+    "work_definition",
+    "evidence",
+    "acceptance_criteria",
+    "economic_policy_status"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^CAT-[A-Z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "specified",
+        "implemented",
+        "tested",
+        "security-reviewed",
+        "operational",
+        "retired"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "pattern": "^CAT-[A-Z0-9-]+$"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "required": ["includes", "excludes"],
+      "properties": {
+        "includes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "excludes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "eligibility": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "work_definition": {
+      "type": "object",
+      "required": ["trigger", "steps", "expected_result", "unit"],
+      "properties": {
+        "trigger": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "expected_result": { "type": "string" },
+        "unit": {
+          "type": "string",
+          "description": "Technical unit of work; not a price or payment formula."
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "economic_policy_status": {
+      "const": "pending-consensus"
+    },
+    "economic_decision_ref": {
+      "type": ["string", "null"],
+      "description": "Must reference an approved, versioned decision once one exists."
+    },
+    "implementation_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "test_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
