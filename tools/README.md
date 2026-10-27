@@ -11,6 +11,12 @@ The goal is to turn identity and node participation into useful, auditable servi
 
 The intended business model is to pay for **real, requested, measurable and accepted services**. Identity itself is not the product to be sold, and income is not guaranteed by registration, node ownership, uptime, recruitment, or token holding.
 
+## Maintained product and service catalog
+
+The complete, versioned catalog for potentially monetizable node work lives in [`tools/catalog/`](catalog/README.md). It separates service definitions and acceptance evidence from economic policy. The distribution of benefits, prices, fees, and reward formulas remain `pending-consensus` until approved through the project's business-model consensus process. No payment implementation or income guarantee is implied.
+
+See the [catalog index](catalog/README.md), [economic consensus record](catalog/ECONOMIC-CONSENSUS.md), [service template](catalog/SERVICE-TEMPLATE.md), and [service-family index](catalog/services/README.md).
+
 ## Product catalog
 
 | Product family | Intended capability | Status in this catalog |
