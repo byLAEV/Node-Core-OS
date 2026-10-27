@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/schemas/node-core-node-identity-certificate.schema.json",
+  "title": "Node Core OS Node Identity Certificate Claims",
+  "description": "Claims inside the signed JWS payload. The enclosing token uses EdDSA/Ed25519. This project-defined profile is not an X.509 certificate or an external accreditation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["iss", "sub", "jti", "iat", "nbf", "exp", "node_core"],
+  "properties": {
+    "iss": {"type": "string", "minLength": 1, "description": "Issuer identifier; must be mapped to a trusted issuer key by local policy."},
+    "sub": {"type": "string", "minLength": 1, "description": "Stable node identifier."},
+    "jti": {"type": "string", "format": "uuid", "description": "Unique credential identifier used for revocation."},
+    "iat": {"type": "integer", "minimum": 0, "description": "Issued-at NumericDate in UTC seconds."},
+    "nbf": {"type": "integer", "minimum": 0, "description": "Not-before NumericDate in UTC seconds."},
+    "exp": {"type": "integer", "minimum": 0, "description": "Expiry NumericDate in UTC seconds; lifetime maximum is 90 days."},
+    "node_core": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "version", "profile", "subject_public_key"],
+      "properties": {
+        "format": {"const": "node-core-os-node-identity"},
+        "version": {"const": "1.0"},
+        "profile": {
+          "enum": [
+            "sybil-resistance",
+            "p2p-partition-eclipse-resistance",
+            "byzantine-collusion-resistance",
+            "identity-key-protection",
+            "software-supply-chain-integrity",
+            "availability-ddos-resistance",
+            "ipfs-content-integrity",
+            "privilege-and-pool-isolation"
+          ]
+        },
+        "subject_public_key": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$", "description": "Raw Ed25519 public key in hexadecimal."},
+        "metadata": {
+          "type": "object",
+          "maxProperties": 32,
+          "propertyNames": {"maxLength": 64},
+          "additionalProperties": {"type": "string", "maxLength": 256}
+        }
+      }
+    }
+  }
+}
