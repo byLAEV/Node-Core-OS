@@ -85,7 +85,8 @@ def verify_signed_security_event(event: dict[str, Any], trusted_reporter_keys: d
         if instant.tzinfo is None:
             return False
         observed, expires = _utc(event["observed_at"]), _utc(event["expires_at"])
-        if expires <= observed or instant.astimezone(timezone.utc) > expires:
+        current = instant.astimezone(timezone.utc)
+        if expires <= observed or observed > current or current > expires:
             return False
         if event.get("confidence") not in {"observed", "corroborated", "confirmed"}:
             return False
@@ -152,17 +153,19 @@ def verify_revocation_snapshot(snapshot: dict[str, Any], trusted_issuer_keys: di
         return False
 
 
-def should_quarantine(subject_id: str, verified_events: list[dict[str, Any]],
-                      *, minimum_independent_reporters: int = 3) -> bool:
-    """Require corroboration by distinct verified reporters; never trust one report."""
+def should_quarantine(subject_id: str, signed_events: list[dict[str, Any]],
+                      trusted_reporter_keys: dict[str, str], *,
+                      minimum_independent_reporters: int = 3,
+                      now: datetime | None = None) -> bool:
+    """Require valid signatures from distinct trusted reporters; never trust a caller-supplied verified flag."""
     if not subject_id or minimum_independent_reporters < 2:
         raise SecurityRecordError("Quarantine requires at least two independent reporters.")
-    reporters = {
-        item.get("reporter_node_id")
-        for item in verified_events
-        if item.get("subject_id") == subject_id
-        and item.get("confidence") in {"corroborated", "confirmed"}
-        and item.get("verified") is True
-        and isinstance(item.get("reporter_node_id"), str)
-    }
+    reporters = set()
+    for event in signed_events:
+        if not isinstance(event, dict) or event.get("subject_id") != subject_id:
+            continue
+        if event.get("confidence") not in {"corroborated", "confirmed"}:
+            continue
+        if verify_signed_security_event(event, trusted_reporter_keys, now=now):
+            reporters.add(event["reporter_node_id"])
     return len(reporters) >= minimum_independent_reporters
