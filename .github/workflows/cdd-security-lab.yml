@@ -11,6 +11,7 @@ on:
       - "tests/test_cdd_security.py"
       - "tests/test_cdd_gateway.py"
       - "tests/test_cdd_router.py"
+      - "tests/test_cdd_integration.py"
       - "docs/CDD-DISTRIBUTED-DEFENSE.md"
       - ".github/workflows/cdd-security-lab.yml"
       - "node_core/identity/node_identity.py"
@@ -24,6 +25,7 @@ on:
       - "tests/test_cdd_security.py"
       - "tests/test_cdd_gateway.py"
       - "tests/test_cdd_router.py"
+      - "tests/test_cdd_integration.py"
       - "docs/CDD-DISTRIBUTED-DEFENSE.md"
       - ".github/workflows/cdd-security-lab.yml"
       - "node_core/identity/node_identity.py"
@@ -70,7 +72,7 @@ jobs:
       - name: Compile CDD implementation and tests
         run: |
           set -euo pipefail
-          python -m py_compile node_core/security/cdd.py node_core/security/cdd_gateway.py node_core/security/cdd_router.py tests/test_cdd_security.py tests/test_cdd_gateway.py tests/test_cdd_router.py
+          python -m py_compile node_core/security/cdd.py node_core/security/cdd_gateway.py node_core/security/cdd_router.py tests/test_cdd_security.py tests/test_cdd_gateway.py tests/test_cdd_router.py tests/test_cdd_integration.py
 
       - name: Run CDD security and gateway tests
         run: |
@@ -78,6 +80,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_cdd_security.py' -v
           python -m unittest discover -s tests -p 'test_cdd_gateway.py' -v
           python -m unittest discover -s tests -p 'test_cdd_router.py' -v
+          python -m unittest discover -s tests -p 'test_cdd_integration.py' -v
 
       - name: Publish accurate scope and limitations
         if: always()
@@ -88,6 +91,9 @@ jobs:
             echo "- Gateway integration tests use synthetic identities and loopback-only origin/gateway servers."
             echo "- Does not prove production DDoS resistance, global quotas, P2P ingress/failover, DNS/Anycast, or origin firewall isolation."
             echo "- Kubo adapter tests use a fake Kubo object; real Kubo interoperability remains a separate integration test."
-            echo "- Multi-gateway tests use synthetic loopback gateways; they do not measure Internet routing, global quotas, or DDoS capacity."
+            echo "- Multi-gateway integration uses three independent loopback HTTP listeners and repeated latency/availability measurements."
+            echo "- Shared quota test injects one in-process limiter into all gateway handlers; cross-process/distributed coordination is not yet implemented."
+            echo "- Integration policy CID tests use a deterministic fake Kubo adapter; real Kubo daemon interoperability remains separate."
+            echo "- No public target or external attack traffic is used."
             echo "- A skipped or unexecuted test is not a passing test."
           } >> "$GITHUB_STEP_SUMMARY"
