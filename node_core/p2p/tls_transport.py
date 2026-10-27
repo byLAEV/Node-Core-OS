@@ -14,6 +14,7 @@ import ssl
 from typing import Iterable
 
 from cryptography import x509
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 from cryptography.x509.oid import NameOID
@@ -146,14 +147,41 @@ class NodeTLSTransport:
             raise TLSTransportError("Unable to load pinned peer certificates.") from exc
 
     def _validate_certificate(self, cert: x509.Certificate, node_id: str, public_key_hex: str) -> None:
+        """Validate the pinned certificate's identity, signature, validity and SAN.
+
+        These checks are required even for self-signed certificates: pinning a
+        public key does not make an expired or malformed certificate acceptable.
+        """
         public_key = cert.public_key()
         if not isinstance(public_key, Ed25519PublicKey):
             raise TLSTransportError("Stored TLS certificate does not use Ed25519.")
+
         raw = public_key.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
         if raw.hex() != public_key_hex:
             raise TLSTransportError("TLS certificate public key differs from the node identity.")
         if "sha256:" + hashlib.sha256(raw).hexdigest() != node_id:
             raise TLSTransportError("TLS certificate node ID does not match the identity.")
+
+        if cert.subject != cert.issuer:
+            raise TLSTransportError("Pinned node certificate must be self-issued.")
+        try:
+            # Ed25519 certificate signatures are verified over the exact TBSCertificate bytes.
+            public_key.verify(cert.signature, cert.tbs_certificate_bytes)
+        except InvalidSignature as exc:
+            raise TLSTransportError("TLS certificate self-signature is invalid.") from exc
+
+        now = datetime.now(timezone.utc)
+        if now < cert.not_valid_before_utc or now > cert.not_valid_after_utc:
+            raise TLSTransportError("TLS certificate is outside its validity period.")
+
+        try:
+            san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+            node_uris = san.get_values_for_type(x509.UniformResourceIdentifier)
+        except x509.ExtensionNotFound as exc:
+            raise TLSTransportError("TLS certificate is missing its node identity SAN.") from exc
+        expected_uri = "urn:node-core-os:node:" + node_id
+        if expected_uri not in node_uris:
+            raise TLSTransportError("TLS certificate SAN does not match the node identity.")
 
     def _write_private_certificate(self, pem: bytes) -> None:
         self.identity_store.identity_dir.mkdir(parents=True, exist_ok=True, mode=0o700)

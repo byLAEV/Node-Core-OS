@@ -1,0 +1,71 @@
+name: Node Core OS — Certificate Adversarial Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - security/certificate-adversarial-tests
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certificate-adversarial-tests:
+    name: Isolated certificate attack tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Enforce ordinary-user execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test -n "$HOME"
+          test -w "$HOME"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cryptographic dependency
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Run certificate adversarial tests
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_certificate_security.py' -v
+          python -m unittest discover -s tests -p 'test_certificate_web_lab.py' -v
+          python -m unittest discover -s tests -p 'test_web_tls_profile.py' -v
+          python -m unittest discover -s tests -p 'test_standard_https_validation.py' -v
+          python -m unittest discover -s tests -p 'test_distributed_defense.py' -v
+          python -m unittest discover -s tests -p 'test_api_abuse_lab.py' -v
+          python -m unittest discover -s tests -p 'test_p2p_tls_transport.py' -v
+          python -m compileall -q node_core/security node_core/identity tests
+
+      - name: Record test scope
+        if: always()
+        run: |
+          {
+            echo "## Certificate adversarial test scope"
+            echo "- Synthetic temporary identities only"
+            echo "- No external hosts or production keys"
+            echo "- Tests cover identity binding, malformed PEM, metadata tampering, signature tampering, expiry, and invalid certificate signatures"
+            echo "- Standard HTTPS tests use synthetic local CA/server certificates and loopback only"
+            echo "- Signed event and revocation tests validate local primitives; they do not prove distributed propagation"
+            echo "- API abuse tests use a bounded synthetic loopback handler, not the production API"
+            echo "- A failing security assertion means the tested rejection behavior is not established"
+          } >> "$GITHUB_STEP_SUMMARY"
