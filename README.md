@@ -342,3 +342,10 @@ Node Core OS byLAEV aims to provide reusable digital infrastructure on which peo
 The core should provide shared capabilities so that applications do not each need to recreate their own storage, identity, and resource-management systems. The long-term direction is an interoperable, distributed, and decentralized ecosystem that maintains clear distinctions between data, evidence, identity, authorization, and decisions.
 
 **Node Core OS provides the infrastructure. Protocols define reusable rules. Applications compose those capabilities for specific purposes. Code and tests determine which capabilities are actually available.**
+
+
+## Smart TV Security Module (proposal)
+
+The proposed Smart TV security architecture is documented in [`docs/smart-tv/README.md`](docs/smart-tv/README.md). It separates manufacturer attestation, device-key identity, owner claims, firmware integrity, authenticated alerts, local peer corroboration, privacy controls, emergency containment, and support-work authorization. Its manifest and example are checked by [Smart TV Specification Integrity](.github/workflows/smart-tv-spec-integrity.yml).
+
+**Status:** proposal documentation and manifest checks only. This does not establish OEM firmware integration, secure boot, physical microphone/camera isolation, a hardware kill-switch, production real-time defense, or enabled payment rails. See [`docs/smart-tv/IMPLEMENTATION-STATUS.md`](docs/smart-tv/IMPLEMENTATION-STATUS.md) for explicit gaps.

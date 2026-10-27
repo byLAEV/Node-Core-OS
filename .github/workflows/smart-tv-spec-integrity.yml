@@ -1,0 +1,77 @@
+name: Node Core OS — Smart TV Specification Integrity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/smart-tv/**"
+      - ".github/workflows/smart-tv-spec-integrity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/smart-tv/**"
+      - ".github/workflows/smart-tv-spec-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smart-tv-spec:
+    name: Validate Smart TV proposal artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate manifest and example JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("docs/smart-tv")
+          schema = json.loads((root / "MANIFEST.schema.json").read_text(encoding="utf-8"))
+          example = json.loads((root / "manifest.example.json").read_text(encoding="utf-8"))
+          assert schema["$schema"].endswith("2020-12/schema")
+          assert schema["additionalProperties"] is False
+          assert example["schema"] == "node-core-os.smart-tv.manifest"
+          assert example["version"] == "1.0"
+          assert example["privacy"]["raw_sensor_data_upload"] is False
+          assert example["support"]["real_payments_enabled"] is False
+          assert example["support"]["max_authorized_amount_minor_units"] == 0
+          assert example["peer_defense"]["automatic_remote_commands"] is False
+          assert example["alerts"]["max_event_bytes"] <= 65536
+          assert example["alerts"]["max_events_per_minute"] <= 120
+          assert example["alerts"]["queue_capacity"] <= 10000
+          print("Smart TV manifest JSON and safety invariants: PASS")
+          PY
+      - name: Check required module documents
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root = Path("docs/smart-tv")
+          required = [
+              "README.md",
+              "CERTIFICATE-1-ACQUISITION-OWNERSHIP.md",
+              "CERTIFICATE-4-ALERT-CHANNEL.md",
+              "CERTIFICATE-5-SUPPORT-SETTLEMENT.md",
+              "COORDINATED-DEFENSE-AND-EXTREME-TESTS.md",
+              "IMPLEMENTATION-STATUS.md",
+          ]
+          missing = [name for name in required if not (root / name).is_file()]
+          if missing:
+              raise SystemExit("Missing required Smart TV documents: " + ", ".join(missing))
+          print(f"Smart TV specification completeness: PASS ({len(required)} required documents)")
+          PY
+      - name: Publish explicit scope
+        if: always()
+        run: |
+          {
+            echo "## Smart TV specification workflow scope"
+            echo "- Validates JSON syntax, selected manifest safety invariants, and required documents."
+            echo "- Does not test a TV, OEM firmware, secure boot, physical privacy controls, network defense, or payments."
+            echo "- Hardware and profile-specific attack suites remain NOT RUN until implemented on an authorized test platform."
+          } >> "$GITHUB_STEP_SUMMARY"
