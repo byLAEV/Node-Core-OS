@@ -17,6 +17,8 @@ CDD is an incremental architecture for protecting existing Web2 domains, HTTP se
 - Optional gateway-to-origin shared-token authentication for the lab. The origin must independently enforce this token; merely configuring it at the gateway does not protect an origin that accepts unauthenticated direct traffic.
 - Loopback multi-gateway router with round-robin selection and GET/HEAD failover after transport errors or 502/503/504 responses. Non-idempotent methods are not automatically retried.
 - Tests use synthetic identities, a fake Kubo adapter and local HTTP servers.
+- Three-gateway loopback integration measures round-robin distribution, GET failover after deliberately stopping one gateway, response latency and availability, direct-origin rejection, signed CID-policy loading/tamper rejection, and expired-policy rejection.
+- Shared-quota integration injects the same in-process limiter into three independent HTTP gateway listeners. This validates the shared quota interface but is not a cross-process or cross-machine coordinator.
 - A focused GitHub Actions workflow runs CDD primitives, gateway and router tests.
 
 ## Security boundaries and limitations
@@ -49,6 +51,7 @@ python -m pip install -r requirements.txt
 python -m unittest discover -s tests -p 'test_cdd_security.py' -v
 python -m unittest discover -s tests -p 'test_cdd_gateway.py' -v
 python -m unittest discover -s tests -p 'test_cdd_router.py' -v
+python -m unittest discover -s tests -p 'test_cdd_integration.py' -v
 ```
 
 The dedicated GitHub Actions workflow runs the three suites on relevant pull requests, pushes to `main`, and manual dispatch. Passing them demonstrates only the behaviors they exercise; it does not prove production readiness.
@@ -60,6 +63,8 @@ The dedicated GitHub Actions workflow runs the three suites on relevant pull req
 3. Define authenticated client identity propagation and cross-node rate-limit coordination.
 4. Integrate authenticated P2P discovery with existing Node Core OS networking interfaces.
 5. Evaluate a public contract only after choosing the chain, governance and failure model.
-6. Compare against a conventional reverse proxy/WAF baseline under identical bounded laboratory conditions.
+6. Implement a durable, authenticated cross-process quota coordinator with explicit timeout/fail-closed behavior and test coordinator outage.
+7. Run the three-gateway integration suite repeatedly and retain machine-readable metrics artifacts.
+8. Compare against a conventional reverse proxy/WAF baseline under identical bounded laboratory conditions.
 
 Every stage must provide code, tests and evidence before its status is described as verified. No public target or external attack traffic is used by these tests.
