@@ -36,7 +36,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
 
       - name: Install simulation dependency
         run: python -m pip install --upgrade pip cryptography
@@ -45,7 +44,7 @@ jobs:
         run: python scripts/enterprise_identity_defense_simulation.py
 
       - name: Run regression tests
-        run: python -m unittest -v tests.test_enterprise_identity_defense_simulation
+        run: python -m unittest discover -s tests -p 'test_enterprise_identity_defense_simulation.py' -v
 
       - name: Record simulation scope
         if: always()
