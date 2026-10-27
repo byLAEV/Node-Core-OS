@@ -218,7 +218,10 @@ class ShieldDistributedAlertAcceptanceTests(unittest.TestCase):
             response = self._route(self._event(index))
             timings.append((time.monotonic() - started) * 1000)
             self.assertTrue(response["accepted"])
-            self.assertNotIn(self.subject, self.nodes["C"]["quarantined"])
+            if index < 2:
+                self.assertNotIn(self.subject, self.nodes["C"]["quarantined"])
+            else:
+                self.assertIn(self.subject, self.nodes["C"]["quarantined"])
         # C receives events via B. Three reporters are required before quarantine.
         self.assertEqual(len(self.nodes["C"]["events"]), 3)
         self.assertIn(self.subject, self.nodes["C"]["quarantined"])
