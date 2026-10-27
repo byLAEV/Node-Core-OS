@@ -104,6 +104,8 @@ SHA-256 alone does not authenticate a person, prove human uniqueness, or replace
 
 ## 5. Identity Tools and Node Services byLAEV
 
+For the detailed certificate and node-identity security report, including architecture, test scope, reproducible commands, CI evidence, limitations, and pending work, see [Official Node Identity Certificates Security Report](docs/IDENTITY-NODE-CERTIFICATES-SECURITY-REPORT.md).
+
 The identity-related tools are a **product and service layer within Node Core OS**, not a separate operating system and not a claim that every proposed service is already available. Their purpose is to let personal identities and their authorized nodes perform useful, verifiable work: manage credentials, verify signed claims, protect node-to-node interactions, produce evidence, and—once a real service and payment system exist—receive compensation for accepted work.
 
 The dedicated `tools/` directory is the catalog and design area for these tools. It keeps product definitions, scope, requirements, and acceptance criteria separate from the reusable Node Core runtime. Implementations should be integrated into the core only through documented interfaces, explicit authorization, and tests.
