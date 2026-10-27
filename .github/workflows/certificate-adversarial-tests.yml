@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - main
+      - security/certificate-adversarial-tests
   workflow_dispatch:
 
 permissions:
