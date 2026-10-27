@@ -5,8 +5,12 @@ import argparse
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import sys
 import time
 import unittest
+
+# Ensure tests can import the repository package when this file is run as a script.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 PATTERNS = (
     "test_certificate_web_lab.py",
