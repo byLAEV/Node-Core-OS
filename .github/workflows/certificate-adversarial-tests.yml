@@ -64,5 +64,8 @@ jobs:
             echo "- Synthetic temporary identities only"
             echo "- No external hosts or production keys"
             echo "- Tests cover identity binding, malformed PEM, metadata tampering, signature tampering, expiry, and invalid certificate signatures"
+            echo "- Standard HTTPS tests use synthetic local CA/server certificates and loopback only"
+            echo "- Signed event and revocation tests validate local primitives; they do not prove distributed propagation"
+            echo "- API abuse tests use a bounded synthetic loopback handler, not the production API"
             echo "- A failing security assertion means the tested rejection behavior is not established"
           } >> "$GITHUB_STEP_SUMMARY"
