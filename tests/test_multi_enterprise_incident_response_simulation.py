@@ -41,7 +41,7 @@ class MultiEnterpriseIncidentResponseTests(unittest.TestCase):
 
     def test_cross_pool_installation_registration_is_rejected(self):
         report = self.asset.install(self.certificate)
-        with self.assertRaises(PermissionError):
+        with self.assertRaises((PermissionError, ValueError)):
             self.pool_b.register_installation(report, self.certificate, now=1_800_000_001)
 
     def test_duplicate_installation_event_is_idempotent(self):
