@@ -25,11 +25,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install test utilities
+      - name: Verify test utilities are available without privilege escalation
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --yes curl tar
+          test "$(id -u)" -ne 0
+          command -v curl
+          command -v tar
       - name: Validate shell syntax
         run: bash -n installer/tests/three-kubo-nodes.sh
       - name: Start three independent Kubo nodes and verify mesh and content transfer
