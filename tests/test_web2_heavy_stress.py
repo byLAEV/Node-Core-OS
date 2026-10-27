@@ -68,6 +68,7 @@ class _StressState:
 class _StressHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    request_queue_size = 256
 
 
 def _contains_sql_pattern(value) -> bool:
@@ -331,7 +332,7 @@ class TestWeb2HeavyStress(unittest.TestCase):
 
     def test_concurrent_hybrid_attack_and_post_stress_recovery(self):
         vectors = ("flood", "spoofing", "injection", "oversized")
-        tasks = [vector for vector in vectors for _ in range(REQUESTS_PER_VECTOR)]
+        tasks = [vector for index in range(REQUESTS_PER_VECTOR) for vector in vectors]
         results = []
 
         started = time.perf_counter()
