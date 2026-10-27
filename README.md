@@ -142,6 +142,8 @@ The first implementation stage prioritizes transparent data structures, reproduc
 
 See [Identity Tools catalog](tools/README.md) for product boundaries, planned components, and staged acceptance criteria.
 
+For the dedicated business catalog of eight node-network security certificate products, including service specifications, testing boundaries, evidence requirements, and the economic-consensus status, see the [Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV](<Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/README.md>).
+
 ## 6. Node networking, corroboration, and consensus
 
 The long-term architecture contemplates multiple nodes exchanging references, records, and evidence through explicit protocols. These capabilities must be treated as distinct concerns:
