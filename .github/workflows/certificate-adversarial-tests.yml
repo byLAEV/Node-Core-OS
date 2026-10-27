@@ -48,6 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -p 'test_certificate_security.py' -v
+          python -m unittest discover -s tests -p 'test_certificate_web_lab.py' -v
+          python -m unittest discover -s tests -p 'test_p2p_tls_transport.py' -v
 
       - name: Record test scope
         if: always()
