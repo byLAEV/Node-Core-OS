@@ -275,7 +275,14 @@ class TestWeb2HeavyStress(unittest.TestCase):
             elif vector == "oversized":
                 headers["Content-Type"] = "application/json"
                 body = b'{"data":"' + (b"X" * OVERSIZED_BODY_BYTES) + b'"}'
-                conn.request("POST", BASE_PATH + "/db-sync", body=body, headers=headers)
+                # Exercise early rejection using the declared size only. The
+                # server should return 413 without requiring the client to send
+                # a body it is configured to reject immediately.
+                conn.putrequest("POST", BASE_PATH + "/db-sync")
+                for key, value in headers.items():
+                    conn.putheader(key, value)
+                conn.putheader("Content-Length", str(len(body)))
+                conn.endheaders()
             else:
                 return {
                     "vector": vector, "status": 0, "duration_seconds": 0.0,
