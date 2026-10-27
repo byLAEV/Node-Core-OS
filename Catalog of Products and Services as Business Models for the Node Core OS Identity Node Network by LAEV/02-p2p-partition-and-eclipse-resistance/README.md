@@ -60,3 +60,11 @@ This is a proposed service definition. Price, provider remuneration, verifier re
 ## Important limitation
 
 A certificate records defined claims made under an issuer and verification policy. A valid signature establishes integrity and key-based origin of the signed claims; it does not prove every claim is true. The final report must state the exact system, version, period, methods, results, exclusions, and known limitations.
+
+
+## Audit and evidence traceability
+
+- [Test traceability and GitHub Actions mapping](./TEST-TRACEABILITY.md)
+- [Service specification](./SERVICE-SPECIFICATION.md)
+- [Evidence and testing guide](./EVIDENCE-AND-TESTING.md)
+- [Catalog-wide audit and CI index](../AUDIT-AND-CI-INDEX.md)

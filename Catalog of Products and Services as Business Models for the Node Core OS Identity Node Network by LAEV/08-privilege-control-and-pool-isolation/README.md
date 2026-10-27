@@ -26,3 +26,11 @@ Each test identifies actor, resource, action, and expected decision; unauthorize
 The profile identifier exists. Certificate-envelope tests do not demonstrate application authorization, operating-system isolation, or enterprise-pool separation. Dedicated tests against integrated controls are required.
 
 See [service specification](./SERVICE-SPECIFICATION.md) and the [catalog test matrix](../CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md).
+
+
+## Audit and evidence traceability
+
+- [Test traceability and GitHub Actions mapping](./TEST-TRACEABILITY.md)
+- [Service specification](./SERVICE-SPECIFICATION.md)
+- [Evidence and testing guide](./EVIDENCE-AND-TESTING.md)
+- [Catalog-wide audit and CI index](../AUDIT-AND-CI-INDEX.md)

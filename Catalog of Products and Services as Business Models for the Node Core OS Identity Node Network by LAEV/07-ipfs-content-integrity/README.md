@@ -26,3 +26,11 @@ Use authorized non-sensitive fixtures; report CID integrity separately from cont
 The profile identifier exists. Certificate-envelope tests do not establish Kubo/IPFS retrieval, pinning, retention, or malicious-content detection. Dedicated integration tests are required.
 
 See [service specification](./SERVICE-SPECIFICATION.md) and the [catalog test matrix](../CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md).
+
+
+## Audit and evidence traceability
+
+- [Test traceability and GitHub Actions mapping](./TEST-TRACEABILITY.md)
+- [Service specification](./SERVICE-SPECIFICATION.md)
+- [Evidence and testing guide](./EVIDENCE-AND-TESTING.md)
+- [Catalog-wide audit and CI index](../AUDIT-AND-CI-INDEX.md)
