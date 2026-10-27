@@ -13,12 +13,16 @@ import json
 import math
 import re
 import sqlite3
+import sys
 import ssl
 import tempfile
 import threading
 import time
 import unittest
 from pathlib import Path
+
+# pytest may place tests/ first on sys.path; make the repository package explicit.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.tls_transport import NodeTLSTransport, TLSTransportError
