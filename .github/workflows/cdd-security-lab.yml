@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - "node_core/security/cdd.py"
+      - "node_core/security/cdd_gateway.py"
+      - "node_core/ipfs.py"
       - "tests/test_cdd_security.py"
+      - "tests/test_cdd_gateway.py"
       - "docs/CDD-DISTRIBUTED-DEFENSE.md"
       - ".github/workflows/cdd-security-lab.yml"
       - "node_core/identity/node_identity.py"
@@ -13,7 +16,10 @@ on:
     branches: [main]
     paths:
       - "node_core/security/cdd.py"
+      - "node_core/security/cdd_gateway.py"
+      - "node_core/ipfs.py"
       - "tests/test_cdd_security.py"
+      - "tests/test_cdd_gateway.py"
       - "docs/CDD-DISTRIBUTED-DEFENSE.md"
       - ".github/workflows/cdd-security-lab.yml"
       - "node_core/identity/node_identity.py"
@@ -28,7 +34,7 @@ concurrency:
 
 jobs:
   cdd-local-primitives:
-    name: Signed policy and bounded anti-bot tests
+    name: Signed policy, Kubo adapter and local HTTP gateway
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -60,20 +66,22 @@ jobs:
       - name: Compile CDD implementation and tests
         run: |
           set -euo pipefail
-          python -m py_compile node_core/security/cdd.py tests/test_cdd_security.py
+          python -m py_compile node_core/security/cdd.py node_core/security/cdd_gateway.py tests/test_cdd_security.py tests/test_cdd_gateway.py
 
-      - name: Run CDD unit tests
+      - name: Run CDD security and gateway tests
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -p 'test_cdd_security.py' -v
+          python -m unittest discover -s tests -p 'test_cdd_gateway.py' -v
 
       - name: Publish accurate scope and limitations
         if: always()
         run: |
           {
             echo "## CDD Security Lab"
-            echo "- Tests signed policy validation and a bounded in-process sliding-window limiter."
-            echo "- Uses synthetic local identities; no public targets or external traffic are used."
-            echo "- Does not prove production DDoS resistance, distributed quotas, P2P failover, or Kubo/CID integration."
+            echo "- Tests signed policy validation, a bounded local rate limiter, Kubo adapter behavior, and a local-only HTTP gateway."
+            echo "- Gateway integration tests use synthetic identities and loopback-only origin/gateway servers."
+            echo "- Does not prove production DDoS resistance, global quotas, P2P ingress/failover, DNS/Anycast, or origin firewall isolation."
+            echo "- Kubo adapter tests use a fake Kubo object; real Kubo interoperability remains a separate integration test."
             echo "- A skipped or unexecuted test is not a passing test."
           } >> "$GITHUB_STEP_SUMMARY"

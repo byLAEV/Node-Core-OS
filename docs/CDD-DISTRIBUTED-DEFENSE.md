@@ -1,71 +1,62 @@
 # Node Core OS byLAEV — CID Distributed Defense (CDD)
 
-**Version:** experimental MVP 0.1  
-**Status:** initial local security primitives; not a production gateway or DDoS mitigation service.
+**Version:** experimental MVP 0.2  
+**Status:** signed-policy primitives and local HTTP gateway implemented; not a production edge or DDoS mitigation service.
 
 ## Goal
 
-CDD is an incremental architecture for protecting existing Web2 domains, HTTP services and APIs with multiple ingress nodes, signed security policies, bot-abuse controls and optional P2P discovery. Protected websites and origins do not need to migrate to IPFS.
+CDD is an incremental architecture for protecting existing Web2 domains, HTTP services and APIs with multiple ingress nodes, signed security policies, request-abuse controls and future P2P discovery. Protected websites and origins do not need to migrate to IPFS.
 
-## What this first implementation contains
+## Implemented
 
-- A signed, versioned policy format using the repository's existing Ed25519 node identity.
-- Strict policy validation, issuer allowlisting, expiry checks and monotonic sequence/anti-rollback validation.
-- A bounded in-process sliding-window request limiter suitable for local unit tests and as a primitive for a future gateway.
-- Automated tests using synthetic identities and deterministic timestamps.
+- Signed, versioned policy creation and verification using the repository's existing Ed25519 node identity.
+- Strict policy validation, issuer allowlisting, key-to-node-ID binding, expiry checks and anti-rollback sequence.
+- Bounded in-process sliding-window request limiting.
+- Kubo adapter helpers that publish the exact signed JSON policy bytes using `KuboManager.add_file(pin=True)` and load them using `KuboManager.cat(cid)`, then verify the signature.
+- A laboratory HTTP reverse proxy that applies the signed policy's request/body limits before forwarding to a statically configured origin.
+- Tests using synthetic identities, a fake Kubo adapter and HTTP servers bound only to loopback.
+- A focused GitHub Actions workflow for the CDD unit and gateway suites.
 
-## What this first implementation does not contain
+## Security boundaries and limitations
 
-- An HTTP reverse proxy or production ingress gateway.
-- Kubo publication/retrieval or automatic CID generation for policy bytes.
-- A distributed/global rate-limit coordinator.
-- P2P service discovery for Web2 domains.
-- A public smart contract or blockchain adapter.
-- DNS/Anycast/traffic steering, upstream volumetric DDoS filtering, origin firewall automation, or production deployment.
-- A claim that malicious intent can be determined from a single request or that a website cannot be taken offline.
+- The HTTP gateway is an experimental synchronous laboratory proxy, not a production-grade ingress service.
+- Do not expose the gateway to the public internet or use it as the only protection for a real website.
+- The configured origin URL is operator-controlled; the client cannot choose an upstream destination. The gateway does not configure firewalls, secure DNS, or prevent direct origin bypass. The origin must be separately firewalled or require authenticated gateway-to-origin connections before deployment.
+- The limiter keys requests by the TCP peer IP and does not trust client-provided `X-Forwarded-For` or identity headers. It is process-local; distributed gateways do not share quotas.
+- Rate limiting is not proof that a request is a bot. It is a simple abuse-control primitive and may cause false positives.
+- Kubo adapter unit tests use a fake Kubo object. A real Kubo integration test is still required.
+- This does not implement P2P service discovery, traffic steering, DNS/Anycast, a public contract, upstream volumetric DDoS filtering, or a distributed/global quota coordinator.
+- A CID identifies content; it does not by itself authenticate the publisher or guarantee that a policy is safe. The signature and trusted-issuer configuration are still mandatory.
+- Do not publish private keys, credentials, access tokens or secrets to IPFS.
 
 ## Policy lifecycle
 
-1. An authorized policy issuer creates the policy body and signs its canonical JSON representation with the existing Node Core OS Ed25519 identity.
-2. A verifier checks the exact schema, issuer allowlist, key-to-node-ID binding, signature, issue/expiry times, and monotonic sequence.
-3. The exact signed policy bytes may later be published to Kubo. Kubo must return the CID for those bytes; this module deliberately does not fabricate a CID.
-4. A gateway integration must verify the bytes and signature before applying the policy. A CID establishes content addressing/integrity, not publisher authority or policy safety.
-5. Nodes may cache verified policies only until their defined expiry. Revocation freshness and behavior when trust data is unavailable must be specified before production use.
+1. An authorized issuer signs a canonical JSON policy with its existing Node Core OS Ed25519 identity.
+2. The publisher writes those exact signed bytes to Kubo. Kubo returns the actual CID; the application must never invent one.
+3. A gateway retrieves the bytes by CID and checks the schema, issuer allowlist, signature, freshness and sequence before using the policy.
+4. The gateway binds the signed `service_id` and `origin_id` to an operator-configured upstream. It does not accept an upstream URL from a request.
+5. Policy cache lifetime, revocation freshness, rollback persistence and outage behavior must be specified before production deployment.
 
-## Policy limits
+## Test commands
 
-The MVP schema bounds requests, time window and body size to prevent accidental unbounded configuration. The local limiter keys counters by the supplied client identity and route. Callers must authenticate or authorize the client identifier; a user-controlled header alone is not a trusted identity.
+From the repository root:
 
-The limiter is process-local. Multiple gateways do not share quotas merely because they load the same CID policy. Cross-node coordination and safe behavior when that coordinator fails are separate future work.
-
-## Required security properties
-
-- Unknown issuer, invalid signature, unknown fields, malformed timestamps, future-issued or expired policy: reject.
-- Sequence less than or equal to the last accepted sequence: reject.
-- Invalid or excessive limits: reject at policy creation and verification.
-- Rate-limit tracking storage is bounded; when full, new client keys are denied rather than allocating unbounded memory.
-- No secret key material is included in a policy.
-- Tests bind only to synthetic identities and do not contact public websites or generate external traffic.
-
-## Test command
-
-From the repository root, using the project's declared dependencies:
-
-\`\`\`bash
+```bash
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests -p 'test_cdd_security.py' -v
-\`\`\`
+python -m unittest discover -s tests -p 'test_cdd_gateway.py' -v
+```
 
-The dedicated GitHub Actions workflow runs these tests on relevant pull requests and manual dispatches. The existing repository CI also compiles the module and runs the broader unit-test suite.
+The dedicated GitHub Actions workflow runs both suites on relevant pull requests, pushes to `main`, and manual dispatches. Passing these suites demonstrates only the behavior they exercise; it does not prove production readiness.
 
 ## Next implementation stages
 
-1. Integrate the signed policy with a local HTTP gateway and enforce request/body limits.
-2. Add Kubo-backed publication/retrieval of the exact signed bytes and verify the returned CID.
-3. Add bounded multi-gateway failover tests and explicit origin-bypass protection.
-4. Integrate authenticated bot signals and define false-positive measurements.
-5. Add P2P discovery using existing Node Core OS networking interfaces.
-6. Evaluate a public contract only after choosing its chain, governance and failure model.
+1. Add a real Kubo-backed test using an isolated temporary Kubo repository/daemon in CI where supported.
+2. Add explicit origin-bypass tests and deployment guidance for firewall rules or gateway-to-origin mTLS.
+3. Run several loopback gateways and test failure removal, failover and bounded load distribution.
+4. Define cross-node rate-limit coordination and behavior during partition.
+5. Integrate authenticated P2P discovery with existing Node Core OS networking interfaces.
+6. Evaluate a public contract only after choosing the chain, governance and failure model.
 7. Compare against a conventional reverse proxy/WAF baseline under identical bounded laboratory conditions.
 
-Each stage requires code, tests and evidence before its status can be changed from proposed to implemented or verified.
+Every stage must provide code, tests and evidence before its status is described as verified. No public target or external attack traffic is used by these tests.
