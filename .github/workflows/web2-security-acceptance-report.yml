@@ -1,0 +1,67 @@
+name: Node Core OS - Web2 Security Acceptance Report
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, security/web2-acceptance-report]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web2-security-acceptance:
+    name: Isolated Web2 acceptance and evidence report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Enforce ordinary-user execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test -n "$HOME"
+          test -w "$HOME"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project test dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Run isolated Web2 security suite and generate report
+        id: acceptance
+        run: |
+          set -euo pipefail
+          python scripts/web2_security_acceptance_report.py --output-dir artifacts/web2-security-report
+
+      - name: Upload reproducible evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-os-web2-security-report
+          path: artifacts/web2-security-report/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish report summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if test -f artifacts/web2-security-report/web2-security-report.md; then
+            cat artifacts/web2-security-report/web2-security-report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "The report generator did not produce an artifact; inspect the preceding job logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
