@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import hmac
 import json
 import tempfile
 from pathlib import Path
@@ -118,6 +119,7 @@ class CDDGatewayConfig:
     last_sequence: int = 0
     timeout_seconds: float = 3.0
     max_response_bytes: int = MAX_RESPONSE_BYTES
+    origin_auth_token: str | None = None
 
 
 def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = None) -> None:
@@ -142,6 +144,10 @@ def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = 
         raise CDDGatewayError("CDD policy failed signature, trust, expiry, or sequence validation.")
     if not isinstance(config.timeout_seconds, (int, float)) or not 0 < config.timeout_seconds <= 30:
         raise CDDGatewayError("timeout_seconds must be greater than 0 and at most 30.")
+    if config.origin_auth_token is not None and (
+        not isinstance(config.origin_auth_token, str) or len(config.origin_auth_token) < 32
+    ):
+        raise CDDGatewayError("origin_auth_token must be at least 32 characters when configured.")
     if (
         isinstance(config.max_response_bytes, bool)
         or not isinstance(config.max_response_bytes, int)
@@ -243,6 +249,8 @@ def make_cdd_handler(
                 outgoing_headers[key] = value
             if body:
                 outgoing_headers["Content-Length"] = str(len(body))
+            if config.origin_auth_token is not None:
+                outgoing_headers["X-Node-Core-Origin-Token"] = config.origin_auth_token
 
             upstream = Request(
                 upstream_url,
