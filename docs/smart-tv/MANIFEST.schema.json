@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://node-core-os.example/schemas/smart-tv-manifest-1.0.schema.json",
+  "title": "Node Core OS Smart TV Security Module Manifest",
+  "description": "Initial configuration contract for the proposed Smart TV module. It does not itself implement or enable the listed controls.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "device", "privacy", "alerts", "peer_defense", "support"],
+  "properties": {
+    "schema": {
+      "const": "node-core-os.smart-tv.manifest"
+    },
+    "version": {
+      "const": "1.0"
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["device_ref", "platform", "manufacturer_key_id"],
+      "properties": {
+        "device_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "platform": {"type": "string", "minLength": 1, "maxLength": 128},
+        "manufacturer_key_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "secure_key_storage": {"type": "boolean"},
+        "verified_boot_adapter": {"type": "boolean"}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_telemetry_enabled", "raw_sensor_data_upload"],
+      "properties": {
+        "external_telemetry_enabled": {"type": "boolean"},
+        "raw_sensor_data_upload": {"const": false},
+        "owner_approval_required_for_support": {"type": "boolean", "default": true}
+      }
+    },
+    "alerts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "max_event_bytes", "max_events_per_minute", "queue_capacity"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "max_event_bytes": {"type": "integer", "minimum": 512, "maximum": 65536},
+        "max_events_per_minute": {"type": "integer", "minimum": 1, "maximum": 120},
+        "queue_capacity": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "require_event_signature": {"type": "boolean", "default": true},
+        "require_authenticated_transport": {"type": "boolean", "default": true}
+      }
+    },
+    "peer_defense": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "minimum_witness_domains", "partition_policy"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "minimum_witness_domains": {"type": "integer", "minimum": 1, "maximum": 100},
+        "partition_policy": {"enum": ["local-only", "degraded-indeterminate", "fail-closed"]},
+        "automatic_remote_commands": {"const": false}
+      }
+    },
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["real_payments_enabled", "max_authorized_amount_minor_units", "require_accepted_work"],
+      "properties": {
+        "real_payments_enabled": {"const": false},
+        "max_authorized_amount_minor_units": {"type": "integer", "minimum": 0, "maximum": 0},
+        "require_accepted_work": {"const": true},
+        "settlement_mode": {"const": "dry-run"}
+      }
+    }
+  }
+}
