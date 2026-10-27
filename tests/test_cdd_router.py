@@ -1,5 +1,6 @@
 """Loopback-only tests for multi-gateway distribution and failover."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import http.client
 import threading
 import unittest
 import urllib.error
@@ -144,17 +145,22 @@ class CDDRouterTests(unittest.TestCase):
 
         gateway = self.add_server(HealthyGateway)
         base = self.router([f"http://127.0.0.1:{gateway.server_port}"])
-        req = Request(
-            base + "/large",
-            method="POST",
-            data=b"x" * (1_048_576 + 1),
+        # The router must reject based on Content-Length without requiring an
+        # attacker to upload the oversized body. Sending the body after an
+        # early 413 can legitimately cause BrokenPipeError on the client.
+        connection = http.client.HTTPConnection(
+            "127.0.0.1", self.router_server.server_port, timeout=3
         )
         try:
-            response = urlopen(req, timeout=3)
-        except urllib.error.HTTPError as exc:
-            response = exc
-        self.assertEqual(response.status, 413)
-        self.assertEqual(response.read(), b"request body outside lab limit")
+            connection.putrequest("POST", "/large")
+            connection.putheader("Content-Length", str(1_048_576 + 1))
+            connection.putheader("Connection", "close")
+            connection.endheaders()
+            response = connection.getresponse()
+            self.assertEqual(response.status, 413)
+            self.assertEqual(response.read(), b"request body outside lab limit")
+        finally:
+            connection.close()
 
 
 if __name__ == "__main__":
