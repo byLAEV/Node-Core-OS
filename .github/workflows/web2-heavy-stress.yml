@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "tests/test_web2_heavy_stress.py"
+      - "tests/test_web2_persistent_stress.py"
       - ".github/workflows/web2-heavy-stress.yml"
       - "node_core/p2p/tls_transport.py"
       - "node_core/identity/**"
@@ -45,7 +46,7 @@ jobs:
         id: stress
         run: |
           set -euo pipefail
-          pytest tests/test_web2_heavy_stress.py -v --maxfail=1
+          pytest tests/test_web2_heavy_stress.py tests/test_web2_persistent_stress.py -v --maxfail=1
 
       - name: Upload stress evidence
         if: always()
@@ -53,6 +54,7 @@ jobs:
         with:
           name: node-core-os-web2-heavy-stress-report
           path: artifacts/web2-heavy-stress/
+            artifacts/web2-persistent-stress/
           if-no-files-found: warn
           retention-days: 30
 
@@ -64,4 +66,7 @@ jobs:
             cat artifacts/web2-heavy-stress/web2-heavy-stress-report.md >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Stress report not generated; inspect pytest logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if test -f artifacts/web2-persistent-stress/web2-persistent-stress-report.md; then
+            cat artifacts/web2-persistent-stress/web2-persistent-stress-report.md >> "$GITHUB_STEP_SUMMARY"
           fi
