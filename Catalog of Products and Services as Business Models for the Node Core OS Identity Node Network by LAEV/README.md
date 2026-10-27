@@ -118,3 +118,11 @@ The business-model consensus process must define eligible participants, work uni
 ## Disclaimer
 
 This catalog describes a project-defined security service framework under development. It is not a globally recognized certification scheme, does not replace standard TLS/X.509 validation, and does not guarantee protection against every cyberattack. All security findings and certificates must state their scope, evidence, limitations, and review status.
+
+
+## Audit, test evidence, and CI traceability
+
+- [Eight-certificate audit and GitHub Actions index](./AUDIT-AND-CI-INDEX.md)
+- [Certificate test and evidence matrix](./CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md)
+
+Every product folder includes `TEST-TRACEABILITY.md` to map its profile to related tests, workflows, evidence boundaries, and missing product-specific tests. The catalog-integrity workflow validates directory/profile consistency and certificate-envelope tests; it does not claim that all eight attack classes have been defeated.
