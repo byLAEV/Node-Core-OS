@@ -50,8 +50,11 @@ jobs:
           python -m unittest discover -s tests -p 'test_certificate_security.py' -v
           python -m unittest discover -s tests -p 'test_certificate_web_lab.py' -v
           python -m unittest discover -s tests -p 'test_web_tls_profile.py' -v
+          python -m unittest discover -s tests -p 'test_standard_https_validation.py' -v
+          python -m unittest discover -s tests -p 'test_distributed_defense.py' -v
+          python -m unittest discover -s tests -p 'test_api_abuse_lab.py' -v
           python -m unittest discover -s tests -p 'test_p2p_tls_transport.py' -v
-          python -m unittest discover -s tests -p 'test_certificate_web_lab.py' -v
+          python -m compileall -q node_core/security node_core/identity tests
 
       - name: Record test scope
         if: always()
