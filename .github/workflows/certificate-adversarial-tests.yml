@@ -46,7 +46,7 @@ jobs:
       - name: Run certificate adversarial tests
         run: |
           set -euo pipefail
-          python -m unittest tests.test_certificate_security -v
+          python -m unittest discover -s tests -p 'test_certificate_security.py' -v
 
       - name: Record test scope
         if: always()
