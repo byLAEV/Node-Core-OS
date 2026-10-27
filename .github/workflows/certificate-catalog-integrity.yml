@@ -1,0 +1,53 @@
+name: Node Core OS — Certificate Catalog Integrity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/**"
+      - "node_core/security/node_identity_certificate.py"
+      - "scripts/validate_certificate_catalog.py"
+      - ".github/workflows/certificate-catalog-integrity.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/**"
+      - "node_core/security/node_identity_certificate.py"
+      - "scripts/validate_certificate_catalog.py"
+      - ".github/workflows/certificate-catalog-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-integrity:
+    name: Validate eight-profile catalog traceability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate catalog completeness and profile alignment
+        run: python scripts/validate_certificate_catalog.py
+      - name: Run signed certificate envelope tests
+        run: |
+          python -m pip install --disable-pip-version-check -r requirements.txt
+          python -m pip install --disable-pip-version-check pytest
+          python -m pytest -q tests/test_node_identity_certificate.py
+      - name: Publish scope limitation
+        if: always()
+        run: |
+          {
+            echo "## Certificate catalog integrity scope"
+            echo "- Checks documentation completeness and alignment of the eight profile identifiers."
+            echo "- Runs signed certificate envelope unit tests."
+            echo "- Does not establish effectiveness against all eight attack classes."
+            echo "- Product-specific attack tests and independent review remain separate requirements."
+          } >> "$GITHUB_STEP_SUMMARY"
