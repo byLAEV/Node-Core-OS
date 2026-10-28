@@ -15,11 +15,13 @@
 
 - node_core/security/cdd_intent.py defines configured intent routes, opaque random handles, server-side ticket records, TTL, optional minimum wait, a bounded active-ticket table, expiration cleanup, and consume-once behavior.
 - tests/test_cdd_intent.py covers issue/consume, CID not present in the opaque handle, too-early attempts, replay, unknown intent, expiry, and capacity limits.
-- The dedicated CDD CI workflow compiles and runs the new tests as an ordinary non-root user.
+- The dedicated CDD CI workflow checks `id -u` before other steps and runs the tests as an ordinary non-root user.
+- The HTTP gateway can serve its operator-configured lobby page by resolving `lobby_content_cid` through the configured Kubo manager. The CID is gateway-side configuration; it is not returned in the lobby response or embedded in the opaque ticket.
+- Gateway lobby HTML is served with a restrictive sandbox Content Security Policy and `X-Content-Type-Options: nosniff`.
 
 ## Important limitations
 
-- This module is a local in-memory primitive. It is not yet wired into cdd_gateway.py or cdd_router.py, does not itself render a lobby page, and does not yet publish/resolve intent tickets through real Kubo.
+- The HTTP lobby and ticket issue/consume endpoints are wired into the local CDD gateway. The gateway can retrieve the configured lobby HTML CID through Kubo, but a production Kubo-backed deployment still needs an isolated real-daemon acceptance test.
 - Tickets are stored in one process. A multi-gateway deployment needs an authenticated shared consume-once store or a protocol that safely handles replay across nodes; independent in-memory tables are insufficient.
 - The configured CID is a content reference, not a human identity or a proof of authorization. The operator must verify content integrity and authorize the issuer separately.
 - Minimum wait is only a friction signal. Bots can wait, and legitimate users can be fast. Do not classify all fast requests as malicious.
@@ -31,6 +33,6 @@
 
 1. Add a bounded human-verification challenge endpoint and accessible non-JavaScript fallback; do not claim cryptographic proof of humanness.
 2. Add replay tests across two independent gateway processes using a shared durable store.
-3. Resolve the configured page/content CID through a real isolated Kubo daemon and verify returned bytes.
+3. Run an isolated real-Kubo acceptance test that resolves the configured gateway lobby CID and verifies the returned bytes and restrictive response headers.
 4. Add metrics for issued/consumed/expired/replayed tickets without logging raw handles.
 5. Test overload, coordinator outage, clock skew, and fail-closed behavior before any public exposure.
