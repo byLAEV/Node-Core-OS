@@ -1237,12 +1237,12 @@ class MainMenu:
 
     def applications(self) -> None:
         """Show suspension status; experimental applications cannot be launched."""
-        print("\\nApplications — temporary suspension\\n")
+        print("\nApplications — temporary suspension\n")
         print("HashPaper for Node Core OS: SUSPENDED")
         print("P2P Contract for Node Core OS: SUSPENDED")
         print("Their source and documentation remain in the repository.")
         print("They will be reconsidered after the core OS is stable and validated.")
-        input("\\nPress Enter to return to the main menu...")
+        input("\nPress Enter to return to the main menu...")
 
     def _network_overview(self) -> None:
         """Show Kubo and native P2P status independently without conflating networks."""
