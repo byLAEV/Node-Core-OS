@@ -21,10 +21,12 @@ on:
     branches: [main]
     paths:
       - "node_core/security/cdd.py"
+      - "node_core/security/cdd_intent.py"
       - "node_core/security/cdd_gateway.py"
       - "node_core/security/cdd_router.py"
       - "node_core/ipfs.py"
       - "tests/test_cdd_security.py"
+      - "tests/test_cdd_intent.py"
       - "tests/test_cdd_gateway.py"
       - "tests/test_cdd_router.py"
       - "tests/test_cdd_integration.py"
