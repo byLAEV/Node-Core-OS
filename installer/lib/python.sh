@@ -72,14 +72,8 @@ exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
-  cat > "$NODE_CORE_DATA_DIR/bin/hashpaper" <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-export NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR"
-export PATH="$NODE_CORE_DATA_DIR/runtime/opentimestamps-venv/bin:$PATH"
-exec python3 "$NODE_CORE_DATA_DIR/app/applications/hashpaper/main.py" "\$@"
-EOF
-  chmod 700 "$NODE_CORE_DATA_DIR/bin/hashpaper"
+  # HashPaper launcher intentionally not installed while the application is suspended.
+
 }
 write_config() {
   local ipfs_executable
