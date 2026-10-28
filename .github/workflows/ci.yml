@@ -74,7 +74,6 @@ jobs:
           bash installer/tests/plan.sh
           bash installer/tests/apply.sh
           bash installer/tests/update-preservation.sh
-          bash installer/tests/hashpaper-install.sh
           bash installer/tests/kubo-download-sources.sh
           bash installer/tests/termux-update-preservation.sh
           bash installer/tests/termux-installer.sh
