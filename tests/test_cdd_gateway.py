@@ -19,6 +19,8 @@ from node_core.security.cdd_gateway import (
     create_cdd_server,
     load_policy_from_kubo,
     publish_policy_to_kubo,
+    public_ipfs_gateway_urls,
+    validate_cidv1_base32,
 )
 
 
@@ -82,6 +84,28 @@ class OriginHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
 
+class TestPublicIPFSGatewayLinks(unittest.TestCase):
+    def test_cid_generates_exact_approved_path_gateway_urls(self):
+        self.assertEqual(
+            public_ipfs_gateway_urls(LOBBY_CID),
+            (
+                f"https://ipfs.io/ipfs/{LOBBY_CID}",
+                f"https://dweb.link/ipfs/{LOBBY_CID}",
+            ),
+        )
+
+    def test_cid_is_validated_as_cidv1_base32(self):
+        codec, hash_code = validate_cidv1_base32(LOBBY_CID)
+        self.assertEqual(codec, 0x55)
+        self.assertEqual(hash_code, 0x12)
+
+    def test_rejects_caller_supplied_hosts_and_invalid_cids(self):
+        for invalid in ("https://attacker.example/ipfs/" + LOBBY_CID, "not-a-cid", "Qm" + "a" * 44):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises((ValueError, CDDGatewayError)):
+                    public_ipfs_gateway_urls(invalid)
+
+
 class CDDGatewayIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="cdd-gateway-test-")
@@ -127,8 +151,7 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             intent_destination_paths={"web2:docs": "/intent-document"},
             intent_ttl_seconds=120,
             intent_min_wait_seconds=3,
-            lobby_content_cid=LOBBY_CID,
-            lobby_kubo=self.lobby_kubo,
+            lobby_gateway_cid=LOBBY_CID,
         )
         self.gateway = create_cdd_server(("127.0.0.1", 0), self.config)
         self.gateway_thread = threading.Thread(target=self.gateway.serve_forever, daemon=True)
@@ -145,13 +168,16 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         except urllib.error.HTTPError as exc:
             return exc
 
-    def test_gateway_serves_configured_lobby_cid_without_exposing_cid(self):
+    def test_gateway_lobby_offers_only_fixed_public_gateway_links(self):
         response = self.request("/_cdd/lobby")
         self.assertEqual(response.status, 200)
-        self.assertIn("CDD gateway lobby", response.read().decode("utf-8"))
+        body = response.read().decode("utf-8")
+        self.assertIn(f"https://ipfs.io/ipfs/{LOBBY_CID}", body)
+        self.assertIn(f"https://dweb.link/ipfs/{LOBBY_CID}", body)
         self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
-        self.assertIn("sandbox", response.headers.get("Content-Security-Policy", ""))
-        self.assertNotIn(LOBBY_CID, response.headers.get("Content-Type", ""))
+        self.assertIn("default-src 'none'", response.headers.get("Content-Security-Policy", ""))
+        self.assertNotIn("127.0.0.1", body)
+        self.assertNotIn("localhost", body)
 
     def test_lobby_issues_opaque_ticket_without_exposing_cid(self):
         response = self.request("/_cdd/lobby?intent=read-document")
