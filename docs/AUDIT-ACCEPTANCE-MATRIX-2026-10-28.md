@@ -30,8 +30,32 @@ Pull request: [#188](https://github.com/byLAEV/Node-Core-OS/pull/188) — open, 
 | MOD-01 | Local storage | Relative paths cannot escape configured storage root | `node_core/storage.py` resolves paths and rejects candidates outside root | PASS (source inspected) | Add tests for `../`, absolute paths, symlinks and path-race limitations |
 | MOD-02 | Kubo integration | CLI/RPC operations use bounded timeouts and preserve user-owned repo | `node_core/ipfs.py` uses subprocess argument arrays and RPC timeouts; updater has explicit Kubo/data preservation boundary | OPEN | Review API binding trust, daemon lifecycle, process ownership and destructive operations |
 | MOD-03 | Node identity certificates | Signature, issuer binding, time bounds, profile and revocation are checked | `node_core/security/node_identity_certificate.py` implements Ed25519/JWS checks; comments state revocation freshness is caller responsibility | OPEN | Verify negative tests, trust distribution and stale/missing revocation data behavior |
-| BR-01 | Branch divergence | Every branch classified against `main` for ahead/behind, conflicting changes and unique fixes | First sample: maintenance branch is diverged (5 commits ahead, 26 behind at the comparison snapshot); several sampled legacy branches are fully behind | OPEN | Continue paginated inventory and compare each branch; do not merge branches automatically |
+| BR-01 | Branch divergence | Every branch classified against `main` for ahead/behind, conflicting changes and unique fixes | 191 branches inventoried; 30+ representative branches compared. Current audit branch was 19 ahead / 26 behind `main` at SHA `80f75fcc1502b554c833ceed08cfd16a987c611f`; legacy branches are often fully behind, while a few updater/feature branches diverge | OPEN | Continue comparison of all remaining branches; do not merge branches automatically |
 | MOD-04 | Full module audit | Identity, networking, certificates, storage, UI, dependency and runtime modules have evidence-based findings | Partial source inspection only; complete module-by-module test mapping not yet done | NOT AUDITED | Map each module to tests, dependencies, entry points and risk findings |
+
+## Representative branch comparison results
+
+Comparisons are against `main` at the audit snapshot. These results identify branches for review; they do not mean their changes should be merged.
+
+| Branch | Ahead | Behind | Classification / action |
+|---|---:|---:|---|
+| `maintenance/suspend-hashpaper-p2p-contracts-verified` | 19 | 26 | Active audit branch; keep isolated until current-head checks pass |
+| `maintenance/suspend-hashpaper-p2p-contracts` | 0 | 7 | Behind; do not merge |
+| `ci/enforce-non-root-all-workflows` | 0 | 44 | Behind; inspect history only if a specific check is missing |
+| `feature/installer-user-owned-20261006` | 3 | 1411 | Diverged; review only the installer/config diffs |
+| `feature/versioned-update-v2` | 5 | 1349 | Diverged; do not adopt v2 updater without separate design and migration review |
+| `fix/termux-stale-update-recovery` | 3 | 864 | Diverged; compare recovery logic against current updater tests before rescuing anything |
+| `fix/updater-preserve-backup-on-rollback-failure` | 1 | 1166 | Diverged; current updater already has explicit retained-recovery behavior; verify diff before cherry-pick |
+| `fix/updater-preserve-pending-recovery` | 0 | 1158 | Behind; no unique commit in comparison |
+| `fix/updater-rollback-commit-marker` | 0 | 1172 | Behind; no unique commit in comparison |
+| `security/cert04-bind-issuer-identity` | 0 | 73 | Behind; issuer binding is already present in current certificate verifier |
+| `security/cert04-local-key-permissions` | 0 | 76 | Behind; inspect current permission tests rather than merging old branch |
+| `feature/p2p-contracts-genesis-v1` | 0 | 601 | Behind; app remains suspended |
+| `fix/p2p-contracts-genesis-reference` | 13 | 612 | Diverged with app-specific tests and installer changes; preserve branch, do not integrate while P2P Contracts is suspended |
+| `feature/hashpaper-user-installer` | 0 | 968 | Behind; app remains suspended |
+| `fix/package-workflow-trailing-corruption` | 0 | 410 | Behind; package workflow currently builds successfully |
+
+The remaining branches still need automated classification; the audit must not claim that every branch has had its full diff reviewed until that pass is completed.
 
 ## Confirmed code observations
 
