@@ -29,9 +29,8 @@
 
 ## Next acceptance criteria
 
-1. Wire lobby issuance/consumption into the local CDD HTTP gateway with an explicit, operator-configured route registry.
-2. Add a bounded challenge endpoint and accessible non-JavaScript fallback; do not claim cryptographic proof of humanness.
-3. Add replay tests across two independent gateway processes using a shared durable store.
-4. Add a real isolated Kubo daemon integration test, verifying returned CID and retrieved bytes.
-5. Add metrics for issued/consumed/expired/replayed tickets without logging raw handles.
-6. Test overload, coordinator outage, clock skew, and fail-closed behavior before any public exposure.
+1. Add a bounded human-verification challenge endpoint and accessible non-JavaScript fallback; do not claim cryptographic proof of humanness.
+2. Add replay tests across two independent gateway processes using a shared durable store.
+3. Resolve the configured page/content CID through a real isolated Kubo daemon and verify returned bytes.
+4. Add metrics for issued/consumed/expired/replayed tickets without logging raw handles.
+5. Test overload, coordinator outage, clock skew, and fail-closed behavior before any public exposure.
