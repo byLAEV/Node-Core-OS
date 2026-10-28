@@ -450,7 +450,7 @@ update_application() (
   cp -R "$source"/. "$NODE_CORE_APP_DIR"/ || return 1
   rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
   # HashPaper is a separate application and is not part of Node Core OS 1.4.0.
-  rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+  rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
   rm -f "$NODE_CORE_APP_DIR/installer/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/hashpaper-update.sh"
   rm -f "$NODE_CORE_APP_DIR/installer/tests/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_APP_DIR/docs/HASHPAPER.md" "$NODE_CORE_APP_DIR/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
@@ -464,23 +464,7 @@ update_application() (
   ensure_python_environment || return 1
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
 
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
-    printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
-    printf 'Update is missing P2P Contracts CLI; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || {
-    printf 'Update is missing the P2P Contracts genesis manifest; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || {
-    printf 'Update is missing P2P Contracts tests; refusing activation.\n' >&2
-    return 1
-  }
-  python3 - "$NODE_CORE_APP_DIR/VERSION" <<'PY'
+  # P2P Contracts is suspended and removed from the installed runtime.\n  python3 - "$NODE_CORE_APP_DIR/VERSION" <<'PY'
 import re
 import sys
 from pathlib import Path
