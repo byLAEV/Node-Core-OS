@@ -495,13 +495,13 @@ write_commit_marker() {
   local commit="$1"
   local temporary_marker
   temporary_marker="$(mktemp "$NODE_CORE_DATA_DIR/runtime/node-core-commit.XXXXXX")" || {
-    printf 'Could not create a temporary commit marker.\\n' >&2
+    printf 'Could not create a temporary commit marker.\n' >&2
     return 1
   }
-  if ! printf '%s\\n' "$commit" > "$temporary_marker" ||
+  if ! printf '%s\n' "$commit" > "$temporary_marker" ||
      ! mv -f -- "$temporary_marker" "$NODE_CORE_COMMIT_FILE"; then
     rm -f -- "$temporary_marker"
-    printf 'Could not activate the new commit marker.\\n' >&2
+    printf 'Could not activate the new commit marker.\n' >&2
     return 1
   fi
 }
