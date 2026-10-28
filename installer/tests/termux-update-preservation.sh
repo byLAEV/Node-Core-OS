@@ -44,7 +44,9 @@ mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/hashpaper" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/tests" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/p2p_contracts" \
-  "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/tests"
+  "$TEST_FIXTURES/release/Node-Core-OS-test/applications/p2p_contracts/tests" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/docs" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/.github/workflows"
 printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/main.py"
 printf '1.2.6\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/VERSION"
 # Keep the offline release fixture dependency-free while exercising the updater.
@@ -96,6 +98,10 @@ class P2PLocalManifestFixtureTest(unittest.TestCase):
     def test_fixture(self):
         self.assertTrue(True)
 PY
+
+printf 'P2P documentation fixture\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+printf 'name: suspended P2P fixture\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
+printf 'name: suspended P2P E2E fixture\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 
 cat > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/tests/test_smoke.py" <<'PY'
 import unittest
@@ -153,6 +159,10 @@ grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime
 grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
 grep -qx '1.2.6' "$NODE_CORE_DATA_DIR/app/VERSION"
 test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
+test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
