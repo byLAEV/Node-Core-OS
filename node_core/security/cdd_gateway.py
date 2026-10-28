@@ -275,6 +275,8 @@ def make_cdd_handler(
 
             # Intent endpoints are local to this gateway. The client never selects
             # an upstream host or arbitrary destination path.
+            upstream_method = self.command
+            upstream_body = body
             if parsed_target.path == "/_cdd/lobby":
                 if self.command != "GET":
                     self._respond(405, b"lobby requires GET")
@@ -331,7 +333,10 @@ def make_cdd_handler(
                     self._respond(403, b"intent destination is not configured")
                     return
                 # Ticket is consumed before forwarding. Never return the CID to the client.
+                # The ticket POST body is not forwarded to the protected origin.
                 upstream_url = config.origin_url.rstrip("/") + destination_path
+                upstream_method = "GET"
+                upstream_body = b""
             else:
                 upstream_url = config.origin_url.rstrip("/") + self.path
             outgoing_headers = {}
@@ -343,16 +348,16 @@ def make_cdd_handler(
                 }:
                     continue
                 outgoing_headers[key] = value
-            if body:
-                outgoing_headers["Content-Length"] = str(len(body))
+            if upstream_body:
+                outgoing_headers["Content-Length"] = str(len(upstream_body))
             if config.origin_auth_token is not None:
                 outgoing_headers["X-Node-Core-Origin-Token"] = config.origin_auth_token
 
             upstream = Request(
                 upstream_url,
-                data=body if self.command not in {"GET", "HEAD"} else None,
+                data=upstream_body if upstream_method not in {"GET", "HEAD"} else None,
                 headers=outgoing_headers,
-                method=self.command,
+                method=upstream_method,
             )
             try:
                 response_context = opener.open(upstream, timeout=config.timeout_seconds)
