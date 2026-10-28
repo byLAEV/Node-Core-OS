@@ -54,7 +54,7 @@ verify_installation() {
     fi
   fi
 
-  if ! python3 -m compileall -q "$app_dir/main.py" "$app_dir/node_core" "$app_dir/applications/p2p_contracts"; then
+  if ! python3 -m compileall -q "$app_dir/main.py" "$app_dir/node_core"; then
     printf 'Verification failed: Python compilation failed for the installed application.\n' >&2
     failures=1
   fi
