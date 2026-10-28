@@ -320,9 +320,9 @@ jobs:
           test ! -e "$NODE_CORE_DATA_DIR"
 
   # Separate GitHub-hosted Ubuntu VMs; synthetic profiles only, never real identity data.
+  # P2P Contracts E2E is suspended until Node Core OS core stability is established.
   three-independent-ubuntu-p2p-e2e:
-    if: false # P2P Contracts is suspended; preserve the job for future reactivation.
-    if: false # Suspended until Node Core OS core is stable.
+    if: false
     name: ${{ matrix.node }} — independent Ubuntu install and P2P Contracts E2E
     runs-on: ubuntu-24.04
     strategy:
