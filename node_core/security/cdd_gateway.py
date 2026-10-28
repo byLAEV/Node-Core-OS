@@ -9,7 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import base64
 import hmac
+import html
 import json
 import tempfile
 from pathlib import Path
@@ -29,6 +31,10 @@ from node_core.security.cdd import (
 
 MAX_POLICY_BYTES = 256 * 1024
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+PUBLIC_IPFS_GATEWAYS = (
+    ("ipfs.io", "https://ipfs.io/ipfs"),
+    ("dweb.link", "https://dweb.link/ipfs"),
+)
 _ALLOWED_METHODS = {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}
 _HOP_BY_HOP = {
     "connection",
@@ -44,6 +50,54 @@ _HOP_BY_HOP = {
 
 class CDDGatewayError(RuntimeError):
     """Raised when a CDD policy or gateway configuration is invalid."""
+
+
+def _read_uvarint(data: bytes, offset: int) -> tuple[int, int]:
+    value = 0
+    shift = 0
+    while offset < len(data) and shift <= 63:
+        byte = data[offset]
+        offset += 1
+        value |= (byte & 0x7F) << shift
+        if byte < 0x80:
+            return value, offset
+        shift += 7
+    raise ValueError("Invalid CID varint.")
+
+
+def validate_cidv1_base32(cid: str) -> tuple[int, int]:
+    """Validate a lowercase CIDv1 Base32 string and return (codec, multihash code)."""
+    if (
+        not isinstance(cid, str)
+        or len(cid) < 10
+        or cid != cid.strip()
+        or not cid.startswith("b")
+        or any(char not in "abcdefghijklmnopqrstuvwxyz234567" for char in cid[1:])
+    ):
+        raise ValueError("CID must be lowercase CIDv1 Base32 without padding.")
+    try:
+        encoded = cid[1:].upper()
+        raw = base64.b32decode(encoded + "=" * ((8 - len(encoded) % 8) % 8))
+        version, offset = _read_uvarint(raw, 0)
+        codec, offset = _read_uvarint(raw, offset)
+        hash_code, offset = _read_uvarint(raw, offset)
+        digest_length, offset = _read_uvarint(raw, offset)
+    except (ValueError, base64.binascii.Error) as exc:
+        raise ValueError("CIDv1 Base32 encoding is invalid.") from exc
+    if version != 1 or codec < 1 or hash_code < 1 or digest_length < 1:
+        raise ValueError("CID must contain a valid CIDv1 header and multihash.")
+    if offset + digest_length != len(raw):
+        raise ValueError("CID multihash length does not match its bytes.")
+    return codec, hash_code
+
+
+def public_ipfs_gateway_urls(cid: str) -> tuple[str, ...]:
+    """Return fixed public path-gateway URLs; never accept a caller-supplied host."""
+    try:
+        validate_cidv1_base32(cid)
+    except ValueError as exc:
+        raise CDDGatewayError(f"Invalid CID for public gateway links: {exc}") from exc
+    return tuple(f"{base}/{cid}" for _name, base in PUBLIC_IPFS_GATEWAYS)
 
 
 class _NoRedirectHandler(HTTPRedirectHandler):
@@ -125,8 +179,7 @@ class CDDGatewayConfig:
     intent_destination_paths: Mapping[str, str] | None = None
     intent_ttl_seconds: int = 180
     intent_min_wait_seconds: int = 3
-    lobby_content_cid: str | None = None
-    lobby_kubo: KuboManager | None = None
+    lobby_gateway_cid: str | None = None
 
 
 def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = None) -> None:
@@ -155,13 +208,9 @@ def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = 
         not isinstance(config.origin_auth_token, str) or len(config.origin_auth_token) < 32
     ):
         raise CDDGatewayError("origin_auth_token must be at least 32 characters when configured.")
-    if (config.lobby_content_cid is None) != (config.lobby_kubo is None):
-        raise CDDGatewayError("lobby_content_cid and lobby_kubo must be configured together.")
-    if config.lobby_content_cid is not None:
-        if not isinstance(config.lobby_content_cid, str):
-            raise CDDGatewayError("lobby_content_cid must be a CID string.")
+    if config.lobby_gateway_cid is not None:
         try:
-            KuboManager._validate_cid(config.lobby_content_cid)
+            validate_cidv1_base32(config.lobby_gateway_cid)
         except ValueError as exc:
             raise CDDGatewayError(f"Invalid gateway lobby CID: {exc}") from exc
     if config.intent_lobby is None:
@@ -307,25 +356,34 @@ def make_cdd_handler(
                 query = parse_qs(parsed_target.query, keep_blank_values=True)
                 intents = query.get("intent", [])
                 if not intents:
-                    if config.lobby_content_cid is None or config.lobby_kubo is None:
+                    if config.lobby_gateway_cid is None:
                         self._respond(404, b"gateway lobby CID is not configured")
                         return
                     try:
-                        lobby_bytes = config.lobby_kubo.cat(config.lobby_content_cid)
-                    except (ValueError, RuntimeError) as exc:
-                        self._respond(503, b"gateway lobby content is unavailable")
+                        gateway_urls = public_ipfs_gateway_urls(config.lobby_gateway_cid)
+                    except CDDGatewayError:
+                        self._respond(500, b"configured gateway CID is invalid")
                         return
-                    if not isinstance(lobby_bytes, bytes) or not lobby_bytes or len(lobby_bytes) > config.max_response_bytes:
-                        self._respond(502, b"gateway lobby content is empty or too large")
-                        return
+                    links = "".join(
+                        f'<li><a rel="noreferrer noopener" href="{html.escape(url, quote=True)}">'
+                        f'Open with {name}</a></li>'
+                        for (name, _base), url in zip(PUBLIC_IPFS_GATEWAYS, gateway_urls)
+                    )
+                    page = (
+                        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+                        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                        "<title>CDD Gateway Lobby</title></head><body>"
+                        "<main><h1>Gateway lobby</h1>"
+                        "<p>Select an IPFS gateway to open the configured content.</p>"
+                        f"<ul>{links}</ul></main></body></html>"
+                    ).encode("utf-8")
                     self._respond(
                         200,
-                        lobby_bytes,
+                        page,
                         content_type="text/html; charset=utf-8",
                         extra_headers={
-                            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+                            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
                             "X-Content-Type-Options": "nosniff",
-                            "Cache-Control": "no-store",
                         },
                     )
                     return
