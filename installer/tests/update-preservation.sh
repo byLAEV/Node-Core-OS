@@ -37,6 +37,7 @@ chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 # Create a deterministic release archive. The fake curl prevents network access.
 release_root="$TEMP_ROOT/release-root"
 mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity" \
+  "$release_root/Node-Core-OS-fixture/tests" \
   "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper" \
   "$release_root/Node-Core-OS-fixture/applications/hashpaper/tests" \
   "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts" \
@@ -47,6 +48,15 @@ printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixt
 printf '1.4.1\n' > "$release_root/Node-Core-OS-fixture/VERSION"
 # An empty requirements file keeps this offline updater fixture dependency-free.
 : > "$release_root/Node-Core-OS-fixture/requirements.txt"
+# The updater runs unittest discovery on the extracted core tests directory.
+: > "$release_root/Node-Core-OS-fixture/tests/__init__.py"
+cat > "$release_root/Node-Core-OS-fixture/tests/test_core_fixture.py" <<'PY'
+import unittest
+
+class CoreFixtureTest(unittest.TestCase):
+    def test_fixture_is_importable(self):
+        self.assertTrue(True)
+PY
 printf 'print("updated HashPaper")\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/main.py"
 printf 'VALUE = "updated HashPaper CLI"\n' > "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper/cli.py"
 printf 'print("fixture P2P Contracts")\n' > "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/main.py"
