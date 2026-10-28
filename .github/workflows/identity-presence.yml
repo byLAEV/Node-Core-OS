@@ -19,6 +19,11 @@ jobs:
   identity-presence:
     runs-on: ubuntu-24.04
     steps:
+      - name: Enforce non-root execution
+        shell: bash
+        run: |
+          set -eu
+          test "$(id -u)" -ne 0 || { echo "ERROR: this job must not run as root (UID 0)." >&2; exit 1; }
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
