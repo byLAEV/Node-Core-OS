@@ -54,16 +54,21 @@ A personal or technical identity can help attribute work to a key or node. It do
 
 Each product has its own folder with a customer-facing overview, a service specification, and an evidence/testing guide.
 
+## Catalog sections
+
+- [Certificates — eight individual certificate products](./Certificates/README.md)
+- [Cybercrime (Information Security) — decentralized technology and IPFS](./Cybercrime/README.md)
+
 ## Product directory
 
-1. [Sybil and Fake-Node Resistance](./01-sybil-and-fake-node-resistance/README.md)
+1. [Sybil and Fake-Node Resistance](./Certificates/01-sybil-and-fake-node-resistance/README.md)
 2. [P2P Partition and Eclipse Resistance](./02-p2p-partition-eclipse-resistance/README.md)
-3. [Byzantine Fault and Collusion Resistance](./03-byzantine-fault-and-collusion-resistance/README.md)
-4. [Identity Authenticity and Key Protection](./04-identity-authenticity-and-key-protection/README.md)
-5. [Software Supply-Chain Integrity](./05-software-supply-chain-integrity/README.md)
-6. [Availability and DDoS Resilience](./06-availability-and-ddos-resilience/README.md)
-7. [IPFS Content Integrity](./07-ipfs-content-integrity/README.md)
-8. [Privilege Control and Pool Isolation](./08-privilege-control-and-pool-isolation/README.md)
+3. [Byzantine Fault and Collusion Resistance](./Certificates/03-byzantine-fault-and-collusion-resistance/README.md)
+4. [Identity Authenticity and Key Protection](./Certificates/04-identity-authenticity-and-key-protection/README.md)
+5. [Software Supply-Chain Integrity](./Certificates/05-software-supply-chain-integrity/README.md)
+6. [Availability and DDoS Resilience](./Certificates/06-availability-and-ddos-resilience/README.md)
+7. [IPFS Content Integrity](./Certificates/07-ipfs-content-integrity/README.md)
+8. [Privilege Control and Pool Isolation](./Certificates/08-privilege-control-and-pool-isolation/README.md)
 
 Shared governance and verification documents:
 
