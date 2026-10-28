@@ -1,3 +1,7 @@
+# SUSPENDED — Node Core OS stability gate
+
+P2P Contract for Node Core OS is temporarily suspended by project decision dated 2026-10-27. Source code, manifests, tests, and design documents are retained for future development, but this application must not be launched, installed as an active feature, or included in automated test runs until a separate reactivation decision.
+
 # Node Core OS P2P Contracts — Version 1.0.0
 
 ## Status
