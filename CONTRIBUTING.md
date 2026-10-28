@@ -25,8 +25,10 @@ You do not need to create a long-lived fork to participate. You may open an issu
 3. Add or update tests for changed behavior.
 4. Update documentation and examples when interfaces or behavior change.
 5. Run the relevant tests and report the exact commands and results. Never report tests as passing if they were not run.
-6. Submit a pull request against the canonical repository.
-7. Respond constructively to review and revise the change when needed.
+6. Label each capability according to the [Implementation Status and Evidence Policy](docs/IMPLEMENTATION-STATUS-POLICY.md). A merged PR is not proof of runtime behavior; skipped checks are not passes.
+7. Separate documentation-only work, implemented code, test evidence, security review, and operational evidence.
+8. Submit a pull request against the canonical repository.
+9. Respond constructively to review and revise the change when needed.
 
 Maintainers may request changes, defer a proposal, or decline changes that conflict with project goals, quality, security, maintainability, or compatibility. A pull request is a proposal, not an automatic merge.
 
