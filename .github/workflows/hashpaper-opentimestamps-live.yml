@@ -1,4 +1,4 @@
-name: HashPaper — Live OpenTimestamps Validation
+name: "[SUSPENDED] HashPaper — Live OpenTimestamps Validation"
 
 on:
   workflow_dispatch:
@@ -15,12 +15,13 @@ on:
 permissions:
   contents: read
 
+# Suspended by project decision on 2026-10-27. No scheduled or push-triggered execution.
 jobs:
-  live-opentimestamps:
-    name: Live OpenTimestamps and Kubo/IPFS round-trip with synthetic data
+  suspended:
+    if: false
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
     steps:
+      - run: echo 'HashPaper live tests are suspended until Node Core OS stabilizes.'
       - name: Enforce non-root execution
         shell: bash
         run: |

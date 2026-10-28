@@ -7,6 +7,7 @@ import unittest
 from node_core.config import NodeConfig
 
 
+@unittest.skip('HashPaper is suspended until Node Core OS stabilizes.')
 class HashPaperStorageLayoutTests(unittest.TestCase):
     def test_hashpaper_data_is_outside_application_code_tree(self):
         with tempfile.TemporaryDirectory() as temporary:

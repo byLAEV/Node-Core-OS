@@ -49,8 +49,8 @@ main() {
     "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest tests.test_node_identity -v
     NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import os; from pathlib import Path; from node_core.identity.node_identity import NodeIdentityStore; store = NodeIdentityStore(Path(os.environ["NODE_CORE_DATA_DIR"])); identity = store.initialize(); assert store.load()["node_id"] == identity["node_id"]; print("Initialized persistent Ed25519 node identity:", identity["node_id"])'
   )
-  # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
-  rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+  # HashPaper and P2P Contracts are suspended and must not ship as active Node Core OS applications.
+  rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER.md" "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
@@ -60,50 +60,7 @@ main() {
     printf 'Installed Node Core OS version file is missing.\n' >&2
     exit 1
   }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/main.py" ]] || {
-    printf 'Installed Node Core P2P Contracts entry point is missing.\n' >&2
-    exit 1
-  }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/VERSION" ]] || {
-    printf 'Installed Node Core P2P Contracts version file is missing.\n' >&2
-    exit 1
-  }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/genesis-manifest.json" ]] || {
-    printf 'Node Core P2P Contracts genesis manifest is missing.\n' >&2
-    exit 1
-  }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/genesis.py" ]] || {
-    printf 'Node Core P2P Contracts genesis validator is missing.\n' >&2
-    exit 1
-  }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
-    printf 'Installed Node Core P2P Contracts CLI is missing.\n' >&2
-    exit 1
-  }
-  [[ -f "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/genesis-manifest.json" ]] || {
-    printf 'Installed Node Core P2P Contracts genesis manifest is missing.\n' >&2
-    exit 1
-  }
-  [[ -d "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/tests" ]] || {
-    printf 'Installed Node Core P2P Contracts tests are missing.\n' >&2
-    exit 1
-  }
-  python3 - "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts/VERSION" <<'PY'
-import re
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-version = path.read_text(encoding="utf-8").strip()
-if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
-    raise SystemExit(f"Invalid Node Core P2P Contracts version in {path}: {version!r}")
-if version != "1.0.0":
-    raise SystemExit(f"Expected Node Core P2P Contracts 1.0.0, found {version}")
-print("Installed Node Core P2P Contracts version:", version)
-PY
-  python3 -m compileall -q "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
-  (cd "$NODE_CORE_DATA_DIR/app" && "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v)
-  (cd "$NODE_CORE_DATA_DIR/app" && "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])")
+  # P2P Contracts is suspended: no application-specific checks or tests run during installation.
   install_kubo
   write_config
   create_launcher

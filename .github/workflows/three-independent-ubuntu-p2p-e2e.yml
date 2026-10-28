@@ -1,4 +1,4 @@
-name: Three independent Ubuntu nodes — Node Core OS and P2P Contracts E2E
+name: "[SUSPENDED] Three independent Ubuntu nodes — Node Core OS and P2P Contracts E2E"
 
 on:
   pull_request:
@@ -8,32 +8,14 @@ on:
 permissions:
   contents: read
 
+# Suspended by project decision on 2026-10-27. Source and test plan are retained.
+# Suspended by project decision on 2026-10-27. Source and test plan are retained.
 jobs:
-  independent-ubuntu-node:
-    name: Install and test ${{ matrix.node }} on independent Ubuntu 24.04
+  suspended:
+    if: false
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - node: node-a
-            full_name: Synthetic Person A
-            alias: synthetic-node-a
-            document_number: TEST-UBUNTU-A-1001
-          - node: node-b
-            full_name: Synthetic Person B
-            alias: synthetic-node-b
-            document_number: TEST-UBUNTU-B-2002
-          - node: node-c
-            full_name: Synthetic Person C
-            alias: synthetic-node-c
-            document_number: TEST-UBUNTU-C-3003
-    env:
-      NODE_CORE_HOME: ${{ github.workspace }}/../node-core-e2e-${{ matrix.node }}
-      NODE_CORE_DATA_DIR: ${{ github.workspace }}/../node-core-e2e-${{ matrix.node }}/.node-core
-      NODE_CORE_CONFIG: ${{ github.workspace }}/../node-core-e2e-${{ matrix.node }}/.node-core/config.json
-
     steps:
+      - run: echo 'P2P Contracts E2E tests are suspended until Node Core OS stabilizes.'
       - name: Enforce non-root execution
         shell: bash
         run: |

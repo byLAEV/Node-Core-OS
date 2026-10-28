@@ -87,23 +87,13 @@ require_installation() {
 
 validate_installed_application_for_recovery() {
   [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || return 1
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || return 1
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || return 1
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/genesis.py" ]] || return 1
-  [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || return 1
-
-  python3 -m compileall -q \
-    "$NODE_CORE_APP_DIR/main.py" \
-    "$NODE_CORE_APP_DIR/node_core" \
-    "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
-
+  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest applications.p2p_contracts.tests.test_genesis applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation -v
-    python3 -c "from applications.p2p_contracts.p2p_contracts.genesis import load_genesis; print('Verified Node Core P2P Contracts genesis block:', load_genesis()['genesis_hash'])"
+    python3 -m unittest discover -s tests -v
   )
 }
+
 
 recover_stale_cleanup_if_safe() {
   local app_backup="$NODE_CORE_UPDATE_DIR/app-backup"
@@ -460,7 +450,7 @@ update_application() (
   cp -R "$source"/. "$NODE_CORE_APP_DIR"/ || return 1
   rm -rf "$NODE_CORE_APP_DIR/.git" || return 1
   # HashPaper is a separate application and is not part of Node Core OS 1.4.0.
-  rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" || return 1
+  rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
   rm -f "$NODE_CORE_APP_DIR/installer/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/hashpaper-update.sh"
   rm -f "$NODE_CORE_APP_DIR/installer/tests/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_APP_DIR/docs/HASHPAPER.md" "$NODE_CORE_APP_DIR/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
@@ -474,22 +464,7 @@ update_application() (
   ensure_python_environment || return 1
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
 
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/main.py" ]] || {
-    printf 'Update is missing P2P Contracts entry point; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/p2p_contracts/cli.py" ]] || {
-    printf 'Update is missing P2P Contracts CLI; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -f "$NODE_CORE_APP_DIR/applications/p2p_contracts/genesis-manifest.json" ]] || {
-    printf 'Update is missing the P2P Contracts genesis manifest; refusing activation.\n' >&2
-    return 1
-  }
-  [[ -d "$NODE_CORE_APP_DIR/applications/p2p_contracts/tests" ]] || {
-    printf 'Update is missing P2P Contracts tests; refusing activation.\n' >&2
-    return 1
-  }
+  # P2P Contracts is suspended and removed from the installed runtime.
   python3 - "$NODE_CORE_APP_DIR/VERSION" <<'PY'
 import re
 import sys
@@ -500,13 +475,9 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
     raise SystemExit(f"Invalid Node Core OS version in {path}: {version!r}")
 print("Node Core OS version:", version)
 PY
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
-  if ! (cd "$NODE_CORE_APP_DIR" && "$python_environment/bin/python" -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v); then
-    printf 'P2P Contracts tests failed after update; refusing to mark the update successful.\n' >&2
-    return 1
-  fi
-  printf '✓ Node Core OS and Node Core P2P Contracts validated.\n'
-  printf '%s\n' "$commit" > "$NODE_CORE_COMMIT_FILE" || return 1
+  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  (cd "$NODE_CORE_APP_DIR" && "$python_environment/bin/python" -m unittest discover -s tests -v) || return 1
+  printf '✓ Node Core OS core tests validated.\n'
 )
 
 backup_commit_marker() {

@@ -1,4 +1,4 @@
-name: HashPaper — Python Compatibility and Security Tests
+name: "[SUSPENDED] HashPaper — Python Compatibility and Security Tests"
 
 on:
   push:
@@ -21,15 +21,13 @@ on:
 permissions:
   contents: read
 
+# Suspended by project decision on 2026-10-27. Source and tests are retained.
 jobs:
-  unit-and-contract-tests:
-    name: HashPaper tests (Python ${{ matrix.python-version }})
+  suspended:
+    if: false
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
+      - run: echo 'HashPaper tests are suspended until Node Core OS stabilizes.'
       - name: Enforce non-root execution
         shell: bash
         run: |

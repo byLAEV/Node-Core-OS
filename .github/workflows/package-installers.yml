@@ -46,7 +46,7 @@ jobs:
           set -euo pipefail
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
-          python -m compileall -q main.py node_core applications/p2p_contracts
+          python -m compileall -q main.py node_core
 
       - name: Download and verify bundled runtime dependencies
         shell: bash
@@ -74,10 +74,10 @@ jobs:
           mkdir -p "$stage/$package/installer/vendor"
           cp -R installer/vendor/. "$stage/$package/installer/vendor/"
 
-          # HashPaper is a separate application and must not ship inside the
-          # Node Core OS installer source package.
+          # Suspended applications are retained in Git but excluded from installable packages.
           rm -rf \
             "$stage/$package/applications/hashpaper" \
+            "$stage/$package/applications/p2p_contracts" \
             "$stage/$package/installer/hashpaper-install.sh" \
             "$stage/$package/installer/hashpaper-update.sh" \
             "$stage/$package/installer/opentimestamps-server-install.sh" \
@@ -87,10 +87,12 @@ jobs:
             "$stage/$package/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md" \
             "$stage/$package/tests/test_hashpaper_storage_layout.py" \
             "$stage/$package/.github/workflows/hashpaper-opentimestamps-live.yml" \
-            "$stage/$package/.github/workflows/hashpaper-python-matrix.yml"
+            "$stage/$package/.github/workflows/hashpaper-python-matrix.yml" \
+            "$stage/$package/.github/workflows/three-independent-ubuntu-p2p-contracts.yml" \
+            "$stage/$package/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 
           tar -czf "dist/$package.tar.gz" -C "$stage" "$package"
-          if tar -tzf "dist/$package.tar.gz" | grep -E 'applications/hashpaper|hashpaper-install|hashpaper-update|opentimestamps-server-install|HASHPAPER|test_hashpaper_storage_layout|hashpaper-opentimestamps-live|hashpaper-python-matrix' >/dev/null; then
+          if tar -tzf "dist/$package.tar.gz" | grep -E 'applications/(hashpaper|p2p_contracts)|hashpaper-install|hashpaper-update|opentimestamps-server-install|HASHPAPER|P2P-CONTRACTS|test_hashpaper_storage_layout|hashpaper-opentimestamps-live|hashpaper-python-matrix|three-independent-ubuntu-p2p' >/dev/null; then
             echo 'The Node Core OS source package contains a separate HashPaper component.' >&2
             exit 1
           fi

@@ -1236,35 +1236,13 @@ class MainMenu:
                 input("\n> ")
 
     def applications(self) -> None:
-        """Launch applications shipped with the current Node Core OS code tree."""
-        application_root = Path(__file__).resolve().parents[1]
-        hashpaper_entry = application_root / "applications" / "hashpaper" / "main.py"
-        p2p_contracts_entry = application_root / "applications" / "p2p_contracts" / "main.py"
-        while True:
-            print("\nApplications\nbyLAEV\n")
-            print("0. Back")
-            print("1. HashPaper for Node Core OS")
-            print("2. P2P Contracts — BTC Exchange and Reputation (development prototype)")
-            choice = input("\n> ").strip()
-            if choice == "0":
-                return
-            if choice not in {"1", "2"}:
-                print("Choose an available application.")
-                continue
-            entry = hashpaper_entry if choice == "1" else p2p_contracts_entry
-            application_name = "HashPaper" if choice == "1" else "P2P Contracts"
-            if not entry.is_file():
-                print(f"{application_name} is not installed in this Node Core OS application tree.")
-                input("\n> ")
-                continue
-            result = subprocess.run(
-                [sys.executable, str(entry)],
-                cwd=str(application_root),
-                check=False,
-            )
-            if result.returncode != 0:
-                print(f"{application_name} exited with status {result.returncode}.")
-                input("\n> ")
+        """Show suspension status; experimental applications cannot be launched."""
+        print("\nApplications — temporary suspension\n")
+        print("HashPaper for Node Core OS: SUSPENDED")
+        print("P2P Contract for Node Core OS: SUSPENDED")
+        print("Their source and documentation remain in the repository.")
+        print("They will be reconsidered after the core OS is stable and validated.")
+        input("\nPress Enter to return to the main menu...")
 
     def _network_overview(self) -> None:
         """Show Kubo and native P2P status independently without conflating networks."""

@@ -1,4 +1,4 @@
-name: Three independent Ubuntu nodes — Node Core OS + P2P Contracts
+name: "[SUSPENDED] Three independent Ubuntu nodes — Node Core OS + P2P Contracts"
 
 on:
   pull_request:
@@ -8,24 +8,13 @@ on:
 permissions:
   contents: read
 
+# Suspended by project decision on 2026-10-27. Source and test plan are retained.
 jobs:
-  install-and-test-node:
-    name: Ubuntu 24.04 independent node ${{ matrix.node }}
+  suspended:
+    if: false
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [node-a, node-b, node-c]
-    env:
-      HOME: /home/runner/.node-core-home-${{ matrix.node }}
-      NODE_CORE_DATA_DIR: /home/runner/.node-core-home-${{ matrix.node }}/.node-core
-      NODE_CORE_CONFIG: /home/runner/.node-core-home-${{ matrix.node }}/.node-core/config.json
-      PYTHONUNBUFFERED: "1"
-    defaults:
-      run:
-        shell: bash
-
     steps:
+      - run: echo 'P2P Contracts tests are suspended until Node Core OS stabilizes.'
       - name: Enforce non-root execution
         shell: bash
         run: |

@@ -1,3 +1,7 @@
+# SUSPENDED — Node Core OS stability gate
+
+HashPaper for Node Core OS is temporarily suspended by project decision dated 2026-10-27. Its source code, tests, and documentation are retained, but the application is not exposed by the Node Core OS Applications menu and its automated workflows are disabled. Do not install, launch, or describe it as an active Node Core OS feature until a future explicit reactivation decision.
+
 # HashPaper for Node Core OS
 
 ## Development status
