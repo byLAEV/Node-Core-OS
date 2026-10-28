@@ -491,6 +491,21 @@ backup_commit_marker() {
   fi
 }
 
+write_commit_marker() {
+  local commit="$1"
+  local temporary_marker
+  temporary_marker="$(mktemp "$NODE_CORE_DATA_DIR/runtime/node-core-commit.XXXXXX")" || {
+    printf 'Could not create a temporary commit marker.\\n' >&2
+    return 1
+  }
+  if ! printf '%s\\n' "$commit" > "$temporary_marker" ||
+     ! mv -f -- "$temporary_marker" "$NODE_CORE_COMMIT_FILE"; then
+    rm -f -- "$temporary_marker"
+    printf 'Could not activate the new commit marker.\\n' >&2
+    return 1
+  fi
+}
+
 rollback_application() {
   local backup="$NODE_CORE_UPDATE_DIR/app-backup"
   local marker_backup="$NODE_CORE_UPDATE_DIR/commit-marker-backup"
@@ -570,7 +585,7 @@ main() {
     return 1
   fi
 
-  if update_application "$remote_commit"; then
+  if update_application "$remote_commit" && write_commit_marker "$remote_commit"; then
     printf '\n✓ Node Core application updated.\n'
     printf '✓ Kubo/IPFS binary preserved.\n'
     printf '✓ Kubo repository preserved.\n'
