@@ -22,6 +22,9 @@ from node_core.security.cdd_gateway import (
 )
 
 
+LOBBY_CID = "bafkreiaxdnroomawrvz7jqhrlqz4jbt2xrozzaf4dh73v6j7kmypm7m4my"
+
+
 class FakeKubo:
     def __init__(self):
         self.cid = "b" + "a" * 20
@@ -34,6 +37,8 @@ class FakeKubo:
         return type("Added", (), {"cid": self.cid})()
 
     def cat(self, cid):
+        if cid == LOBBY_CID:
+            return b"<!doctype html><html><body>CDD gateway lobby</body></html>"
         if cid != self.cid or self.payload is None:
             raise ValueError("CID not found")
         return self.payload
@@ -104,6 +109,7 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         self.addCleanup(self.origin.server_close)
         self.addCleanup(self.origin_thread.join, 2)
         self.intent_now = [100.0]
+        self.lobby_kubo = FakeKubo()
         self.intent_lobby = CDDIntentLobby(
             {"read-document": IntentRoute(destination_id="web2:docs", content_cid="bafybeigdyrzt5sfp7udm7hu76uh4d3g5q4m3f4j2q")},
             clock=lambda: self.intent_now[0],
@@ -121,6 +127,8 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             intent_destination_paths={"web2:docs": "/intent-document"},
             intent_ttl_seconds=120,
             intent_min_wait_seconds=3,
+            lobby_content_cid=LOBBY_CID,
+            lobby_kubo=self.lobby_kubo,
         )
         self.gateway = create_cdd_server(("127.0.0.1", 0), self.config)
         self.gateway_thread = threading.Thread(target=self.gateway.serve_forever, daemon=True)
@@ -136,6 +144,14 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             return urlopen(req, timeout=3)
         except urllib.error.HTTPError as exc:
             return exc
+
+    def test_gateway_serves_configured_lobby_cid_without_exposing_cid(self):
+        response = self.request("/_cdd/lobby")
+        self.assertEqual(response.status, 200)
+        self.assertIn("CDD gateway lobby", response.read().decode("utf-8"))
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertIn("sandbox", response.headers.get("Content-Security-Policy", ""))
+        self.assertNotIn(LOBBY_CID, response.headers.get("Content-Type", ""))
 
     def test_lobby_issues_opaque_ticket_without_exposing_cid(self):
         response = self.request("/_cdd/lobby?intent=read-document")
