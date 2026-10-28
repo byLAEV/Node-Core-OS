@@ -104,7 +104,7 @@ Each product folder must have its own `TEST-TRACEABILITY.md` identifying relevan
 
 ## Latest evidence-based audit snapshot — 2026-10-28
 
-See [Certificate Profiles — Evidence-Based Audit Snapshot](../../docs/CERTIFICATE-PROFILES-AUDIT-2026-10-28.md) for the current eight-profile status table, current-main CI runs, gaps, and prioritized next tests.
+See [Certificate Profiles — Evidence-Based Audit Snapshot](../docs/CERTIFICATE-PROFILES-AUDIT-2026-10-28.md) for the current eight-profile status table, current-main CI runs, gaps, and prioritized next tests.
 
 - Audited main commit: `98d53542cf89383fe237454485251a337978bee0`.
 - [Catalog integrity run](https://github.com/byLAEV/Node-Core-OS/actions/runs/40623347474): SUCCESS on the audited commit.
