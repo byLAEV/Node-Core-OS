@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from node_core.ipfs import KuboManager, KuboStatus
+from node_core.ipfs import KuboError, KuboManager, KuboStatus
 
 
 class KuboBackgroundLaunchTests(unittest.TestCase):
