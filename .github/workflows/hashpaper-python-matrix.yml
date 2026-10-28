@@ -1,4 +1,4 @@
-name: HashPaper — Python Compatibility and Security Tests
+name: [SUSPENDED] HashPaper — Python Compatibility and Security Tests
 
 on:
   push:
@@ -21,92 +21,10 @@ on:
 permissions:
   contents: read
 
+# Suspended by project decision on 2026-10-27. Source and tests are retained.
 jobs:
-  unit-and-contract-tests:
-    name: HashPaper tests (Python ${{ matrix.python-version }})
+  suspended:
+    if: false
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Test standalone HashPaper updater and data preservation
-        run: |
-          set -euo pipefail
-          bash installer/tests/hashpaper-update.sh
-
-      - name: Compile HashPaper sources
-        run: |
-          set -euo pipefail
-          python -m compileall -q applications/hashpaper
-
-      - name: Run complete HashPaper unit tests
-        run: |
-          set -euo pipefail
-          python -m unittest discover -s applications/hashpaper/tests -v
-
-      - name: Verify original-byte and transparent-package contract
-        run: |
-          set -euo pipefail
-          work="$RUNNER_TEMP/hashpaper-contract"
-          mkdir -p "$work"
-          mkdir -p "$work/bin"
-          cat > "$work/bin/ots" <<'OTS'
-          #!/usr/bin/env python3
-          import pathlib
-          import sys
-
-          args = sys.argv[1:]
-          if len(args) != 2:
-              sys.exit(2)
-          if args[0] == "stamp":
-              pathlib.Path(args[1] + ".ots").write_bytes(b"synthetic OpenTimestamps proof")
-              print("Submitting to remote calendar https://calendar.example")
-          elif args[0] == "verify":
-              print("Calendar https://calendar.example: Pending confirmation in Bitcoin blockchain")
-          else:
-              sys.exit(2)
-          OTS
-          chmod 700 "$work/bin/ots"
-          export PATH="$work/bin:$PATH"
-          original="$work/synthetic.md"
-          proof_report="$work/synthetic.proof-info.json"
-          package="$work/synthetic.package.json"
-          python applications/hashpaper/main.py create \
-            --output "$original" \
-            --title "HashPaper compatibility test" \
-            --text "Synthetic data only."
-          test -s "$original.ots"
-          python applications/hashpaper/main.py proof-info \
-            --input "$original" \
-            --report "$proof_report"
-          before="$(sha256sum "$original" | awk '{print $1}')"
-          python applications/hashpaper/main.py package \
-            --input "$original" \
-            --output "$package" \
-            --ots-json "$proof_report"
-          after="$(sha256sum "$original" | awk '{print $1}')"
-          test "$before" = "$after"
-          python - "$original" "$package" <<'PY'
-          import hashlib
-          import json
-          import sys
-          from pathlib import Path
-
-          original = Path(sys.argv[1])
-          package = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-          assert package["document"]["original_text"] == original.read_text(encoding="utf-8")
-          assert package["document"]["sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
-          assert package["encryption"]["implemented"] is False
-          assert package["opentimestamps"]["status"] == "WAITING_FOR_BITCOIN"
-          assert package["publication"]["ipfs_cid"] is None
-          print("HashPaper original-byte, transparent-package, and pending-timestamp contracts passed.")
-          PY
+      - run: echo 'HashPaper tests are suspended until Node Core OS stabilizes.'
