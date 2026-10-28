@@ -56,6 +56,14 @@ main() {
   rm -f "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER.md" "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
   rm -f "$NODE_CORE_DATA_DIR/app/tests/test_hashpaper_storage_layout.py"
   rm -f "$NODE_CORE_DATA_DIR/app/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_DATA_DIR/app/.github/workflows/hashpaper-python-matrix.yml"
+  rm -f "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md" \
+    "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-BTC-REQUEST-PROTOTYPE.md" \
+    "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-DEVELOPMENT-PLAN.md" \
+    "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-PUBLIC-MANIFEST-PROTOCOL.md" \
+    "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-SCHEMAS.md" \
+    "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+  rm -f "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml" \
+    "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
   [[ -f "$NODE_CORE_DATA_DIR/app/VERSION" ]] || {
     printf 'Installed Node Core OS version file is missing.\n' >&2
     exit 1
