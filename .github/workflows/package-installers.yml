@@ -17,6 +17,11 @@ jobs:
     name: Build downloadable installer packages
     runs-on: ubuntu-24.04
     steps:
+      - name: Enforce non-root execution
+        shell: bash
+        run: |
+          set -eu
+          test "$(id -u)" -ne 0 || { echo "ERROR: this job must not run as root (UID 0)." >&2; exit 1; }
       - name: Checkout repository
         uses: actions/checkout@v4
 

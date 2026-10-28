@@ -22,3 +22,246 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - run: echo 'HashPaper live tests are suspended until Node Core OS stabilizes.'
+      - name: Enforce non-root execution
+        shell: bash
+        run: |
+          set -eu
+          test "$(id -u)" -ne 0 || { echo "ERROR: this job must not run as root (UID 0)." >&2; exit 1; }
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install official OpenTimestamps client
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install opentimestamps-client
+          ots --help
+
+      - name: Install Node Core OS and start its real Kubo daemon as the runner user
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          bash installer/install.sh
+          test -x "$HOME/.node-core/bin/ipfs"
+          test -f "$HOME/.node-core/ipfs/config"
+          test "$(id -u)" -ne 0
+          printf 'Node Core OS and Kubo installed under the unprivileged runner HOME.\n'
+
+      - name: Create synthetic document and submit a real timestamp
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hashpaper-ots-live"
+          original="$RUNNER_TEMP/hashpaper-ots-live/synthetic-document.md"
+          stamp_report="$RUNNER_TEMP/hashpaper-ots-live/stamp-report.json"
+          check_report="$RUNNER_TEMP/hashpaper-ots-live/check-report.json"
+
+          python3 applications/hashpaper/main.py create \
+            --output "$original" \
+            --title "Synthetic HashPaper live OpenTimestamps test" \
+            --text "Synthetic content only. This document contains no personal data."
+
+          before="$(sha256sum "$original" | awk '{print $1}')"
+          python3 applications/hashpaper/main.py stamp \
+            --input "$original" \
+            --report "$stamp_report"
+          test -s "$original.ots"
+          after="$(sha256sum "$original" | awk '{print $1}')"
+          test "$before" = "$after"
+
+          python3 applications/hashpaper/main.py check \
+            --input "$original" \
+            --report "$check_report"
+
+          python3 - "$original" "$stamp_report" "$check_report" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          original = Path(sys.argv[1])
+          stamp_report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          check_report = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          digest = hashlib.sha256(original.read_bytes()).hexdigest()
+          assert stamp_report["original_sha256"] == digest
+          assert check_report["original_sha256"] == digest
+          assert stamp_report["status"] == "WAITING_FOR_BITCOIN"
+          assert stamp_report["proof_file"] == str(Path(str(original) + ".ots"))
+          assert Path(stamp_report["proof_file"]).is_file()
+          assert check_report["status"] in {"VERIFIED", "WAITING_FOR_BITCOIN"}, (
+              "Live OpenTimestamps check was inconclusive or failed: "
+              f"{check_report['status']}; see the uploaded JSON report and client output."
+          )
+          print(f"Original SHA-256 preserved: {digest}")
+          print(f"Timestamp submission status: {stamp_report['status']}")
+          print(f"Immediate proof check status: {check_report['status']}")
+          import os
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("## HashPaper live OpenTimestamps result\n\n")
+              summary.write(f"- Original SHA-256: {digest}\n")
+              summary.write(f"- Submission: {stamp_report['status']}\n")
+              summary.write(f"- Immediate proof check: {check_report['status']}\n")
+              if check_report["status"] == "VERIFIED":
+                  summary.write("- Bitcoin attestation: verified by the official OpenTimestamps client\n")
+              else:
+                  summary.write("- Bitcoin attestation: pending; not claimed as verified\n")
+
+          PY
+
+      - name: Exercise HashPaper proof-info against the real pending or verified .ots file
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/hashpaper-ots-live"
+          original="$work/synthetic-document.md"
+          report="$work/proof-info-report.json"
+
+          python3 applications/hashpaper/main.py proof-info \
+            --input "$original" \
+            --report "$report"
+
+          python3 - "$original" "$report" "$work/check-report.json" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          original = Path(sys.argv[1])
+          proof = Path(str(original) + ".ots")
+          info = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          checked = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+
+          assert info["original_sha256"] == hashlib.sha256(original.read_bytes()).hexdigest()
+          assert info["proof_file_sha256"] == hashlib.sha256(proof.read_bytes()).hexdigest()
+          assert info["proof_file"] == checked["proof_file"]
+          assert info["original_sha256"] == checked["original_sha256"]
+          assert info["status"] in {"VERIFIED", "WAITING_FOR_BITCOIN"}, info
+          assert info["proof_verification"] in {"VERIFIED", "PENDING", "NOT_VERIFIED"}, info
+          assert "not an official OpenTimestamps-issued identifier" in info["proof_fingerprint_note"]
+          print(json.dumps({
+              "original_sha256": info["original_sha256"],
+              "proof_file_sha256": info["proof_file_sha256"],
+              "status": info["status"],
+              "proof_verification": info["proof_verification"],
+              "bitcoin_block_height": info["bitcoin_block_height"],
+          }, indent=2))
+          with open(__import__("os").environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("\n## HashPaper proof-info real .ots check\n\n")
+              summary.write(f"- Original SHA-256: {info['original_sha256']}\n")
+              summary.write(f"- Local .ots SHA-256 fingerprint: {info['proof_file_sha256']}\n")
+              summary.write(f"- Official OpenTimestamps status: {info['status']}\n")
+              summary.write(f"- Proof verification: {info['proof_verification']}\n")
+              summary.write("- The .ots SHA-256 is a local file fingerprint, not an official OpenTimestamps-issued ID.\n")
+          PY
+
+      - name: Build transparent package containing original and real OTS report
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/hashpaper-ots-live"
+          original="$work/synthetic-document.md"
+          package="$work/synthetic-document.ipfs.json"
+          identity="$work/synthetic-identity.json"
+          receipt="$work/ipfs-publication-receipt.json"
+
+          cat > "$identity" <<'JSON'
+          {
+            "schema_version": 1,
+            "identity_id": "synthetic-hashpaper-live-test",
+            "full_name": "Synthetic Test Identity",
+            "alias": "hashpaper-live-ci",
+            "nationality": "NOT_A_REAL_IDENTITY",
+            "issuing_country": null,
+            "document_type": "SYNTHETIC_TEST",
+            "document_number": "SYNTHETIC-ONLY",
+            "birth_date": null,
+            "height_cm": null,
+            "gender": null,
+            "identity_status": "declared",
+            "node_id": "synthetic-node-for-ci",
+            "created_at": null,
+            "updated_at": null
+          }
+          JSON
+
+          python3 applications/hashpaper/main.py package \
+            --input "$original" \
+            --output "$package" \
+            --identity-json "$identity" \
+            --node-id "synthetic-node-for-ci" \
+            --ots-json "$work/check-report.json"
+
+          python3 - "$original" "$package" "$work/check-report.json" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          original = Path(sys.argv[1]).read_bytes()
+          package = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          report = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          assert package["document"]["original_text"] == original.decode("utf-8")
+          assert package["document"]["sha256"] == hashlib.sha256(original).hexdigest()
+          assert package["opentimestamps"]["status"] == report["status"]
+          assert package["opentimestamps"]["proof_file"] == Path(str(sys.argv[1]) + ".ots").name
+          assert package["opentimestamps"]["proof_sha256"]
+          assert package["identity"]["fields"]["identity_id"] == "synthetic-hashpaper-live-test"
+          print("Transparent package includes the exact original text, its SHA-256, synthetic identity, and actual OTS report.")
+          PY
+
+      - name: Publish through Node Core OS Kubo and verify CID round-trip and pin
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/hashpaper-ots-live"
+          package="$work/synthetic-document.ipfs.json"
+          receipt="$work/ipfs-publication-receipt.json"
+          expected_sha256="$(sha256sum "$package" | awk '{print $1}')"
+          printf 'PUBLISH\n' | python3 applications/hashpaper/main.py publish --input "$package" --report "$receipt"
+
+          python3 - "$package" "$receipt" "$expected_sha256" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          package = Path(sys.argv[1]).read_bytes()
+          receipt = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          expected = sys.argv[3]
+          assert receipt["published"] is True, receipt
+          assert receipt["content_verified"] is True, receipt
+          assert receipt["pinned"] is True, receipt
+          assert receipt["sha256"] == expected, receipt
+          assert receipt["size_bytes"] == len(package), receipt
+          assert isinstance(receipt["cid"], str) and receipt["cid"], receipt
+          assert receipt["publication_status"] == "PUBLISHED_AND_RETRIEVED", receipt
+          print(json.dumps({
+              "cid": receipt["cid"],
+              "sha256": receipt["sha256"],
+              "size_bytes": receipt["size_bytes"],
+              "content_verified": receipt["content_verified"],
+              "pinned": receipt["pinned"],
+              "published": receipt["published"],
+          }, indent=2))
+          PY
+
+          {
+            echo
+            echo '## Kubo/IPFS round-trip result'
+            echo
+            echo '- The transparent package included the complete synthetic original and the actual OpenTimestamps JSON report.'
+            echo '- Node Core OS published it through its Kubo/ContentManager interfaces.'
+            echo '- HashPaper retrieved the CID and verified byte-for-byte equality and SHA-256.'
+            echo '- Kubo pin state was confirmed.'
+            echo '- Only synthetic identity and document content were used.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload synthetic OpenTimestamps and IPFS evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hashpaper-live-ots-ipfs-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/hashpaper-ots-live/
+          if-no-files-found: warn
+          retention-days: 14
