@@ -52,6 +52,7 @@ main() {
   # HashPaper and P2P Contracts are suspended and must not ship as active Node Core OS applications.
   rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
+  rm -f "$NODE_CORE_DATA_DIR/app/installer/opentimestamps-server-install.sh"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER.md" "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
   rm -f "$NODE_CORE_DATA_DIR/app/tests/test_hashpaper_storage_layout.py"
