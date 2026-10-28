@@ -26,6 +26,11 @@ jobs:
       TEST_ROOT: ${{ github.workspace }}/.node-core-user-only-network
 
     steps:
+      - name: Enforce non-root execution
+        shell: bash
+        run: |
+          set -eu
+          test "$(id -u)" -ne 0 || { echo "ERROR: this job must not run as root (UID 0)." >&2; exit 1; }
       - name: Checkout repository without persisted credentials
         uses: actions/checkout@v4
         with:
