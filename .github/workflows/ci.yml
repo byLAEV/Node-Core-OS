@@ -86,7 +86,9 @@ jobs:
 
 
   # Suspended experimental P2P Contracts integration; retained for future reactivation.
+  # Suspended experimental P2P Contracts integration; retained for future reactivation.
   three-kubo-node-integration:
+    if: false
     if: false
     name: Three independent Kubo nodes — P2P Contracts end-to-end
     runs-on: ubuntu-24.04
