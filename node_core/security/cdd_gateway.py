@@ -223,11 +223,20 @@ def make_cdd_handler(
             # Keep test logs deterministic and avoid logging request secrets.
             return
 
-        def _respond(self, status: int, payload: bytes, *, content_type: str = "text/plain; charset=utf-8") -> None:
+        def _respond(
+            self,
+            status: int,
+            payload: bytes,
+            *,
+            content_type: str = "text/plain; charset=utf-8",
+            extra_headers: Mapping[str, str] | None = None,
+        ) -> None:
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(payload)))
             self.send_header("Cache-Control", "no-store")
+            for header_name, header_value in (extra_headers or {}).items():
+                self.send_header(header_name, header_value)
             self.end_headers()
             if self.command != "HEAD" and payload:
                 self.wfile.write(payload)
