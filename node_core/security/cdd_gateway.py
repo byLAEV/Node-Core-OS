@@ -15,10 +15,11 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from node_core.ipfs import KuboManager
+from node_core.security.cdd_intent import CDDIntentError, CDDIntentLobby
 from node_core.security.cdd import (
     SlidingWindowRateLimiter,
     canonical_json,
@@ -120,6 +121,10 @@ class CDDGatewayConfig:
     timeout_seconds: float = 3.0
     max_response_bytes: int = MAX_RESPONSE_BYTES
     origin_auth_token: str | None = None
+    intent_lobby: CDDIntentLobby | None = None
+    intent_destination_paths: Mapping[str, str] | None = None
+    intent_ttl_seconds: int = 180
+    intent_min_wait_seconds: int = 3
 
 
 def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = None) -> None:
@@ -148,6 +153,37 @@ def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = 
         not isinstance(config.origin_auth_token, str) or len(config.origin_auth_token) < 32
     ):
         raise CDDGatewayError("origin_auth_token must be at least 32 characters when configured.")
+    if config.intent_lobby is None:
+        if config.intent_destination_paths:
+            raise CDDGatewayError("Intent destination paths require an intent_lobby.")
+    else:
+        if not isinstance(config.intent_destination_paths, Mapping) or not config.intent_destination_paths:
+            raise CDDGatewayError("Intent lobby requires an operator-configured destination path map.")
+        for destination_id, path in config.intent_destination_paths.items():
+            parsed_path = urlsplit(path) if isinstance(path, str) else None
+            if (
+                not isinstance(destination_id, str) or not destination_id
+                or parsed_path is None or not path.startswith("/") or path.startswith("//")
+                or parsed_path.scheme or parsed_path.netloc
+                or any(part == ".." for part in parsed_path.path.split("/"))
+                or parsed_path.query or parsed_path.fragment
+            ):
+                raise CDDGatewayError("Intent destinations must be safe, operator-configured absolute paths.")
+        configured_ids = {route.destination_id for route in config.intent_lobby._routes.values()}
+        if not configured_ids.issubset(set(config.intent_destination_paths)):
+            raise CDDGatewayError("Every intent route must have an operator-configured destination path.")
+        if (
+            isinstance(config.intent_ttl_seconds, bool)
+            or not isinstance(config.intent_ttl_seconds, int)
+            or not 1 <= config.intent_ttl_seconds <= 900
+        ):
+            raise CDDGatewayError("intent_ttl_seconds must be between 1 and 900.")
+        if (
+            isinstance(config.intent_min_wait_seconds, bool)
+            or not isinstance(config.intent_min_wait_seconds, int)
+            or not 0 <= config.intent_min_wait_seconds <= min(config.intent_ttl_seconds, 120)
+        ):
+            raise CDDGatewayError("intent_min_wait_seconds is outside the supported range.")
     if (
         isinstance(config.max_response_bytes, bool)
         or not isinstance(config.max_response_bytes, int)
@@ -237,7 +273,67 @@ def make_cdd_handler(
                     self._respond(400, b"incomplete request body")
                     return
 
-            upstream_url = config.origin_url.rstrip("/") + self.path
+            # Intent endpoints are local to this gateway. The client never selects
+            # an upstream host or arbitrary destination path.
+            if parsed_target.path == "/_cdd/lobby":
+                if self.command != "GET":
+                    self._respond(405, b"lobby requires GET")
+                    return
+                if config.intent_lobby is None:
+                    self._respond(404, b"intent lobby is not enabled")
+                    return
+                query = parse_qs(parsed_target.query, keep_blank_values=True)
+                intents = query.get("intent", [])
+                if len(intents) != 1 or not intents[0]:
+                    self._respond(400, b"exactly one intent is required")
+                    return
+                try:
+                    ticket = config.intent_lobby.issue(
+                        intents[0],
+                        ttl_seconds=config.intent_ttl_seconds,
+                        min_wait_seconds=config.intent_min_wait_seconds,
+                    )
+                except CDDIntentError as exc:
+                    status = 429 if "capacity" in str(exc) else 400
+                    self._respond(status, str(exc).encode("utf-8"))
+                    return
+                response_payload = json.dumps({
+                    "ticket": ticket,
+                    "expires_in": config.intent_ttl_seconds,
+                    "minimum_wait_seconds": config.intent_min_wait_seconds,
+                    "consume_endpoint": "/_cdd/consume",
+                }, separators=(",", ":")).encode("utf-8")
+                self._respond(200, response_payload, content_type="application/json; charset=utf-8")
+                return
+
+            if parsed_target.path == "/_cdd/consume":
+                if self.command != "POST":
+                    self._respond(405, b"consume requires POST")
+                    return
+                if config.intent_lobby is None:
+                    self._respond(404, b"intent lobby is not enabled")
+                    return
+                try:
+                    payload = json.loads(body.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    self._respond(400, b"invalid ticket JSON")
+                    return
+                if not isinstance(payload, dict) or set(payload) != {"ticket"} or not isinstance(payload.get("ticket"), str):
+                    self._respond(400, b"request must contain only a ticket string")
+                    return
+                try:
+                    grant = config.intent_lobby.consume(payload["ticket"])
+                except CDDIntentError as exc:
+                    self._respond(403, str(exc).encode("utf-8"))
+                    return
+                destination_path = config.intent_destination_paths.get(grant.destination_id)
+                if not destination_path:
+                    self._respond(403, b"intent destination is not configured")
+                    return
+                # Ticket is consumed before forwarding. Never return the CID to the client.
+                upstream_url = config.origin_url.rstrip("/") + destination_path
+            else:
+                upstream_url = config.origin_url.rstrip("/") + self.path
             outgoing_headers = {}
             for key, value in self.headers.items():
                 lowered = key.lower()
