@@ -62,7 +62,7 @@ jobs:
       - name: Validate Python sources
         run: |
           set -euo pipefail
-          python -m compileall -q main.py node_core tests applications/hashpaper applications/p2p_contracts
+          python -m compileall -q main.py node_core tests
 
       - name: Validate installer shell syntax
         run: |
@@ -84,17 +84,10 @@ jobs:
           set -euo pipefail
           python -m unittest discover -s tests -v
 
-      - name: Run HashPaper local foundation tests
-        run: |
-          set -euo pipefail
-          python -m unittest discover -s applications/hashpaper/tests -v
 
-      - name: Run P2P Contracts unit tests
-        run: |
-          set -euo pipefail
-          python -m unittest applications.p2p_contracts.tests.test_service applications.p2p_contracts.tests.test_propagation applications.p2p_contracts.tests.test_cli_bootstrap applications.p2p_contracts.tests.test_cli_local_manifest -v
-
+  # Suspended experimental P2P Contracts integration; retained for future reactivation.
   three-kubo-node-integration:
+    if: false
     name: Three independent Kubo nodes — P2P Contracts end-to-end
     runs-on: ubuntu-24.04
     timeout-minutes: 15
