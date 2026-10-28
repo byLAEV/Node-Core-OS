@@ -452,6 +452,7 @@ update_application() (
   # HashPaper is a separate application and is not part of Node Core OS 1.4.0.
   rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
   rm -f "$NODE_CORE_APP_DIR/installer/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/hashpaper-update.sh"
+  rm -f "$NODE_CORE_APP_DIR/installer/opentimestamps-server-install.sh"
   rm -f "$NODE_CORE_APP_DIR/installer/tests/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_APP_DIR/docs/HASHPAPER.md" "$NODE_CORE_APP_DIR/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
   rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
