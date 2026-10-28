@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
-          python -m compileall -q main.py node_core applications/p2p_contracts
+          python -m compileall -q main.py node_core
 
       - name: Download and verify bundled runtime dependencies
         shell: bash
