@@ -80,6 +80,12 @@ jobs:
             "$stage/$package/installer/tests/hashpaper-update.sh" \
             "$stage/$package/docs/HASHPAPER.md" \
             "$stage/$package/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md" \
+            "$stage/$package/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md" \
+            "$stage/$package/docs/P2P-CONTRACTS-BTC-REQUEST-PROTOTYPE.md" \
+            "$stage/$package/docs/P2P-CONTRACTS-DEVELOPMENT-PLAN.md" \
+            "$stage/$package/docs/P2P-CONTRACTS-PUBLIC-MANIFEST-PROTOCOL.md" \
+            "$stage/$package/docs/P2P-CONTRACTS-SCHEMAS.md" \
+            "$stage/$package/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md" \
             "$stage/$package/tests/test_hashpaper_storage_layout.py" \
             "$stage/$package/.github/workflows/hashpaper-opentimestamps-live.yml" \
             "$stage/$package/.github/workflows/hashpaper-python-matrix.yml" \
