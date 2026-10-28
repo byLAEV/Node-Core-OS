@@ -36,7 +36,7 @@ class NodeIdentityCertificateTests(unittest.TestCase):
         self.trust = {"issuer-key-01": public_bytes(self.issuer.public_key())}
 
     def test_valid_certificate(self):
-        claims = verify_certificate(self.token, trusted_issuers=self.trust, now=self.now)
+        claims = verify_certificate(self.token, trusted_issuers=self.trust, trusted_issuer_ids={"issuer-key-01": "did:nodecore:issuer-01"}, now=self.now)
         self.assertEqual(claims["sub"], "node-01")
         self.assertEqual(claims["node_core"]["profile"], "identity-key-protection")
 
@@ -46,21 +46,50 @@ class NodeIdentityCertificateTests(unittest.TestCase):
         payload["sub"] = "attacker"
         parts[1] = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
         with self.assertRaises(NodeCertificateError):
-            verify_certificate(".".join(parts), trusted_issuers=self.trust, now=self.now)
+            verify_certificate(".".join(parts), trusted_issuers=self.trust, trusted_issuer_ids={"issuer-key-01": "did:nodecore:issuer-01"}, now=self.now)
 
     def test_unknown_issuer_rejected(self):
         with self.assertRaises(NodeCertificateError):
-            verify_certificate(self.token, trusted_issuers={}, now=self.now)
+            verify_certificate(self.token, trusted_issuers={}, trusted_issuer_ids={}, now=self.now)
+
+    def test_trusted_key_cannot_assert_a_different_issuer_identity(self):
+        forged_identity_token = issue_certificate(
+            issuer_id="did:nodecore:attacker",
+            issuer_key_id="issuer-key-01",
+            issuer_private_key=self.issuer,
+            node_id="node-01",
+            node_public_key_hex=public_bytes(self.subject.public_key()).hex(),
+            profile="identity-key-protection",
+            issued_at=self.now,
+            expires_at=self.now + timedelta(days=30),
+        )
+        with self.assertRaisesRegex(NodeCertificateError, "Issuer identity"):
+            verify_certificate(
+                forged_identity_token,
+                trusted_issuers=self.trust,
+                trusted_issuer_ids={"issuer-key-01": "did:nodecore:issuer-01"},
+                now=self.now,
+            )
+
+    def test_missing_trusted_issuer_identity_fails_closed(self):
+        with self.assertRaisesRegex(NodeCertificateError, "identity is missing"):
+            verify_certificate(
+                self.token,
+                trusted_issuers=self.trust,
+                trusted_issuer_ids={},
+                now=self.now,
+            )
 
     def test_revoked_certificate_rejected(self):
-        claims = verify_certificate(self.token, trusted_issuers=self.trust, now=self.now)
+        claims = verify_certificate(self.token, trusted_issuers=self.trust, trusted_issuer_ids={"issuer-key-01": "did:nodecore:issuer-01"}, now=self.now)
         with self.assertRaises(NodeCertificateError):
-            verify_certificate(self.token, trusted_issuers=self.trust, now=self.now,
+            verify_certificate(self.token, trusted_issuers=self.trust, trusted_issuer_ids={"issuer-key-01": "did:nodecore:issuer-01"}, now=self.now,
                                revoked_ids={claims["jti"]})
 
     def test_expired_certificate_rejected(self):
         with self.assertRaises(NodeCertificateError):
             verify_certificate(self.token, trusted_issuers=self.trust,
+                               trusted_issuer_ids={"issuer-key-01": "did:nodecore:issuer-01"},
                                now=self.now + timedelta(days=31))
 
     def test_long_lifetime_rejected_at_issuance(self):

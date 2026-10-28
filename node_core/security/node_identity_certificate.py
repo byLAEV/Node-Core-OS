@@ -131,6 +131,7 @@ def verify_certificate(
     token: str,
     *,
     trusted_issuers: Mapping[str, bytes | Ed25519PublicKey],
+    trusted_issuer_ids: Mapping[str, str],
     now: datetime | None = None,
     revoked_ids: set[str] | frozenset[str] = frozenset(),
     clock_skew_seconds: int = 60,
@@ -138,7 +139,9 @@ def verify_certificate(
     """Verify signature, issuer trust, profile, time bounds, and local revocation.
 
     trusted_issuers maps the JOSE kid to an independently trusted issuer public key.
-    The caller is responsible for distributing this trust store and fresh revocation data.
+    trusted_issuer_ids must map the same kid to its expected issuer identity; this
+    prevents a trusted signing key from asserting an arbitrary "iss" claim.
+    The caller is responsible for distributing both trust mappings and fresh revocation data.
     """
     if not isinstance(token, str) or len(token) > 16384:
         raise NodeCertificateError("Certificate must be a compact token under 16 KiB")
@@ -152,6 +155,11 @@ def verify_certificate(
     kid = header.get("kid")
     if not isinstance(kid, str) or kid not in trusted_issuers:
         raise NodeCertificateError("Issuer key is not trusted")
+    expected_issuer_id = trusted_issuer_ids.get(kid)
+    if not isinstance(expected_issuer_id, str) or not expected_issuer_id.strip():
+        raise NodeCertificateError("Trusted issuer identity is missing for issuer key")
+    if claims.get("iss") != expected_issuer_id:
+        raise NodeCertificateError("Issuer identity does not match the trusted issuer key")
     key_value = trusted_issuers[kid]
     try:
         public_key = key_value if isinstance(key_value, Ed25519PublicKey) else Ed25519PublicKey.from_public_bytes(key_value)
