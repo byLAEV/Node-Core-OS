@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "node_core/security/cdd.py"
+      - "node_core/security/cdd_intent.py"
       - "node_core/security/cdd_gateway.py"
       - "node_core/security/cdd_router.py"
       - "node_core/ipfs.py"
       - "tests/test_cdd_security.py"
+      - "tests/test_cdd_intent.py"
       - "tests/test_cdd_gateway.py"
       - "tests/test_cdd_router.py"
       - "tests/test_cdd_integration.py"
@@ -19,10 +21,12 @@ on:
     branches: [main]
     paths:
       - "node_core/security/cdd.py"
+      - "node_core/security/cdd_intent.py"
       - "node_core/security/cdd_gateway.py"
       - "node_core/security/cdd_router.py"
       - "node_core/ipfs.py"
       - "tests/test_cdd_security.py"
+      - "tests/test_cdd_intent.py"
       - "tests/test_cdd_gateway.py"
       - "tests/test_cdd_router.py"
       - "tests/test_cdd_integration.py"
@@ -72,12 +76,13 @@ jobs:
       - name: Compile CDD implementation and tests
         run: |
           set -euo pipefail
-          python -m py_compile node_core/security/cdd.py node_core/security/cdd_gateway.py node_core/security/cdd_router.py tests/test_cdd_security.py tests/test_cdd_gateway.py tests/test_cdd_router.py tests/test_cdd_integration.py
+          python -m py_compile node_core/security/cdd.py node_core/security/cdd_intent.py node_core/security/cdd_gateway.py node_core/security/cdd_router.py tests/test_cdd_security.py tests/test_cdd_intent.py tests/test_cdd_gateway.py tests/test_cdd_router.py tests/test_cdd_integration.py
 
       - name: Run CDD security and gateway tests
         run: |
           set -euo pipefail
           python -m unittest discover -s tests -p 'test_cdd_security.py' -v
+          python -m unittest discover -s tests -p 'test_cdd_intent.py' -v
           python -m unittest discover -s tests -p 'test_cdd_gateway.py' -v
           python -m unittest discover -s tests -p 'test_cdd_router.py' -v
           python -m unittest discover -s tests -p 'test_cdd_integration.py' -v
@@ -87,7 +92,7 @@ jobs:
         run: |
           {
             echo "## CDD Security Lab"
-            echo "- Tests signed policy validation, a bounded local rate limiter, Kubo adapter behavior, and a local-only HTTP gateway."
+            echo "- Tests signed policy validation, bounded local rate limiting, opaque single-use intent tickets, Kubo adapter behavior, and a local-only HTTP gateway."
             echo "- Gateway integration tests use synthetic identities and loopback-only origin/gateway servers."
             echo "- Does not prove production DDoS resistance, global quotas, P2P ingress/failover, DNS/Anycast, or origin firewall isolation."
             echo "- Kubo adapter tests use a fake Kubo object; real Kubo interoperability remains a separate integration test."
