@@ -1,4 +1,4 @@
-name: [SUSPENDED] HashPaper — Python Compatibility and Security Tests
+name: "[SUSPENDED] HashPaper — Python Compatibility and Security Tests"
 
 on:
   push:
