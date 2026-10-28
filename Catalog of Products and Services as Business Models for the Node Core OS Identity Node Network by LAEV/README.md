@@ -6,6 +6,8 @@
 **Economic distribution:** Pending business-model consensus  
 **Certificate format:** Project-defined Node Core OS JWS/Ed25519 profile; not X.509 and not an independent accreditation
 
+**Implementation status distinction:** the eight profile identifiers are recognized by the certificate implementation; the eight commercial assessment services remain proposed definitions. The presence of an identifier, specification, test file, or successful certificate-envelope test does not establish that the corresponding security controls are implemented or effective. See [Implementation Status and Evidence Policy](../../docs/IMPLEMENTATION-STATUS-POLICY.md).
+
 ## Executive overview
 
 This catalog defines eight potential security products for organizations that operate websites, Web2 services, enterprise systems, institutional platforms, APIs, and network infrastructure. The products are designed around the Node Core OS identity-node network: individual technical identities and authorized participating nodes may contribute to the assessment, verification, monitoring, and delivery of security services to enterprise or institutional customers.

@@ -1,6 +1,6 @@
 # Implementation Status and Evidence Policy
 
-**Status of this document:** policy proposal on branch `docs/implementation-status-policy`. It is not active on `main` until reviewed and merged.
+**Status of this document:** adopted repository policy, merged into `main` by PR #178 on 2026-10-28. This policy governs status claims for subsequent repository changes.
 
 ## Purpose
 
