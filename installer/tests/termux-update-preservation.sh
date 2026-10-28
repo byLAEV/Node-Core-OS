@@ -39,6 +39,7 @@ printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/
 
 # Build a local release archive to exercise the actual update path without network access.
 mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
+  "$TEST_FIXTURES/release/Node-Core-OS-test/tests" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/installer" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/hashpaper" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/tests" \
@@ -48,6 +49,16 @@ printf 'print("updated Node Core application")\n' > "$TEST_FIXTURES/release/Node
 printf '1.2.6\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/VERSION"
 # Keep the offline release fixture dependency-free while exercising the updater.
 : > "$TEST_FIXTURES/release/Node-Core-OS-test/requirements.txt"
+# A valid release fixture must contain importable core tests because the updater
+# runs unittest discovery before activating any downloaded application.
+: > "$TEST_FIXTURES/release/Node-Core-OS-test/tests/__init__.py"
+cat > "$TEST_FIXTURES/release/Node-Core-OS-test/tests/test_core_fixture.py" <<'PY'
+import unittest
+
+class CoreFixtureTest(unittest.TestCase):
+    def test_fixture_is_importable(self):
+        self.assertTrue(True)
+PY
 printf '0.3.0\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/applications/hashpaper/VERSION"
 printf 'VALUE = "updated"\n' > "$TEST_FIXTURES/release/Node-Core-OS-test/node_core/__init__.py"
 cp "$REPOSITORY_ROOT/installer/update.sh" "$TEST_FIXTURES/release/Node-Core-OS-test/installer/update.sh"
