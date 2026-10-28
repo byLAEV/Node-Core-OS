@@ -5,6 +5,8 @@ contact external hosts or read real user identity material.
 """
 from datetime import datetime, timedelta, timezone
 import hashlib
+import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -87,6 +89,38 @@ class CertificateAdversarialTests(unittest.TestCase):
         self.transport.certificate_path.write_bytes(b"-----BEGIN CERTIFICATE-----\nnot-a-certificate")
         with self.assertRaises(TLSTransportError):
             self.transport.ensure_certificate()
+
+    def test_identity_private_files_use_restrictive_posix_permissions(self):
+        if os.name != "posix":
+            self.skipTest("POSIX permission bits are only asserted on POSIX systems")
+
+        self.assertEqual(stat.S_IMODE(self.store.identity_dir.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(self.store.private_dir.stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE(self.store.private_key_path.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(self.store.metadata_path.stat().st_mode), 0o600)
+
+    def test_incomplete_identity_fails_closed_without_regenerating_key(self):
+        original_key = self.store.private_key_path.read_bytes()
+        self.store.private_key_path.unlink()
+
+        with self.assertRaises(NodeIdentityError):
+            self.store.initialize()
+
+        self.assertFalse(self.store.private_key_path.exists())
+        self.assertEqual(self.store.metadata_path.exists(), True)
+        self.assertNotEqual(original_key, b"")
+
+    def test_private_key_replacement_is_rejected(self):
+        replacement_key = Ed25519PrivateKey.generate()
+        replacement_pem = replacement_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        self.store.private_key_path.write_bytes(replacement_pem)
+
+        with self.assertRaises(NodeIdentityError):
+            self.store.load()
 
     def test_tampered_identity_metadata_is_rejected(self):
         original = self.store.metadata_path.read_text(encoding="utf-8")
