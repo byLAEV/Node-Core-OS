@@ -107,6 +107,11 @@ jobs:
           cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+          test ! -e "$NODE_CORE_DATA_DIR/app/installer/opentimestamps-server-install.sh"
+          test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md"
+          test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+          test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
+          test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
           grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' "$NODE_CORE_DATA_DIR/app/VERSION"
           test -f "$NODE_CORE_DATA_DIR/ipfs/config"
           test -d "$NODE_CORE_DATA_DIR/storage"
@@ -280,6 +285,12 @@ jobs:
           printf 'y\n' | "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+          test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+          test ! -e "$NODE_CORE_DATA_DIR/app/installer/opentimestamps-server-install.sh"
+          test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md"
+          test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+          test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
+          test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
           test -x "$NODE_CORE_DATA_DIR/bin/node-core"
           test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
           test "$(sha256sum "$NODE_CORE_DATA_DIR/hashpaper/documents/upgrade-preservation.md" | awk '{print $1}')" = "$document_hash"
@@ -325,9 +336,9 @@ jobs:
           test ! -e "$NODE_CORE_DATA_DIR"
 
   # Separate GitHub-hosted Ubuntu VMs; synthetic profiles only, never real identity data.
+  # P2P Contracts E2E is suspended until Node Core OS core stability is established.
   three-independent-ubuntu-p2p-e2e:
-    if: false # P2P Contracts is suspended; preserve the job for future reactivation.
-    if: false # Suspended until Node Core OS core is stable.
+    if: false
     name: ${{ matrix.node }} — independent Ubuntu install and P2P Contracts E2E
     runs-on: ubuntu-24.04
     strategy:

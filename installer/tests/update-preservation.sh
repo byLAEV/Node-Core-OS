@@ -41,7 +41,9 @@ mkdir -p "$release_root/Node-Core-OS-fixture/node_core/identity" \
   "$release_root/Node-Core-OS-fixture/applications/hashpaper/hashpaper" \
   "$release_root/Node-Core-OS-fixture/applications/hashpaper/tests" \
   "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/p2p_contracts" \
-  "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests"
+  "$release_root/Node-Core-OS-fixture/applications/p2p_contracts/tests" \
+  "$release_root/Node-Core-OS-fixture/docs" \
+  "$release_root/Node-Core-OS-fixture/.github/workflows"
 printf 'print("updated application")\n' > "$release_root/Node-Core-OS-fixture/main.py"
 printf 'VALUE = "updated"\n' > "$release_root/Node-Core-OS-fixture/node_core/__init__.py"
 printf 'IDENTITY_PROFILE_RELEASE = "1.2.2"\n' > "$release_root/Node-Core-OS-fixture/node_core/identity/profile.py"
@@ -89,6 +91,10 @@ class P2PLocalManifestFixtureTest(unittest.TestCase):
     def test_fixture(self):
         self.assertTrue(True)
 PY
+
+printf 'P2P documentation fixture\n' > "$release_root/Node-Core-OS-fixture/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+printf 'name: suspended P2P fixture\n' > "$release_root/Node-Core-OS-fixture/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
+printf 'name: suspended P2P E2E fixture\n' > "$release_root/Node-Core-OS-fixture/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 
 cat > "$release_root/Node-Core-OS-fixture/applications/hashpaper/tests/test_smoke.py" <<'PY'
 import unittest
@@ -170,6 +176,10 @@ printf 'Updater happy-path application check passed.\\n'
 grep -qx '1111111111111111111111111111111111111111' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 test ! -e "$NODE_CORE_DATA_DIR/bin/hashpaper"
 test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
+test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 printf 'Updater happy-path commit marker check passed.\\n'
 
 # Verify Kubo, its repository, local storage, and configuration remain untouched.

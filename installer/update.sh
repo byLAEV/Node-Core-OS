@@ -452,10 +452,19 @@ update_application() (
   # HashPaper is a separate application and is not part of Node Core OS 1.4.0.
   rm -rf "$NODE_CORE_APP_DIR/applications/hashpaper" "$NODE_CORE_APP_DIR/applications/p2p_contracts" || return 1
   rm -f "$NODE_CORE_APP_DIR/installer/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/hashpaper-update.sh"
+  rm -f "$NODE_CORE_APP_DIR/installer/opentimestamps-server-install.sh"
   rm -f "$NODE_CORE_APP_DIR/installer/tests/hashpaper-install.sh" "$NODE_CORE_APP_DIR/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_APP_DIR/docs/HASHPAPER.md" "$NODE_CORE_APP_DIR/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
   rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
   rm -f "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-python-matrix.yml"
+  rm -f "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-BTC-REQUEST-PROTOTYPE.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-DEVELOPMENT-PLAN.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-PUBLIC-MANIFEST-PROTOCOL.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-SCHEMAS.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+  rm -f "$NODE_CORE_APP_DIR/.github/workflows/three-independent-ubuntu-p2p-contracts.yml" \
+    "$NODE_CORE_APP_DIR/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 
   [[ -f "$NODE_CORE_APP_DIR/requirements.txt" ]] || {
     printf 'Update is missing requirements.txt; refusing activation.\n' >&2
@@ -488,6 +497,21 @@ backup_commit_marker() {
   else
     rm -f "$backup" || return 1
     printf 'absent\n' > "$NODE_CORE_UPDATE_DIR/commit-marker-state" || return 1
+  fi
+}
+
+write_commit_marker() {
+  local commit="$1"
+  local temporary_marker
+  temporary_marker="$(mktemp "$NODE_CORE_DATA_DIR/runtime/node-core-commit.XXXXXX")" || {
+    printf 'Could not create a temporary commit marker.\n' >&2
+    return 1
+  }
+  if ! printf '%s\n' "$commit" > "$temporary_marker" ||
+     ! mv -f -- "$temporary_marker" "$NODE_CORE_COMMIT_FILE"; then
+    rm -f -- "$temporary_marker"
+    printf 'Could not activate the new commit marker.\n' >&2
+    return 1
   fi
 }
 
@@ -570,7 +594,7 @@ main() {
     return 1
   fi
 
-  if update_application "$remote_commit"; then
+  if update_application "$remote_commit" && write_commit_marker "$remote_commit"; then
     printf '\n✓ Node Core application updated.\n'
     printf '✓ Kubo/IPFS binary preserved.\n'
     printf '✓ Kubo repository preserved.\n'

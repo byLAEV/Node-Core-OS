@@ -99,7 +99,7 @@ jobs:
 
           tar -czf "dist/$package.tar.gz" -C "$stage" "$package"
           if tar -tzf "dist/$package.tar.gz" | grep -E 'applications/(hashpaper|p2p_contracts)|hashpaper-install|hashpaper-update|opentimestamps-server-install|HASHPAPER|P2P-CONTRACTS|test_hashpaper_storage_layout|hashpaper-opentimestamps-live|hashpaper-python-matrix|three-independent-ubuntu-p2p' >/dev/null; then
-            echo 'The Node Core OS source package contains a separate HashPaper component.' >&2
+            echo 'The Node Core OS source package contains suspended HashPaper or P2P Contracts artifacts.' >&2
             exit 1
           fi
           sha512sum "dist/$package.tar.gz" > "dist/$package.tar.gz.sha512"

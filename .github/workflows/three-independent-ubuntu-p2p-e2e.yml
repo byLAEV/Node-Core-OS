@@ -9,7 +9,6 @@ permissions:
   contents: read
 
 # Suspended by project decision on 2026-10-27. Source and test plan are retained.
-# Suspended by project decision on 2026-10-27. Source and test plan are retained.
 jobs:
   suspended:
     if: false
