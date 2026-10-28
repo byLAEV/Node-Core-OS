@@ -12,6 +12,7 @@ from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.security.cdd import create_signed_policy
+from node_core.security.cdd_intent import CDDIntentLobby, IntentRoute
 from node_core.security.cdd_gateway import (
     CDDGatewayConfig,
     CDDGatewayError,
@@ -102,6 +103,11 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         self.addCleanup(self.origin.shutdown)
         self.addCleanup(self.origin.server_close)
         self.addCleanup(self.origin_thread.join, 2)
+        self.intent_now = [100.0]
+        self.intent_lobby = CDDIntentLobby(
+            {"read-document": IntentRoute(destination_id="web2:docs", content_cid="bafybeigdyrzt5sfp7udm7hu76uh4d3g5q4m3f4j2q")},
+            clock=lambda: self.intent_now[0],
+        )
         self.config = CDDGatewayConfig(
             origin_url=f"http://127.0.0.1:{self.origin.server_port}",
             service_id="web2:lab.test",
@@ -111,6 +117,10 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             last_sequence=0,
             timeout_seconds=2,
             origin_auth_token=OriginHandler.token,
+            intent_lobby=self.intent_lobby,
+            intent_destination_paths={"web2:docs": "/intent-document"},
+            intent_ttl_seconds=120,
+            intent_min_wait_seconds=3,
         )
         self.gateway = create_cdd_server(("127.0.0.1", 0), self.config)
         self.gateway_thread = threading.Thread(target=self.gateway.serve_forever, daemon=True)
@@ -126,6 +136,41 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             return urlopen(req, timeout=3)
         except urllib.error.HTTPError as exc:
             return exc
+
+    def test_lobby_issues_opaque_ticket_without_exposing_cid(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        self.assertEqual(response.status, 200)
+        payload = json.loads(response.read().decode("utf-8"))
+        self.assertIn("ticket", payload)
+        self.assertEqual(payload["consume_endpoint"], "/_cdd/consume")
+        self.assertNotIn("bafy", json.dumps(payload))
+        self.assertNotIn("intent-document", json.dumps(payload))
+
+    def test_lobby_rejects_unregistered_intent(self):
+        response = self.request("/_cdd/lobby?intent=https%3A%2F%2Fevil.example")
+        self.assertEqual(response.status, 400)
+
+    def test_consume_requires_wait_and_routes_only_to_configured_destination(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        ticket = json.loads(response.read().decode("utf-8"))["ticket"]
+        body = json.dumps({"ticket": ticket}).encode("utf-8")
+        early = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(early.status, 403)
+        self.intent_now[0] += 3
+        accepted = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(accepted.status, 200)
+        self.assertEqual(accepted.read(), b"origin:/intent-document")
+
+    def test_consumed_ticket_cannot_be_replayed(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        ticket = json.loads(response.read().decode("utf-8"))["ticket"]
+        self.intent_now[0] += 3
+        body = json.dumps({"ticket": ticket}).encode("utf-8")
+        accepted = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(accepted.status, 200)
+        replay = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(replay.status, 403)
+
 
     def test_gateway_forwards_allowed_request_to_configured_origin(self):
         response = self.request("/page?x=1")
