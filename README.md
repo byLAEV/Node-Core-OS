@@ -272,7 +272,7 @@ Windows and macOS are not documented as supported targets.
 
 ## 11. Implementation status and roadmap
 
-Node Core OS includes executable infrastructure alongside proposals and future architecture. A document or catalog entry is not, by itself, evidence that a feature is implemented, tested, audited, or deployed.
+Node Core OS includes executable infrastructure alongside proposals and future architecture. A document or catalog entry is not, by itself, evidence that a feature is implemented, tested, audited, or deployed. Follow the [Implementation Status and Evidence Policy](docs/IMPLEMENTATION-STATUS-POLICY.md): repository presence, a merged PR, or a successful workflow proves only the specific artifact or checks it covers.
 
 Use these meanings when describing project status:
 
@@ -323,7 +323,8 @@ Before proposing a new protocol, define its purpose, participants, inputs, outpu
 | [Termux Guide](docs/TERMUX.md) | Android Termux installation path. |
 | [API Contract](docs/API-CONTRACT.md) | Proposed public API contract. |
 | [SDK Integration](docs/SDK-INTEGRATION.md) | Integration requirements and roadmap. |
-| [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |\n| [Identity Tools catalog](tools/README.md) | Product scope, service families, implementation boundaries, and acceptance stages. |
+| [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |
+| [Implementation Status and Evidence Policy](docs/IMPLEMENTATION-STATUS-POLICY.md) | Required status vocabulary and evidence for claims about implementation, tests, security review, and operation. |\n| [Identity Tools catalog](tools/README.md) | Product scope, service families, implementation boundaries, and acceptance stages. |
 | [Remembering & Forgetting](docs/REMEMBERING-FORGETTING.md) | Proposed contextual-history architecture. |
 | [Use Cases](docs/USE-CASES.md) | Protocol and application catalog. |
 | [My Life / Node Blog](docs/MY-LIFE-BLOG.md) | Personal records and IPFS publication behavior. |
