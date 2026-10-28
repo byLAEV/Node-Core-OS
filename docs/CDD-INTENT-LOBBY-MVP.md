@@ -16,8 +16,9 @@
 - node_core/security/cdd_intent.py defines configured intent routes, opaque random handles, server-side ticket records, TTL, optional minimum wait, a bounded active-ticket table, expiration cleanup, and consume-once behavior.
 - tests/test_cdd_intent.py covers issue/consume, CID not present in the opaque handle, too-early attempts, replay, unknown intent, expiry, and capacity limits.
 - The dedicated CDD CI workflow checks `id -u` before other steps and runs the tests as an ordinary non-root user.
-- The HTTP gateway can serve its operator-configured lobby page by resolving `lobby_content_cid` through the configured Kubo manager. The CID is gateway-side configuration; it is not returned in the lobby response or embedded in the opaque ticket.
-- Gateway lobby HTML is served with a restrictive sandbox Content Security Policy and `X-Content-Type-Options: nosniff`.
+- The HTTP gateway can generate fixed public path-gateway URLs for an operator-configured CID: `https://ipfs.io/ipfs/<CID>` and `https://dweb.link/ipfs/<CID>`. The CID is used only for gateway links; this flow does not resolve it through the local Kubo manager or expose it in opaque intent tickets.
+- The local lobby page lists only those two fixed HTTPS gateways, with a restrictive Content Security Policy and `X-Content-Type-Options: nosniff`.
+- CIDv1 Base32 is validated before URL construction. Caller-supplied gateway hosts and full URLs are rejected.
 
 ## Important limitations
 
@@ -33,6 +34,6 @@
 
 1. Add a bounded human-verification challenge endpoint and accessible non-JavaScript fallback; do not claim cryptographic proof of humanness.
 2. Add replay tests across two independent gateway processes using a shared durable store.
-3. Run an isolated real-Kubo acceptance test that resolves the configured gateway lobby CID and verifies the returned bytes and restrictive response headers.
+3. If local Kubo retrieval is needed later, implement it as a separate, explicit gateway-only mode and validate it against an isolated real Kubo daemon.
 4. Add metrics for issued/consumed/expired/replayed tickets without logging raw handles.
 5. Test overload, coordinator outage, clock skew, and fail-closed behavior before any public exposure.
