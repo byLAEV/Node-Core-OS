@@ -49,8 +49,8 @@ main() {
     "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest tests.test_node_identity -v
     NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import os; from pathlib import Path; from node_core.identity.node_identity import NodeIdentityStore; store = NodeIdentityStore(Path(os.environ["NODE_CORE_DATA_DIR"])); identity = store.initialize(); assert store.load()["node_id"] == identity["node_id"]; print("Initialized persistent Ed25519 node identity:", identity["node_id"])'
   )
-  # HashPaper is maintained as a separate application; do not bundle it in Node Core OS.
-  rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
+  # HashPaper and P2P Contracts are suspended and must not ship as active Node Core OS applications.
+  rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/hashpaper-update.sh"
   rm -f "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-install.sh" "$NODE_CORE_DATA_DIR/app/installer/tests/hashpaper-update.sh"
   rm -f "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER.md" "$NODE_CORE_DATA_DIR/app/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
