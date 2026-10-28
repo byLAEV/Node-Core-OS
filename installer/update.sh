@@ -456,6 +456,14 @@ update_application() (
   rm -f "$NODE_CORE_APP_DIR/docs/HASHPAPER.md" "$NODE_CORE_APP_DIR/docs/HASHPAPER-FUNCTIONAL-MANIFEST.md"
   rm -f "$NODE_CORE_APP_DIR/tests/test_hashpaper_storage_layout.py"
   rm -f "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-opentimestamps-live.yml" "$NODE_CORE_APP_DIR/.github/workflows/hashpaper-python-matrix.yml"
+  rm -f "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-BTC-REQUEST-PROTOTYPE.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-DEVELOPMENT-PLAN.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-PUBLIC-MANIFEST-PROTOCOL.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-SCHEMAS.md" \
+    "$NODE_CORE_APP_DIR/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
+  rm -f "$NODE_CORE_APP_DIR/.github/workflows/three-independent-ubuntu-p2p-contracts.yml" \
+    "$NODE_CORE_APP_DIR/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 
   [[ -f "$NODE_CORE_APP_DIR/requirements.txt" ]] || {
     printf 'Update is missing requirements.txt; refusing activation.\n' >&2
