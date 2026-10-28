@@ -125,6 +125,8 @@ class CDDGatewayConfig:
     intent_destination_paths: Mapping[str, str] | None = None
     intent_ttl_seconds: int = 180
     intent_min_wait_seconds: int = 3
+    lobby_content_cid: str | None = None
+    lobby_kubo: KuboManager | None = None
 
 
 def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = None) -> None:
@@ -153,6 +155,15 @@ def validate_gateway_config(config: CDDGatewayConfig, *, now: datetime | None = 
         not isinstance(config.origin_auth_token, str) or len(config.origin_auth_token) < 32
     ):
         raise CDDGatewayError("origin_auth_token must be at least 32 characters when configured.")
+    if (config.lobby_content_cid is None) != (config.lobby_kubo is None):
+        raise CDDGatewayError("lobby_content_cid and lobby_kubo must be configured together.")
+    if config.lobby_content_cid is not None:
+        if not isinstance(config.lobby_content_cid, str):
+            raise CDDGatewayError("lobby_content_cid must be a CID string.")
+        try:
+            KuboManager._validate_cid(config.lobby_content_cid)
+        except ValueError as exc:
+            raise CDDGatewayError(f"Invalid gateway lobby CID: {exc}") from exc
     if config.intent_lobby is None:
         if config.intent_destination_paths:
             raise CDDGatewayError("Intent destination paths require an intent_lobby.")
@@ -286,6 +297,29 @@ def make_cdd_handler(
                     return
                 query = parse_qs(parsed_target.query, keep_blank_values=True)
                 intents = query.get("intent", [])
+                if not intents:
+                    if config.lobby_content_cid is None or config.lobby_kubo is None:
+                        self._respond(404, b"gateway lobby CID is not configured")
+                        return
+                    try:
+                        lobby_bytes = config.lobby_kubo.cat(config.lobby_content_cid)
+                    except (ValueError, RuntimeError) as exc:
+                        self._respond(503, b"gateway lobby content is unavailable")
+                        return
+                    if not isinstance(lobby_bytes, bytes) or not lobby_bytes or len(lobby_bytes) > config.max_response_bytes:
+                        self._respond(502, b"gateway lobby content is empty or too large")
+                        return
+                    self._respond(
+                        200,
+                        lobby_bytes,
+                        content_type="text/html; charset=utf-8",
+                        extra_headers={
+                            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+                            "X-Content-Type-Options": "nosniff",
+                            "Cache-Control": "no-store",
+                        },
+                    )
+                    return
                 if len(intents) != 1 or not intents[0]:
                     self._respond(400, b"exactly one intent is required")
                     return
