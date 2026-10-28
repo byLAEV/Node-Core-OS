@@ -100,3 +100,13 @@ Each product folder must have its own `TEST-TRACEABILITY.md` identifying relevan
 - Workflow names, test paths, run URLs, conclusions, and SHAs are not conflated.
 - The catalog-integrity workflow passes.
 - This audit does not define economic policy or implement payments.
+
+
+## Latest evidence-based audit snapshot — 2026-10-28
+
+See [Certificate Profiles — Evidence-Based Audit Snapshot](../docs/CERTIFICATE-PROFILES-AUDIT-2026-10-28.md) for the current eight-profile status table, current-main CI runs, gaps, and prioritized next tests.
+
+- Audited main commit: `98d53542cf89383fe237454485251a337978bee0`.
+- [Catalog integrity run](https://github.com/byLAEV/Node-Core-OS/actions/runs/40623347474): SUCCESS on the audited commit.
+- [Certificate adversarial tests](https://github.com/byLAEV/Node-Core-OS/actions/runs/40623347487): SUCCESS on the audited commit; synthetic bounded test scope only.
+- [Three-node Kubo/P2P integration](https://github.com/byLAEV/Node-Core-OS/actions/runs/40622724911): SUCCESS on an earlier commit; cross-VM jobs were skipped and are not counted as passes.
