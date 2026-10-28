@@ -1,4 +1,4 @@
-name: [SUSPENDED] Three independent Ubuntu nodes — Node Core OS and P2P Contracts E2E
+name: "[SUSPENDED] Three independent Ubuntu nodes — Node Core OS and P2P Contracts E2E"
 
 on:
   pull_request:
