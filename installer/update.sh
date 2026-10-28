@@ -464,7 +464,8 @@ update_application() (
   ensure_python_environment || return 1
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
 
-  # P2P Contracts is suspended and removed from the installed runtime.\n  python3 - "$NODE_CORE_APP_DIR/VERSION" <<'PY'
+  # P2P Contracts is suspended and removed from the installed runtime.
+  python3 - "$NODE_CORE_APP_DIR/VERSION" <<'PY'
 import re
 import sys
 from pathlib import Path
