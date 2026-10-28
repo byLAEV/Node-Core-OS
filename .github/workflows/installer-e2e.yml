@@ -102,6 +102,7 @@ jobs:
           cmp -s VERSION "$NODE_CORE_DATA_DIR/app/VERSION"
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+          test ! -e "$NODE_CORE_DATA_DIR/app/installer/opentimestamps-server-install.sh"
           test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md"
           test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
           test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
@@ -280,6 +281,7 @@ jobs:
 
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
           test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
+          test ! -e "$NODE_CORE_DATA_DIR/app/installer/opentimestamps-server-install.sh"
           test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-APPLICATION-STRUCTURE.md"
           test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
           test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-contracts.yml"
