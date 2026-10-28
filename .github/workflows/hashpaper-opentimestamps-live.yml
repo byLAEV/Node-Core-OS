@@ -1,4 +1,4 @@
-name: [SUSPENDED] HashPaper — Live OpenTimestamps Validation
+name: "[SUSPENDED] HashPaper — Live OpenTimestamps Validation"
 
 on:
   workflow_dispatch:
