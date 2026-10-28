@@ -325,6 +325,7 @@ jobs:
   # Separate GitHub-hosted Ubuntu VMs; synthetic profiles only, never real identity data.
   three-independent-ubuntu-p2p-e2e:
     if: false # Suspended until Node Core OS core is stable.
+    if: false # Suspended until Node Core OS core is stable.
     name: ${{ matrix.node }} — independent Ubuntu install and P2P Contracts E2E
     runs-on: ubuntu-24.04
     strategy:
