@@ -177,6 +177,11 @@ jobs:
         shell: bash
 
     steps:
+      - name: Enforce non-root execution
+        shell: bash
+        run: |
+          set -eu
+          test "$(id -u)" -ne 0 || { echo "ERROR: this job must not run as root (UID 0)." >&2; exit 1; }
       - name: Validate and checkout the exact candidate commit
         env:
           PR_HEAD_SHA: ${{ inputs.pr_head_sha || github.event.pull_request.head.sha || github.sha }}
