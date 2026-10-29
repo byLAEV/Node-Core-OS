@@ -62,18 +62,32 @@ class KuboManager:
         env["IPFS_PATH"] = str(self.repo_path)
         return env
 
-    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+    def _run(
+        self, *args: str, timeout: float = 60.0
+    ) -> subprocess.CompletedProcess[str]:
+        """Run a bounded Kubo CLI operation without risking an indefinite hang."""
+        if timeout <= 0:
+            raise ValueError("Kubo command timeout must be greater than zero.")
         if not self.is_installed():
             raise KuboError(
                 f"Kubo executable '{self.executable}' was not found in PATH."
             )
-        return subprocess.run(
-            [self.executable, *args],
-            env=self._environment(),
-            text=True,
-            capture_output=True,
-            check=True,
-        )
+        try:
+            return subprocess.run(
+                [self.executable, *args],
+                env=self._environment(),
+                text=True,
+                capture_output=True,
+                check=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired as exc:
+            command = " ".join((self.executable, *args))
+            raise KuboError(
+                f"Kubo command timed out after {timeout:g} seconds: {command}"
+            ) from exc
+        except OSError as exc:
+            raise KuboError(f"Could not execute Kubo command: {exc}") from exc
 
     def initialize(self) -> None:
         if self.is_initialized():

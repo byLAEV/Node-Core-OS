@@ -5,10 +5,41 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from node_core.ipfs import KuboManager, KuboStatus
+from node_core.ipfs import KuboError, KuboManager, KuboStatus
 
 
 class KuboBackgroundLaunchTests(unittest.TestCase):
+    def test_cli_command_uses_bounded_timeout(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = KuboManager("ipfs", Path(temporary) / "ipfs", "http://127.0.0.1:5001")
+            with (
+                patch.object(manager, "is_installed", return_value=True),
+                patch.object(manager, "_environment", return_value={}),
+                patch("node_core.ipfs.subprocess.run", return_value=SimpleNamespace(returncode=0)) as run,
+            ):
+                manager._run("version")
+            self.assertEqual(run.call_args.kwargs["timeout"], 60.0)
+
+    def test_cli_timeout_is_reported_as_kubo_error(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = KuboManager("ipfs", Path(temporary) / "ipfs", "http://127.0.0.1:5001")
+            with (
+                patch.object(manager, "is_installed", return_value=True),
+                patch.object(manager, "_environment", return_value={}),
+                patch(
+                    "node_core.ipfs.subprocess.run",
+                    side_effect=subprocess.TimeoutExpired(cmd=["ipfs", "version"], timeout=2),
+                ),
+            ):
+                with self.assertRaisesRegex(KuboError, "timed out after 2 seconds"):
+                    manager._run("version", timeout=2)
+
+    def test_cli_timeout_must_be_positive(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = KuboManager("ipfs", Path(temporary) / "ipfs", "http://127.0.0.1:5001")
+            with self.assertRaisesRegex(ValueError, "greater than zero"):
+                manager._run("version", timeout=0)
     def test_daemon_command_enables_pubsub_flag_when_kubo_advertises_it(self):
         from types import SimpleNamespace
         with tempfile.TemporaryDirectory() as temporary:
