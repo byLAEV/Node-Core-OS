@@ -126,6 +126,7 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
                 payload = {
                     "application": "Node Core OS byLAEV",
                     "web_interface": "running",
+                    "web_port": self.server.server_port,
                     "runtime": "loaded",
                     "kubo": _kubo_status(self.server.runtime),
                 }
@@ -154,7 +155,10 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
-    port = _port_from_environment()
+    try:
+        port = _port_from_environment()
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     runtime = NodeRuntime()
     # Do not call runtime.boot() here: the first web milestone is a read-only
     # dashboard and must not silently start services or modify system state.
