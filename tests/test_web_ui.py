@@ -1,13 +1,16 @@
 """Tests for the read-only local web interface."""
 from __future__ import annotations
 
+import http.client
+import json
 import os
+import threading
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 
 from node_core.ipfs import KuboStatus
-from node_core.web_ui import _kubo_status, _port_from_environment
+from node_core.web_ui import NodeCoreWebServer, _kubo_status, _port_from_environment
 
 
 class WebInterfaceTests(unittest.TestCase):
@@ -29,6 +32,59 @@ class WebInterfaceTests(unittest.TestCase):
                 with patch.dict(os.environ, {"NODE_CORE_WEB_PORT": value}, clear=True):
                     with self.assertRaises(ValueError):
                         _port_from_environment()
+
+    def test_http_status_endpoint_and_assets(self) -> None:
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(
+                status=lambda: KuboStatus(
+                    installed=True, initialized=True, running=True,
+                    peer_id="12D3KooWExample", version="0.30.0",
+                )
+            ),
+            config=SimpleNamespace(
+                ipfs_api="http://127.0.0.1:5001",
+                ipfs_repo_path="/tmp/node-core/ipfs",
+            ),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request("GET", "/api/status", headers={"Host": f"127.0.0.1:{port}"})
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 200)
+            self.assertEqual(payload["web_port"], port)
+            self.assertEqual(payload["kubo"]["state"], "running")
+            connection.close()
+
+            for path, expected_type in (
+                ("/", "text/html; charset=utf-8"),
+                ("/style.css", "text/css; charset=utf-8"),
+                ("/app.js", "text/javascript; charset=utf-8"),
+            ):
+                with self.subTest(path=path):
+                    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+                    connection.request("GET", path, headers={"Host": f"127.0.0.1:{port}"})
+                    response = connection.getresponse()
+                    body = response.read()
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.getheader("Content-Type"), expected_type)
+                    self.assertTrue(body)
+                    connection.close()
+
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request("POST", "/api/status", body=b"{}", headers={"Host": f"127.0.0.1:{port}"})
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 405)
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
 
     def test_kubo_status_reports_actual_running_state(self) -> None:
         runtime = SimpleNamespace(
