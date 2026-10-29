@@ -23,6 +23,21 @@ DEFAULT_PORT = 8765
 WEB_ROOT = Path(__file__).with_name("web")
 
 
+def _require_unprivileged_user() -> None:
+    """Refuse to run the web interface as root or through sudo."""
+    get_effective_uid = getattr(os, "geteuid", None)
+    if get_effective_uid is None:
+        raise SystemExit(
+            "Cannot verify the effective user ID on this platform; "
+            "run Node Core OS web UI from a supported unprivileged environment."
+        )
+    if get_effective_uid() == 0:
+        raise SystemExit(
+            "Refusing to run Node Core OS web UI as root. "
+            "Run it as the regular device user without sudo or su."
+        )
+
+
 def _port_from_environment() -> int:
     raw = os.environ.get("NODE_CORE_WEB_PORT", str(DEFAULT_PORT))
     try:
@@ -182,6 +197,7 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    _require_unprivileged_user()
     try:
         port = _port_from_environment()
     except ValueError as exc:
