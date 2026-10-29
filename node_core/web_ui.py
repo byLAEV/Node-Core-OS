@@ -139,6 +139,33 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, payload)
             return
 
+        if path == "/api/network/kubo":
+            try:
+                kubo_status = self.server.runtime.kubo.status()
+                payload: dict[str, Any] = {
+                    "kubo_running": bool(kubo_status.running),
+                    "peer_id": kubo_status.peer_id,
+                    "version": kubo_status.version,
+                    "connected_peers": [],
+                    "peer_count": 0,
+                    "detail": None,
+                }
+                if kubo_status.running:
+                    network_status = self.server.runtime.network.status()
+                    payload["peer_id"] = network_status.identity.peer_id
+                    payload["connected_peers"] = list(network_status.connected_peers)
+                    payload["peer_count"] = len(network_status.connected_peers)
+                else:
+                    payload["detail"] = "Kubo no está en ejecución; no se consultaron los pares."
+            except Exception as exc:
+                self._send_json(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    {"error": "No se pudo consultar el estado de red de Kubo.", "detail": str(exc)},
+                )
+                return
+            self._send_json(HTTPStatus.OK, payload)
+            return
+
         if path == "/favicon.ico":
             self._send_bytes(HTTPStatus.NO_CONTENT, b"", "image/x-icon")
             return
