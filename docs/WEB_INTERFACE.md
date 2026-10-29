@@ -2,7 +2,9 @@
 
 La primera etapa ofrece un panel web de **solo lectura**, conectado al runtime Python existente de Node Core OS. Muestra el estado real devuelto por `NodeRuntime.kubo.status()`.
 
-## Ejecución
+## Ejecución sin privilegios
+
+La interfaz web debe ejecutarse como el usuario normal propietario de la instalación de Node Core OS. **No uses `sudo`, `su` ni una sesión root.** El servidor rechaza el inicio si detecta UID efectivo `0`. Esto evita que el proceso web herede privilegios administrativos innecesarios.
 
 Desde la raíz del repositorio, con el mismo entorno Python que usa Node Core OS:
 
@@ -24,7 +26,7 @@ Si el puerto 8765 está ocupado, el servidor termina con un error en lugar de ca
 NODE_CORE_WEB_PORT=8766 python -m node_core.web_ui
 ```
 
-El servidor escucha exclusivamente en `127.0.0.1`, no en `0.0.0.0`. No lo expongas a una LAN ni a internet público.
+El servidor escucha exclusivamente en `127.0.0.1`, no en `0.0.0.0`. No lo expongas a una LAN ni a internet público. Ejecutarlo como usuario normal no significa que pueda cambiar permisos o acceder a archivos que ese usuario no tenga autorizados.
 
 ## Alcance y seguridad
 
