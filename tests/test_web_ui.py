@@ -10,10 +10,19 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from node_core.ipfs import KuboStatus
-from node_core.web_ui import NodeCoreWebServer, _kubo_status, _port_from_environment
+from node_core.web_ui import NodeCoreWebServer, _kubo_status, _port_from_environment, _require_unprivileged_user
 
 
 class WebInterfaceTests(unittest.TestCase):
+    def test_root_execution_is_rejected(self) -> None:
+        with patch("node_core.web_ui.os.geteuid", return_value=0):
+            with self.assertRaisesRegex(SystemExit, "Refusing to run.*as root"):
+                _require_unprivileged_user()
+
+    def test_unprivileged_execution_is_allowed(self) -> None:
+        with patch("node_core.web_ui.os.geteuid", return_value=10000):
+            _require_unprivileged_user()
+
     def test_default_port_is_8765(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(_port_from_environment(), 8765)
