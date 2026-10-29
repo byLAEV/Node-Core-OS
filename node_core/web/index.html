@@ -15,7 +15,7 @@
       <h1>Node Core OS</h1>
       <div>byLAEV · Interfaz web</div>
     </div>
-    <button id="refresh" type="button">Actualizar estado</button>
+    <div class="header-actions"><button id="start-kubo" type="button">Iniciar Kubo / IPFS</button><button id="refresh" type="button">Actualizar estado</button></div>
   </header>
 
   <section class="layout" aria-label="Estado del runtime">
@@ -58,8 +58,8 @@
     </article>
     <article class="panel">
       <h2>Seguridad y estado de implementación</h2>
-      <p class="notice">Esta primera etapa es de solo lectura. Consulta el estado real de Kubo a través de Node Core OS; no expone la API RPC de Kubo al navegador ni inicia, detiene o reconfigura servicios.</p>
-      <p>Los controles que modifican el estado permanecerán deshabilitados hasta implementar sus entradas, validaciones y confirmaciones originales.</p>
+      <p class="notice">La interfaz consulta el estado real de Kubo y permite iniciarlo mediante una acción explícita con confirmación. No expone la API RPC de Kubo al navegador ni detiene o reconfigura servicios.</p>
+      <p>El inicio de Kubo requiere confirmación explícita. Si el repositorio aún no está inicializado, KuboManager puede inicializarlo con el perfil configurado. Las demás operaciones que modifican el estado siguen pendientes.</p>
       <div class="label">Origen de los datos</div><div class="value">NodeRuntime → KuboManager.status()</div>
       <div class="label">Enlace de red</div><div class="value">Solo loopback: <code>127.0.0.1</code></div>
     </article>
