@@ -39,5 +39,98 @@
       byId("refresh").disabled = false;
     }
   }
+
+  const menuDetail = byId("menu-detail");
+  const menuDescriptions = {
+    bios: ["Node Core BIOS", "El submenú BIOS aún no está conectado. No se ejecuta ninguna operación desde este botón."],
+    core: ["Node Core", "El menú Core aún no está conectado. Las operaciones de almacenamiento y contenido se añadirán usando el runtime existente."],
+    blog: ["My Life / Node Blog", "El menú de blog aún no está conectado. No se modifica ni crea contenido en esta etapa."],
+    apps: ["Applications", "El menú de aplicaciones aún no está conectado. No se ejecuta código de aplicaciones desde el navegador."]
+  };
+
+  function renderNetwork(data) {
+    menuDetail.replaceChildren();
+    const title = document.createElement("h3");
+    title.textContent = "Network / Nodes — Kubo / IPFS";
+    menuDetail.appendChild(title);
+    const status = document.createElement("p");
+    status.textContent = data.kubo_running ? "Kubo: EN EJECUCIÓN" : "Kubo: NO EN EJECUCIÓN";
+    menuDetail.appendChild(status);
+    const peerId = document.createElement("p");
+    peerId.textContent = "ID del nodo: " + (data.peer_id || "No informado");
+    menuDetail.appendChild(peerId);
+    const count = document.createElement("p");
+    count.textContent = "Pares conectados directamente: " + data.peer_count;
+    menuDetail.appendChild(count);
+    const note = document.createElement("p");
+    note.className = "notice";
+    note.textContent = "El recuento muestra solo pares conectados directamente; no representa todos los nodos de IPFS.";
+    menuDetail.appendChild(note);
+    if (data.detail) {
+      const detail = document.createElement("p");
+      detail.textContent = data.detail;
+      menuDetail.appendChild(detail);
+    }
+    const listTitle = document.createElement("h4");
+    listTitle.textContent = "Pares conectados";
+    menuDetail.appendChild(listTitle);
+    if (data.connected_peers.length === 0) {
+      const empty = document.createElement("p");
+      empty.textContent = "Kubo no reporta pares conectados directamente.";
+      menuDetail.appendChild(empty);
+    } else {
+      const list = document.createElement("ul");
+      for (const peer of data.connected_peers) {
+        const item = document.createElement("li");
+        item.textContent = peer;
+        list.appendChild(item);
+      }
+      menuDetail.appendChild(list);
+    }
+  }
+
+  async function openMenu(view) {
+    if (view === "refresh") {
+      await refreshStatus();
+      menuDetail.replaceChildren();
+      const title = document.createElement("h3");
+      title.textContent = "Estado actualizado";
+      const message = document.createElement("p");
+      message.textContent = "Se volvió a consultar el estado de Kubo. Esta acción no inicia ni detiene servicios.";
+      menuDetail.append(title, message);
+      return;
+    }
+    if (view === "network") {
+      menuDetail.textContent = "Consultando el estado de red de Kubo…";
+      try {
+        const response = await fetch("/api/network/kubo", { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || data.error || "Consulta de red fallida.");
+        renderNetwork(data);
+      } catch (error) {
+        menuDetail.replaceChildren();
+        const title = document.createElement("h3");
+        title.textContent = "No se pudo consultar la red";
+        const message = document.createElement("p");
+        message.textContent = error.message;
+        menuDetail.append(title, message);
+      }
+      return;
+    }
+    const description = menuDescriptions[view];
+    if (description) {
+      menuDetail.replaceChildren();
+      const title = document.createElement("h3");
+      title.textContent = description[0];
+      const message = document.createElement("p");
+      message.textContent = description[1];
+      menuDetail.append(title, message);
+    }
+  }
+
+  document.querySelectorAll("[data-view]").forEach((button) => {
+    button.addEventListener("click", () => openMenu(button.dataset.view));
+  });
+
   byId("refresh").addEventListener("click", refreshStatus);
   refreshStatus();
