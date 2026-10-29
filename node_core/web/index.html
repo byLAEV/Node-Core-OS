@@ -43,14 +43,18 @@
     <article class="panel">
       <h2>Menú principal</h2>
       <p>Aquí se muestran las secciones del menú de terminal. La navegación y las acciones se habilitarán gradualmente al conectarlas con las operaciones reales del runtime.</p>
-      <div class="menu" aria-label="Node Core OS menu">
-        <button disabled><span>1 · Node Core BIOS</span>Almacenamiento, Kubo, red, configuración y seguridad</button>
-        <button disabled><span>2 · Node Core</span>Funciones centrales</button>
-        <button disabled><span>3 · My Life / Node Blog</span>Contenido local y blog</button>
-        <button disabled><span>4 · Applications</span>Módulos de aplicaciones</button>
-        <button disabled><span>5 · Network / Nodes</span>Red y operaciones de peers</button>
-        <button disabled><span>6 · Refresh</span>Actualizar el estado de red</button>
+      <div class="menu" aria-label="Menú principal de Node Core OS">
+        <button type="button" data-view="bios"><span>1 · Node Core BIOS</span>Almacenamiento, Kubo, red, configuración y seguridad</button>
+        <button type="button" data-view="core"><span>2 · Node Core</span>Funciones centrales</button>
+        <button type="button" data-view="blog"><span>3 · My Life / Node Blog</span>Contenido local y blog</button>
+        <button type="button" data-view="apps"><span>4 · Applications</span>Módulos de aplicaciones</button>
+        <button type="button" data-view="network"><span>5 · Network / Nodes</span>Estado de Kubo e IPFS disponible ahora</button>
+        <button type="button" data-view="refresh"><span>6 · Refresh</span>Actualizar el estado de red</button>
       </div>
+      <section id="menu-detail" class="menu-detail panel" aria-live="polite">
+        <h3>Selecciona una sección</h3>
+        <p>Las consultas disponibles se conectan al runtime real. Las operaciones que cambian el sistema se habilitarán al implementar sus validaciones y confirmaciones.</p>
+      </section>
     </article>
     <article class="panel">
       <h2>Seguridad y estado de implementación</h2>
