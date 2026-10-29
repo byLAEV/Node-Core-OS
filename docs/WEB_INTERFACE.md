@@ -1,16 +1,16 @@
-# Local web interface (first milestone)
+# Interfaz web local (primera etapa)
 
-La primera etapa ofrece un panel web de **solo lectura** backed by the existing Node Core OS Python runtime. It displays the actual status returned by `NodeRuntime.kubo.status()`.
+La primera etapa ofrece un panel web de **solo lectura**, conectado al runtime Python existente de Node Core OS. Muestra el estado real devuelto por `NodeRuntime.kubo.status()`.
 
-## Run
+## Ejecución
 
-From the repository root, with the same Python environment used by Node Core OS:
+Desde la raíz del repositorio, con el mismo entorno Python que usa Node Core OS:
 
 ```sh
 python -m node_core.web_ui
 ```
 
-Abre:
+Abre en el navegador del mismo dispositivo:
 
 ```text
 http://127.0.0.1:8765/
@@ -18,27 +18,27 @@ http://127.0.0.1:8765/
 
 Detén el servidor con `Ctrl+C`.
 
-Si el puerto 8765 está ocupado, el servidor finaliza con un error en lugar de cambiar de puerto silenciosamente. Se puede elegir explícitamente otro puerto para una prueba:
+Si el puerto 8765 está ocupado, el servidor termina con un error en lugar de cambiar de puerto silenciosamente. Para una prueba, se puede elegir explícitamente otro puerto:
 
 ```sh
 NODE_CORE_WEB_PORT=8766 python -m node_core.web_ui
 ```
 
-El servidor web siempre escucha en `127.0.0.1`, not `0.0.0.0`. No lo expongas a una LAN ni a internet público.
+El servidor escucha exclusivamente en `127.0.0.1`, no en `0.0.0.0`. No lo expongas a una LAN ni a internet público.
 
 ## Alcance y seguridad
 
-- The page calls the local `/api/status` endpoint.
-- The endpoint reads the configured Kubo status through `NodeRuntime.kubo.status()`.
-- The first milestone does not call `runtime.boot()`; starting the web server does not automatically start Kubo or native P2P services.
-- The Kubo RPC API remains separate and is never proxied through the browser.
-- POST requests are rejected. There are no state-changing actions in this milestone.
-- Menu entries are intentionally disabled until each operation is connected to the existing runtime with its original input validation and confirmations.
-- The configured Kubo API endpoint and repository path are shown as diagnostics, not treated as proof of reachability or successful content retrieval.
+- La página consulta el endpoint local `/api/status`.
+- El endpoint obtiene el estado de Kubo a través de `NodeRuntime.kubo.status()`.
+- La primera etapa no llama a `runtime.boot()`; iniciar el servidor web no arranca automáticamente Kubo ni los servicios P2P nativos.
+- La API RPC de Kubo permanece separada y no se expone ni se reenvía al navegador.
+- Las solicitudes POST se rechazan. Esta etapa no contiene acciones que cambien el estado del sistema.
+- Los elementos del menú permanecen deshabilitados hasta que cada operación esté conectada al runtime con sus validaciones y confirmaciones originales.
+- La dirección de la API configurada y la ruta del repositorio se muestran como datos de diagnóstico; no prueban por sí mismas que el servicio responda o que el contenido se pueda recuperar.
 
-## Siguientes pasos de implementación
+## Siguientes pasos
 
-1. Verify this dashboard on the target Termux installation.
-2. Add a read-only route for the full main-menu network summary using existing runtime status methods.
-3. Implement each menu as explicit, typed actions; do not route arbitrary command strings from the browser to a shell.
-4. Add tests for every action and preserve the terminal UI.
+1. Verificar este panel en la instalación Termux de destino.
+2. Añadir una ruta de solo lectura para el resumen de red del menú principal usando los métodos existentes del runtime.
+3. Implementar cada menú como acciones explícitas y tipadas; no enviar comandos arbitrarios de terminal desde el navegador.
+4. Añadir pruebas para cada acción y conservar la interfaz de terminal.
