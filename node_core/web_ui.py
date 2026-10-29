@@ -110,6 +110,17 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
             self._send_bytes(HTTPStatus.OK, body, "text/html; charset=utf-8")
             return
 
+        if path in {"/style.css", "/app.js"}:
+            asset_name = path.lstrip("/")
+            content_type = "text/css; charset=utf-8" if asset_name.endswith(".css") else "text/javascript; charset=utf-8"
+            try:
+                body = (WEB_ROOT / asset_name).read_bytes()
+            except OSError:
+                self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "Web asset is missing."})
+                return
+            self._send_bytes(HTTPStatus.OK, body, content_type)
+            return
+
         if path == "/api/status":
             try:
                 payload = {
