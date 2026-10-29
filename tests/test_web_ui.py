@@ -15,6 +15,10 @@ class WebInterfaceTests(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(_port_from_environment(), 8765)
 
+    def test_port_whitespace_is_accepted_by_integer_parser(self) -> None:
+        with patch.dict(os.environ, {"NODE_CORE_WEB_PORT": " 8766 "}, clear=True):
+            self.assertEqual(_port_from_environment(), 8766)
+
     def test_explicit_port_is_validated(self) -> None:
         with patch.dict(os.environ, {"NODE_CORE_WEB_PORT": "8766"}, clear=True):
             self.assertEqual(_port_from_environment(), 8766)
@@ -50,6 +54,7 @@ class WebInterfaceTests(unittest.TestCase):
         self.assertEqual(result["peer_id"], "12D3KooWExample")
         self.assertEqual(result["version"], "0.30.0")
         self.assertEqual(result["api"], "http://127.0.0.1:5001")
+        self.assertEqual(result["repo_path"], "/tmp/node-core/ipfs")
 
     def test_kubo_api_not_responding_is_not_reported_as_running(self) -> None:
         runtime = SimpleNamespace(
