@@ -10,7 +10,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from node_core.ipfs import KuboStatus
-from node_core.web_ui import NodeCoreWebServer, _kubo_status, _port_from_environment, _require_unprivileged_user
+from node_core.web_ui import NodeCoreWebServer, _auto_start_kubo_enabled, _kubo_status, _port_from_environment, _require_unprivileged_user
 
 
 class WebInterfaceTests(unittest.TestCase):
@@ -22,6 +22,27 @@ class WebInterfaceTests(unittest.TestCase):
     def test_unprivileged_execution_is_allowed(self) -> None:
         with patch("node_core.web_ui.os.geteuid", return_value=10000):
             _require_unprivileged_user()
+
+    def test_kubo_auto_start_is_disabled_by_default(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(_auto_start_kubo_enabled())
+
+    def test_kubo_auto_start_requires_explicit_opt_in(self) -> None:
+        for value in ("1", "true", "yes", "on", " TRUE "):
+            with self.subTest(value=value), patch.dict(
+                os.environ, {"NODE_CORE_WEB_AUTO_START_KUBO": value}, clear=True
+            ):
+                self.assertTrue(_auto_start_kubo_enabled())
+        for value in ("0", "false", "no", "off", ""):
+            with self.subTest(value=value), patch.dict(
+                os.environ, {"NODE_CORE_WEB_AUTO_START_KUBO": value}, clear=True
+            ):
+                self.assertFalse(_auto_start_kubo_enabled())
+
+    def test_invalid_kubo_auto_start_value_is_rejected(self) -> None:
+        with patch.dict(os.environ, {"NODE_CORE_WEB_AUTO_START_KUBO": "sometimes"}, clear=True):
+            with self.assertRaisesRegex(ValueError, "NODE_CORE_WEB_AUTO_START_KUBO"):
+                _auto_start_kubo_enabled()
 
     def test_default_port_is_8765(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
