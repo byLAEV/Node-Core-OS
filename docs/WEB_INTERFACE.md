@@ -42,3 +42,9 @@ El servidor escucha exclusivamente en `127.0.0.1`, no en `0.0.0.0`. No lo expong
 2. Añadir una ruta de solo lectura para el resumen de red del menú principal usando los métodos existentes del runtime.
 3. Implementar cada menú como acciones explícitas y tipadas; no enviar comandos arbitrarios de terminal desde el navegador.
 4. Añadir pruebas para cada acción y conservar la interfaz de terminal.
+
+## Incremento de navegación y consulta de red
+
+El menú principal ahora permite abrir secciones en la página. El apartado **Network / Nodes** llama a `GET /api/network/kubo`, que consulta el estado de Kubo y, solo cuando el daemon ya está en ejecución, usa `NodeRuntime.network.status()` para mostrar el ID local y los pares directamente conectados. No ejecuta `runtime.boot()`, no arranca Kubo y no cambia la configuración de red.
+
+Las secciones BIOS, Core, Blog y Applications se muestran como pendientes y no ejecutan acciones todavía. La paridad funcional completa requiere conectar y probar cada submenú individualmente.
