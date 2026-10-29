@@ -85,10 +85,104 @@ class WebInterfaceTests(unittest.TestCase):
                     connection.close()
 
             connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
-            connection.request("POST", "/api/status", body=b"{}", headers={"Host": f"127.0.0.1:{port}"})
+            connection.request("POST", "/api/status", body=b"{}", headers={"Host": f"127.0.0.1:{port}", "Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json"})
             response = connection.getresponse()
             response.read()
             self.assertEqual(response.status, 405)
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_start_kubo_requires_explicit_confirmation(self) -> None:
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(
+                status=lambda: KuboStatus(installed=True, initialized=True, running=False),
+                start=lambda: self.fail("Kubo must not start without confirmation"),
+            ),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request(
+                "POST", "/api/kubo/start", body=b'{"confirm":false}',
+                headers={"Host": f"127.0.0.1:{port}", "Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 400)
+            self.assertIn("confirmation", payload["error"].lower())
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_start_kubo_calls_manager_and_verifies_running(self) -> None:
+        statuses = [
+            KuboStatus(installed=True, initialized=True, running=False),
+            KuboStatus(installed=True, initialized=True, running=True, peer_id="12D3KooWExample", version="0.30.0"),
+            KuboStatus(installed=True, initialized=True, running=True, peer_id="12D3KooWExample", version="0.30.0"),
+        ]
+        start_calls = []
+        def status():
+            return statuses.pop(0) if statuses else KuboStatus(installed=True, initialized=True, running=True, peer_id="12D3KooWExample", version="0.30.0")
+        def start():
+            start_calls.append(True)
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(status=status, start=start),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request(
+                "POST", "/api/kubo/start", body=b'{"confirm":true}',
+                headers={"Host": f"127.0.0.1:{port}", "Origin": f"http://127.0.0.1:{port}", "Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 200)
+            self.assertEqual(payload["message"], "Kubo started successfully.")
+            self.assertTrue(payload["kubo"]["running"])
+            self.assertEqual(start_calls, [True])
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_start_kubo_rejects_untrusted_origin(self) -> None:
+        start_calls = []
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(
+                status=lambda: KuboStatus(installed=True, initialized=True, running=False),
+                start=lambda: start_calls.append(True),
+            ),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request(
+                "POST", "/api/kubo/start", body=b'{"confirm":true}',
+                headers={"Host": f"127.0.0.1:{port}", "Origin": "http://example.invalid", "Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            self.assertEqual(response.status, 403)
+            response.read()
+            self.assertEqual(start_calls, [])
             connection.close()
         finally:
             server.shutdown()
