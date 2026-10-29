@@ -86,6 +86,61 @@ class WebInterfaceTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=3)
 
+    def test_http_kubo_network_endpoint_reports_direct_peers(self) -> None:
+        network_status = SimpleNamespace(
+            identity=SimpleNamespace(peer_id="12D3KooWExample"),
+            connected_peers=("12D3KooWPeerA", "12D3KooWPeerB"),
+        )
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(
+                status=lambda: KuboStatus(installed=True, initialized=True, running=True, peer_id="12D3KooWExample", version="0.30.0")
+            ),
+            network=SimpleNamespace(status=lambda: network_status),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=3)
+            connection.request("GET", "/api/network/kubo", headers={"Host": f"127.0.0.1:{server.server_port}"})
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 200)
+            self.assertEqual(payload["peer_id"], "12D3KooWExample")
+            self.assertEqual(payload["peer_count"], 2)
+            self.assertEqual(payload["connected_peers"], ["12D3KooWPeerA", "12D3KooWPeerB"])
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_kubo_network_endpoint_does_not_query_peers_when_stopped(self) -> None:
+        def unexpected_status():
+            raise AssertionError("network status must not be queried while Kubo is stopped")
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(status=lambda: KuboStatus(installed=True, initialized=True, running=False)),
+            network=SimpleNamespace(status=unexpected_status),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=3)
+            connection.request("GET", "/api/network/kubo", headers={"Host": f"127.0.0.1:{server.server_port}"})
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 200)
+            self.assertFalse(payload["kubo_running"])
+            self.assertEqual(payload["peer_count"], 0)
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
     def test_kubo_status_reports_actual_running_state(self) -> None:
         runtime = SimpleNamespace(
             kubo=SimpleNamespace(
