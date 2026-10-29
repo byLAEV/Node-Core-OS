@@ -38,6 +38,18 @@ def _require_unprivileged_user() -> None:
         )
 
 
+def _auto_start_kubo_enabled() -> bool:
+    """Return whether the operator explicitly enabled Kubo auto-start."""
+    value = os.environ.get("NODE_CORE_WEB_AUTO_START_KUBO", "").strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"", "0", "false", "no", "off"}:
+        return False
+    raise ValueError(
+        "NODE_CORE_WEB_AUTO_START_KUBO must be one of: 1, 0, true, false, yes, no, on, off."
+    )
+
+
 def _port_from_environment() -> int:
     raw = os.environ.get("NODE_CORE_WEB_PORT", str(DEFAULT_PORT))
     try:
@@ -275,11 +287,10 @@ def main() -> None:
     _require_unprivileged_user()
     try:
         port = _port_from_environment()
+        auto_start_kubo = _auto_start_kubo_enabled()
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
     runtime = NodeRuntime()
-    # Do not call runtime.boot() here: the first web milestone is a read-only
-    # dashboard and must not silently start services or modify system state.
     try:
         server = NodeCoreWebServer(port, runtime)
     except OSError as exc:
@@ -293,7 +304,19 @@ def main() -> None:
     print("Node Core OS byLAEV — local web interface")
     print(f"URL: http://{HOST}:{port}/")
     print("Binding: loopback only (not exposed to the LAN).")
-    print("Mode: read-only status; Kubo is not started or reconfigured by this server.")
+    if auto_start_kubo:
+        try:
+            print("Kubo auto-start: enabled by NODE_CORE_WEB_AUTO_START_KUBO.")
+            runtime.kubo.start()
+            if not runtime.kubo.status().running:
+                raise RuntimeError("Kubo start returned but its API is not responding.")
+            print("Kubo status: running.")
+        except Exception as exc:
+            server.server_close()
+            raise SystemExit(f"Automatic Kubo startup failed: {exc}") from exc
+    else:
+        print("Kubo auto-start: disabled (default). Use the web button or set NODE_CORE_WEB_AUTO_START_KUBO=1.")
+    print("Kubo can also be started explicitly from the web interface after confirmation.")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
