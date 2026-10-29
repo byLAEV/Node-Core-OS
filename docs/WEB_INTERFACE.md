@@ -1,6 +1,6 @@
 # Interfaz web local (primera etapa)
 
-La primera etapa ofrece un panel web de **solo lectura**, conectado al runtime Python existente de Node Core OS. Muestra el estado real devuelto por `NodeRuntime.kubo.status()`.
+La interfaz web está conectada al runtime Python existente de Node Core OS. Consulta el estado real devuelto por `NodeRuntime.kubo.status()` y ofrece una acción explícita para iniciar Kubo/IPFS.
 
 ## Ejecución sin privilegios
 
@@ -32,9 +32,9 @@ El servidor escucha exclusivamente en `127.0.0.1`, no en `0.0.0.0`. No lo expong
 
 - La página consulta el endpoint local `/api/status`.
 - El endpoint obtiene el estado de Kubo a través de `NodeRuntime.kubo.status()`.
-- La primera etapa no llama a `runtime.boot()`; iniciar el servidor web no arranca automáticamente Kubo ni los servicios P2P nativos.
+- Iniciar el servidor web no arranca Kubo automáticamente. El botón **Iniciar Kubo / IPFS** envía una solicitud local con confirmación explícita y llama a `NodeRuntime.kubo.start()` como el usuario actual, sin root ni sudo.
 - La API RPC de Kubo permanece separada y no se expone ni se reenvía al navegador.
-- Las solicitudes POST se rechazan. Esta etapa no contiene acciones que cambien el estado del sistema.
+- El endpoint `POST /api/kubo/start` solo acepta solicitudes JSON confirmadas, con Host y Origin locales. Las demás solicitudes POST se rechazan. No se ofrece una acción web para detener Kubo en esta etapa.
 - Los elementos del menú permanecen deshabilitados hasta que cada operación esté conectada al runtime con sus validaciones y confirmaciones originales.
 - La dirección de la API configurada y la ruta del repositorio se muestran como datos de diagnóstico; no prueban por sí mismas que el servicio responda o que el contenido se pueda recuperar.
 
@@ -47,6 +47,11 @@ El servidor escucha exclusivamente en `127.0.0.1`, no en `0.0.0.0`. No lo expong
 
 ## Incremento de navegación y consulta de red
 
-El menú principal ahora permite abrir secciones en la página. El apartado **Network / Nodes** llama a `GET /api/network/kubo`, que consulta el estado de Kubo y, solo cuando el daemon ya está en ejecución, usa `NodeRuntime.network.status()` para mostrar el ID local y los pares directamente conectados. No ejecuta `runtime.boot()`, no arranca Kubo y no cambia la configuración de red.
+El menú principal ahora permite abrir secciones en la página. El apartado **Network / Nodes** llama a `GET /api/network/kubo`, que consulta el estado de Kubo y, solo cuando el daemon ya está en ejecución, usa `NodeRuntime.network.status()` para mostrar el ID local y los pares directamente conectados. El botón **Iniciar Kubo / IPFS** llama a `NodeRuntime.kubo.start()` tras confirmación y verifica que la API de Kubo responda.
 
 Las secciones BIOS, Core, Blog y Applications se muestran como pendientes y no ejecutan acciones todavía. La paridad funcional completa requiere conectar y probar cada submenú individualmente.
+
+
+## Inicio explícito de Kubo desde la web
+
+El botón de inicio solicita confirmación antes de llamar a `KuboManager.start()`. Si el repositorio está sin inicializar, el mensaje de confirmación advierte que Kubo puede inicializarlo con el perfil ya configurado. La operación usa la ruta de ejecutable y `IPFS_PATH` configurados en Node Core OS, con los permisos del usuario que inició el servidor. El endpoint valida Host, Origin, Content-Type, tamaño del cuerpo y el campo `confirm: true`; no permite ejecutar comandos arbitrarios ni expone la API RPC de Kubo al navegador.
