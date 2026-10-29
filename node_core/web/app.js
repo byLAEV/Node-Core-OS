@@ -20,7 +20,7 @@
       byId("kubo-state").textContent = states[k.state] || "DESCONOCIDO";
       byId("kubo-dot").className = "dot " + (k.running ? "ok" : (k.installed && k.initialized ? "bad" : ""));
       text("kubo-installed", k.installed ? "Sí" : "No");
-      text("kubo-initialized", k.initialized ? "Yes" : "No");
+      text("kubo-initialized", k.initialized ? "Sí" : "No");
       text("kubo-peer", k.peer_id);
       text("kubo-version", k.version);
       text("kubo-api", k.api);
