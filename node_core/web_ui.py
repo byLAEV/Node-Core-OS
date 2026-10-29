@@ -1,10 +1,10 @@
-"""Local read-only web interface for Node Core OS.
+"""Local web interface for Node Core OS.
 
 Run from the repository root with:
     python -m node_core.web_ui
 
-The first version intentionally exposes only status reads. It does not start,
-stop, or reconfigure Kubo and does not expose the Kubo RPC API to the browser.
+The interface exposes status reads and an explicit, confirmed Kubo start action.
+It does not expose the Kubo RPC API to the browser.
 """
 from __future__ import annotations
 
@@ -187,8 +187,83 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
 
-    def do_POST(self) -> None:  # noqa: N802 - no state-changing web actions in MVP
-        self._send_json(HTTPStatus.METHOD_NOT_ALLOWED, {"error": "This initial web interface is read-only."})
+    def do_POST(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
+        if not self._is_local_host_header():
+            self._send_json(HTTPStatus.FORBIDDEN, {"error": "Host header not allowed."})
+            return
+
+        expected_origins = {
+            f"http://127.0.0.1:{self.server.server_port}",
+            f"http://localhost:{self.server.server_port}",
+        }
+        if self.headers.get("Origin", "").rstrip("/") not in expected_origins:
+            self._send_json(HTTPStatus.FORBIDDEN, {"error": "Origin not allowed."})
+            return
+
+        path = urlsplit(self.path).path
+        if path != "/api/kubo/start":
+            self._send_json(HTTPStatus.METHOD_NOT_ALLOWED, {"error": "This POST endpoint is not supported."})
+            return
+
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "Expected application/json."})
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid Content-Length."})
+            return
+        if not 1 <= content_length <= 4096:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Request body must be between 1 and 4096 bytes."})
+            return
+
+        try:
+            request_data = json.loads(self.rfile.read(content_length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid JSON request body."})
+            return
+        if not isinstance(request_data, dict) or request_data.get("confirm") is not True:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Explicit confirmation is required to start Kubo."})
+            return
+
+        try:
+            before = self.server.runtime.kubo.status()
+            if not before.installed:
+                self._send_json(HTTPStatus.CONFLICT, {
+                    "error": "Kubo is not installed.",
+                    "detail": "Install Kubo for this user before starting it from the web interface.",
+                })
+                return
+            if before.running:
+                self._send_json(HTTPStatus.OK, {
+                    "message": "Kubo is already running.",
+                    "kubo": _kubo_status(self.server.runtime),
+                })
+                return
+
+            # KuboManager.start() uses the configured executable and IPFS_PATH,
+            # starts the daemon as this same unprivileged user, and initializes
+            # the configured repo only if the user explicitly confirmed above.
+            self.server.runtime.kubo.start()
+            status = self.server.runtime.kubo.status()
+            if not status.running:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {
+                    "error": "Kubo start returned, but the API did not become available.",
+                    "detail": status.detail or "Check the configured Kubo daemon log.",
+                    "kubo": _kubo_status(self.server.runtime),
+                })
+                return
+            self._send_json(HTTPStatus.OK, {
+                "message": "Kubo started successfully.",
+                "kubo": _kubo_status(self.server.runtime),
+            })
+        except Exception as exc:
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {
+                "error": "Could not start Kubo.",
+                "detail": str(exc),
+            })
 
     def log_message(self, format: str, *args: object) -> None:
         # Keep local logs useful while avoiding terminal control sequences.
