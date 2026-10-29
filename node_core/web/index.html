@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,56 +11,56 @@
 <main>
   <header>
     <div>
-      <div class="eyebrow">Local node console</div>
+      <div class="eyebrow">Consola local del nodo</div>
       <h1>Node Core OS</h1>
-      <div>byLAEV · Web interface</div>
+      <div>byLAEV · Interfaz web</div>
     </div>
-    <button id="refresh" type="button">Refresh status</button>
+    <button id="refresh" type="button">Actualizar estado</button>
   </header>
 
-  <section class="layout" aria-label="Runtime status">
+  <section class="layout" aria-label="Estado del runtime">
     <article class="panel">
-      <h2>Node Core OS runtime</h2>
-      <div class="status"><span id="runtime-dot" class="dot"></span><strong id="runtime-state">Checking…</strong></div>
-      <p>The web server is connected to the existing Python <code>NodeRuntime</code>.</p>
-      <div class="label">Interface address</div>
-      <div class="value"><code>127.0.0.1:8765</code> (default port)</div>
+      <h2>Runtime de Node Core OS</h2>
+      <div class="status"><span id="runtime-dot" class="dot"></span><strong id="runtime-state">Consultando…</strong></div>
+      <p>El servidor web está conectado al runtime Python existente <code>NodeRuntime</code>.</p>
+      <div class="label">Dirección de la interfaz</div>
+      <div class="value"><code id="web-address">127.0.0.1:8765</code></div>
     </article>
     <article class="panel">
       <h2>Kubo / IPFS</h2>
       <div class="status"><span id="kubo-dot" class="dot"></span><strong id="kubo-state">Checking…</strong></div>
-      <div class="label">Installed</div><div class="value" id="kubo-installed">—</div>
-      <div class="label">Repository initialized</div><div class="value" id="kubo-initialized">—</div>
-      <div class="label">Peer ID</div><div class="value" id="kubo-peer">—</div>
-      <div class="label">Version</div><div class="value" id="kubo-version">—</div>
-      <div class="label">Configured API endpoint</div><div class="value" id="kubo-api">—</div>
-      <div class="label">Repository path</div><div class="value" id="kubo-repo">—</div>
+      <div class="label">Instalado</div><div class="value" id="kubo-installed">—</div>
+      <div class="label">Repositorio inicializado</div><div class="value" id="kubo-initialized">—</div>
+      <div class="label">ID del peer</div><div class="value" id="kubo-peer">—</div>
+      <div class="label">Versión</div><div class="value" id="kubo-version">—</div>
+      <div class="label">Dirección API configurada</div><div class="value" id="kubo-api">—</div>
+      <div class="label">Ruta del repositorio</div><div class="value" id="kubo-repo">—</div>
       <p id="kubo-detail" class="notice" hidden></p>
     </article>
   </section>
 
   <section class="layout">
     <article class="panel">
-      <h2>Main menu</h2>
-      <p>Menu sections from the terminal are listed here. Navigation and actions will be enabled incrementally after each route is connected to its real runtime operation.</p>
+      <h2>Menú principal</h2>
+      <p>Aquí se muestran las secciones del menú de terminal. La navegación y las acciones se habilitarán gradualmente al conectarlas con las operaciones reales del runtime.</p>
       <div class="menu" aria-label="Node Core OS menu">
-        <button disabled><span>1 · Node Core BIOS</span>Storage, Kubo, network, configuration, security</button>
-        <button disabled><span>2 · Node Core</span>Core functions</button>
-        <button disabled><span>3 · My Life / Node Blog</span>Local content and blog</button>
-        <button disabled><span>4 · Applications</span>Application modules</button>
-        <button disabled><span>5 · Network / Nodes</span>Network and peer operations</button>
-        <button disabled><span>6 · Refresh</span>Refresh observed network status</button>
+        <button disabled><span>1 · Node Core BIOS</span>Almacenamiento, Kubo, red, configuración y seguridad</button>
+        <button disabled><span>2 · Node Core</span>Funciones centrales</button>
+        <button disabled><span>3 · My Life / Node Blog</span>Contenido local y blog</button>
+        <button disabled><span>4 · Applications</span>Módulos de aplicaciones</button>
+        <button disabled><span>5 · Network / Nodes</span>Red y operaciones de peers</button>
+        <button disabled><span>6 · Refresh</span>Actualizar el estado de red</button>
       </div>
     </article>
     <article class="panel">
-      <h2>Safety and implementation status</h2>
-      <p class="notice">This first milestone is read-only. It queries the actual Kubo status through Node Core OS; it does not expose Kubo's RPC API to the browser and does not start, stop, or reconfigure services.</p>
-      <p>Controls that change state remain disabled until their original inputs, validations, and confirmations are implemented.</p>
-      <div class="label">Data source</div><div class="value">NodeRuntime → KuboManager.status()</div>
-      <div class="label">Binding</div><div class="value">Loopback only: <code>127.0.0.1</code></div>
+      <h2>Seguridad y estado de implementación</h2>
+      <p class="notice">Esta primera etapa es de solo lectura. Consulta el estado real de Kubo a través de Node Core OS; no expone la API RPC de Kubo al navegador ni inicia, detiene o reconfigura servicios.</p>
+      <p>Los controles que modifican el estado permanecerán deshabilitados hasta implementar sus entradas, validaciones y confirmaciones originales.</p>
+      <div class="label">Origen de los datos</div><div class="value">NodeRuntime → KuboManager.status()</div>
+      <div class="label">Enlace de red</div><div class="value">Solo loopback: <code>127.0.0.1</code></div>
     </article>
   </section>
-  <footer id="updated">Status not loaded yet.</footer>
+  <footer id="updated">El estado todavía no se ha cargado.</footer>
 </main>
   <script src="/app.js" defer></script>
 </body>
