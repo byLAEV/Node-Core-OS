@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Node Core OS byLAEV</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0a0d12; --panel: #121923; --line: #283444; --text: #e8eef6; --muted: #9aabbe; --accent: #77d4b5; --warn: #f2c879; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(ellipse at top left, #142432, var(--bg) 52%); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
+    main { width: min(980px, 100% - 32px); margin: 0 auto; padding: 32px 0 48px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 22px; }
+    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .13em; font-size: .75rem; font-weight: 700; }
+    h1 { margin: 4px 0; font-size: clamp(1.8rem, 6vw, 3rem); line-height: 1.1; }
+    h2 { font-size: 1.2rem; margin: 0 0 14px; }
+    p { color: var(--muted); }
+    .layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; margin-top: 22px; }
+    .panel { background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--line); border-radius: 16px; padding: 20px; min-width: 0; }
+    .status { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); flex: none; }
+    .dot.ok { background: var(--accent); box-shadow: 0 0 12px #77d4b566; }
+    .dot.bad { background: #f07878; }
+    .value { overflow-wrap: anywhere; color: var(--text); }
+    .label { color: var(--muted); font-size: .85rem; margin-top: 14px; }
+    button { border: 1px solid #466454; border-radius: 10px; background: #17372f; color: #eafff7; padding: 10px 14px; font: inherit; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .menu { display: grid; gap: 8px; }
+    .menu button { width: 100%; text-align: left; border-color: var(--line); background: #111923; color: var(--muted); cursor: not-allowed; }
+    .menu button span { display: block; color: var(--text); font-weight: 650; }
+    .notice { border-left: 3px solid var(--warn); padding-left: 12px; }
+    footer { margin-top: 22px; color: var(--muted); font-size: .85rem; }
+    code { color: var(--accent); overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Local node console</div>
+      <h1>Node Core OS</h1>
+      <div>byLAEV · Web interface</div>
+    </div>
+    <button id="refresh" type="button">Refresh status</button>
+  </header>
+
+  <section class="layout" aria-label="Runtime status">
+    <article class="panel">
+      <h2>Node Core OS runtime</h2>
+      <div class="status"><span id="runtime-dot" class="dot"></span><strong id="runtime-state">Checking…</strong></div>
+      <p>The web server is connected to the existing Python <code>NodeRuntime</code>.</p>
+      <div class="label">Interface address</div>
+      <div class="value"><code>127.0.0.1:8765</code> (default port)</div>
+    </article>
+    <article class="panel">
+      <h2>Kubo / IPFS</h2>
+      <div class="status"><span id="kubo-dot" class="dot"></span><strong id="kubo-state">Checking…</strong></div>
+      <div class="label">Installed</div><div class="value" id="kubo-installed">—</div>
+      <div class="label">Repository initialized</div><div class="value" id="kubo-initialized">—</div>
+      <div class="label">Peer ID</div><div class="value" id="kubo-peer">—</div>
+      <div class="label">Version</div><div class="value" id="kubo-version">—</div>
+      <div class="label">Configured API endpoint</div><div class="value" id="kubo-api">—</div>
+      <div class="label">Repository path</div><div class="value" id="kubo-repo">—</div>
+      <p id="kubo-detail" class="notice" hidden></p>
+    </article>
+  </section>
+
+  <section class="layout">
+    <article class="panel">
+      <h2>Main menu</h2>
+      <p>Menu sections from the terminal are listed here. Navigation and actions will be enabled incrementally after each route is connected to its real runtime operation.</p>
+      <div class="menu" aria-label="Node Core OS menu">
+        <button disabled><span>1 · Node Core BIOS</span>Storage, Kubo, network, configuration, security</button>
+        <button disabled><span>2 · Node Core</span>Core functions</button>
+        <button disabled><span>3 · My Life / Node Blog</span>Local content and blog</button>
+        <button disabled><span>4 · Applications</span>Application modules</button>
+        <button disabled><span>5 · Network / Nodes</span>Network and peer operations</button>
+        <button disabled><span>6 · Refresh</span>Refresh observed network status</button>
+      </div>
+    </article>
+    <article class="panel">
+      <h2>Safety and implementation status</h2>
+      <p class="notice">This first milestone is read-only. It queries the actual Kubo status through Node Core OS; it does not expose Kubo's RPC API to the browser and does not start, stop, or reconfigure services.</p>
+      <p>Controls that change state remain disabled until their original inputs, validations, and confirmations are implemented.</p>
+      <div class="label">Data source</div><div class="value">NodeRuntime → KuboManager.status()</div>
+      <div class="label">Binding</div><div class="value">Loopback only: <code>127.0.0.1</code></div>
+    </article>
+  </section>
+  <footer id="updated">Status not loaded yet.</footer>
+</main>
+<script>
+  const byId = (id) => document.getElementById(id);
+  const text = (id, value) => { byId(id).textContent = value == null || value === "" ? "Not reported" : String(value); };
+  async function refreshStatus() {
+    byId("refresh").disabled = true;
+    byId("updated").textContent = "Querying local runtime…";
+    try {
+      const response = await fetch("/api/status", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.error || "Status request failed.");
+      byId("runtime-state").textContent = "Loaded";
+      byId("runtime-dot").className = "dot ok";
+      const k = data.kubo;
+      const states = {
+        running: "RUNNING",
+        not_installed: "NOT INSTALLED",
+        not_initialized: "NOT INITIALIZED",
+        not_responding: "NOT RESPONDING / NOT RUNNING"
+      };
+      byId("kubo-state").textContent = states[k.state] || "UNKNOWN";
+      byId("kubo-dot").className = "dot " + (k.running ? "ok" : (k.installed && k.initialized ? "bad" : ""));
+      text("kubo-installed", k.installed ? "Yes" : "No");
+      text("kubo-initialized", k.initialized ? "Yes" : "No");
+      text("kubo-peer", k.peer_id);
+      text("kubo-version", k.version);
+      text("kubo-api", k.api);
+      text("kubo-repo", k.repo_path);
+      const detail = byId("kubo-detail");
+      if (k.detail) { detail.hidden = false; detail.textContent = k.detail; }
+      else { detail.hidden = true; detail.textContent = ""; }
+      byId("updated").textContent = "Last updated: " + new Date().toLocaleString() + " · Values are read from the local runtime.";
+    } catch (error) {
+      byId("runtime-state").textContent = "Unavailable";
+      byId("runtime-dot").className = "dot bad";
+      byId("kubo-state").textContent = "Status query failed";
+      byId("kubo-dot").className = "dot bad";
+      byId("updated").textContent = "Error: " + error.message;
+    } finally {
+      byId("refresh").disabled = false;
+    }
+  }
+  byId("refresh").addEventListener("click", refreshStatus);
+  refreshStatus();
+</script>
+</body>
+</html>
