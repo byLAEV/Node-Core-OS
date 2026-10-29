@@ -132,5 +132,37 @@
     button.addEventListener("click", () => openMenu(button.dataset.view));
   });
 
+  byId("start-kubo").addEventListener("click", async () => {
+    const accepted = window.confirm(
+      "¿Iniciar Kubo / IPFS con la configuración actual de Node Core OS? " +
+      "Si el repositorio no está inicializado, Kubo puede inicializarlo. " +
+      "La operación se ejecutará como el usuario actual de Termux, sin root ni sudo."
+    );
+    if (!accepted) return;
+
+    const button = byId("start-kubo");
+    button.disabled = true;
+    byId("updated").textContent = "Iniciando Kubo / IPFS; esperando a que responda la API local…";
+    try {
+      const response = await fetch("/api/kubo/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true }),
+        cache: "no-store"
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || data.error || "No se pudo iniciar Kubo.");
+      await refreshStatus();
+      byId("updated").textContent = data.message + " · Estado verificado por el runtime local.";
+      if (data.kubo && data.kubo.detail) {
+        byId("updated").textContent += " " + data.kubo.detail;
+      }
+    } catch (error) {
+      byId("updated").textContent = "Error al iniciar Kubo: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   byId("refresh").addEventListener("click", refreshStatus);
   refreshStatus();
