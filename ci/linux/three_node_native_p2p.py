@@ -177,7 +177,7 @@ def send(source: str, target: str) -> None:
                 recipient["rsa_public_key"], record,
             )
             second = replicator.send_record(
-                client, target, 8765, recipient["node_id"],
+                client, "node-" + target, 8765, recipient["node_id"],
                 recipient["rsa_public_key"], record,
             )
             if first.get("status") != "accepted" or second.get("status") != "accepted":
