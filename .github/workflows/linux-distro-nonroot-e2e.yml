@@ -1,0 +1,63 @@
+name: Node Core OS — Linux distro non-root install and update E2E
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-distro-e2e:
+    name: "${{ matrix.name }} — real install/update/uninstall as non-root user"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04
+            image: ubuntu:24.04
+            os_id: ubuntu
+          - name: Debian 13
+            image: debian:13
+            os_id: debian
+          - name: Fedora 44
+            image: fedora:44
+            os_id: fedora
+
+    steps:
+      - name: Checkout exact pull request source
+        uses: actions/checkout@v4
+
+      - name: Build isolated distribution test image
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg BASE_IMAGE="${{ matrix.image }}" \
+            --file ci/linux/Dockerfile \
+            --tag "node-core-linux-e2e:${{ matrix.os_id }}" \
+            .
+
+      - name: Run full installation lifecycle as nodecore without sudo
+        env:
+          EXPECTED_OS_ID: ${{ matrix.os_id }}
+          NODE_CORE_BRANCH: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+          data_dir="$RUNNER_TEMP/node-core-${{ matrix.os_id }}-data"
+          mkdir -p "$data_dir"
+          chmod 700 "$data_dir"
+          docker run --rm --network host \
+            --user 1001:1001 \
+            --volume "$GITHUB_WORKSPACE:/workspace:ro" \
+            --volume "$data_dir:/home/nodecore/.node-core" \
+            --env EXPECTED_OS_ID \
+            --env NODE_CORE_BRANCH \
+            --env NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
+            --env RUNNER_TEMP=/tmp \
+            "node-core-linux-e2e:${{ matrix.os_id }}" \
+            bash /workspace/ci/linux/run-user-e2e.sh
