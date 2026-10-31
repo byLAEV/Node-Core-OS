@@ -163,6 +163,12 @@ class WebInterfaceTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=3)
 
+    def test_web_ui_entrypoint_refuses_root(self) -> None:
+        from node_core.web_ui import main
+        with patch("node_core.web_ui.os.geteuid", return_value=0):
+            with self.assertRaisesRegex(SystemExit, "user-only"):
+                main()
+
     def test_background_sync_retries_pending_records(self) -> None:
         class FakeBinding:
             def __init__(self):

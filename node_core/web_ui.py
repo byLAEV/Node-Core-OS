@@ -454,6 +454,9 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    get_uid = getattr(os, "geteuid", None)
+    if get_uid is None or get_uid() == 0:
+        raise SystemExit("Node Core Web API is user-only. Run as your normal user without sudo or su.")
     _require_unprivileged_user()
     try:
         port = _port_from_environment()
