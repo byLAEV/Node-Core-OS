@@ -373,7 +373,8 @@ class GitHubIdentityPool:
             )
         if client is None:
             raise GitHubIdentityPoolError("Configured GitHub repository or active pool member was not found.")
-        token = token or self._github_cli_token()
+        if token is None and member_id is None:
+            token = self._github_cli_token()
         if token:
             user = self._github_api("/user", token)
             if not isinstance(user, dict) or str(user.get("login", "")).lower() != client["github_login"]:
@@ -509,6 +510,14 @@ class GitHubIdentityPool:
         self._require_initialized()
         if not isinstance(envelope, dict) or envelope.get("schema") != ENVELOPE_SCHEMA:
             raise GitHubIdentityPoolError("Unsupported encrypted identity-record envelope.")
+        allowed_envelope_fields = {
+            "schema", "record_id", "created_at_utc", "encryption_key_id",
+            "algorithm", "wrapped_key", "nonce", "ciphertext",
+        }
+        if set(envelope) != allowed_envelope_fields:
+            raise GitHubIdentityPoolError("Encrypted record contains missing or unsupported envelope fields.")
+        if envelope.get("algorithm") != "RSA-OAEP-256+A256GCM":
+            raise GitHubIdentityPoolError("Encrypted record algorithm is not supported.")
         record_id = envelope.get("record_id")
         try:
             parsed_id = str(uuid.UUID(record_id))
