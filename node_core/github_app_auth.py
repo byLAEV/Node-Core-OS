@@ -98,12 +98,15 @@ class GitHubAppAuth:
         error = data.get("error")
         if error in {"authorization_pending", "slow_down"}:
             if error == "slow_down":
-                state["interval"] = int(state["interval"]) + 5
+                state["interval"] = max(
+                    int(state["interval"]) + 5,
+                    int(data.get("interval", int(state["interval"]) + 5)),
+                )
             state["next_poll_at"] = now + int(state["interval"])
             self._write(self.pending_path, state)
             return {"state": "pending", "wait_seconds": int(state["interval"])}
         if error:
-            if error in {"access_denied", "expired_token", "incorrect_device_code"}:
+            if error in {"access_denied", "expired_token", "token_expired", "incorrect_device_code", "bad_verification_code"}:
                 self.pending_path.unlink(missing_ok=True)
             raise GitHubAppError("GitHub device authorization failed: " + str(error))
 
