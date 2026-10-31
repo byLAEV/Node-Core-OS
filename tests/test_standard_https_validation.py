@@ -28,6 +28,7 @@ def _build_ca(now):
         .not_valid_before((now - timedelta(days=2)).replace(tzinfo=None))
         .not_valid_after((now + timedelta(days=30)).replace(tzinfo=None))
         .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+        .add_extension(x509.SubjectKeyIdentifier.from_public_key(key.public_key()), critical=False)
         .add_extension(x509.KeyUsage(
             digital_signature=True, content_commitment=False, key_encipherment=False,
             data_encipherment=False, key_agreement=False, key_cert_sign=True,
@@ -47,6 +48,7 @@ def _build_leaf(ca_key, ca_cert, now, *, dns="localhost", not_before=None):
         .not_valid_before((not_before or (now - timedelta(minutes=5))).replace(tzinfo=None))
         .not_valid_after((now + timedelta(days=7)).replace(tzinfo=None))
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
         .add_extension(x509.SubjectAlternativeName([x509.DNSName(dns)]), critical=False)
         .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
         .add_extension(x509.KeyUsage(
