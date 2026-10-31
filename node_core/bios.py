@@ -185,20 +185,30 @@ class BIOSMenu:
                     self._pause()
 
     def services(self) -> None:
+        from node_core.web_service import NodeWebServiceManager
+
+        web_service = NodeWebServiceManager(
+            self.runtime.config.data_dir,
+            Path(__file__).resolve().parents[1],
+        )
         while True:
             try:
                 status = self.runtime.native_p2p_status()
             except Exception as exc:
                 status = {"error": str(exc)}
+            web_status = web_service.status()
             self._show("Services", {
                 "LAN discovery": "RUNNING" if status.get("discovery_running") else "NOT RUNNING",
                 "Authenticated listener": "RUNNING" if status.get("service_running") else "NOT RUNNING",
                 "Peer monitor": "RUNNING" if status.get("peer_monitor_running") else "NOT RUNNING",
                 "Trusted peers": status.get("trusted_count", "unavailable"),
                 "Listener address": status.get("listen_address", "unavailable"),
-                "Note": "Listener requires at least one explicitly trusted peer certificate.",
+                "Node Core Web API": "RUNNING" if web_status["running"] else "NOT RUNNING",
+                "Web API URL": web_status["url"],
+                "Web API log": web_status["log_path"],
+                "Note": "Web API is loopback-only. Use an HTTPS reverse proxy/tunnel for GitHub Pages.",
             })
-            print("\n0. Back\n1. Start LAN discovery\n2. Start authenticated listener\n3. Stop authenticated listener\n4. Stop LAN discovery")
+            print("\\n0. Back\\n1. Start LAN discovery\\n2. Start authenticated listener\\n3. Stop authenticated listener\\n4. Stop LAN discovery\\n5. Start Node Core Web API\\n6. Stop Node Core Web API\\n7. Show Node Core Web API log")
             choice = input("> ").strip()
             if choice == "0":
                 return
@@ -218,6 +228,14 @@ class BIOSMenu:
                 if self._confirm("Stop LAN discovery?"):
                     self.runtime.stop_native_discovery()
                     print("LAN discovery stopped.")
+            elif choice == "5":
+                self._show("Node Core Web API started", web_service.start())
+            elif choice == "6":
+                if self._confirm("Stop the local Node Core Web API?"):
+                    self._show("Node Core Web API stopped", web_service.stop())
+            elif choice == "7":
+                print(web_service.read_log())
+                self._pause()
 
     def configuration(self) -> None:
         config = self.runtime.config
