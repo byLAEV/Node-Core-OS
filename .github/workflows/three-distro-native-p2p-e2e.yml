@@ -116,6 +116,20 @@ jobs:
         run: |
           set -euo pipefail
           for node in node-a node-b node-c; do
+            if ! docker exec "$node" bash -lc 'curl --fail --silent --max-time 2 -X POST http://127.0.0.1:5001/api/v0/id >/dev/null'; then
+              if ! docker exec "$node" bash -lc "ps -eo args | grep -F '[i]pfs daemon' >/dev/null"; then
+                docker exec -d "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; exec "$NODE_CORE_DATA_DIR/bin/ipfs" daemon'
+              fi
+            fi
+            ready=0
+            for attempt in {1..30}; do
+              if docker exec "$node" bash -lc 'curl --fail --silent --max-time 2 -X POST http://127.0.0.1:5001/api/v0/id >/dev/null'; then
+                ready=1
+                break
+              fi
+              sleep 1
+            done
+            test "$ready" -eq 1
             docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" id' > "$RUNNER_TEMP/${node}.ipfs.json"
           done
           A_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-a.ipfs.json")"
