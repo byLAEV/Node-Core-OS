@@ -112,6 +112,37 @@ jobs:
           docker exec node-c bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py verify c b'
           docker exec node-a bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py verify a c'
 
+      - name: Connect all three Kubo peers and retrieve one CID across Ubuntu Debian and Fedora
+        run: |
+          set -euo pipefail
+          for node in node-a node-b node-c; do
+            docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" id' > "$RUNNER_TEMP/${node}.ipfs.json"
+          done
+          A_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-a.ipfs.json")"
+          B_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-b.ipfs.json")"
+          C_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-c.ipfs.json")"
+          A_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-a)"
+          B_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-b)"
+          C_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-c)"
+          docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$B_IP"'/tcp/4001/p2p/'"$B_ID"''
+          docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$C_IP"'/tcp/4001/p2p/'"$C_ID"''
+          docker exec node-b bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$C_IP"'/tcp/4001/p2p/'"$C_ID"''
+          for node in node-a node-b node-c; do
+            docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm peers' > "$RUNNER_TEMP/${node}.peers.txt"
+          done
+          grep -Fq "$B_ID" "$RUNNER_TEMP/node-a.peers.txt"
+          grep -Fq "$C_ID" "$RUNNER_TEMP/node-a.peers.txt"
+          grep -Fq "$C_ID" "$RUNNER_TEMP/node-b.peers.txt"
+          printf 'Node Core OS Kubo cross-distro test payload\\n' > "$RUNNER_TEMP/kubo-cross-distro.txt"
+          EXPECTED_SHA="$(sha256sum "$RUNNER_TEMP/kubo-cross-distro.txt" | awk '{print $1}')"
+          docker cp "$RUNNER_TEMP/kubo-cross-distro.txt" node-a:/tmp/kubo-cross-distro.txt
+          CID="$(docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" add -Q /tmp/kubo-cross-distro.txt')"
+          for node in node-b node-c; do
+            ACTUAL_SHA="$(docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" cat '"$CID"' | sha256sum | awk "{print \\$1}"')"
+            test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+            printf 'KUBO_CONTENT_OK node=%s cid=%s sha256=%s\\n' "$node" "$CID" "$ACTUAL_SHA"
+          done
+
       - name: Upload three-node P2P evidence
         if: always()
         uses: actions/upload-artifact@v4
