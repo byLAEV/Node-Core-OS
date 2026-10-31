@@ -37,9 +37,16 @@ echo "=== Installer shell syntax ==="
 bash installer/tests/syntax.sh
 bash installer/tests/user-context.sh
 
+echo "=== Prepare isolated test Python environment (ordinary user) ==="
+TEST_PYTHON_ENV="$RUNNER_TEMP/node-core-test-venv"
+python3 -m venv "$TEST_PYTHON_ENV"
+"$TEST_PYTHON_ENV/bin/python" -m pip install --disable-pip-version-check --upgrade pip
+"$TEST_PYTHON_ENV/bin/python" -m pip install --disable-pip-version-check -r requirements.txt
+TEST_PYTHON="$TEST_PYTHON_ENV/bin/python"
+
 echo "=== Source compilation and complete unit suite (ordinary user) ==="
-python3 -m compileall -q main.py node_core tests
-python3 -m unittest discover -s tests -v
+"$TEST_PYTHON" -m compileall -q main.py node_core tests
+"$TEST_PYTHON" -m unittest discover -s tests -v
 
 echo "=== Clean real installation (ordinary user) ==="
 mkdir -p "$HOME"
