@@ -79,3 +79,43 @@ successfully before PR #192 can be considered validated.
 
 All product execution remains as an ordinary user; privileged operations are
 limited to preparing the isolated CI container images.
+
+
+## 4. BIOS menu navigation and non-root distro lifecycle
+
+Workflow run: https://github.com/byLAEV/Node-Core-OS/actions/runs/41196769035
+
+The BIOS menu smoke test completed on Ubuntu 24.04, Debian 13 and Fedora 44.
+The new test `test_bios_back_returns_to_os_menu_and_os_zero_exits` passed in
+all three installed application suites. This confirms the menu hierarchy:
+submenu `0` returns to BIOS, BIOS `0` returns to Node Core OS, and the
+Node Core OS main-menu `0` exits the application.
+
+The full installed test suite completed with 408 tests and `OK` on Debian 13
+and Ubuntu 24.04. Fedora's installed suite also reported `OK`; the captured
+log includes expected BrokenPipeError diagnostics from HTTP tests that close
+client sockets early, while those tests themselves passed.
+
+The lifecycle workflow then failed during uninstall on all three distributions:
+`rm: cannot remove '/home/nodecore/.node-core': Device or resource busy`.
+The workflow had mounted the data directory itself as a Docker bind mount at
+`/home/nodecore/.node-core`. A process inside the container cannot remove the
+mount point, so this failure was caused by CI mount layout rather than the
+application's menu or updater.
+
+Correction:
+- Mount the temporary host directory at `/home/nodecore` instead.
+- Keep `NODE_CORE_DATA_DIR=/home/nodecore/.node-core` as a normal child
+  directory. The product can now remove that child during uninstall without
+  attempting to remove a mounted filesystem root.
+- Product installation, tests, update and uninstall remain executed as UID
+  1001; no root or sudo is used for product operations.
+
+Corrective commit:
+- `5022448a6808151bfbeb49b4ab9fc69e82ef03fe` — mount the parent home directory
+  so the product data directory is removable by the non-root uninstaller.
+
+Verification status:
+- The correction is committed. The workflow run triggered by this commit must
+  complete on Ubuntu 24.04, Debian 13 and Fedora 44 before the lifecycle is
+  considered passed. A committed correction is not itself a passing test.
