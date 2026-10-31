@@ -114,3 +114,24 @@ Device Flow endpoints:
 - `GET /api/github/device/status`
 
 The browser does not receive the access token or App private key. This is a functional integration stage, not a complete security review; protect the node's local data directory and do not use real personal information during development.
+
+
+## Replicating records to explicitly trusted Node Core peers
+
+A node can replicate a locally owned Page record to another trusted Node Core node. The receiver stores a copy under:
+
+```text
+~/.node-core/storage/shared/github-record-replicas/<origin-node-id>/<record-uuid>.json
+```
+
+This is a replica in the receiving node's shared storage. It does not modify the receiver's GitHub repository. The original operator's repository remains the source repository for records submitted through that operator's Page.
+
+The replication event uses the existing native P2P authenticated TLS session and signed/encrypted message transport. The receiver checks the authenticated sender node ID, recipient node ID, record owner, repository, event ID and record UUID before persisting. Repeated delivery of the same origin + record ID is idempotent; a conflicting record with the same ID is rejected.
+
+### Pinning peer message keys
+
+Each peer must already be explicitly trusted by its Node Core certificate. RSA message public keys are separate from the TLS/node identity and must be exchanged and fingerprint-verified out of band. After the peer's RSA public key fingerprint has been verified, pin it locally through the runtime method `trust_peer_message_key(node_id, public_key_pem)`. Pinned keys are stored in `~/.node-core/p2p/trusted-message-keys.json`.
+
+The native P2P listener accepts replication events only from peers with a pinned RSA message key. The receiving callback writes records to local shared storage before the sender receives the signed acceptance receipt.
+
+This is a two-node replication primitive, not global automatic propagation. The operator must select a trusted peer and invoke replication. Multi-hop forwarding, automatic fan-out, conflict resolution across repositories and public WAN rendezvous remain separate work.
