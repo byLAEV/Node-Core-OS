@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Node Core OS byLAEV</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Consola local del nodo</div>
+      <h1>Node Core OS</h1>
+      <div>byLAEV · Interfaz web</div>
+    </div>
+    <div class="header-actions"><button id="start-kubo" type="button">Iniciar Kubo / IPFS</button><button id="refresh" type="button">Actualizar estado</button></div>
+  </header>
+
+  <section class="layout" aria-label="Estado del runtime">
+    <article class="panel">
+      <h2>Runtime de Node Core OS</h2>
+      <div class="status"><span id="runtime-dot" class="dot"></span><strong id="runtime-state">Consultando…</strong></div>
+      <p>El servidor web está conectado al runtime Python existente <code>NodeRuntime</code>.</p>
+      <div class="label">Dirección de la interfaz</div>
+      <div class="value"><code id="web-address">127.0.0.1:8765</code></div>
+    </article>
+    <article class="panel">
+      <h2>Kubo / IPFS</h2>
+      <div class="status"><span id="kubo-dot" class="dot"></span><strong id="kubo-state">Consultando…</strong></div>
+      <div class="label">Instalado</div><div class="value" id="kubo-installed">—</div>
+      <div class="label">Repositorio inicializado</div><div class="value" id="kubo-initialized">—</div>
+      <div class="label">ID del peer</div><div class="value" id="kubo-peer">—</div>
+      <div class="label">Versión</div><div class="value" id="kubo-version">—</div>
+      <div class="label">Dirección API configurada</div><div class="value" id="kubo-api">—</div>
+      <div class="label">Ruta del repositorio</div><div class="value" id="kubo-repo">—</div>
+      <p id="kubo-detail" class="notice" hidden></p>
+    </article>
+  </section>
+
+  <section class="layout">
+    <article class="panel">
+      <h2>Menú principal</h2>
+      <p>Aquí se muestran las secciones del menú de terminal. La navegación y las acciones se habilitarán gradualmente al conectarlas con las operaciones reales del runtime.</p>
+      <div class="menu" aria-label="Menú principal de Node Core OS">
+        <button type="button" data-view="bios"><span>1 · Node Core BIOS</span>Almacenamiento, Kubo, red, configuración y seguridad</button>
+        <button type="button" data-view="core"><span>2 · Node Core</span>Funciones centrales</button>
+        <button type="button" data-view="blog"><span>3 · My Life / Node Blog</span>Contenido local y blog</button>
+        <button type="button" data-view="apps"><span>4 · Applications</span>Módulos de aplicaciones</button>
+        <button type="button" data-view="network"><span>5 · Network / Nodes</span>Estado de Kubo e IPFS disponible ahora</button>
+        <button type="button" data-view="refresh"><span>6 · Refresh</span>Actualizar el estado de red</button>
+      </div>
+      <section id="menu-detail" class="menu-detail panel" aria-live="polite">
+        <h3>Selecciona una sección</h3>
+        <p>Las consultas disponibles se conectan al runtime real. Las operaciones que cambian el sistema se habilitarán al implementar sus validaciones y confirmaciones.</p>
+      </section>
+    </article>
+    <article class="panel">
+      <h2>Seguridad y estado de implementación</h2>
+      <p class="notice">La interfaz consulta el estado real de Kubo y permite iniciarlo mediante una acción explícita con confirmación. No expone la API RPC de Kubo al navegador ni detiene o reconfigura servicios.</p>
+      <p>El inicio de Kubo requiere confirmación explícita. Si el repositorio aún no está inicializado, KuboManager puede inicializarlo con el perfil configurado. Las demás operaciones que modifican el estado siguen pendientes.</p>
+      <div class="label">Origen de los datos</div><div class="value">NodeRuntime → KuboManager.status()</div>
+      <div class="label">Enlace de red</div><div class="value">Solo loopback: <code>127.0.0.1</code></div>
+    </article>
+  </section>
+  <footer id="updated">El estado todavía no se ha cargado.</footer>
+</main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
