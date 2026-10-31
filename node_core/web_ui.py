@@ -112,6 +112,13 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
         }
         configured = os.environ.get("NODE_CORE_WEB_ALLOWED_HOSTS", "")
         hosts.update(value.strip().lower() for value in configured.split(",") if value.strip())
+        try:
+            binding = self._binding().status()
+            api_url = urlsplit(str(binding.get("node_api_url", "")))
+            if api_url.scheme == "https" and api_url.netloc:
+                hosts.add(api_url.netloc.lower())
+        except Exception:
+            pass
         return hosts
 
     def _is_local_host_header(self) -> bool:
@@ -120,7 +127,15 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
     def _allowed_origins(self) -> set[str]:
         configured = os.environ.get("NODE_CORE_WEB_ALLOWED_ORIGINS", "")
-        return {value.strip().rstrip("/") for value in configured.split(",") if value.strip()}
+        origins = {value.strip().rstrip("/") for value in configured.split(",") if value.strip()}
+        try:
+            binding = self._binding().status()
+            pages_url = urlsplit(str(binding.get("github_pages_url", "")))
+            if pages_url.scheme == "https" and pages_url.netloc:
+                origins.add(f"{pages_url.scheme}://{pages_url.netloc}".rstrip("/"))
+        except Exception:
+            pass
+        return origins
 
     def _origin_allowed(self) -> bool:
         origin = self.headers.get("Origin", "").strip().rstrip("/")

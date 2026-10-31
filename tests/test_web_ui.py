@@ -257,10 +257,25 @@ class WebInterfaceTests(unittest.TestCase):
                     }
                 }).encode("utf-8")
                 connection.request(
+                    "OPTIONS", "/api/github/records",
+                    headers={
+                        "Host": "node.example.test",
+                        "Origin": "https://octocat.github.io",
+                        "Access-Control-Request-Method": "POST",
+                        "Access-Control-Request-Headers": "content-type",
+                    },
+                )
+                preflight = connection.getresponse()
+                self.assertEqual(preflight.status, 204)
+                preflight.read()
+                connection.close()
+
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+                connection.request(
                     "POST", "/api/github/records", body=body,
                     headers={
-                        "Host": f"127.0.0.1:{port}",
-                        "Origin": f"http://127.0.0.1:{port}",
+                        "Host": "node.example.test",
+                        "Origin": "https://octocat.github.io",
                         "Content-Type": "application/json",
                     },
                 )
