@@ -208,7 +208,7 @@ class BIOSMenu:
                 "Web API log": web_status["log_path"],
                 "Note": "Web API is loopback-only. Use an HTTPS reverse proxy/tunnel for GitHub Pages.",
             })
-            print("\\n0. Back\\n1. Start LAN discovery\\n2. Start authenticated listener\\n3. Stop authenticated listener\\n4. Stop LAN discovery\\n5. Start Node Core Web API\\n6. Stop Node Core Web API\\n7. Show Node Core Web API log")
+            print("\n0. Back\n1. Start LAN discovery\n2. Start authenticated listener\n3. Stop authenticated listener\n4. Stop LAN discovery\n5. Start Node Core Web API\n6. Stop Node Core Web API\n7. Show Node Core Web API log")
             choice = input("> ").strip()
             if choice == "0":
                 return
