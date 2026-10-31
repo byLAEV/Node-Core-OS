@@ -72,10 +72,10 @@ jobs:
             bash update.sh
 
           Run as the normal installation user, never as root.
-          The updater verifies the remote branch commit and preserves local
+          The updater applies the bundled, commit-pinned source snapshot and preserves local
           storage, Kubo repository, identity keys and configuration.
           The bundled source package is the exact source snapshot for this
-          release; it is not automatically installed by the remote updater.
+          release and is applied directly by the bundled updater without a source download.
           EOF
           tar -czf "dist/$update_name.tar.gz" -C "$stage" "$update_name"
           sha256sum dist/*.tar.gz > dist/SHA256SUMS
