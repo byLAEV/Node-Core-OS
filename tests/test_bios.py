@@ -28,6 +28,24 @@ class BIOSMenuTests(unittest.TestCase):
             MainMenu(runtime).bios()
         run.assert_called_once()
 
+    def test_bios_back_returns_to_os_menu_and_os_zero_exits(self):
+        runtime = SimpleNamespace()
+        menu = MainMenu(runtime)
+        with (
+            patch("node_core.ui.check_for_updates", return_value=SimpleNamespace(
+                available=False, checked=True, local_version="test", message="test"
+            )),
+            patch.object(menu, "_print_identity_summary"),
+            patch.object(menu, "_print_native_network_indicator"),
+            patch.object(menu, "_print_update_status"),
+            patch.object(menu, "_print_network_report"),
+            patch("node_core.bios.os.geteuid", return_value=1001),
+            patch("builtins.input", side_effect=["1", "0", "0"]) as read_input,
+            patch("builtins.print"),
+        ):
+            menu.run()
+        self.assertEqual(read_input.call_count, 3)
+
     def test_bios_refuses_root_execution(self):
         menu = BIOSMenu(SimpleNamespace())
         with patch("node_core.bios.os.geteuid", return_value=0):
