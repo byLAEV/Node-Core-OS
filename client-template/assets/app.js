@@ -33,7 +33,9 @@
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || data.detail || "El nodo rechazó el registro.");
-      byId("result").textContent = "Registro recibido por el nodo. ID: " + data.record_id;
+      byId("result").textContent = data.sync_status === "synced"
+        ? "Registro guardado en el repositorio del operador. ID: " + data.record_id
+        : "Registro guardado en el nodo; sincronización con GitHub pendiente. ID: " + data.record_id;
       byId("record-form").reset();
     } catch (error) {
       byId("result").textContent = "No se pudo enviar: " + error.message;

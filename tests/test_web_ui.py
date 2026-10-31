@@ -12,7 +12,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from node_core.ipfs import KuboStatus
-from node_core.github_binding import GitHubNodeBinding
+from node_core.github_binding import GitHubNodeBinding, GitHubBindingError
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.web_ui import NodeCoreWebServer, _auto_start_kubo_enabled, _kubo_status, _port_from_environment, _require_unprivileged_user
 
@@ -126,6 +126,8 @@ class WebInterfaceTests(unittest.TestCase):
                 return {"binding_status": "configured", "node_id": "node-test"}
             def add_record(self, fields):
                 return {"record_id": "record-test", "fields": fields, "sync_status": "pending"}
+            def sync(self):
+                return {"synced": 1, "pending": 0}
         runtime = SimpleNamespace(
             kubo=SimpleNamespace(status=lambda: KuboStatus(installed=True, initialized=True, running=False)),
             config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
@@ -154,6 +156,7 @@ class WebInterfaceTests(unittest.TestCase):
             payload = json.loads(response.read().decode("utf-8"))
             self.assertEqual(response.status, 201)
             self.assertEqual(payload["fields"]["message"], "hello")
+            self.assertEqual(payload["sync_status"], "synced")
             connection.close()
         finally:
             server.shutdown()
@@ -271,17 +274,20 @@ class WebInterfaceTests(unittest.TestCase):
                 connection.close()
 
                 connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
-                connection.request(
-                    "POST", "/api/github/records", body=body,
-                    headers={
-                        "Host": "node.example.test",
-                        "Origin": "https://octocat.github.io",
-                        "Content-Type": "application/json",
-                    },
-                )
-                response = connection.getresponse()
-                payload = json.loads(response.read().decode("utf-8"))
-                self.assertEqual(response.status, 201)
+                with patch.object(binding, "sync", side_effect=GitHubBindingError("GitHub App is not configured")):
+                    connection.request(
+                        "POST", "/api/github/records", body=body,
+                        headers={
+                            "Host": "node.example.test",
+                            "Origin": "https://octocat.github.io",
+                            "Content-Type": "application/json",
+                        },
+                    )
+                    response = connection.getresponse()
+                    payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(response.status, 202)
+                self.assertEqual(payload["sync_status"], "pending")
+                self.assertIn("GitHub App is not configured", payload["sync_error"])
                 record_path = binding.outbox / f"{payload['record_id']}.json"
                 self.assertTrue(record_path.is_file())
                 saved = json.loads(record_path.read_text(encoding="utf-8"))

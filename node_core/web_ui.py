@@ -331,7 +331,26 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
                     return
                 if path == "/api/github/records":
                     record = binding.add_record(request_data.get("fields"))
-                    self._send_json(HTTPStatus.CREATED, record)
+                    sync_result = None
+                    sync_error = None
+                    try:
+                        sync_result = binding.sync()
+                    except Exception as exc:
+                        sync_error = str(exc)
+                    synced_count = 0
+                    if isinstance(sync_result, dict):
+                        try:
+                            synced_count = int(sync_result.get("synced", 0))
+                        except (TypeError, ValueError):
+                            synced_count = 0
+                    sync_status = "synced" if synced_count > 0 else "pending"
+                    payload = {**record, "sync_status": sync_status}
+                    if sync_result is not None:
+                        payload["sync_result"] = sync_result
+                    if sync_error:
+                        payload["sync_error"] = sync_error
+                    response_status = HTTPStatus.CREATED if sync_status == "synced" else HTTPStatus.ACCEPTED
+                    self._send_json(response_status, payload)
                     return
                 if path == "/api/github/sync":
                     self._send_json(HTTPStatus.OK, binding.sync())
