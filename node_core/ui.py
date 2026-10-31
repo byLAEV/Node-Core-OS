@@ -299,31 +299,10 @@ class MainMenu:
             print(f"\033[90mUpdate status unavailable: {status.message}\033[0m\n")
 
     def bios(self) -> None:
-        while True:
-            print("\nNode Core BIOS\nbyLAEV\n")
-            print("0. Back")
-            print("1. Storage")
-            print("2. IPFS / Kubo")
-            print("3. Network")
-            print("4. Services")
-            print("5. Configuration")
-            print("6. Security")
-            print("7. Diagnostics")
-            print("8. Updates")
-            print("9. Lifecycle")
-            print("10. Identity Profile")
-            print("11. Network Domain Verification")
-            choice = input("\n> ").strip()
-            if choice == "0":
-                return
-            if choice == "1":
-                self.storage_bios()
-            elif choice == "2":
-                self.kubo_bios()
-            elif choice == "10":
-                self.identity_bios()
-            elif choice == "11":
-                self.network_domain_verification_menu()
+        """Run the complete BIOS interface in its dedicated module."""
+        from node_core.bios import BIOSMenu
+
+        BIOSMenu(self.runtime, self).run()
 
     def network_domain_verification_menu(self) -> None:
         """Explain the three independent network domains and show observed local status."""

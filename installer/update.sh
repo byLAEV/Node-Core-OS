@@ -307,6 +307,21 @@ PY
 }
 
 latest_commit() {
+  # A downloaded release package may carry its exact source snapshot. Prefer it
+  # over the network so the complete update package is independently usable.
+  local package_dir package_commit
+  package_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "$package_dir/source-package.tar.gz" && -f "$package_dir/SOURCE_COMMIT" ]]; then
+    package_commit="$(tr -d '\r\n' < "$package_dir/SOURCE_COMMIT")"
+    if [[ "$package_commit" =~ ^[0-9a-fA-F]{40}$ ]] &&
+       tar -tzf "$package_dir/source-package.tar.gz" >/dev/null 2>&1; then
+      printf '%s\n' "${package_commit,,}"
+      return 0
+    fi
+    printf 'Bundled update source or commit marker is invalid; refusing package update.\n' >&2
+    return 1
+  fi
+
   local response="$NODE_CORE_UPDATE_DIR/latest-commit.json"
   local temporary_response encoded_branch commit url downloaded=0
   mkdir -p "$NODE_CORE_UPDATE_DIR"
@@ -329,7 +344,7 @@ import sys
 print(quote(sys.argv[1], safe=""))
 PY
   )" || {
-    printf 'Could not encode the fallback update ref.\\n' >&2
+    printf 'Could not encode the fallback update ref.\n' >&2
     return 1
   }
   local urls=(
@@ -414,26 +429,37 @@ update_application() (
   rm -rf "$extract" || return 1
   mkdir -p "$extract" || return 1
   local source_url downloaded=0
-  local archive_urls=(
-    "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz"
-    "https://codeload.github.com/byLAEV/Node-Core-OS/tar.gz/$commit"
-  )
-  for source_url in "${archive_urls[@]}"; do
-    rm -f -- "$archive"
-    printf 'Trying Node Core OS source archive: %s\n' "$source_url" >&2
-    if download_file "$source_url" "$archive"; then
-      if tar -tzf "$archive" >/dev/null 2>&1; then
-        downloaded=1
-        break
+  local package_dir
+  package_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "$package_dir/source-package.tar.gz" ]]; then
+    cp "$package_dir/source-package.tar.gz" "$archive" || return 1
+    tar -tzf "$archive" >/dev/null 2>&1 || {
+      printf 'Bundled update source archive is invalid.\n' >&2
+      return 1
+    }
+    downloaded=1
+  else
+    local archive_urls=(
+      "https://github.com/byLAEV/Node-Core-OS/archive/$commit.tar.gz"
+      "https://codeload.github.com/byLAEV/Node-Core-OS/tar.gz/$commit"
+    )
+    for source_url in "${archive_urls[@]}"; do
+      rm -f -- "$archive"
+      printf 'Trying Node Core OS source archive: %s\n' "$source_url" >&2
+      if download_file "$source_url" "$archive"; then
+        if tar -tzf "$archive" >/dev/null 2>&1; then
+          downloaded=1
+          break
+        fi
+        printf 'Downloaded archive is invalid; trying the next official GitHub source.\n' >&2
+      else
+        printf 'Source archive download failed; trying the next official GitHub source.\n' >&2
       fi
-      printf 'Downloaded archive is invalid; trying the next official GitHub source.\n' >&2
-    else
-      printf 'Source archive download failed; trying the next official GitHub source.\n' >&2
-    fi
-  done
+    done
+  fi
   [[ "$downloaded" == 1 ]] || {
     rm -f -- "$archive"
-    printf 'Could not download a valid source archive from any official GitHub endpoint.\n' >&2
+    printf 'Could not obtain a valid Node Core OS source archive.\n' >&2
     return 1
   }
   tar -xzf "$archive" -C "$extract" || return 1

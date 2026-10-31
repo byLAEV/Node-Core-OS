@@ -1,0 +1,120 @@
+name: Node Core BIOS — release packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Enforce ordinary-user execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+      - name: Validate versions and source
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          python -m compileall -q main.py node_core tests
+          python -m unittest tests.test_bios tests.test_runtime tests.test_storage_bios tests.test_updates tests.test_github_identity_pool -v
+          bash installer/tests/syntax.sh
+          bash installer/tests/user-context.sh
+          node --check client-template/assets/app.js
+      - name: Build complete installation and update packages
+        id: package
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          commit="$(git rev-parse HEAD)"
+          mkdir -p dist
+          stage="$(mktemp -d)"
+          trap 'rm -rf "$stage"' EXIT
+          install_name="node-core-os-install-${version}"
+          update_name="node-core-os-update-${version}"
+          git archive --format=tar --prefix="$install_name/" HEAD | tar -xf - -C "$stage"
+          mkdir -p "$stage/$install_name/installer/vendor/python-wheels" "$stage/$install_name/installer/vendor/kubo"
+          if [[ -d installer/vendor/python-wheels ]]; then cp -R installer/vendor/python-wheels/. "$stage/$install_name/installer/vendor/python-wheels/"; fi
+          if [[ -d installer/vendor/kubo ]]; then cp -R installer/vendor/kubo/. "$stage/$install_name/installer/vendor/kubo/"; fi
+          tar -czf "dist/$install_name.tar.gz" -C "$stage" "$install_name"
+          mkdir -p "$stage/$update_name"
+          cp installer/update.sh "$stage/$update_name/update.sh"
+          cp "dist/$install_name.tar.gz" "$stage/$update_name/source-package.tar.gz"
+          printf '%s\n' "$commit" > "$stage/$update_name/SOURCE_COMMIT"
+          cat > "$stage/$update_name/README.txt" <<EOF
+          Node Core OS complete update package
+          Version: $version
+          Source commit: $commit
+
+          This archive contains the protected updater and the complete matching
+          installation source package for inspection and recovery.
+
+          For an existing installation, extract this archive and run:
+            bash update.sh
+
+          Run as the normal installation user, never as root.
+          The updater applies the bundled, commit-pinned source snapshot and preserves local
+          storage, Kubo repository, identity keys and configuration.
+          The bundled source package is the exact source snapshot for this
+          release and is applied directly by the bundled updater without a source download.
+          EOF
+          tar -czf "dist/$update_name.tar.gz" -C "$stage" "$update_name"
+          sha256sum dist/*.tar.gz > dist/SHA256SUMS
+          sha512sum dist/*.tar.gz > dist/SHA512SUMS
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          printf 'install=%s\n' "$install_name" >> "$GITHUB_OUTPUT"
+          printf 'update=%s\n' "$update_name" >> "$GITHUB_OUTPUT"
+          printf 'commit=%s\n' "$commit" >> "$GITHUB_OUTPUT"
+      - name: Verify archives
+        run: |
+          set -euo pipefail
+          sha256sum --check dist/SHA256SUMS
+          sha512sum --check dist/SHA512SUMS
+          install_listing="$(mktemp)"
+          update_listing="$(mktemp)"
+          trap 'rm -f "$install_listing" "$update_listing"' EXIT
+          tar -tzf "dist/${{ steps.package.outputs.install }}.tar.gz" > "$install_listing"
+          tar -tzf "dist/${{ steps.package.outputs.update }}.tar.gz" > "$update_listing"
+          grep -q 'node_core/bios.py' "$install_listing"
+          grep -q 'source-package.tar.gz' "$update_listing"
+          grep -q 'SOURCE_COMMIT' "$update_listing"
+          bundled_commit="$(tar -xOf "dist/${{ steps.package.outputs.update }}.tar.gz" "${{ steps.package.outputs.update }}/SOURCE_COMMIT")"
+          [[ "$bundled_commit" == "${{ steps.package.outputs.commit }}" ]] || { echo 'Bundled SOURCE_COMMIT does not match the package source.' >&2; exit 1; }
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-bios-packages-${{ steps.package.outputs.version }}
+          path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/SHA512SUMS
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish release assets for version tags
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Node Core OS ${{ steps.package.outputs.version }}" --notes "Complete Node Core BIOS installation and update packages. SHA-256 and SHA-512 checksums included. Existing installations must run the protected updater as the normal user, never root."
+          gh release upload "$GITHUB_REF_NAME" dist/*.tar.gz dist/SHA256SUMS dist/SHA512SUMS --clobber
