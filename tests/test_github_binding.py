@@ -87,6 +87,10 @@ class GitHubNodeBindingTests(unittest.TestCase):
         self.assertIn("records/", calls[1][1])
         self.assertTrue(calls[1][2]["content"])
         self.assertFalse((self.binding.outbox / (record["record_id"] + ".json")).exists())
+        archived = self.binding.synced_records()
+        self.assertEqual(len(archived), 1)
+        self.assertEqual(archived[0]["record_id"], record["record_id"])
+        self.assertEqual(archived[0]["sync_status"], "synced")
 
 
 if __name__ == "__main__":

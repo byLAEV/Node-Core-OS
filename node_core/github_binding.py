@@ -52,6 +52,7 @@ class GitHubNodeBinding:
         self.root = Path(data_dir).expanduser() / "identity" / "github-binding"
         self.binding_path = self.root / "binding.json"
         self.outbox = self.root / "outbox"
+        self.archive = self.root / "archive"
         self.identity_store = identity_store
 
     def configure(
@@ -80,6 +81,7 @@ class GitHubNodeBinding:
             raise GitHubBindingError("GitHub App installation ID must contain only digits.")
         self.root.mkdir(parents=True, exist_ok=True)
         self.outbox.mkdir(parents=True, exist_ok=True)
+        self.archive.mkdir(parents=True, exist_ok=True)
         value = {
             "schema": self.SCHEMA,
             "github_account": login,
@@ -157,6 +159,12 @@ class GitHubNodeBinding:
         self._write_json(self.outbox / (record["record_id"] + ".json"), record)
         return record
 
+    def synced_records(self) -> list[dict[str, Any]]:
+        """Return records already written to the operator GitHub repository."""
+        if not self.archive.exists():
+            return []
+        return [json.loads(path.read_text(encoding="utf-8")) for path in sorted(self.archive.glob("*.json"))]
+
     def sync(self) -> dict[str, Any]:
         binding = self.status()
         if binding.get("binding_status") != "configured":
@@ -183,7 +191,8 @@ class GitHubNodeBinding:
                 "branch": branch,
             }
             self._api("PUT", f"/repos/{binding['repository']}/contents/{remote_path}", token, payload)
-            self._write_json(path, record)
+            self.archive.mkdir(parents=True, exist_ok=True)
+            self._write_json(self.archive / path.name, record)
             path.unlink()
             synced += 1
         binding["default_branch"] = branch

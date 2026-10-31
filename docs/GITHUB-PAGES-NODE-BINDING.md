@@ -135,3 +135,10 @@ Each peer must already be explicitly trusted by its Node Core certificate. RSA m
 The native P2P listener accepts replication events only from peers with a pinned RSA message key. The receiving callback writes records to local shared storage before the sender receives the signed acceptance receipt.
 
 This is a two-node replication primitive, not global automatic propagation. The operator must select a trusted peer and invoke replication. Multi-hop forwarding, automatic fan-out, conflict resolution across repositories and public WAN rendezvous remain separate work.
+
+
+## Persistent record replication
+
+Records successfully written to the operator GitHub repository are retained in the node-local `identity/github-binding/archive/` directory. The runtime can replicate those archived records to one explicitly trusted Node Core peer with `replicate_synced_github_records(host, port, peer_node_id)`. Each receiving node stores a replica under `storage/shared/github-record-replicas/`; it does not write the record into its own operator GitHub repository.
+
+The receiving native P2P listener uses the existing authenticated TLS service and pinned RSA message keys. Configure a peer's RSA key only after verifying its SHA-256 fingerprint out of band by calling `trust_peer_message_key(node_id, public_key_pem)`. The sender receives a signed receipt only after the receiver persists the record. Duplicate delivery is accepted without creating duplicate files.
