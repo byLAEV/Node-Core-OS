@@ -48,13 +48,13 @@ jobs:
           NODE_CORE_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
-          data_dir="$RUNNER_TEMP/node-core-${{ matrix.os_id }}-data"
-          mkdir -p "$data_dir"
-          chmod 700 "$data_dir"
+          home_dir="$RUNNER_TEMP/node-core-${{ matrix.os_id }}-home"
+          mkdir -p "$home_dir"
+          chmod 700 "$home_dir"
           docker run --rm --network host \
             --user 1001:1001 \
             --volume "$GITHUB_WORKSPACE:/workspace:ro" \
-            --volume "$data_dir:/home/nodecore/.node-core" \
+            --volume "$home_dir:/home/nodecore" \
             --env EXPECTED_OS_ID \
             --env NODE_CORE_BRANCH \
             --env NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
