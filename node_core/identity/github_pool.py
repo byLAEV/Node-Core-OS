@@ -320,16 +320,58 @@ class GitHubIdentityPool:
         )
         return target
 
-    def sync_local_repository(self, token: str | None = None, kubo: Any | None = None) -> dict[str, Any]:
-        """Read this node owner's GitHub Pages repository and ingest encrypted records.
-
-        A supplied token is checked with GET /user and must belong to the configured
-        repository owner. Without a token only public repositories can be read.
-        """
+    def export_member_client_package(self, member_id: str, target_dir: Path) -> Path:
+        """Export a member-specific static Pages client encrypted to the pool administrator."""
         self._require_initialized()
-        client = self.local_client()
+        state = self._read_pool()
+        member = next((item for item in state["nodes"] if item["member_id"] == member_id), None)
+        if member is None or member["status"] == "revoked":
+            raise GitHubIdentityPoolError("Active GitHub pool member was not found.")
+        source = Path(__file__).resolve().parents[2] / "client-template"
+        if not source.is_dir():
+            raise GitHubIdentityPoolError("Client template directory is missing.")
+        target = Path(target_dir).expanduser()
+        if target.exists() and any(target.iterdir()):
+            raise GitHubIdentityPoolError("Refusing to overwrite a non-empty export directory.")
+        if target.exists():
+            target.rmdir()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, target)
+        config = {
+            "schema": "node-core-os/github-pages-client/v1",
+            "pool_id": state["pool_id"],
+            "owner_login": member["github_login"],
+            "repository": member["repository"],
+            "default_branch": "main",
+            "pages_url": member["pages_url"],
+            "node_id": state["admin_node_id"],
+            "record_encryption": self.public_encryption_key(),
+            "records_path": "records",
+            "client_version": "1.0.0",
+            "encryption_recipient": "pool_administrator_node",
+        }
+        _atomic_write(target / "node-core-client.json", json.dumps(config, ensure_ascii=False, indent=2).encode("utf-8") + b"\n", 0o644)
+        return target
+
+    def sync_local_repository(self, token: str | None = None, kubo: Any | None = None) -> dict[str, Any]:
+        """Synchronize this node owner's configured GitHub repository."""
+        return self.sync_repository(token=token, kubo=kubo)
+
+    def sync_repository(
+        self, *, member_id: str | None = None, token: str | None = None, kubo: Any | None = None
+    ) -> dict[str, Any]:
+        """Import ciphertext from the local owner repository or one admitted public member repository."""
+        self._require_initialized()
+        state = self._read_pool()
+        if member_id is None:
+            client = self.local_client()
+        else:
+            client = next(
+                (item for item in state["nodes"] if item["member_id"] == member_id and item["status"] != "revoked"),
+                None,
+            )
         if client is None:
-            raise GitHubIdentityPoolError("Configure this node's GitHub repository before synchronizing.")
+            raise GitHubIdentityPoolError("Configured GitHub repository or active pool member was not found.")
         token = token or self._github_cli_token()
         if token:
             user = self._github_api("/user", token)
@@ -396,10 +438,18 @@ class GitHubIdentityPool:
                 skipped += 1
 
         state = self._read_pool()
-        state["local_client"]["repository_id"] = saved_repository_id
-        state["local_client"]["default_branch"] = saved_branch
-        state["local_client"]["last_sync_at_utc"] = _now()
-        state["local_client"]["last_sync_imported"] = imported
+        if member_id is None:
+            state["local_client"]["repository_id"] = saved_repository_id
+            state["local_client"]["default_branch"] = saved_branch
+            state["local_client"]["last_sync_at_utc"] = _now()
+            state["local_client"]["last_sync_imported"] = imported
+        else:
+            for member in state["nodes"]:
+                if member["member_id"] == member_id:
+                    member["repository_id"] = saved_repository_id
+                    member["last_sync_at_utc"] = _now()
+                    member["last_sync_imported"] = imported
+                    break
         self._write_pool(state)
         return {
             "repository": client["repository"],
