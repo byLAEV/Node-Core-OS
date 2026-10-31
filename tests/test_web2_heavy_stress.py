@@ -11,6 +11,7 @@ import http.client
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import math
+import os
 import re
 import sqlite3
 import sys
@@ -443,7 +444,8 @@ class TestWeb2HeavyStress(unittest.TestCase):
             "failed_checks": [name for name, passed in checks.items() if not passed],
         }
 
-        output_dir = Path("artifacts/web2-heavy-stress")
+        artifact_root = Path(os.environ.get("NODE_CORE_TEST_ARTIFACTS_DIR", Path(tempfile.gettempdir()) / "node-core-test-artifacts"))
+        output_dir = artifact_root / "web2-heavy-stress"
         output_dir.mkdir(parents=True, exist_ok=True)
         (output_dir / "web2-heavy-stress-report.json").write_text(
             json.dumps(report, indent=2, sort_keys=True) + "\n",

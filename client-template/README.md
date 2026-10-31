@@ -30,7 +30,7 @@ The proxy must preserve the original Host and Origin headers. Do not expose the 
 
 ## Record flow
 
-GitHub Pages form → operator's Node Core OS API → readable local JSON outbox → explicit sync → operator's GitHub repository under `records/YYYY/MM/UUID.json`.
+GitHub Pages form → operator's Node Core OS API → readable local JSON outbox → immediate GitHub sync attempt → operator's GitHub repository under `records/YYYY/MM/UUID.json`. If GitHub is unavailable or the App is not configured, the record remains queued locally. The running Node API retries the queue every 30 seconds, and BIOS option 6 allows an immediate manual retry.
 
 When the GitHub App installation ID, App ID and PEM private-key path are configured, Node Core OS creates a short-lived installation token scoped to the operator's repository. For development, sync can fall back to the operator's local `gh auth login` session. The visitor's browser never receives either credential.
 

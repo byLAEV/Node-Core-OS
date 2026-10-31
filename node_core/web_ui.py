@@ -10,11 +10,16 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
+
+from node_core.github_binding import GitHubBindingError, GitHubNodeBinding
+from node_core.github_app_auth import GitHubAppAuth, GitHubAppError
+from node_core.identity.node_identity import NodeIdentityStore
 
 from node_core.runtime import NodeRuntime
 
@@ -92,6 +97,37 @@ class NodeCoreWebServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
 
+    def start_background_sync(self, interval_seconds: float = 30.0) -> None:
+        if getattr(self, "_sync_thread", None) is not None:
+            return
+        self._sync_stop_event = threading.Event()
+
+        def sync_loop() -> None:
+            while not self._sync_stop_event.wait(interval_seconds):
+                try:
+                    binding = self.runtime.github_binding
+                    status = binding.status()
+                    if int(status.get("pending_records", 0)) > 0:
+                        result = binding.sync()
+                        if int(result.get("synced", 0)) > 0:
+                            print("Node Core background GitHub sync:", result, flush=True)
+                except Exception as exc:
+                    print("Node Core background GitHub sync deferred:", exc, flush=True)
+
+        self._sync_thread = threading.Thread(
+            target=sync_loop, name="node-core-github-sync", daemon=True
+        )
+        self._sync_thread.start()
+
+    def stop_background_sync(self) -> None:
+        stop_event = getattr(self, "_sync_stop_event", None)
+        worker = getattr(self, "_sync_thread", None)
+        if stop_event is not None:
+            stop_event.set()
+        if worker is not None:
+            worker.join(timeout=2.0)
+        self._sync_thread = None
+
     def __init__(self, port: int, runtime: NodeRuntime) -> None:
         self.runtime = runtime
         super().__init__((HOST, port), NodeCoreRequestHandler)
@@ -101,12 +137,65 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
     server: NodeCoreWebServer
     protocol_version = "HTTP/1.1"
 
-    def _is_local_host_header(self) -> bool:
-        host = self.headers.get("Host", "").strip().lower()
-        return host in {
+    def _allowed_hosts(self) -> set[str]:
+        hosts = {
             f"127.0.0.1:{self.server.server_port}",
             f"localhost:{self.server.server_port}",
         }
+        configured = os.environ.get("NODE_CORE_WEB_ALLOWED_HOSTS", "")
+        hosts.update(value.strip().lower() for value in configured.split(",") if value.strip())
+        try:
+            binding = self._binding().status()
+            api_url = urlsplit(str(binding.get("node_api_url", "")))
+            if api_url.scheme == "https" and api_url.netloc:
+                hosts.add(api_url.netloc.lower())
+        except Exception:
+            pass
+        return hosts
+
+    def _is_local_host_header(self) -> bool:
+        host = self.headers.get("Host", "").strip().lower()
+        return host in self._allowed_hosts()
+
+    def _allowed_origins(self) -> set[str]:
+        configured = os.environ.get("NODE_CORE_WEB_ALLOWED_ORIGINS", "")
+        origins = {value.strip().rstrip("/") for value in configured.split(",") if value.strip()}
+        try:
+            binding = self._binding().status()
+            pages_url = urlsplit(str(binding.get("github_pages_url", "")))
+            if pages_url.scheme == "https" and pages_url.netloc:
+                origins.add(f"{pages_url.scheme}://{pages_url.netloc}".rstrip("/"))
+        except Exception:
+            pass
+        return origins
+
+    def _origin_allowed(self) -> bool:
+        origin = self.headers.get("Origin", "").strip().rstrip("/")
+        local = {
+            f"http://127.0.0.1:{self.server.server_port}",
+            f"http://localhost:{self.server.server_port}",
+        }
+        return origin in local or origin in self._allowed_origins()
+
+    def _binding(self) -> GitHubNodeBinding:
+        runtime = self.server.runtime
+        binding = getattr(runtime, "github_binding", None)
+        if binding is None:
+            binding = GitHubNodeBinding(runtime.config.data_dir, NodeIdentityStore(runtime.config.data_dir))
+            runtime.github_binding = binding
+        return binding
+
+    def _read_json(self, maximum: int = 65536) -> dict[str, Any]:
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            raise ValueError("Expected application/json.")
+        length = int(self.headers.get("Content-Length", "0"))
+        if not 1 <= length <= maximum:
+            raise ValueError(f"Request body must be between 1 and {maximum} bytes.")
+        value = json.loads(self.rfile.read(length).decode("utf-8"))
+        if not isinstance(value, dict):
+            raise ValueError("Request JSON must be an object.")
+        return value
 
     def _send_bytes(self, status: HTTPStatus, body: bytes, content_type: str) -> None:
         self.send_response(status)
@@ -114,7 +203,13 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
-        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        origin = self.headers.get("Origin", "").strip().rstrip("/")
+        if origin and self._origin_allowed():
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header("Content-Security-Policy", "default-src 'self'; connect-src 'self' https:; style-src 'self'; script-src 'self'; base-uri 'none'; frame-ancestors 'none'")
         self.end_headers()
         self.wfile.write(body)
 
@@ -166,6 +261,29 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, payload)
             return
 
+        if path == "/api/github/device/status":
+            self._send_json(HTTPStatus.OK, GitHubAppAuth(self.server.runtime.config.data_dir).operator_status())
+            return
+
+        if path == "/api/github/binding":
+            try:
+                self._send_json(HTTPStatus.OK, self._binding().status())
+            except Exception as exc:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "Could not read GitHub binding.", "detail": str(exc)})
+            return
+
+        if path == "/api/github/records":
+            try:
+                binding = self._binding()
+                status = binding.status()
+                records = []
+                for record_path in sorted(binding.outbox.glob("*.json")):
+                    records.append(json.loads(record_path.read_text(encoding="utf-8")))
+                self._send_json(HTTPStatus.OK, {"binding": status, "records": records})
+            except Exception as exc:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "Could not read local records.", "detail": str(exc)})
+            return
+
         if path == "/api/network/kubo":
             try:
                 kubo_status = self.server.runtime.kubo.status()
@@ -199,44 +317,97 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "Not found."})
 
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        if not self._is_local_host_header() or not self._origin_allowed():
+            self._send_json(HTTPStatus.FORBIDDEN, {"error": "Host or Origin not allowed."})
+            return
+        self._send_bytes(HTTPStatus.NO_CONTENT, b"", "text/plain; charset=utf-8")
+
     def do_POST(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
         if not self._is_local_host_header():
             self._send_json(HTTPStatus.FORBIDDEN, {"error": "Host header not allowed."})
             return
 
-        expected_origins = {
-            f"http://127.0.0.1:{self.server.server_port}",
-            f"http://localhost:{self.server.server_port}",
-        }
-        if self.headers.get("Origin", "").rstrip("/") not in expected_origins:
+        if not self._origin_allowed():
             self._send_json(HTTPStatus.FORBIDDEN, {"error": "Origin not allowed."})
             return
 
         path = urlsplit(self.path).path
+        if path in {"/api/github/device/start", "/api/github/device/poll", "/api/github/configure", "/api/github/records", "/api/github/sync", "/api/github/export"}:
+            try:
+                request_data = self._read_json()
+                if path == "/api/github/device/start":
+                    client_id = request_data.get("client_id") or os.environ.get("NODE_CORE_GITHUB_APP_CLIENT_ID", "")
+                    result = GitHubAppAuth(self.server.runtime.config.data_dir).start_device_flow(client_id)
+                    self._send_json(HTTPStatus.OK, result)
+                    return
+                if path == "/api/github/device/poll":
+                    expected = request_data.get("expected_login") or self._binding().status().get("github_account")
+                    result = GitHubAppAuth(self.server.runtime.config.data_dir).poll_device_flow(expected)
+                    self._send_json(HTTPStatus.OK, result)
+                    return
+                binding = self._binding()
+                if path == "/api/github/configure":
+                    operator = GitHubAppAuth(self.server.runtime.config.data_dir).operator_status()
+                    requested_login = str(request_data.get("github_login", "")).strip().lower()
+                    if not operator.get("authorized") or requested_login != str(operator.get("github_login", "")).lower():
+                        raise GitHubAppError("Complete GitHub App Device Flow for the same operator account before configuring this repository.")
+                    result = binding.configure(
+                        requested_login,
+                        request_data.get("repository", ""),
+                        request_data.get("pages_url"),
+                        request_data.get("github_app_installation_id"),
+                        request_data.get("node_api_url"),
+                    )
+                    self._send_json(HTTPStatus.OK, result)
+                    return
+                if path == "/api/github/records":
+                    record = binding.add_record(request_data.get("fields"))
+                    sync_result = None
+                    sync_error = None
+                    try:
+                        sync_result = binding.sync()
+                    except Exception as exc:
+                        sync_error = str(exc)
+                    synced_count = 0
+                    if isinstance(sync_result, dict):
+                        try:
+                            synced_count = int(sync_result.get("synced", 0))
+                        except (TypeError, ValueError):
+                            synced_count = 0
+                    sync_status = "synced" if synced_count > 0 else "pending"
+                    payload = {**record, "sync_status": sync_status}
+                    if sync_result is not None:
+                        payload["sync_result"] = sync_result
+                    if sync_error:
+                        payload["sync_error"] = sync_error
+                    response_status = HTTPStatus.CREATED if sync_status == "synced" else HTTPStatus.ACCEPTED
+                    self._send_json(response_status, payload)
+                    return
+                if path == "/api/github/sync":
+                    self._send_json(HTTPStatus.OK, binding.sync())
+                    return
+                target = request_data.get("target_dir") or str(Path.home() / "node-core-client")
+                exported = binding.export_client_package(Path(target))
+                self._send_json(HTTPStatus.OK, {"exported_directory": str(exported)})
+                return
+            except (ValueError, UnicodeDecodeError, json.JSONDecodeError, GitHubBindingError, GitHubAppError) as exc:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                return
+            except Exception as exc:
+                self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "GitHub operation failed.", "detail": str(exc)})
+                return
+
         if path != "/api/kubo/start":
             self._send_json(HTTPStatus.METHOD_NOT_ALLOWED, {"error": "This POST endpoint is not supported."})
             return
 
-        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
-        if content_type != "application/json":
-            self._send_json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "Expected application/json."})
-            return
-
         try:
-            content_length = int(self.headers.get("Content-Length", "0"))
-        except ValueError:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid Content-Length."})
+            request_data = self._read_json(4096)
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
-        if not 1 <= content_length <= 4096:
-            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Request body must be between 1 and 4096 bytes."})
-            return
-
-        try:
-            request_data = json.loads(self.rfile.read(content_length).decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid JSON request body."})
-            return
-        if not isinstance(request_data, dict) or request_data.get("confirm") is not True:
+        if request_data.get("confirm") is not True:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "Explicit confirmation is required to start Kubo."})
             return
 
@@ -284,6 +455,9 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
 
 
 def main() -> None:
+    get_uid = getattr(os, "geteuid", None)
+    if get_uid is None or get_uid() == 0:
+        raise SystemExit("Node Core Web API is user-only. Run as your normal user without sudo or su.")
     _require_unprivileged_user()
     try:
         port = _port_from_environment()
@@ -317,11 +491,13 @@ def main() -> None:
     else:
         print("Kubo auto-start: disabled (default). Use the web button or set NODE_CORE_WEB_AUTO_START_KUBO=1.")
     print("Kubo can also be started explicitly from the web interface after confirmation.")
+    server.start_background_sync()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopping Node Core OS web interface...")
     finally:
+        server.stop_background_sync()
         server.server_close()
 
 

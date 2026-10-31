@@ -15,10 +15,10 @@ class BIOSMenuTests(unittest.TestCase):
         calls = []
         names = ["storage", "kubo", "network", "services", "configuration",
                  "security", "diagnostics", "updates", "lifecycle",
-                 "identity", "domain_verification", "github_identity_pool"]
+                 "identity", "domain_verification", "github_identity_pool", "github_node_binding"]
         for name in names:
             setattr(menu, name, lambda name=name: calls.append(name))
-        with patch("builtins.input", side_effect=[str(i) for i in range(1, 13)] + ["0"]), patch("builtins.print"):
+        with patch("builtins.input", side_effect=[str(i) for i in range(1, 14)] + ["0"]), patch("builtins.print"):
             menu.run()
         self.assertEqual(calls, names)
 
@@ -27,6 +27,24 @@ class BIOSMenuTests(unittest.TestCase):
         with patch("node_core.bios.BIOSMenu.run") as run:
             MainMenu(runtime).bios()
         run.assert_called_once()
+
+    def test_bios_back_returns_to_os_menu_and_os_zero_exits(self):
+        runtime = SimpleNamespace()
+        menu = MainMenu(runtime)
+        with (
+            patch("node_core.ui.check_for_updates", return_value=SimpleNamespace(
+                available=False, checked=True, local_version="test", message="test"
+            )),
+            patch.object(menu, "_print_identity_summary"),
+            patch.object(menu, "_print_native_network_indicator"),
+            patch.object(menu, "_print_update_status"),
+            patch.object(menu, "_print_network_report"),
+            patch("node_core.bios.os.geteuid", return_value=1001),
+            patch("builtins.input", side_effect=["1", "0", "0"]) as read_input,
+            patch("builtins.print"),
+        ):
+            menu.run()
+        self.assertEqual(read_input.call_count, 3)
 
     def test_bios_refuses_root_execution(self):
         menu = BIOSMenu(SimpleNamespace())
@@ -43,6 +61,7 @@ class BIOSMenuTests(unittest.TestCase):
         self.assertIn("Kubo daemon", rendered)
         self.assertIn("Network Domain Verification", rendered)
         self.assertIn("GitHub Identity Pool", rendered)
+        self.assertIn("GitHub Node Binding", rendered)
         self.assertIn("Node Core BIOS\nbyLAEV", rendered)
         self.assertNotIn("\\nNode Core BIOS", rendered)
 
