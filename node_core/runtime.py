@@ -60,12 +60,24 @@ class NodeRuntime:
         self._p2p_peer_monitor_lock = threading.RLock()
         self._p2p_peer_monitor_status: dict[str, dict[str, str]] = {}
         self._p2p_peer_monitor_error: str | None = None
+        self._github_binding: Any = None
         self._booted = False
         self._kubo_start_error: str | None = None
 
     @property
     def ipfs(self) -> KuboManager:
         return self.kubo
+
+    @property
+    def github_binding(self) -> Any:
+        """Load the optional GitHub binding only when an operator uses it."""
+        if self._github_binding is None:
+            from node_core.github_binding import GitHubNodeBinding
+            from node_core.identity.node_identity import NodeIdentityStore
+
+            identity = NodeIdentityStore(self.config.data_dir)
+            self._github_binding = GitHubNodeBinding(self.config.data_dir, identity)
+        return self._github_binding
 
     def _ensure_p2p_components(self) -> None:
         if self._p2p_identity is not None:

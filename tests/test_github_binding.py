@@ -52,6 +52,25 @@ class GitHubNodeBindingTests(unittest.TestCase):
         self.assertEqual(saved["sync_status"], "pending")
         self.assertEqual(self.binding.status()["pending_records"], 1)
 
+    def test_exports_static_client_with_node_binding_config(self):
+        self.binding.configure(
+            "octocat", "octocat/client",
+            node_api_url="https://node.example.test",
+        )
+        target = Path(self.temp.name) / "exported-client"
+        exported = self.binding.export_client_package(target)
+        config = json.loads((exported / "node-core-client.json").read_text(encoding="utf-8"))
+        self.assertTrue((exported / "index.html").is_file())
+        self.assertTrue((exported / "assets" / "app.js").is_file())
+        self.assertEqual(config["repository"], "octocat/client")
+        self.assertEqual(config["node_api_url"], "https://node.example.test")
+        self.assertEqual(config["node_id"], "sha256:" + "a" * 64)
+
+    def test_export_requires_node_api_url(self):
+        self.binding.configure("octocat", "octocat/client")
+        with self.assertRaisesRegex(GitHubBindingError, "Node API URL"):
+            self.binding.export_client_package(Path(self.temp.name) / "client")
+
     def test_sync_writes_record_to_owner_repository(self):
         self.binding.configure("octocat", "octocat/client")
         record = self.binding.add_record({"display_name": "Test"})

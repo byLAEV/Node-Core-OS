@@ -116,6 +116,46 @@ class WebInterfaceTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=3)
 
+    def test_http_github_binding_and_record_endpoints(self) -> None:
+        class FakeBinding:
+            def status(self):
+                return {"binding_status": "configured", "node_id": "node-test"}
+            def add_record(self, fields):
+                return {"record_id": "record-test", "fields": fields, "sync_status": "pending"}
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(status=lambda: KuboStatus(installed=True, initialized=True, running=False)),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+            github_binding=FakeBinding(),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            headers = {"Host": f"127.0.0.1:{port}", "Origin": f"http://127.0.0.1:{port}"}
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request("GET", "/api/github/binding", headers=headers)
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 200)
+            self.assertEqual(payload["node_id"], "node-test")
+            connection.close()
+
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request(
+                "POST", "/api/github/records", body=b'{"fields":{"message":"hello"}}',
+                headers={**headers, "Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 201)
+            self.assertEqual(payload["fields"]["message"], "hello")
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
     def test_http_start_kubo_requires_explicit_confirmation(self) -> None:
         runtime = SimpleNamespace(
             kubo=SimpleNamespace(

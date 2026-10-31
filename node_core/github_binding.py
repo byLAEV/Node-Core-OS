@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import urllib.error
 import urllib.request
@@ -15,6 +16,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 class GitHubBindingError(RuntimeError):
@@ -57,6 +59,7 @@ class GitHubNodeBinding:
         repository: str,
         pages_url: str | None = None,
         github_app_installation_id: str | None = None,
+        node_api_url: str | None = None,
     ) -> dict[str, Any]:
         login = _login(github_login)
         repo = _repository(login, repository)
@@ -67,6 +70,11 @@ class GitHubNodeBinding:
             raise GitHubBindingError(f"GitHub Pages URL must be {expected_page}")
         identity = self.identity_store.initialize()
         installation = str(github_app_installation_id or "").strip() or None
+        api_url = (node_api_url or "").strip().rstrip("/")
+        if api_url:
+            parsed_api = urlsplit(api_url)
+            if parsed_api.scheme not in {"http", "https"} or not parsed_api.netloc or parsed_api.query or parsed_api.fragment:
+                raise GitHubBindingError("Node API URL must be an absolute HTTP or HTTPS URL without query or fragment.")
         if installation and not installation.isdigit():
             raise GitHubBindingError("GitHub App installation ID must contain only digits.")
         self.root.mkdir(parents=True, exist_ok=True)
@@ -79,6 +87,7 @@ class GitHubNodeBinding:
             "repository": repo,
             "github_app_installation_id": installation,
             "github_pages_url": expected_page,
+            "node_api_url": api_url,
             "node_id": identity["node_id"],
             "default_branch": "main",
             "binding_status": "configured",
@@ -96,6 +105,35 @@ class GitHubNodeBinding:
             raise GitHubBindingError("Saved GitHub binding belongs to a different node identity.")
         value["pending_records"] = len(list(self.outbox.glob("*.json"))) if self.outbox.exists() else 0
         return value
+
+    def export_client_package(self, target_dir: Path) -> Path:
+        """Copy the static Pages client and write this node's public configuration."""
+        binding = self.status()
+        if binding.get("binding_status") != "configured":
+            raise GitHubBindingError("Configure the GitHub repository before exporting the client.")
+        if not binding.get("node_api_url"):
+            raise GitHubBindingError("Configure the public Node API URL before exporting the client.")
+        source = Path(__file__).resolve().parents[1] / "client-template"
+        if not source.is_dir():
+            raise GitHubBindingError(f"Client template directory is missing: {source}")
+        target = Path(target_dir).expanduser()
+        if target.exists() and any(target.iterdir()):
+            raise GitHubBindingError(f"Refusing to overwrite a non-empty client directory: {target}")
+        if target.exists():
+            target.rmdir()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, target)
+        client_config = {
+            "schema": "node-core-os/github-pages-client/v1",
+            "github_account": binding["github_account"],
+            "repository": binding["repository"],
+            "github_pages_url": binding["github_pages_url"],
+            "node_id": binding["node_id"],
+            "node_api_url": binding["node_api_url"],
+            "client_version": "1.0.0",
+        }
+        self._write_json(target / "node-core-client.json", client_config)
+        return target
 
     def add_record(self, fields: dict[str, Any]) -> dict[str, Any]:
         binding = self.status()

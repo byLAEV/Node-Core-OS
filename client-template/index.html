@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https:; style-src 'self'; script-src 'self'; base-uri 'none'; object-src 'none'">
+  <title>Node Core Client byLAEV</title>
+  <link rel="stylesheet" href="./assets/style.css">
+  <script src="./assets/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Node Core OS byLAEV</p>
+      <h1>Portal del nodo</h1>
+      <p>Este portal está asociado al nodo personal que lo publica.</p>
+    </header>
+    <section class="panel">
+      <h2>Estado de asociación</h2>
+      <p id="connection">Leyendo configuración del nodo…</p>
+      <dl>
+        <dt>Cuenta GitHub</dt><dd id="github-account">—</dd>
+        <dt>Repositorio</dt><dd id="repository">—</dd>
+        <dt>Node ID</dt><dd id="node-id">—</dd>
+      </dl>
+    </section>
+    <section class="panel">
+      <h2>Enviar información al nodo</h2>
+      <p>La información se recibe en el nodo propietario y queda en su cola local hasta sincronizarse con el repositorio GitHub asociado.</p>
+      <form id="record-form">
+        <label for="display-name">Nombre de prueba</label>
+        <input id="display-name" name="display_name" maxlength="120" required>
+        <label for="message">Mensaje</label>
+        <textarea id="message" name="message" maxlength="2000" rows="5" required></textarea>
+        <button id="submit" type="submit">Enviar al nodo</button>
+      </form>
+      <p id="result" role="status" aria-live="polite"></p>
+    </section>
+    <footer>Node Core Client · Primera fase funcional · No introduzcas información sensible.</footer>
+  </main>
+</body>
+</html>
