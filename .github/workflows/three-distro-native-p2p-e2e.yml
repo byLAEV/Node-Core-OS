@@ -1,0 +1,163 @@
+name: Node Core OS — three independent Linux nodes native P2P E2E
+
+on:
+  push:
+    branches: [main, feat/github-pages-node-binding]
+  pull_request:
+    branches: [main, feat/bios-functional-menus-packaging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  three-distro-native-p2p:
+    name: Ubuntu + Debian + Fedora — independent installed nodes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Enforce ordinary-user orchestration
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          printf 'Docker orchestration user: %s (uid=%s)\\n' "$(id -un)" "$(id -u)"
+
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+
+      - name: Build three Linux distribution images
+        run: |
+          set -euo pipefail
+          docker build --build-arg BASE_IMAGE=ubuntu:24.04 -f ci/linux/Dockerfile -t node-core-p2p:ubuntu .
+          docker build --build-arg BASE_IMAGE=debian:13 -f ci/linux/Dockerfile -t node-core-p2p:debian .
+          docker build --build-arg BASE_IMAGE=fedora:44 -f ci/linux/Dockerfile -t node-core-p2p:fedora .
+
+      - name: Create isolated three-node network and user-owned data directories
+        run: |
+          set -euo pipefail
+          docker network create node-core-p2p
+          mkdir -p "$RUNNER_TEMP/node-a" "$RUNNER_TEMP/node-b" "$RUNNER_TEMP/node-c" "$RUNNER_TEMP/shared"
+          chmod 700 "$RUNNER_TEMP/node-a" "$RUNNER_TEMP/node-b" "$RUNNER_TEMP/node-c" "$RUNNER_TEMP/shared"
+          docker run -d --name node-a --hostname node-a --network node-core-p2p --user 1001:1001 \
+            -e HOME=/home/nodecore -e NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$RUNNER_TEMP/node-a:/home/nodecore/.node-core" \
+            -v "$RUNNER_TEMP/shared:/shared" node-core-p2p:ubuntu sleep infinity
+          docker run -d --name node-b --hostname node-b --network node-core-p2p --user 1001:1001 \
+            -e HOME=/home/nodecore -e NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$RUNNER_TEMP/node-b:/home/nodecore/.node-core" \
+            -v "$RUNNER_TEMP/shared:/shared" node-core-p2p:debian sleep infinity
+          docker run -d --name node-c --hostname node-c --network node-core-p2p --user 1001:1001 \
+            -e HOME=/home/nodecore -e NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$RUNNER_TEMP/node-c:/home/nodecore/.node-core" \
+            -v "$RUNNER_TEMP/shared:/shared" node-core-p2p:fedora sleep infinity
+          docker inspect --format '{{.Name}} {{.Config.User}} {{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-a node-b node-c
+
+      - name: Install Node Core OS independently on all three distributions as uid 1001
+        run: |
+          set -euo pipefail
+          for node in node-a node-b node-c; do
+            docker exec "$node" bash -lc 'test "$(id -u)" -eq 1001 && cd /workspace && bash installer/install.sh'
+          done
+
+      - name: Prepare three unique Node Core identities and exchange public test metadata
+        run: |
+          set -euo pipefail
+          for node in node-a node-b node-c; do
+            label="${node#node-}"
+            docker exec "$node" bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py prepare '"$label"
+          done
+          test "$(find "$RUNNER_TEMP/shared" -maxdepth 1 -name '*.json' | wc -l)" -eq 3
+          python3 - "$RUNNER_TEMP/shared" <<'PY'
+          import json, sys
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          records = [json.loads(path.read_text()) for path in sorted(root.glob("*.json"))]
+          assert len(records) == 3
+          assert len({item["node_id"] for item in records}) == 3
+          for item in records:
+              print(item["label"], item["node_id"])
+          PY
+
+      - name: Start three authenticated native P2P listeners as non-root users
+        run: |
+          set -euo pipefail
+          for node in node-a node-b node-c; do
+            label="${node#node-}"
+            docker exec -d "$node" bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py serve '"$label"
+          done
+          for source in a b c; do
+            for target in a b c; do
+              [[ "$source" == "$target" ]] && continue
+              for attempt in {1..30}; do
+                if docker exec "node-$source" bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py probe '"$source"' node-'"$target" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 1
+              done
+              docker exec "node-$source" bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py probe '"$source"' node-'"$target"
+            done
+          done
+
+      - name: Exchange records around the Ubuntu-Debian-Fedora P2P ring
+        run: |
+          set -euo pipefail
+          docker exec node-a bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py send a b'
+          docker exec node-b bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py send b c'
+          docker exec node-c bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py send c a'
+
+      - name: Verify signed receipts, duplicate delivery and persistent replicas
+        run: |
+          set -euo pipefail
+          docker exec node-b bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py verify b a'
+          docker exec node-c bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py verify c b'
+          docker exec node-a bash -lc '"$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" /workspace/ci/linux/three_node_native_p2p.py verify a c'
+
+      - name: Connect all three Kubo peers and retrieve one CID across Ubuntu Debian and Fedora
+        run: |
+          set -euo pipefail
+          for node in node-a node-b node-c; do
+            docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" id' > "$RUNNER_TEMP/${node}.ipfs.json"
+          done
+          A_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-a.ipfs.json")"
+          B_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-b.ipfs.json")"
+          C_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-c.ipfs.json")"
+          A_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-a)"
+          B_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-b)"
+          C_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-c)"
+          docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$B_IP"'/tcp/4001/p2p/'"$B_ID"''
+          docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$C_IP"'/tcp/4001/p2p/'"$C_ID"''
+          docker exec node-b bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$C_IP"'/tcp/4001/p2p/'"$C_ID"''
+          for node in node-a node-b node-c; do
+            docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm peers' > "$RUNNER_TEMP/${node}.peers.txt"
+          done
+          grep -Fq "$B_ID" "$RUNNER_TEMP/node-a.peers.txt"
+          grep -Fq "$C_ID" "$RUNNER_TEMP/node-a.peers.txt"
+          grep -Fq "$C_ID" "$RUNNER_TEMP/node-b.peers.txt"
+          printf 'Node Core OS Kubo cross-distro test payload\\n' > "$RUNNER_TEMP/kubo-cross-distro.txt"
+          EXPECTED_SHA="$(sha256sum "$RUNNER_TEMP/kubo-cross-distro.txt" | awk '{print $1}')"
+          docker cp "$RUNNER_TEMP/kubo-cross-distro.txt" node-a:/tmp/kubo-cross-distro.txt
+          CID="$(docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" add -Q /tmp/kubo-cross-distro.txt')"
+          for node in node-b node-c; do
+            ACTUAL_SHA="$(docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" cat '"$CID"' | sha256sum | awk "{print \\$1}"')"
+            test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+            printf 'KUBO_CONTENT_OK node=%s cid=%s sha256=%s\\n' "$node" "$CID" "$ACTUAL_SHA"
+          done
+
+      - name: Upload three-node P2P evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-three-linux-native-p2p-evidence
+          path: |
+            ${{ runner.temp }}/shared/
+            ${{ runner.temp }}/node-a/logs/kubo.log
+            ${{ runner.temp }}/node-b/logs/kubo.log
+            ${{ runner.temp }}/node-c/logs/kubo.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop all non-root Node Core test containers
+        if: always()
+        run: |
+          docker rm -f node-a node-b node-c 2>/dev/null || true
+          docker network rm node-core-p2p 2>/dev/null || true
