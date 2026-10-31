@@ -67,7 +67,9 @@
 
   <section class="panel github-panel">
     <h2>GitHub Page ↔ nodo personal</h2>
-    <p>Configura la cuenta y el repositorio del operador. Primero autentica la cuenta desde la terminal con <code>gh auth login</code>.</p>
+    <p>Vincula la cuenta del operador con GitHub Device Flow. Configura el Client ID de la GitHub App en el entorno del nodo.</p>
+    <div class="github-actions"><button id="github-device-start" type="button">Vincular cuenta GitHub</button><button id="github-device-poll" type="button">Comprobar autorización</button><button id="github-device-status" type="button">Estado de identidad</button></div>
+    <pre id="github-device-result" class="github-result" aria-live="polite">Cuenta GitHub aún no vinculada.</pre>
     <form id="github-config-form">
       <label for="github-login">Cuenta GitHub</label>
       <input id="github-login" name="github_login" placeholder="usuario" required>
@@ -75,7 +77,7 @@
       <input id="github-repository" name="repository" placeholder="usuario/node-core-client" required>
       <label for="github-api-url">URL HTTPS pública del API de este nodo</label>
       <input id="github-api-url" name="node_api_url" type="url" placeholder="https://node.example.com" required>
-      <label for="github-installation">GitHub App installation ID (opcional, solo registro)</label>
+      <label for="github-installation">GitHub App installation ID</label>
       <input id="github-installation" name="github_app_installation_id" inputmode="numeric" placeholder="ID de instalación">
       <button id="github-configure" type="submit">Guardar asociación</button>
     </form>

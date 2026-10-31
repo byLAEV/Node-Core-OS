@@ -17,6 +17,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from node_core.github_binding import GitHubBindingError, GitHubNodeBinding
+from node_core.github_app_auth import GitHubAppAuth, GitHubAppError
 from node_core.identity.node_identity import NodeIdentityStore
 
 from node_core.runtime import NodeRuntime
@@ -213,6 +214,10 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.OK, payload)
             return
 
+        if path == "/api/github/device/status":
+            self._send_json(HTTPStatus.OK, GitHubAppAuth(self.server.runtime.config.data_dir).operator_status())
+            return
+
         if path == "/api/github/binding":
             try:
                 self._send_json(HTTPStatus.OK, self._binding().status())
@@ -281,9 +286,19 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
             return
 
         path = urlsplit(self.path).path
-        if path in {"/api/github/configure", "/api/github/records", "/api/github/sync", "/api/github/export"}:
+        if path in {"/api/github/device/start", "/api/github/device/poll", "/api/github/configure", "/api/github/records", "/api/github/sync", "/api/github/export"}:
             try:
                 request_data = self._read_json()
+                if path == "/api/github/device/start":
+                    client_id = request_data.get("client_id") or os.environ.get("NODE_CORE_GITHUB_APP_CLIENT_ID", "")
+                    result = GitHubAppAuth(self.server.runtime.config.data_dir).start_device_flow(client_id)
+                    self._send_json(HTTPStatus.OK, result)
+                    return
+                if path == "/api/github/device/poll":
+                    expected = request_data.get("expected_login") or self._binding().status().get("github_account")
+                    result = GitHubAppAuth(self.server.runtime.config.data_dir).poll_device_flow(expected)
+                    self._send_json(HTTPStatus.OK, result)
+                    return
                 binding = self._binding()
                 if path == "/api/github/configure":
                     result = binding.configure(
@@ -306,7 +321,7 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
                 exported = binding.export_client_package(Path(target))
                 self._send_json(HTTPStatus.OK, {"exported_directory": str(exported)})
                 return
-            except (ValueError, UnicodeDecodeError, json.JSONDecodeError, GitHubBindingError) as exc:
+            except (ValueError, UnicodeDecodeError, json.JSONDecodeError, GitHubBindingError, GitHubAppError) as exc:
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
                 return
             except Exception as exc:

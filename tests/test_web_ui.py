@@ -5,6 +5,8 @@ import http.client
 import json
 import os
 import threading
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace

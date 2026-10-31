@@ -7,6 +7,7 @@ Do not use real personal information until the privacy phase is implemented.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -160,7 +161,7 @@ class GitHubNodeBinding:
         binding = self.status()
         if binding.get("binding_status") != "configured":
             raise GitHubBindingError("GitHub repository is not configured.")
-        token = self._github_token()
+        token = self._github_token(binding)
         repository = self._api("GET", f"/repos/{binding['repository']}", token)
         owner = (repository.get("owner") or {}).get("login", "")
         if owner.lower() != binding["github_account"]:
@@ -191,8 +192,15 @@ class GitHubNodeBinding:
         self._write_json(self.binding_path, binding)
         return {"repository": binding["repository"], "branch": branch, "synced": synced, "pending": 0}
 
-    @staticmethod
-    def _github_token() -> str:
+    def _github_token(self, binding: dict[str, Any]) -> str:
+        app_id = os.environ.get("NODE_CORE_GITHUB_APP_ID", "").strip()
+        private_key = os.environ.get("NODE_CORE_GITHUB_APP_PRIVATE_KEY", "").strip()
+        installation_id = str(binding.get("github_app_installation_id") or "").strip()
+        if installation_id and app_id and private_key:
+            from node_core.github_app_auth import GitHubAppAuth
+            return GitHubAppAuth(self.root.parent.parent).installation_token(
+                installation_id, binding["repository_name"], app_id, private_key
+            )
         try:
             result = subprocess.run(
                 ["gh", "auth", "token"], check=True, capture_output=True, text=True, timeout=10

@@ -81,3 +81,36 @@ The first-phase sync uses the operator's GitHub CLI authentication. Authenticate
 - No automatic background sync is started; the operator invokes sync from the web panel or API.
 - The static Page cannot write to GitHub directly; it sends data to the node.
 - No privacy, encryption, identity proof, abuse prevention, or production security controls are included yet.
+
+## Operator GitHub account and GitHub App
+
+The local web interface supports GitHub App Device Flow:
+
+1. Create a GitHub App and enable **Device Flow** in its settings.
+2. Set `NODE_CORE_GITHUB_APP_CLIENT_ID` to the App's Client ID before starting the Node Core OS web interface.
+3. In the local web panel, click **Vincular cuenta GitHub**.
+4. Open the displayed GitHub verification URL, enter the one-time user code, and authorize the App.
+5. Click **Comprobar autorización**. The node checks the authenticated account and stores the operator token data locally.
+6. Install the GitHub App on the operator's client repository and enter its numeric installation ID in the binding form.
+7. Set `NODE_CORE_GITHUB_APP_ID` to the App ID and `NODE_CORE_GITHUB_APP_PRIVATE_KEY` to the path of the downloaded PEM private key.
+8. Configure the repository binding and run synchronization.
+
+The device authorization token identifies the operator; it is not used as the repository write credential. Repository writes use a short-lived GitHub App installation token generated with the App ID/private key and restricted to the configured repository name and `contents: write` permission. If App settings are incomplete, synchronization falls back to the operator's authenticated GitHub CLI session.
+
+Required environment variables for the App path:
+
+```sh
+export NODE_CORE_GITHUB_APP_CLIENT_ID="Iv1..."
+export NODE_CORE_GITHUB_APP_ID="123456"
+export NODE_CORE_GITHUB_APP_PRIVATE_KEY="$HOME/.node-core/github-app-private-key.pem"
+```
+
+Keep the PEM file on the operator's node. Do not put it in the client repository or GitHub Pages. The private key is not read until an App installation token is requested.
+
+Device Flow endpoints:
+
+- `POST /api/github/device/start`
+- `POST /api/github/device/poll`
+- `GET /api/github/device/status`
+
+The browser does not receive the access token or App private key. This is a functional integration stage, not a complete security review; protect the node's local data directory and do not use real personal information during development.

@@ -213,3 +213,48 @@
     try { showGitHub(await githubRequest("/api/github/sync", {})); }
     catch (error) { githubResult.textContent = "Error: " + error.message; }
   });
+
+  const githubDeviceResult = byId("github-device-result");
+  async function deviceRequest(path, body) {
+    const response = await fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store"
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.detail || "GitHub device flow failed.");
+    return data;
+  }
+  byId("github-device-start").addEventListener("click", async () => {
+    const button = byId("github-device-start");
+    button.disabled = true;
+    try {
+      const result = await deviceRequest("/api/github/device/start", {});
+      githubDeviceResult.textContent =
+        "Abre " + result.verification_uri + "\nCódigo: " + result.user_code +
+        "\nExpira en " + result.expires_in + " segundos. Después pulsa Comprobar autorización.";
+    } catch (error) {
+      githubDeviceResult.textContent = "Error: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  byId("github-device-poll").addEventListener("click", async () => {
+    try {
+      const expected = byId("github-login").value.trim();
+      const result = await deviceRequest("/api/github/device/poll", { expected_login: expected });
+      githubDeviceResult.textContent = JSON.stringify(result, null, 2);
+    } catch (error) {
+      githubDeviceResult.textContent = "Error: " + error.message;
+    }
+  });
+  byId("github-device-status").addEventListener("click", async () => {
+    try {
+      githubDeviceResult.textContent = JSON.stringify(
+        await deviceRequest("/api/github/device/status"), null, 2
+      );
+    } catch (error) {
+      githubDeviceResult.textContent = "Error: " + error.message;
+    }
+  });
