@@ -502,7 +502,7 @@ class NodeRuntime:
         values = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
         values[node_id] = public_key_pem.decode("ascii")
         temporary = path.with_suffix(".json.tmp")
-        temporary.write_text(json.dumps(values, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+        temporary.write_text(json.dumps(values, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         temporary.replace(path)
         der = key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
         return {"node_id": node_id, "rsa_public_key_sha256": hashlib.sha256(der).hexdigest(), "status": "trusted"}
