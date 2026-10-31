@@ -117,7 +117,7 @@ jobs:
           set -euo pipefail
           for node in node-a node-b node-c; do
             if ! docker exec "$node" bash -lc 'curl --fail --silent --max-time 2 -X POST http://127.0.0.1:5001/api/v0/id >/dev/null'; then
-              if ! docker exec "$node" bash -lc "ps -eo args | grep -F '[i]pfs daemon' >/dev/null"; then
+              if ! docker exec "$node" bash -lc "ps -eo args | grep -E '[i]pfs daemon' >/dev/null"; then
                 docker exec -d "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; exec "$NODE_CORE_DATA_DIR/bin/ipfs" daemon'
               fi
             fi
