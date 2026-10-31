@@ -499,7 +499,7 @@ class BIOSMenu:
         while True:
             operator = auth.operator_status()
             current = binding.status()
-            print("\\nGitHub App + Node Client")
+            print("\nGitHub App + Node Client")
             print("GitHub operator authorized:", operator.get("authorized", False))
             print("GitHub account:", operator.get("github_login") or "not linked")
             print("Binding status:", current.get("binding_status", "not_configured"))

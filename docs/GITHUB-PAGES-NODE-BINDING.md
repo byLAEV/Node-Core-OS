@@ -57,7 +57,7 @@ The local web interface exposes these first-phase routes:
 - `POST /api/github/sync`: append pending records to the configured GitHub repository.
 - `POST /api/github/export`: export the static client template with `node-core-client.json`.
 
-The BIOS web panel can configure, inspect, export and synchronize the association. The static template in `client-template/` reads its exported configuration and submits form records to the configured Node API.
+Node Core BIOS → GitHub Node Binding (menu 13) can authorize the operator with Device Flow, configure the repository/API binding, export the Pages client, inspect pending records, synchronize to GitHub and request replication to a trusted peer. The local web panel exposes the same HTTP API operations. The static template in `client-template/` reads its exported configuration and submits form records to the configured Node API.
 
 ### HTTPS reverse proxy / tunnel
 
@@ -77,7 +77,7 @@ The first-phase sync uses the operator's GitHub CLI authentication. Authenticate
 ### Known functional limits
 
 - Public visitor submissions are intentionally unauthenticated in this development phase. Only use synthetic test data.
-- The Node API must be reachable through an operator-configured HTTPS proxy/tunnel.
+- The Node API must be reachable through an operator-configured HTTPS proxy/tunnel. The BIOS and binding manager reject an HTTP Node API URL because an HTTPS GitHub Page cannot reliably call an insecure remote endpoint.
 - No automatic background sync is started; the operator invokes sync from the web panel or API.
 - The static Page cannot write to GitHub directly; it sends data to the node.
 - No privacy, encryption, identity proof, abuse prevention, or production security controls are included yet.

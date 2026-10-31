@@ -42,6 +42,13 @@ class GitHubNodeBindingTests(unittest.TestCase):
         with self.assertRaises(GitHubBindingError):
             self.binding.configure("octocat", "octocat/client", github_app_installation_id="abc")
 
+    def test_rejects_http_node_api_url_for_https_github_pages(self):
+        with self.assertRaisesRegex(GitHubBindingError, "HTTPS"):
+            self.binding.configure(
+                "octocat", "octocat/client",
+                node_api_url="http://node.example.test",
+            )
+
     def test_adds_plain_json_record_to_local_outbox(self):
         self.binding.configure("octocat", "octocat/client")
         record = self.binding.add_record({"display_name": "Example Visitor", "message": "hello"})
