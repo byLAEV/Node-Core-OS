@@ -55,6 +55,7 @@ class BIOSMenu:
             "9": self.lifecycle,
             "10": self.identity,
             "11": self.domain_verification,
+            "12": self.github_identity_pool,
         }
         descriptions = {
             "1": "Local private/shared storage; directories are created automatically.",
@@ -68,11 +69,12 @@ class BIOSMenu:
             "9": "Start, stop and restart Node Core-managed runtime services.",
             "10": "User-declared identity profile; private data remains local.",
             "11": "Independent verification of local P2P, mesh and IPFS domains.",
+            "12": "Administer GitHub-only identity pool, export a lightweight Pages client, and synchronize encrypted records.",
         }
         while True:
             print("\\nNode Core BIOS\\nbyLAEV\\n")
             print("0. Back")
-            for number in range(1, 12):
+            for number in range(1, 13):
                 key = str(number)
                 print(f"{key}. {key_name(key)} — {descriptions[key]}")
             choice = input("\\n> ").strip()
@@ -402,6 +404,75 @@ class BIOSMenu:
         print("Identity profile is available through the main UI.")
         self._pause()
 
+    def github_identity_pool(self) -> None:
+        """Administer the GitHub-only identity pool and encrypted Pages client."""
+        from node_core.identity.github_pool import GitHubIdentityPool, GitHubIdentityPoolError
+
+        pool = GitHubIdentityPool(self.runtime.config.data_dir)
+        while True:
+            print("\nGitHub Identity Pool")
+            print("This pool admits GitHub accounts and their own Node Core client repositories only.")
+            print("Personal records are encrypted in the Pages browser before GitHub receives them.")
+            print("0. Back")
+            print("1. Initialize / inspect administrator pool")
+            print("2. Configure this node's GitHub client repository")
+            print("3. Add a GitHub node to the administrator pool (pending)")
+            print("4. List pool members")
+            print("5. Revoke a pool member")
+            print("6. Export lightweight GitHub Pages client")
+            print("7. Synchronize encrypted records from this node's GitHub repository")
+            print("8. Show public encryption key")
+            choice = input("> ").strip()
+            if choice == "0":
+                return
+            try:
+                if choice == "1":
+                    identity = self.runtime.p2p_identity.initialize()
+                    result = pool.initialize(identity["node_id"])
+                    self._show("GitHub Identity Pool", result)
+                elif choice == "2":
+                    login = input("Your GitHub username (example: octocat): ").strip()
+                    repository = input("Repository you own (owner/node-core-client): ").strip()
+                    branch = input("Default branch [main]: ").strip() or "main"
+                    result = pool.configure_local_client(login, repository, default_branch=branch)
+                    self._show("Local GitHub client", result)
+                    print("Next: create the empty repository under this GitHub account and export the Pages client.")
+                elif choice == "3":
+                    login = input("GitHub username to admit: ").strip()
+                    repository = input("Their Node Core client repository (owner/repository): ").strip()
+                    page = input("GitHub Pages URL (Enter for the standard URL): ").strip() or None
+                    record = pool.add_node(login, repository, page)
+                    self._show("Pool admission", record)
+                    print("Status is pending_admin_verification. Adding an account is not proof of ownership or personhood.")
+                elif choice == "4":
+                    for member in pool.list_nodes():
+                        print(json.dumps(member, ensure_ascii=False, indent=2))
+                    self._pause()
+                elif choice == "5":
+                    member_id = input("Pool member ID to revoke: ").strip()
+                    if member_id and self._confirm("Revoke this GitHub account's pool membership?"):
+                        self._show("Revoked pool member", pool.revoke_node(member_id))
+                elif choice == "6":
+                    target = input("Export path (example: ~/node-core-client): ").strip()
+                    if not target:
+                        print("An export path is required.")
+                        continue
+                    path = pool.export_client_package(Path(target).expanduser())
+                    print("Lightweight client exported:", path)
+                    print("Copy the exported files into the empty repository you own, commit, and enable GitHub Pages.")
+                elif choice == "7":
+                    print("Uses NODE_CORE_GITHUB_TOKEN or the authenticated GitHub CLI (gh auth login).")
+                    if self._confirm("Read encrypted records from your configured GitHub repository?"):
+                        result = pool.sync_local_repository(kubo=self.runtime.kubo)
+                        self._show("GitHub record synchronization", result)
+                elif choice == "8":
+                    self._show("Public record-encryption key", pool.public_encryption_key())
+                else:
+                    print("Unknown GitHub Identity Pool option.")
+            except (GitHubIdentityPoolError, OSError, RuntimeError, ValueError) as exc:
+                print(f"GitHub Identity Pool operation failed: {exc}")
+            self._pause()
+
     def domain_verification(self) -> None:
         if self.ui is not None:
             self.ui.network_domain_verification_menu()
@@ -416,4 +487,5 @@ def key_name(key: str) -> str:
         "4": "Services", "5": "Configuration", "6": "Security",
         "7": "Diagnostics", "8": "Updates", "9": "Lifecycle",
         "10": "Identity Profile", "11": "Network Domain Verification",
+        "12": "GitHub Identity Pool",
     }[key]

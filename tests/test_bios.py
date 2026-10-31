@@ -15,10 +15,10 @@ class BIOSMenuTests(unittest.TestCase):
         calls = []
         names = ["storage", "kubo", "network", "services", "configuration",
                  "security", "diagnostics", "updates", "lifecycle",
-                 "identity", "domain_verification"]
+                 "identity", "domain_verification", "github_identity_pool"]
         for name in names:
             setattr(menu, name, lambda name=name: calls.append(name))
-        with patch("builtins.input", side_effect=[str(i) for i in range(1, 12)] + ["0"]), patch("builtins.print"):
+        with patch("builtins.input", side_effect=[str(i) for i in range(1, 13)] + ["0"]), patch("builtins.print"):
             menu.run()
         self.assertEqual(calls, names)
 
@@ -42,6 +42,7 @@ class BIOSMenuTests(unittest.TestCase):
         self.assertIn("Local private/shared storage", rendered)
         self.assertIn("Kubo daemon", rendered)
         self.assertIn("Network Domain Verification", rendered)
+        self.assertIn("GitHub Identity Pool", rendered)
 
 
 if __name__ == "__main__":
