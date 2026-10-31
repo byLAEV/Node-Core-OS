@@ -111,6 +111,14 @@ class GitHubIdentityPoolTests(unittest.TestCase):
         self.assertTrue((target / "index.html").is_file())
         self.assertTrue((target / "assets" / "app.js").is_file())
 
+    def test_static_pages_client_posts_to_node_api_without_github_write_token(self):
+        client_root = Path(__file__).resolve().parents[1] / "client-template"
+        app = (client_root / "assets" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("config.node_api_url", app)
+        self.assertIn("/api/github/records", app)
+        self.assertNotIn("Authorization", app)
+        self.assertNotIn("personal access token", app.lower())
+
     def test_configure_local_client_rejects_http_node_api(self):
         with self.assertRaisesRegex(GitHubIdentityPoolError, "HTTPS"):
             self.pool.configure_local_client(
