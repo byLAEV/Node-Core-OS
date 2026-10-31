@@ -117,17 +117,14 @@ class GitHubIdentityPoolTests(unittest.TestCase):
                 "hubot", "hubot/client", node_api_url="http://node.example.test"
             )
 
-    def test_export_refuses_revoked_member_and_nonempty_target(self):
+    def test_export_refuses_revoked_member_and_requires_member_owned_node(self):
         member = self.pool.add_node("octocat", "octocat/node-core-client")
         self.pool.revoke_node(member["member_id"])
         with self.assertRaisesRegex(GitHubIdentityPoolError, "not found"):
             self.pool.export_member_client_package(member["member_id"], self.root / "revoked")
         active = self.pool.add_node("hubot", "hubot/node-core-client")
-        target = self.root / "nonempty"
-        target.mkdir()
-        (target / "keep.txt").write_text("keep")
-        with self.assertRaisesRegex(GitHubIdentityPoolError, "non-empty"):
-            self.pool.export_member_client_package(active["member_id"], target)
+        with self.assertRaisesRegex(GitHubIdentityPoolError, "own Node Core node"):
+            self.pool.export_member_client_package(active["member_id"], self.root / "member")
 
 
 if __name__ == "__main__":
