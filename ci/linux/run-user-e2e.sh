@@ -70,6 +70,7 @@ menu_log="$RUNNER_TEMP/node-core-bios-menu.txt"
 printf '1\n0\n0\n' | "$NODE_CORE_DATA_DIR/bin/node-core" > "$menu_log"
 grep -Fq 'Node Core BIOS' "$menu_log"
 grep -Fq 'GitHub Identity Pool' "$menu_log"
+grep -Fq 'GitHub Node Binding' "$menu_log"
 
 echo "=== Installed application test suite ==="
 cd "$NODE_CORE_DATA_DIR/app"
