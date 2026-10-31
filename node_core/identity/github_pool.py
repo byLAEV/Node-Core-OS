@@ -726,7 +726,7 @@ class GitHubIdentityPool:
         request = Request(url, headers=headers, method="GET")
         try:
             with urlopen(request, timeout=20) as response:
-                raw = response.read(MAX_ENVELOPE_BYTES + 1)
+                raw = response.read(20_000_001)
         except HTTPError as exc:
             if exc.code == 404 and allow_not_found:
                 return None
@@ -735,7 +735,7 @@ class GitHubIdentityPool:
             raise GitHubIdentityPoolError(f"GitHub API returned HTTP {exc.code}.") from exc
         except (URLError, TimeoutError, OSError) as exc:
             raise GitHubIdentityPoolError(f"GitHub API request failed: {exc.__class__.__name__}.") from exc
-        if len(raw) > MAX_ENVELOPE_BYTES:
+        if len(raw) > 20_000_000:
             raise GitHubIdentityPoolError("GitHub API response exceeded the configured size limit.")
         try:
             return json.loads(raw.decode("utf-8"))
