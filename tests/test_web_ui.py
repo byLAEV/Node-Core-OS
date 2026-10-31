@@ -5,11 +5,15 @@ import http.client
 import json
 import os
 import threading
+import tempfile
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
 
 from node_core.ipfs import KuboStatus
+from node_core.github_binding import GitHubNodeBinding
+from node_core.identity.node_identity import NodeIdentityStore
 from node_core.web_ui import NodeCoreWebServer, _auto_start_kubo_enabled, _kubo_status, _port_from_environment, _require_unprivileged_user
 
 
@@ -116,6 +120,46 @@ class WebInterfaceTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=3)
 
+    def test_http_github_binding_and_record_endpoints(self) -> None:
+        class FakeBinding:
+            def status(self):
+                return {"binding_status": "configured", "node_id": "node-test"}
+            def add_record(self, fields):
+                return {"record_id": "record-test", "fields": fields, "sync_status": "pending"}
+        runtime = SimpleNamespace(
+            kubo=SimpleNamespace(status=lambda: KuboStatus(installed=True, initialized=True, running=False)),
+            config=SimpleNamespace(ipfs_api="http://127.0.0.1:5001", ipfs_repo_path="/tmp/node-core/ipfs"),
+            github_binding=FakeBinding(),
+        )
+        server = NodeCoreWebServer(0, runtime)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            headers = {"Host": f"127.0.0.1:{port}", "Origin": f"http://127.0.0.1:{port}"}
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request("GET", "/api/github/binding", headers=headers)
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 200)
+            self.assertEqual(payload["node_id"], "node-test")
+            connection.close()
+
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            connection.request(
+                "POST", "/api/github/records", body=b'{"fields":{"message":"hello"}}',
+                headers={**headers, "Content-Type": "application/json"},
+            )
+            response = connection.getresponse()
+            payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual(response.status, 201)
+            self.assertEqual(payload["fields"]["message"], "hello")
+            connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
     def test_http_start_kubo_requires_explicit_confirmation(self) -> None:
         runtime = SimpleNamespace(
             kubo=SimpleNamespace(
@@ -180,6 +224,59 @@ class WebInterfaceTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join(timeout=3)
+
+    def test_http_github_page_record_is_persisted_by_real_node_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            binding = GitHubNodeBinding(data_dir, NodeIdentityStore(data_dir))
+            binding.configure(
+                "octocat", "octocat/node-core-client",
+                node_api_url="https://node.example.test",
+            )
+            runtime = SimpleNamespace(
+                config=SimpleNamespace(
+                    data_dir=data_dir,
+                    ipfs_api="http://127.0.0.1:5001",
+                    ipfs_repo_path=data_dir / "ipfs",
+                ),
+                kubo=SimpleNamespace(
+                    status=lambda: KuboStatus(installed=False, initialized=False, running=False)
+                ),
+                github_binding=binding,
+            )
+            server = NodeCoreWebServer(0, runtime)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = server.server_port
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+                body = json.dumps({
+                    "fields": {
+                        "display_name": "Synthetic visitor",
+                        "message": "cross-platform API acceptance",
+                    }
+                }).encode("utf-8")
+                connection.request(
+                    "POST", "/api/github/records", body=body,
+                    headers={
+                        "Host": f"127.0.0.1:{port}",
+                        "Origin": f"http://127.0.0.1:{port}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                response = connection.getresponse()
+                payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(response.status, 201)
+                record_path = binding.outbox / f"{payload['record_id']}.json"
+                self.assertTrue(record_path.is_file())
+                saved = json.loads(record_path.read_text(encoding="utf-8"))
+                self.assertEqual(saved["fields"]["display_name"], "Synthetic visitor")
+                self.assertEqual(saved["sync_status"], "pending")
+                connection.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
 
     def test_http_start_kubo_rejects_untrusted_origin(self) -> None:
         start_calls = []
@@ -306,6 +403,71 @@ class WebInterfaceTests(unittest.TestCase):
         result = _kubo_status(runtime)
         self.assertEqual(result["state"], "not_responding")
         self.assertFalse(result["running"])
+
+    def test_http_github_configure_requires_device_flow_account_match(self) -> None:
+        class FakeBinding:
+            def __init__(self):
+                self.calls = []
+            def status(self):
+                return {"binding_status": "not_configured", "node_id": "node-test"}
+            def configure(self, *args):
+                self.calls.append(args)
+                return {"binding_status": "configured", "github_account": args[0]}
+
+        with tempfile.TemporaryDirectory() as directory:
+            binding = FakeBinding()
+            runtime = SimpleNamespace(
+                kubo=SimpleNamespace(status=lambda: KuboStatus(installed=False, initialized=False, running=False)),
+                config=SimpleNamespace(
+                    data_dir=Path(directory),
+                    ipfs_api="http://127.0.0.1:5001",
+                    ipfs_repo_path=Path(directory) / "ipfs",
+                ),
+                github_binding=binding,
+            )
+            server = NodeCoreWebServer(0, runtime)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = server.server_port
+                headers = {
+                    "Host": f"127.0.0.1:{port}",
+                    "Origin": f"http://127.0.0.1:{port}",
+                    "Content-Type": "application/json",
+                }
+                body = json.dumps({
+                    "github_login": "octocat",
+                    "repository": "octocat/client",
+                    "node_api_url": "https://node.example.test",
+                }).encode("utf-8")
+
+                with patch("node_core.web_ui.GitHubAppAuth.operator_status", return_value={"authorized": False}):
+                    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+                    connection.request("POST", "/api/github/configure", body=body, headers=headers)
+                    response = connection.getresponse()
+                    payload = json.loads(response.read().decode("utf-8"))
+                    self.assertEqual(response.status, 400)
+                    self.assertIn("Device Flow", payload["error"])
+                    connection.close()
+                self.assertEqual(binding.calls, [])
+
+                with patch("node_core.web_ui.GitHubAppAuth.operator_status", return_value={"authorized": True, "github_login": "octocat"}):
+                    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+                    connection.request("POST", "/api/github/configure", body=body, headers=headers)
+                    response = connection.getresponse()
+                    payload = json.loads(response.read().decode("utf-8"))
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(payload["github_account"], "octocat")
+                    connection.close()
+                self.assertEqual(len(binding.calls), 1)
+                self.assertEqual(binding.calls[0][0], "octocat")
+                self.assertEqual(binding.calls[0][1], "octocat/client")
+                self.assertEqual(binding.calls[0][4], "https://node.example.test")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
+
 
 
 if __name__ == "__main__":
