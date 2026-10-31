@@ -88,6 +88,7 @@ class NodeWebServiceManager:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         port = self._port()
         environment = os.environ.copy()
+        environment["NODE_CORE_DATA_DIR"] = str(self.data_dir)
         environment["NODE_CORE_CONFIG"] = str(self.data_dir / "config.json")
         environment["NODE_CORE_WEB_PORT"] = str(port)
         environment.setdefault("NODE_CORE_WEB_AUTO_START_KUBO", "0")
