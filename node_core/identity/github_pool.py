@@ -257,6 +257,7 @@ class GitHubIdentityPool:
             "repository": repo,
             "repository_id": repository_id,
             "pages_url": page,
+            "default_branch": "main",
             "node_id": node_id,
             "status": "pending_admin_verification",
             "verification_status": "not_verified",
