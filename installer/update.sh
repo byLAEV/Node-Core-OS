@@ -312,13 +312,13 @@ latest_commit() {
   local package_dir package_commit
   package_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
   if [[ -f "$package_dir/source-package.tar.gz" && -f "$package_dir/SOURCE_COMMIT" ]]; then
-    package_commit="$(tr -d '\\r\\n' < "$package_dir/SOURCE_COMMIT")"
+    package_commit="$(tr -d '\r\n' < "$package_dir/SOURCE_COMMIT")"
     if [[ "$package_commit" =~ ^[0-9a-fA-F]{40}$ ]] &&
        tar -tzf "$package_dir/source-package.tar.gz" >/dev/null 2>&1; then
-      printf '%s\\n' "${package_commit,,}"
+      printf '%s\n' "\${package_commit,,}"
       return 0
     fi
-    printf 'Bundled update source or commit marker is invalid; refusing package update.\\n' >&2
+    printf 'Bundled update source or commit marker is invalid; refusing package update.\n' >&2
     return 1
   fi
 
