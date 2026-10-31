@@ -453,17 +453,31 @@ class BIOSMenu:
                     if member_id and self._confirm("Revoke this GitHub account's pool membership?"):
                         self._show("Revoked pool member", pool.revoke_node(member_id))
                 elif choice == "6":
+                    print("0. Export client for this node's own GitHub repository")
+                    print("1. Export client for an admitted pool member (encrypted to this administrator node)")
+                    export_choice = input("> ").strip()
                     target = input("Export path (example: ~/node-core-client): ").strip()
                     if not target:
                         print("An export path is required.")
                         continue
-                    path = pool.export_client_package(Path(target).expanduser())
+                    if export_choice == "0":
+                        path = pool.export_client_package(Path(target).expanduser())
+                    elif export_choice == "1":
+                        member_id = input("Pool member ID: ").strip()
+                        path = pool.export_member_client_package(member_id, Path(target).expanduser())
+                    else:
+                        print("Unknown export type.")
+                        continue
                     print("Lightweight client exported:", path)
-                    print("Copy the exported files into the empty repository you own, commit, and enable GitHub Pages.")
+                    print("Copy the exported files into the empty repository owned by that GitHub account, commit, and enable GitHub Pages.")
                 elif choice == "7":
-                    print("Uses NODE_CORE_GITHUB_TOKEN or the authenticated GitHub CLI (gh auth login).")
-                    if self._confirm("Read encrypted records from your configured GitHub repository?"):
-                        result = pool.sync_local_repository(kubo=self.runtime.kubo)
+                    print("Public member repositories can be synchronized without a token. Private repositories require an owner-authorized credential.")
+                    member_id = input("Pool member ID (leave blank for this node's own repository): ").strip()
+                    if self._confirm("Read encrypted records from the selected GitHub repository?"):
+                        if member_id:
+                            result = pool.sync_repository(member_id=member_id, kubo=self.runtime.kubo)
+                        else:
+                            result = pool.sync_local_repository(kubo=self.runtime.kubo)
                         self._show("GitHub record synchronization", result)
                 elif choice == "8":
                     self._show("Public record-encryption key", pool.public_encryption_key())
