@@ -59,5 +59,6 @@ jobs:
             --env NODE_CORE_BRANCH \
             --env NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
             --env RUNNER_TEMP=/tmp \
+            --env NODE_CORE_TEST_ARTIFACTS_DIR=/tmp/node-core-test-artifacts \
             "node-core-linux-e2e:${{ matrix.os_id }}" \
             bash /workspace/ci/linux/run-user-e2e.sh
