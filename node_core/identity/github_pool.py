@@ -411,6 +411,42 @@ class GitHubIdentityPool:
             "sync_at_utc": state["local_client"]["last_sync_at_utc"],
         }
 
+    def encrypt_record(self, fields: dict[str, str], *, consent_given: bool) -> dict[str, Any]:
+        """Create a browser-compatible RSA-OAEP/AES-GCM envelope for a consented record."""
+        self._require_initialized()
+        record_id = str(uuid.uuid4())
+        record = {
+            "schema": RECORD_SCHEMA,
+            "record_id": record_id,
+            "created_at_utc": _now(),
+            "consent_given": consent_given,
+            "fields": fields,
+        }
+        self._validate_plain_record(record, record_id)
+        if consent_given is not True:
+            raise GitHubIdentityPoolError("Explicit consent is required.")
+        public_document = self.public_encryption_key()
+        public_numbers = self._load_private_key().public_key().public_numbers()
+        public_key = rsa.RSAPublicNumbers(public_numbers.e, public_numbers.n).public_key()
+        aes_key = AESGCM.generate_key(bit_length=256)
+        nonce = os.urandom(12)
+        associated_data = f"{ENVELOPE_SCHEMA}|{record_id}|{public_document['key_id']}".encode()
+        ciphertext = AESGCM(aes_key).encrypt(nonce, _canonical_json(record), associated_data)
+        wrapped_key = public_key.encrypt(
+            aes_key,
+            padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None),
+        )
+        return {
+            "schema": ENVELOPE_SCHEMA,
+            "record_id": record_id,
+            "created_at_utc": record["created_at_utc"],
+            "encryption_key_id": public_document["key_id"],
+            "algorithm": "RSA-OAEP-256+A256GCM",
+            "wrapped_key": base64.b64encode(wrapped_key).decode("ascii"),
+            "nonce": base64.b64encode(nonce).decode("ascii"),
+            "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+        }
+
     def ingest_envelope(
         self,
         envelope: dict[str, Any],
