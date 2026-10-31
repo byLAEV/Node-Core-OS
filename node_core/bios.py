@@ -434,7 +434,10 @@ class BIOSMenu:
                     login = input("Your GitHub username (example: octocat): ").strip()
                     repository = input("Repository you own (owner/node-core-client): ").strip()
                     branch = input("Default branch [main]: ").strip() or "main"
-                    result = pool.configure_local_client(login, repository, default_branch=branch)
+                    node_api_url = input("Public HTTPS Node API / tunnel URL: ").strip()
+                    result = pool.configure_local_client(
+                        login, repository, default_branch=branch, node_api_url=node_api_url
+                    )
                     self._show("Local GitHub client", result)
                     print("Next: create the empty repository under this GitHub account and export the Pages client.")
                 elif choice == "3":
@@ -453,23 +456,15 @@ class BIOSMenu:
                     if member_id and self._confirm("Revoke this GitHub account's pool membership?"):
                         self._show("Revoked pool member", pool.revoke_node(member_id))
                 elif choice == "6":
-                    print("0. Export client for this node's own GitHub repository")
-                    print("1. Export client for an admitted pool member (encrypted to this administrator node)")
-                    export_choice = input("> ").strip()
+                    print("The client is always exported for this node's own repository and Node API.")
                     target = input("Export path (example: ~/node-core-client): ").strip()
                     if not target:
                         print("An export path is required.")
                         continue
-                    if export_choice == "0":
-                        path = pool.export_client_package(Path(target).expanduser())
-                    elif export_choice == "1":
-                        member_id = input("Pool member ID: ").strip()
-                        path = pool.export_member_client_package(member_id, Path(target).expanduser())
-                    else:
-                        print("Unknown export type.")
-                        continue
+                    path = pool.export_client_package(Path(target).expanduser())
                     print("Lightweight client exported:", path)
-                    print("Copy the exported files into the empty repository owned by that GitHub account, commit, and enable GitHub Pages.")
+                    print("Copy the exported files into this node owner's repository, commit, and enable GitHub Pages.")
+                    print("Visitor submissions go to the configured HTTPS Node API; the page never receives a GitHub write token.")
                 elif choice == "7":
                     print("Public member repositories can be synchronized without a token. Private repositories require an owner-authorized credential.")
                     member_id = input("Pool member ID (leave blank for this node's own repository): ").strip()

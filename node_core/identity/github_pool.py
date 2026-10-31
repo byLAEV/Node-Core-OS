@@ -200,11 +200,18 @@ class GitHubIdentityPool:
         repository: str,
         pages_url: str | None = None,
         default_branch: str = "main",
+        node_api_url: str | None = None,
     ) -> dict[str, Any]:
         self._require_initialized()
         login = _safe_login(github_login)
         repo = _safe_repository(login, repository)
         page = _safe_pages_url(login, repo, pages_url)
+        api_url = (node_api_url or "").strip().rstrip("/")
+        if api_url:
+            from urllib.parse import urlsplit
+            parsed_api = urlsplit(api_url)
+            if parsed_api.scheme != "https" or not parsed_api.netloc or parsed_api.query or parsed_api.fragment:
+                raise GitHubIdentityPoolError("Node API URL must be an absolute HTTPS URL without query or fragment.")
         if not isinstance(default_branch, str) or not re.fullmatch(r"[A-Za-z0-9._/-]{1,100}", default_branch):
             raise GitHubIdentityPoolError("Default branch contains unsupported characters.")
         state = self._read_pool()
@@ -212,6 +219,7 @@ class GitHubIdentityPool:
             "github_login": login,
             "repository": repo,
             "pages_url": page,
+            "node_api_url": api_url,
             "default_branch": default_branch,
             "configured_at_utc": _now(),
         }
@@ -290,6 +298,8 @@ class GitHubIdentityPool:
         client = self.local_client()
         if client is None:
             raise GitHubIdentityPoolError("Configure this node's own GitHub account and repository first.")
+        if not client.get("node_api_url"):
+            raise GitHubIdentityPoolError("Configure the public HTTPS Node API URL before exporting the Pages client.")
         source = Path(__file__).resolve().parents[2] / "client-template"
         if not source.is_dir():
             raise GitHubIdentityPoolError(f"Client template directory is missing: {source}")
@@ -304,14 +314,11 @@ class GitHubIdentityPool:
         key = self.public_encryption_key()
         config = {
             "schema": "node-core-os/github-pages-client/v1",
-            "pool_id": pool["pool_id"],
-            "owner_login": client["github_login"],
+            "github_account": client["github_login"],
             "repository": client["repository"],
-            "default_branch": client["default_branch"],
             "pages_url": client["pages_url"],
             "node_id": pool["admin_node_id"],
-            "record_encryption": key,
-            "records_path": "records",
+            "node_api_url": client["node_api_url"],
             "client_version": "1.0.0",
         }
         _atomic_write(
@@ -322,37 +329,15 @@ class GitHubIdentityPool:
         return target
 
     def export_member_client_package(self, member_id: str, target_dir: Path) -> Path:
-        """Export a member-specific static Pages client encrypted to the pool administrator."""
+        """A member must export its own client from its own Node Core installation."""
         self._require_initialized()
         state = self._read_pool()
         member = next((item for item in state["nodes"] if item["member_id"] == member_id), None)
         if member is None or member["status"] == "revoked":
             raise GitHubIdentityPoolError("Active GitHub pool member was not found.")
-        source = Path(__file__).resolve().parents[2] / "client-template"
-        if not source.is_dir():
-            raise GitHubIdentityPoolError("Client template directory is missing.")
-        target = Path(target_dir).expanduser()
-        if target.exists() and any(target.iterdir()):
-            raise GitHubIdentityPoolError("Refusing to overwrite a non-empty export directory.")
-        if target.exists():
-            target.rmdir()
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(source, target)
-        config = {
-            "schema": "node-core-os/github-pages-client/v1",
-            "pool_id": state["pool_id"],
-            "owner_login": member["github_login"],
-            "repository": member["repository"],
-            "default_branch": "main",
-            "pages_url": member["pages_url"],
-            "node_id": state["admin_node_id"],
-            "record_encryption": self.public_encryption_key(),
-            "records_path": "records",
-            "client_version": "1.0.0",
-            "encryption_recipient": "pool_administrator_node",
-        }
-        _atomic_write(target / "node-core-client.json", json.dumps(config, ensure_ascii=False, indent=2).encode("utf-8") + b"\n", 0o644)
-        return target
+        raise GitHubIdentityPoolError(
+            "A member's GitHub Page must be exported by that member's own Node Core node and Node API."
+        )
 
     def sync_local_repository(self, token: str | None = None, kubo: Any | None = None) -> dict[str, Any]:
         """Synchronize this node owner's configured GitHub repository."""

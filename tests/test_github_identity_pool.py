@@ -90,17 +90,32 @@ class GitHubIdentityPoolTests(unittest.TestCase):
         with self.assertRaisesRegex(GitHubIdentityPoolError, "authenticated decryption"):
             self.pool.ingest_envelope(envelope)
 
-    def test_exports_member_specific_static_client_with_admin_public_key(self):
+    def test_member_must_export_pages_client_from_its_own_node(self):
         member = self.pool.add_node("octocat", "octocat/node-core-client")
-        target = self.pool.export_member_client_package(
-            member["member_id"], self.root / "exported-client"
+        with self.assertRaisesRegex(GitHubIdentityPoolError, "own Node Core node"):
+            self.pool.export_member_client_package(
+                member["member_id"], self.root / "exported-client"
+            )
+
+    def test_exports_operator_client_with_https_node_binding(self):
+        self.pool.configure_local_client(
+            "hubot", "hubot/node-core-client",
+            node_api_url="https://node.example.test",
         )
+        target = self.pool.export_client_package(self.root / "operator-client")
         config = json.loads((target / "node-core-client.json").read_text(encoding="utf-8"))
-        self.assertEqual(config["owner_login"], "octocat")
-        self.assertEqual(config["repository"], "octocat/node-core-client")
-        self.assertEqual(config["encryption_recipient"], "pool_administrator_node")
+        self.assertEqual(config["github_account"], "hubot")
+        self.assertEqual(config["repository"], "hubot/node-core-client")
+        self.assertEqual(config["node_id"], "sha256:" + "a" * 64)
+        self.assertEqual(config["node_api_url"], "https://node.example.test")
         self.assertTrue((target / "index.html").is_file())
         self.assertTrue((target / "assets" / "app.js").is_file())
+
+    def test_configure_local_client_rejects_http_node_api(self):
+        with self.assertRaisesRegex(GitHubIdentityPoolError, "HTTPS"):
+            self.pool.configure_local_client(
+                "hubot", "hubot/client", node_api_url="http://node.example.test"
+            )
 
     def test_export_refuses_revoked_member_and_nonempty_target(self):
         member = self.pool.add_node("octocat", "octocat/node-core-client")
