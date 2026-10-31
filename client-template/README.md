@@ -4,11 +4,10 @@ This is the static GitHub Pages client for one operator-owned Node Core OS repos
 
 ## Export and publish
 
-1. Start Node Core OS and authenticate the operator account with `gh auth login`.
-2. Configure the binding through the local web API or Python runtime.
-3. Set `node_api_url` to the public HTTPS URL that forwards to the operator's Node Core OS web server.
-4. Export the client package from Node Core OS.
-5. Copy the exported files into the operator's client repository and publish that repository with GitHub Pages.
+1. Start Node Core OS and open **Node Core BIOS → GitHub Identity Pool**.
+2. Configure this operator's GitHub username, repository and public HTTPS Node API URL.
+3. Export the static client package from the BIOS menu.
+4. Copy the exported files into the operator's client repository and publish that repository with GitHub Pages.
 
 The exported `node-core-client.json` binds the account, repository, Pages URL, node ID and Node API URL. The client submits records only to the configured node API. It does not receive or store the operator's GitHub token.
 

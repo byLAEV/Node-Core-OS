@@ -311,7 +311,6 @@ class GitHubIdentityPool:
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(source, target)
         pool = self._read_pool()
-        key = self.public_encryption_key()
         config = {
             "schema": "node-core-os/github-pages-client/v1",
             "github_account": client["github_login"],

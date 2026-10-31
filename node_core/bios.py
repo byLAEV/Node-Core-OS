@@ -69,7 +69,7 @@ class BIOSMenu:
             "9": "Start, stop and restart Node Core-managed runtime services.",
             "10": "User-declared identity profile; private data remains local.",
             "11": "Independent verification of local P2P, mesh and IPFS domains.",
-            "12": "Administer GitHub-only identity pool, export a lightweight Pages client, and synchronize encrypted records.",
+            "12": "Manage GitHub pool membership and export this operator's Node API Pages client.",
         }
         while True:
             print("\nNode Core BIOS\nbyLAEV\n")
@@ -466,14 +466,12 @@ class BIOSMenu:
                     print("Copy the exported files into this node owner's repository, commit, and enable GitHub Pages.")
                     print("Visitor submissions go to the configured HTTPS Node API; the page never receives a GitHub write token.")
                 elif choice == "7":
-                    print("Public member repositories can be synchronized without a token. Private repositories require an owner-authorized credential.")
-                    member_id = input("Pool member ID (leave blank for this node's own repository): ").strip()
-                    if self._confirm("Read encrypted records from the selected GitHub repository?"):
-                        if member_id:
-                            result = pool.sync_repository(member_id=member_id, kubo=self.runtime.kubo)
-                        else:
-                            result = pool.sync_local_repository(kubo=self.runtime.kubo)
-                        self._show("GitHub record synchronization", result)
+                    print("Legacy import for encrypted pool envelopes only.")
+                    print("New Pages form submissions are received by the Node API and synchronized through GitHub Node Binding.")
+                    member_id = input("Legacy pool member ID: ").strip()
+                    if member_id and self._confirm("Import legacy encrypted envelopes from this member repository?"):
+                        result = pool.sync_repository(member_id=member_id, kubo=self.runtime.kubo)
+                        self._show("Legacy encrypted record import", result)
                 elif choice == "8":
                     self._show("Public record-encryption key", pool.public_encryption_key())
                 else:
