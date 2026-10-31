@@ -69,7 +69,7 @@ class BIOSMenu:
             "9": "Start, stop and restart Node Core-managed runtime services.",
             "10": "User-declared identity profile; private data remains local.",
             "11": "Independent verification of local P2P, mesh and IPFS domains.",
-            "12": "Manage GitHub pool membership and export this operator's Node API Pages client.",
+            "12": "Manage GitHub pool membership; configure Pages through GitHub Node Binding.",
         }
         while True:
             print("\nNode Core BIOS\nbyLAEV\n")
@@ -431,15 +431,9 @@ class BIOSMenu:
                     result = pool.initialize(identity["node_id"])
                     self._show("GitHub Identity Pool", result)
                 elif choice == "2":
-                    login = input("Your GitHub username (example: octocat): ").strip()
-                    repository = input("Repository you own (owner/node-core-client): ").strip()
-                    branch = input("Default branch [main]: ").strip() or "main"
-                    node_api_url = input("Public HTTPS Node API / tunnel URL: ").strip()
-                    result = pool.configure_local_client(
-                        login, repository, default_branch=branch, node_api_url=node_api_url
-                    )
-                    self._show("Local GitHub client", result)
-                    print("Next: create the empty repository under this GitHub account and export the Pages client.")
+                    print("This legacy pool menu no longer configures the Pages client.")
+                    print("Use Node Core BIOS → GitHub Node Binding (menu 13) for the GitHub App, repository and Node API association.")
+                    self._pause()
                 elif choice == "3":
                     login = input("GitHub username to admit: ").strip()
                     repository = input("Their Node Core client repository (owner/repository): ").strip()
@@ -456,15 +450,9 @@ class BIOSMenu:
                     if member_id and self._confirm("Revoke this GitHub account's pool membership?"):
                         self._show("Revoked pool member", pool.revoke_node(member_id))
                 elif choice == "6":
-                    print("The client is always exported for this node's own repository and Node API.")
-                    target = input("Export path (example: ~/node-core-client): ").strip()
-                    if not target:
-                        print("An export path is required.")
-                        continue
-                    path = pool.export_client_package(Path(target).expanduser())
-                    print("Lightweight client exported:", path)
-                    print("Copy the exported files into this node owner's repository, commit, and enable GitHub Pages.")
-                    print("Visitor submissions go to the configured HTTPS Node API; the page never receives a GitHub write token.")
+                    print("Legacy Pages export is disabled to prevent a second, unverified repository binding.")
+                    print("Use Node Core BIOS → GitHub Node Binding (menu 13) to export the operator's client.")
+                    self._pause()
                 elif choice == "7":
                     print("Legacy import for encrypted pool envelopes only.")
                     print("New Pages form submissions are received by the Node API and synchronized through GitHub Node Binding.")

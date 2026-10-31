@@ -4,8 +4,8 @@ This is the static GitHub Pages client for one operator-owned Node Core OS repos
 
 ## Export and publish
 
-1. Start Node Core OS and open **Node Core BIOS → GitHub Identity Pool**.
-2. Configure this operator's GitHub username, repository and public HTTPS Node API URL.
+1. Start Node Core OS and open **Node Core BIOS → GitHub Node Binding (menu 13)**.
+2. Authorize the operator GitHub account with Device Flow, then configure its repository and public HTTPS Node API URL.
 3. Export the static client package from the BIOS menu.
 4. Copy the exported files into the operator's client repository and publish that repository with GitHub Pages.
 
