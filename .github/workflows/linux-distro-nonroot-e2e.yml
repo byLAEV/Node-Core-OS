@@ -2,9 +2,9 @@ name: Node Core OS — Linux distro non-root install and update E2E
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/bios-functional-menus-packaging]
   push:
-    branches: [main]
+    branches: [main, feat/github-pages-node-binding]
   workflow_dispatch:
 
 permissions:
