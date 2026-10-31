@@ -67,10 +67,15 @@ curl --fail --silent --show-error --max-time 10 -X POST \
 
 echo "=== Installed BIOS menu smoke test ==="
 menu_log="$RUNNER_TEMP/node-core-bios-menu.txt"
-printf '1\n0\n0\n' | "$NODE_CORE_DATA_DIR/bin/node-core" > "$menu_log"
+printf '1\n4\n5\n6\ny\n0\n0\n' | "$NODE_CORE_DATA_DIR/bin/node-core" > "$menu_log"
 grep -Fq 'Node Core BIOS' "$menu_log"
 grep -Fq 'GitHub Identity Pool' "$menu_log"
 grep -Fq 'GitHub Node Binding' "$menu_log"
+grep -Fq 'Node Core Web API' "$menu_log"
+if curl --fail --silent --show-error --max-time 2 http://127.0.0.1:8765/api/github/binding >/dev/null 2>&1; then
+  echo "Node Core Web API remained running after BIOS stop command." >&2
+  exit 1
+fi
 
 echo "=== Installed application test suite ==="
 cd "$NODE_CORE_DATA_DIR/app"
