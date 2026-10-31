@@ -50,7 +50,7 @@ jobs:
             -e HOME=/home/nodecore -e NODE_CORE_DATA_DIR=/home/nodecore/.node-core \
             -v "$GITHUB_WORKSPACE:/workspace:ro" -v "$RUNNER_TEMP/node-c:/home/nodecore/.node-core" \
             -v "$RUNNER_TEMP/shared:/shared" node-core-p2p:fedora sleep infinity
-          docker inspect --format '{{.Name}} {{.Config.User}} {{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-a node-b node-c
+          docker inspect --format '{{.Name}} {{.Config.User}} {{(index .NetworkSettings.Networks "node-core-p2p").IPAddress}}' node-a node-b node-c
 
       - name: Install Node Core OS independently on all three distributions as uid 1001
         run: |
@@ -135,9 +135,9 @@ jobs:
           A_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-a.ipfs.json")"
           B_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-b.ipfs.json")"
           C_ID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ID"])' "$RUNNER_TEMP/node-c.ipfs.json")"
-          A_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-a)"
-          B_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-b)"
-          C_IP="$(docker inspect --format '{{.NetworkSettings.Networks.node-core-p2p.IPAddress}}' node-c)"
+          A_IP="$(docker inspect --format '{{(index .NetworkSettings.Networks "node-core-p2p").IPAddress}}' node-a)"
+          B_IP="$(docker inspect --format '{{(index .NetworkSettings.Networks "node-core-p2p").IPAddress}}' node-b)"
+          C_IP="$(docker inspect --format '{{(index .NetworkSettings.Networks "node-core-p2p").IPAddress}}' node-c)"
           docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$B_IP"'/tcp/4001/p2p/'"$B_ID"''
           docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$C_IP"'/tcp/4001/p2p/'"$C_ID"''
           docker exec node-b bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" swarm connect /ip4/'"$C_IP"'/tcp/4001/p2p/'"$C_ID"''
