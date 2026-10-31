@@ -46,6 +46,14 @@ class FakeKubo:
 
 class RuntimeTests(unittest.TestCase):
 
+    def test_boot_refuses_root_before_creating_user_state(self):
+        runtime = NodeRuntime.__new__(NodeRuntime)
+        runtime.config = Mock()
+        with patch("node_core.runtime.os.geteuid", return_value=0):
+            with self.assertRaisesRegex(RuntimeError, "user-only"):
+                runtime.boot()
+        runtime.config.ensure_directories.assert_not_called()
+
     def test_boot_starts_installed_kubo_by_default_without_root(self):
         from tempfile import TemporaryDirectory
         from pathlib import Path
