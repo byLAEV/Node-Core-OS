@@ -6,6 +6,8 @@ export HOME="${HOME:-/home/nodecore}"
 export NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
 export NODE_CORE_CONFIG="$NODE_CORE_DATA_DIR/config.json"
 export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
+export PYTHONPYCACHEPREFIX="${RUNNER_TEMP:-/tmp}/node-core-pycache"
+mkdir -p "$PYTHONPYCACHEPREFIX"
 
 if [[ "$(id -u)" -eq 0 ]]; then
   echo "ERROR: Node Core OS tests must run as an ordinary Linux user (UID != 0)." >&2
