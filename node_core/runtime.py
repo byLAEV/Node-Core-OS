@@ -50,6 +50,8 @@ class NodeRuntime:
         self._p2p_identity: Any = None
         self._p2p_trust: Any = None
         self._p2p_tls: Any = None
+        self._p2p_rsa_identity: Any = None
+        self._record_replicator: Any = None
         self.p2p_service: Any = None
         self.p2p_discovery: Any = None
         self._p2p_discovery_error: str | None = None
@@ -61,12 +63,24 @@ class NodeRuntime:
         self._p2p_peer_monitor_lock = threading.RLock()
         self._p2p_peer_monitor_status: dict[str, dict[str, str]] = {}
         self._p2p_peer_monitor_error: str | None = None
+        self._github_binding: Any = None
         self._booted = False
         self._kubo_start_error: str | None = None
 
     @property
     def ipfs(self) -> KuboManager:
         return self.kubo
+
+    @property
+    def github_binding(self) -> Any:
+        """Load the optional GitHub binding only when an operator uses it."""
+        if self._github_binding is None:
+            from node_core.github_binding import GitHubNodeBinding
+            from node_core.identity.node_identity import NodeIdentityStore
+
+            identity = NodeIdentityStore(self.config.data_dir)
+            self._github_binding = GitHubNodeBinding(self.config.data_dir, identity)
+        return self._github_binding
 
     def _ensure_p2p_components(self) -> None:
         if self._p2p_identity is not None:
@@ -75,6 +89,8 @@ class NodeRuntime:
             from node_core.identity.node_identity import NodeIdentityStore
             from node_core.p2p.tls_transport import NodeTLSTransport
             from node_core.p2p.trust_store import PeerTrustStore
+            from node_core.p2p.secure_messaging import NodeRSAIdentityStore
+            from node_core.record_replication import NodeRecordReplicator
         except ImportError as exc:
             raise RuntimeError(
                 "Native P2P requires the 'cryptography' dependency. "
@@ -83,6 +99,8 @@ class NodeRuntime:
         self._p2p_identity = NodeIdentityStore(self.config.data_dir)
         self._p2p_trust = PeerTrustStore(self.config.data_dir)
         self._p2p_tls = NodeTLSTransport(self._p2p_identity)
+        self._p2p_rsa_identity = NodeRSAIdentityStore(self._p2p_identity)
+        self._record_replicator = NodeRecordReplicator(self.config.data_dir, self._p2p_identity)
 
     @property
     def p2p_identity(self) -> Any:
@@ -453,6 +471,79 @@ class NodeRuntime:
             thread.join(timeout=2.0)
         self._p2p_peer_monitor_thread = None
 
+    def _trusted_p2p_message_keys(self) -> dict[str, bytes]:
+        """Load RSA message keys pinned for currently trusted peers."""
+        import json
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        trusted = self.p2p_trust.trusted_certificates()
+        path = self.config.data_dir / "p2p" / "trusted-message-keys.json"
+        if not path.is_file():
+            return {}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise RuntimeError("Trusted P2P message-key file must be a JSON object.")
+        result = {}
+        for node_id, pem in data.items():
+            if node_id not in trusted or not isinstance(pem, str):
+                continue
+            key = serialization.load_pem_public_key(pem.encode("ascii"))
+            if not isinstance(key, rsa.RSAPublicKey) or key.key_size != 3072:
+                raise RuntimeError("Pinned peer message keys must use RSA-3072.")
+            result[node_id] = pem.encode("ascii")
+        return result
+
+    def trust_peer_message_key(self, node_id: str, public_key_pem: bytes) -> dict[str, str]:
+        """Pin a peer RSA message key after verifying its fingerprint out of band."""
+        import hashlib
+        import json
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        if node_id not in self.p2p_trust.trusted_certificates():
+            raise ValueError("Trust the peer Node Core certificate before pinning its message key.")
+        key = serialization.load_pem_public_key(public_key_pem)
+        if not isinstance(key, rsa.RSAPublicKey) or key.key_size != 3072:
+            raise ValueError("Peer message public key must be RSA-3072.")
+        path = self.config.data_dir / "p2p" / "trusted-message-keys.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        values = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        values[node_id] = public_key_pem.decode("ascii")
+        temporary = path.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(values, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        temporary.replace(path)
+        der = key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+        return {"node_id": node_id, "rsa_public_key_sha256": hashlib.sha256(der).hexdigest(), "status": "trusted"}
+
+    def replicate_github_record(self, host: str, port: int, peer_node_id: str, record: dict[str, Any]) -> dict[str, Any]:
+        """Send one locally owned GitHub Page record to an explicitly trusted peer."""
+        from node_core.p2p.service import NodePeerService
+        certificates = self.p2p_trust.trusted_certificates()
+        if peer_node_id not in certificates:
+            raise ValueError("Target node is not in the explicit trusted-peer list.")
+        message_keys = self._trusted_p2p_message_keys()
+        peer_key = message_keys.get(peer_node_id)
+        if peer_key is None:
+            raise ValueError("Pin the target node RSA message public key before replication.")
+        client = NodePeerService(
+            identity_store=self.p2p_identity, tls_transport=self.p2p_tls,
+            trusted_peers=certificates, rsa_identity_store=self._p2p_rsa_identity,
+            trusted_rsa_public_keys=message_keys, timeout_seconds=10.0,
+        )
+        return self._record_replicator.send_record(client, host, port, peer_node_id, peer_key, record)
+
+    def replicate_synced_github_records(self, host: str, port: int, peer_node_id: str) -> dict[str, Any]:
+        """Replicate all archived records already written to this operator GitHub repository."""
+        receipts = []
+        for record in self.github_binding.synced_records():
+            receipt = self.replicate_github_record(host, port, peer_node_id, record)
+            receipts.append({"record_id": record["record_id"], "status": receipt.get("status")})
+        return {"peer_node_id": peer_node_id, "sent": len(receipts), "accepted": sum(x["status"] == "accepted" for x in receipts), "receipts": receipts}
+
+    def received_github_record_replicas(self, origin_node_id: str | None = None) -> list[dict[str, Any]]:
+        """List records replicated into this node shared local storage."""
+        self.p2p_identity.initialize()
+        return self._record_replicator.list_received(origin_node_id)
+
     def start_native_p2p(self, host: str = "127.0.0.1", port: int = 0) -> tuple[str, int]:
         """Start the native P2P listener using the current persistent trust allowlist."""
         from node_core.p2p.service import NodePeerService, PeerServiceError
@@ -469,12 +560,16 @@ class NodeRuntime:
                 "No trusted peers configured. Add and verify a peer certificate first."
             )
         self.p2p_tls.ensure_certificate()
+        self._p2p_rsa_identity.initialize()
         service = NodePeerService(
             identity_store=self.p2p_identity,
             tls_transport=self.p2p_tls,
             trusted_peers=certificates,
             host=host,
             port=port,
+            rsa_identity_store=self._p2p_rsa_identity,
+            trusted_rsa_public_keys=self._trusted_p2p_message_keys(),
+            on_message=lambda peer, message_id, text: self._record_replicator.receive_message(peer, message_id, text),
         )
         address = service.start()
         self.p2p_service = service
