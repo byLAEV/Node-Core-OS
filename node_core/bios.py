@@ -22,7 +22,7 @@ class BIOSMenu:
 
     @staticmethod
     def _pause() -> None:
-        input("\\nPress Enter to return...")
+        input("\nPress Enter to return...")
 
     @staticmethod
     def _confirm(prompt: str) -> bool:
@@ -31,7 +31,7 @@ class BIOSMenu:
 
     @staticmethod
     def _show(title: str, values: dict[str, Any]) -> None:
-        print(f"\\n{title}")
+        print(f"\n{title}")
         for key, value in values.items():
             print(f"{key}: {value}")
 
@@ -72,12 +72,12 @@ class BIOSMenu:
             "12": "Administer GitHub-only identity pool, export a lightweight Pages client, and synchronize encrypted records.",
         }
         while True:
-            print("\\nNode Core BIOS\\nbyLAEV\\n")
+            print("\nNode Core BIOS\nbyLAEV\n")
             print("0. Back")
             for number in range(1, 13):
                 key = str(number)
                 print(f"{key}. {key_name(key)} — {descriptions[key]}")
-            choice = input("\\n> ").strip()
+            choice = input("\n> ").strip()
             if choice == "0":
                 return
             action = actions.get(choice)
@@ -112,7 +112,7 @@ class BIOSMenu:
                 "Gateway": self.runtime.config.ipfs_gateway,
                 "Daemon log": manager.log_path,
             })
-            print("\\n0. Back\\n1. Refresh status\\n2. Initialize repository\\n3. Start daemon\\n4. Stop daemon\\n5. Show complete configuration")
+            print("\n0. Back\n1. Refresh status\n2. Initialize repository\n3. Start daemon\n4. Stop daemon\n5. Show complete configuration")
             choice = input("> ").strip()
             if choice == "0":
                 return
@@ -141,7 +141,7 @@ class BIOSMenu:
 
     def network(self) -> None:
         while True:
-            print("\\nNetwork")
+            print("\nNetwork")
             print("1. Refresh network status (read-only probes)")
             print("2. Show local native P2P status")
             print("3. Show Kubo peers and bootstrap entries")
@@ -198,7 +198,7 @@ class BIOSMenu:
                 "Listener address": status.get("listen_address", "unavailable"),
                 "Note": "Listener requires at least one explicitly trusted peer certificate.",
             })
-            print("\\n0. Back\\n1. Start LAN discovery\\n2. Start authenticated listener\\n3. Stop authenticated listener\\n4. Stop LAN discovery")
+            print("\n0. Back\n1. Start LAN discovery\n2. Start authenticated listener\n3. Stop authenticated listener\n4. Stop LAN discovery")
             choice = input("> ").strip()
             if choice == "0":
                 return
@@ -222,7 +222,7 @@ class BIOSMenu:
     def configuration(self) -> None:
         config = self.runtime.config
         while True:
-            print("\\nConfiguration — defaults are active unless a saved config overrides them.")
+            print("\nConfiguration — defaults are active unless a saved config overrides them.")
             fields = {
                 "1": ("auto_start_kubo", "Auto-start Kubo", "true/false"),
                 "2": ("ipfs_api", "Kubo RPC API", "http://127.0.0.1:5001"),
@@ -234,7 +234,7 @@ class BIOSMenu:
             }
             for key, (attr, label, _) in fields.items():
                 print(f"{key}. {label}: {getattr(config, attr)}")
-            print("8. Save current settings\\n0. Back")
+            print("8. Save current settings\n0. Back")
             choice = input("> ").strip()
             if choice == "0":
                 return
@@ -282,7 +282,7 @@ class BIOSMenu:
 
     def security(self) -> None:
         while True:
-            print("\\nSecurity")
+            print("\nSecurity")
             print("1. Show technical node identity and key file permissions")
             print("2. List trusted/revoked peers")
             print("3. Trust peer certificate (verify fingerprint out of band first)")
@@ -327,11 +327,11 @@ class BIOSMenu:
         self._show("System network diagnostics", result)
         storage = self.runtime.storage
         storage.initialize()
-        print("\\nStorage:")
+        print("\nStorage:")
         for path in (storage.root, storage.private_path, storage.shared_path):
             print(path, "exists" if path.is_dir() else "MISSING")
         status = self.runtime.kubo.status()
-        print("\\nKubo:", status)
+        print("\nKubo:", status)
         print("Node Core version:", (Path(__file__).resolve().parent.parent / "VERSION").read_text().strip())
         self._pause()
 
@@ -365,7 +365,7 @@ class BIOSMenu:
     def lifecycle(self) -> None:
         while True:
             kubo = self.runtime.kubo.status()
-            print("\\nLifecycle")
+            print("\nLifecycle")
             print("Kubo:", "RUNNING" if kubo.running else "STOPPED")
             print("1. Start Kubo")
             print("2. Stop Kubo")

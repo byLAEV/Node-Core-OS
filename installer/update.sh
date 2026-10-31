@@ -344,7 +344,7 @@ import sys
 print(quote(sys.argv[1], safe=""))
 PY
   )" || {
-    printf 'Could not encode the fallback update ref.\\n' >&2
+    printf 'Could not encode the fallback update ref.\n' >&2
     return 1
   }
   local urls=(
@@ -434,7 +434,7 @@ update_application() (
   if [[ -f "$package_dir/source-package.tar.gz" ]]; then
     cp "$package_dir/source-package.tar.gz" "$archive" || return 1
     tar -tzf "$archive" >/dev/null 2>&1 || {
-      printf 'Bundled update source archive is invalid.\\n' >&2
+      printf 'Bundled update source archive is invalid.\n' >&2
       return 1
     }
     downloaded=1
@@ -445,21 +445,21 @@ update_application() (
     )
     for source_url in "${archive_urls[@]}"; do
       rm -f -- "$archive"
-      printf 'Trying Node Core OS source archive: %s\\n' "$source_url" >&2
+      printf 'Trying Node Core OS source archive: %s\n' "$source_url" >&2
       if download_file "$source_url" "$archive"; then
         if tar -tzf "$archive" >/dev/null 2>&1; then
           downloaded=1
           break
         fi
-        printf 'Downloaded archive is invalid; trying the next official GitHub source.\\n' >&2
+        printf 'Downloaded archive is invalid; trying the next official GitHub source.\n' >&2
       else
-        printf 'Source archive download failed; trying the next official GitHub source.\\n' >&2
+        printf 'Source archive download failed; trying the next official GitHub source.\n' >&2
       fi
     done
   fi
   [[ "$downloaded" == 1 ]] || {
     rm -f -- "$archive"
-    printf 'Could not obtain a valid Node Core OS source archive.\\n' >&2
+    printf 'Could not obtain a valid Node Core OS source archive.\n' >&2
     return 1
   }
   tar -xzf "$archive" -C "$extract" || return 1

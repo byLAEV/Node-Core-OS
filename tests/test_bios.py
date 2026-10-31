@@ -38,11 +38,13 @@ class BIOSMenuTests(unittest.TestCase):
         menu = BIOSMenu(SimpleNamespace())
         with patch("builtins.input", side_effect=["0"]), patch("builtins.print") as output:
             menu.run()
-        rendered = "\\n".join(str(call.args[0]) for call in output.call_args_list if call.args)
+        rendered = "\n".join(str(call.args[0]) for call in output.call_args_list if call.args)
         self.assertIn("Local private/shared storage", rendered)
         self.assertIn("Kubo daemon", rendered)
         self.assertIn("Network Domain Verification", rendered)
         self.assertIn("GitHub Identity Pool", rendered)
+        self.assertIn("Node Core BIOS\nbyLAEV", rendered)
+        self.assertNotIn("\\nNode Core BIOS", rendered)
 
 
 if __name__ == "__main__":
