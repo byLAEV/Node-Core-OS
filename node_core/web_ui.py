@@ -96,6 +96,37 @@ class NodeCoreWebServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
 
+    def start_background_sync(self, interval_seconds: float = 30.0) -> None:
+        if getattr(self, "_sync_thread", None) is not None:
+            return
+        self._sync_stop_event = threading.Event()
+
+        def sync_loop() -> None:
+            while not self._sync_stop_event.wait(interval_seconds):
+                try:
+                    binding = self.runtime.github_binding
+                    status = binding.status()
+                    if int(status.get("pending_records", 0)) > 0:
+                        result = binding.sync()
+                        if int(result.get("synced", 0)) > 0:
+                            print("Node Core background GitHub sync:", result, flush=True)
+                except Exception as exc:
+                    print("Node Core background GitHub sync deferred:", exc, flush=True)
+
+        self._sync_thread = threading.Thread(
+            target=sync_loop, name="node-core-github-sync", daemon=True
+        )
+        self._sync_thread.start()
+
+    def stop_background_sync(self) -> None:
+        stop_event = getattr(self, "_sync_stop_event", None)
+        worker = getattr(self, "_sync_thread", None)
+        if stop_event is not None:
+            stop_event.set()
+        if worker is not None:
+            worker.join(timeout=2.0)
+        self._sync_thread = None
+
     def __init__(self, port: int, runtime: NodeRuntime) -> None:
         self.runtime = runtime
         super().__init__((HOST, port), NodeCoreRequestHandler)
@@ -456,11 +487,13 @@ def main() -> None:
     else:
         print("Kubo auto-start: disabled (default). Use the web button or set NODE_CORE_WEB_AUTO_START_KUBO=1.")
     print("Kubo can also be started explicitly from the web interface after confirmation.")
+    server.start_background_sync()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nStopping Node Core OS web interface...")
     finally:
+        server.stop_background_sync()
         server.server_close()
 
 

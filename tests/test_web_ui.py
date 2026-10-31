@@ -163,6 +163,30 @@ class WebInterfaceTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=3)
 
+    def test_background_sync_retries_pending_records(self) -> None:
+        class FakeBinding:
+            def __init__(self):
+                self.sync_calls = 0
+            def status(self):
+                return {"pending_records": 1}
+            def sync(self):
+                self.sync_calls += 1
+                return {"synced": 1, "pending": 0}
+
+        binding = FakeBinding()
+        runtime = SimpleNamespace(github_binding=binding)
+        server = NodeCoreWebServer(0, runtime)
+        server.start_background_sync(interval_seconds=0.01)
+        try:
+            for _ in range(50):
+                if binding.sync_calls:
+                    break
+                threading.Event().wait(0.01)
+            self.assertGreaterEqual(binding.sync_calls, 1)
+        finally:
+            server.stop_background_sync()
+            server.server_close()
+
     def test_http_start_kubo_requires_explicit_confirmation(self) -> None:
         runtime = SimpleNamespace(
             kubo=SimpleNamespace(
