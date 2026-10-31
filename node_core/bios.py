@@ -56,6 +56,7 @@ class BIOSMenu:
             "10": self.identity,
             "11": self.domain_verification,
             "12": self.github_identity_pool,
+            "13": self.github_node_binding,
         }
         descriptions = {
             "1": "Local private/shared storage; directories are created automatically.",
@@ -69,12 +70,13 @@ class BIOSMenu:
             "9": "Start, stop and restart Node Core-managed runtime services.",
             "10": "User-declared identity profile; private data remains local.",
             "11": "Independent verification of local P2P, mesh and IPFS domains.",
-            "12": "Administer GitHub-only identity pool, export a lightweight Pages client, and synchronize encrypted records.",
+            "12": "Legacy GitHub identity pool and member admission.",
+            "13": "Bind this node to the operator GitHub account, App installation, Pages repository and Node API.",
         }
         while True:
             print("\nNode Core BIOS\nbyLAEV\n")
             print("0. Back")
-            for number in range(1, 13):
+            for number in range(1, 14):
                 key = str(number)
                 print(f"{key}. {key_name(key)} — {descriptions[key]}")
             choice = input("\n> ").strip()
@@ -487,6 +489,105 @@ class BIOSMenu:
                 print(f"GitHub Identity Pool operation failed: {exc}")
             self._pause()
 
+    def github_node_binding(self) -> None:
+        """Configure the operator GitHub App, Pages repository and local record sync."""
+        from node_core.github_app_auth import GitHubAppAuth, GitHubAppError
+        from node_core.github_binding import GitHubBindingError
+
+        auth = GitHubAppAuth(self.runtime.config.data_dir)
+        binding = self.runtime.github_binding
+        while True:
+            operator = auth.operator_status()
+            current = binding.status()
+            print("\\nGitHub App + Node Client")
+            print("GitHub operator authorized:", operator.get("authorized", False))
+            print("GitHub account:", operator.get("github_login") or "not linked")
+            print("Binding status:", current.get("binding_status", "not_configured"))
+            print("Repository:", current.get("repository") or "not configured")
+            print("GitHub Pages:", current.get("github_pages_url") or "not configured")
+            print("Node ID:", current.get("node_id") or "not available")
+            print("Pending local records:", current.get("pending_records", 0))
+            print("0. Back")
+            print("1. Show complete binding status")
+            print("2. Start GitHub App Device Flow")
+            print("3. Check Device Flow authorization")
+            print("4. Configure operator repository and Node API")
+            print("5. Export GitHub Pages client")
+            print("6. Synchronize pending records to the operator repository")
+            print("7. List local pending and synchronized records")
+            print("8. Replicate synchronized records to one trusted Node Core peer")
+            choice = input("> ").strip()
+            if choice == "0":
+                return
+            try:
+                if choice == "1":
+                    self._show("GitHub operator authorization", operator)
+                    self._show("GitHub node binding", current)
+                elif choice == "2":
+                    client_id = input(
+                        "GitHub App Client ID [NODE_CORE_GITHUB_APP_CLIENT_ID]: "
+                    ).strip() or os.environ.get("NODE_CORE_GITHUB_APP_CLIENT_ID", "")
+                    result = auth.start_device_flow(client_id)
+                    print("Open this URL:", result["verification_uri"])
+                    print("Enter this one-time code:", result["user_code"])
+                    print("Authorization expires in seconds:", result["expires_in"])
+                    print("Return here and choose option 3 to check authorization.")
+                elif choice == "3":
+                    expected_login = current.get("github_account")
+                    result = auth.poll_device_flow(expected_login)
+                    self._show("GitHub Device Flow", result)
+                elif choice == "4":
+                    operator = auth.operator_status()
+                    if not operator.get("authorized") or not operator.get("github_login"):
+                        raise GitHubBindingError(
+                            "Authorize the operator GitHub account with Device Flow first."
+                        )
+                    login = operator["github_login"]
+                    repository = input(
+                        f"Repository owned by {login} [{login}/node-core-client]: "
+                    ).strip() or f"{login}/node-core-client"
+                    expected_page = f"https://{login}.github.io/{repository.split('/', 1)[-1]}/"
+                    page = input(f"GitHub Pages URL [{expected_page}]: ").strip() or None
+                    installation = input("GitHub App installation ID (numeric, optional): ").strip() or None
+                    api_url = input("Public HTTPS Node API / tunnel URL: ").strip()
+                    result = binding.configure(
+                        login, repository, page, installation, api_url
+                    )
+                    self._show("GitHub operator binding saved", result)
+                elif choice == "5":
+                    target = input("Empty export directory [~/node-core-client]: ").strip()
+                    target = target or "~/node-core-client"
+                    exported = binding.export_client_package(Path(target).expanduser())
+                    print("Client exported:", exported)
+                    print("Publish this directory from the configured repository as GitHub Pages.")
+                elif choice == "6":
+                    if self._confirm("Write pending records to this operator's GitHub repository?"):
+                        self._show("GitHub record synchronization", binding.sync())
+                elif choice == "7":
+                    pending = sorted(binding.outbox.glob("*.json"))
+                    archived = binding.synced_records()
+                    print("Pending records:", len(pending))
+                    for path in pending:
+                        print("PENDING:", path.name)
+                    print("Synchronized archive:", len(archived))
+                    for record in archived:
+                        print("SYNCED:", record.get("record_id"), record.get("repository"))
+                    self._pause()
+                elif choice == "8":
+                    host = input("Trusted peer host or IP: ").strip()
+                    port = int(input("Trusted peer P2P port: ").strip())
+                    peer_id = input("Trusted peer Node ID (sha256:...): ").strip()
+                    if self._confirm("Replicate archived records to this explicitly trusted peer?"):
+                        self._show(
+                            "P2P record replication",
+                            self.runtime.replicate_synced_github_records(host, port, peer_id),
+                        )
+                else:
+                    print("Unknown GitHub Node Binding option.")
+            except (GitHubAppError, GitHubBindingError, OSError, RuntimeError, ValueError) as exc:
+                print("GitHub Node Binding operation failed:", exc)
+            self._pause()
+
     def domain_verification(self) -> None:
         if self.ui is not None:
             self.ui.network_domain_verification_menu()
@@ -501,5 +602,5 @@ def key_name(key: str) -> str:
         "4": "Services", "5": "Configuration", "6": "Security",
         "7": "Diagnostics", "8": "Updates", "9": "Lifecycle",
         "10": "Identity Profile", "11": "Network Domain Verification",
-        "12": "GitHub Identity Pool",
+        "12": "GitHub Identity Pool", "13": "GitHub Node Binding",
     }[key]

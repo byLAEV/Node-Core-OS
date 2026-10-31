@@ -301,8 +301,12 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
                     return
                 binding = self._binding()
                 if path == "/api/github/configure":
+                    operator = GitHubAppAuth(self.server.runtime.config.data_dir).operator_status()
+                    requested_login = str(request_data.get("github_login", "")).strip().lower()
+                    if not operator.get("authorized") or requested_login != str(operator.get("github_login", "")).lower():
+                        raise GitHubAppError("Complete GitHub App Device Flow for the same operator account before configuring this repository.")
                     result = binding.configure(
-                        request_data.get("github_login", ""),
+                        requested_login,
                         request_data.get("repository", ""),
                         request_data.get("pages_url"),
                         request_data.get("github_app_installation_id"),

@@ -75,8 +75,8 @@ class GitHubNodeBinding:
         api_url = (node_api_url or "").strip().rstrip("/")
         if api_url:
             parsed_api = urlsplit(api_url)
-            if parsed_api.scheme not in {"http", "https"} or not parsed_api.netloc or parsed_api.query or parsed_api.fragment:
-                raise GitHubBindingError("Node API URL must be an absolute HTTP or HTTPS URL without query or fragment.")
+            if parsed_api.scheme != "https" or not parsed_api.netloc or parsed_api.query or parsed_api.fragment:
+                raise GitHubBindingError("Node API URL must be an absolute HTTPS URL without query or fragment.")
         if installation and not installation.isdigit():
             raise GitHubBindingError("GitHub App installation ID must contain only digits.")
         self.root.mkdir(parents=True, exist_ok=True)
