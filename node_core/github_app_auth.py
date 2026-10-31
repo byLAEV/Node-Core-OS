@@ -168,7 +168,7 @@ class GitHubAppAuth:
             f"{API_URL}/app/installations/{installation_id}/access_tokens",
             jwt_token,
             {
-                "repository_names": [repository_name],
+                "repositories": [repository_name],
                 "permissions": {"contents": "write"},
             },
         )
@@ -214,7 +214,7 @@ class GitHubAppAuth:
         request = urllib.request.Request(url, headers={
             "Accept": "application/vnd.github+json",
             "Authorization": "Bearer " + token,
-            "X-GitHub-Api-Version": "2022-11-28",
+            "X-GitHub-Api-Version": "2026-03-10",
             "User-Agent": "Node-Core-OS-byLAEV",
         })
         return GitHubAppAuth._open_json(request)
