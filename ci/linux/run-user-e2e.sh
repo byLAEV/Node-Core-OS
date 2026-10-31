@@ -67,7 +67,10 @@ curl --fail --silent --show-error --max-time 10 -X POST \
 
 echo "=== Installed BIOS menu smoke test ==="
 menu_log="$RUNNER_TEMP/node-core-bios-menu.txt"
-printf '1\n4\n5\n6\ny\n0\n0\n' | "$NODE_CORE_DATA_DIR/bin/node-core" > "$menu_log"
+# 1 enters BIOS; 4/5 starts the Web API; 6/y stops it.
+# First 0 returns from Services to BIOS, second 0 returns to Node Core OS,
+# and third 0 exits the Node Core OS main menu.
+printf '1\n4\n5\n6\ny\n0\n0\n0\n' | "$NODE_CORE_DATA_DIR/bin/node-core" > "$menu_log"
 grep -Fq 'Node Core BIOS' "$menu_log"
 grep -Fq 'GitHub Identity Pool' "$menu_log"
 grep -Fq 'GitHub Node Binding' "$menu_log"
