@@ -59,6 +59,7 @@ jobs:
           mkdir -p "$stage/$update_name"
           cp installer/update.sh "$stage/$update_name/update.sh"
           cp "dist/$install_name.tar.gz" "$stage/$update_name/source-package.tar.gz"
+          printf '%s\\n' "$commit" > "$stage/$update_name/SOURCE_COMMIT"
           cat > "$stage/$update_name/README.txt" <<EOF
           Node Core OS complete update package
           Version: $version
