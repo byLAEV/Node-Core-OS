@@ -12,6 +12,8 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from node_core.ipfs import KuboStatus
+from node_core.github_binding import GitHubNodeBinding
+from node_core.identity.node_identity import NodeIdentityStore
 from node_core.web_ui import NodeCoreWebServer, _auto_start_kubo_enabled, _kubo_status, _port_from_environment, _require_unprivileged_user
 
 
@@ -222,6 +224,59 @@ class WebInterfaceTests(unittest.TestCase):
             server.shutdown()
             server.server_close()
             thread.join(timeout=3)
+
+    def test_http_github_page_record_is_persisted_by_real_node_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            binding = GitHubNodeBinding(data_dir, NodeIdentityStore(data_dir))
+            binding.configure(
+                "octocat", "octocat/node-core-client",
+                node_api_url="https://node.example.test",
+            )
+            runtime = SimpleNamespace(
+                config=SimpleNamespace(
+                    data_dir=data_dir,
+                    ipfs_api="http://127.0.0.1:5001",
+                    ipfs_repo_path=data_dir / "ipfs",
+                ),
+                kubo=SimpleNamespace(
+                    status=lambda: KuboStatus(installed=False, initialized=False, running=False)
+                ),
+                github_binding=binding,
+            )
+            server = NodeCoreWebServer(0, runtime)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                port = server.server_port
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+                body = json.dumps({
+                    "fields": {
+                        "display_name": "Synthetic visitor",
+                        "message": "cross-platform API acceptance",
+                    }
+                }).encode("utf-8")
+                connection.request(
+                    "POST", "/api/github/records", body=body,
+                    headers={
+                        "Host": f"127.0.0.1:{port}",
+                        "Origin": f"http://127.0.0.1:{port}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                response = connection.getresponse()
+                payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(response.status, 201)
+                record_path = binding.outbox / f"{payload['record_id']}.json"
+                self.assertTrue(record_path.is_file())
+                saved = json.loads(record_path.read_text(encoding="utf-8"))
+                self.assertEqual(saved["fields"]["display_name"], "Synthetic visitor")
+                self.assertEqual(saved["sync_status"], "pending")
+                connection.close()
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=3)
 
     def test_http_start_kubo_rejects_untrusted_origin(self) -> None:
         start_calls = []
