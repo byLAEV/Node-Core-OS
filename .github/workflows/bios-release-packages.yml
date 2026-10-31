@@ -88,8 +88,14 @@ jobs:
           set -euo pipefail
           sha256sum --check dist/SHA256SUMS
           sha512sum --check dist/SHA512SUMS
-          tar -tzf "dist/${{ steps.package.outputs.install }}.tar.gz" | grep -q 'node_core/bios.py'
-          tar -tzf "dist/${{ steps.package.outputs.update }}.tar.gz" | grep -q 'source-package.tar.gz'
+          install_listing="$(mktemp)"
+          update_listing="$(mktemp)"
+          trap 'rm -f "$install_listing" "$update_listing"' EXIT
+          tar -tzf "dist/${{ steps.package.outputs.install }}.tar.gz" > "$install_listing"
+          tar -tzf "dist/${{ steps.package.outputs.update }}.tar.gz" > "$update_listing"
+          grep -q 'node_core/bios.py' "$install_listing"
+          grep -q 'source-package.tar.gz' "$update_listing"
+          grep -q 'SOURCE_COMMIT' "$update_listing"
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
         with:

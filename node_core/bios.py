@@ -36,6 +36,13 @@ class BIOSMenu:
             print(f"{key}: {value}")
 
     def run(self) -> None:
+        # Never create or mutate Node Core state from an elevated account.
+        geteuid = getattr(os, "geteuid", None)
+        if geteuid is not None and geteuid() == 0:
+            raise RuntimeError(
+                "Node Core BIOS is user-only. Exit this root shell and run it "
+                "from your normal Termux/Linux user without sudo or su."
+            )
         actions = {
             "1": self.storage,
             "2": self.kubo,

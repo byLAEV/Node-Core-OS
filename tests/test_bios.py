@@ -28,6 +28,12 @@ class BIOSMenuTests(unittest.TestCase):
             MainMenu(runtime).bios()
         run.assert_called_once()
 
+    def test_bios_refuses_root_execution(self):
+        menu = BIOSMenu(SimpleNamespace())
+        with patch("node_core.bios.os.geteuid", return_value=0):
+            with self.assertRaisesRegex(RuntimeError, "user-only"):
+                menu.run()
+
     def test_defaults_and_descriptions_are_visible(self):
         menu = BIOSMenu(SimpleNamespace())
         with patch("builtins.input", side_effect=["0"]), patch("builtins.print") as output:
