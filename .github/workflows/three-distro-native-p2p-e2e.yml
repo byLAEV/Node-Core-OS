@@ -152,7 +152,7 @@ jobs:
           docker cp "$RUNNER_TEMP/kubo-cross-distro.txt" node-a:/tmp/kubo-cross-distro.txt
           CID="$(docker exec node-a bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" add -Q /tmp/kubo-cross-distro.txt')"
           for node in node-b node-c; do
-            ACTUAL_SHA="$(docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" cat '"$CID"' | sha256sum | awk "{print \\$1}"')"
+            ACTUAL_SHA="$(docker exec "$node" bash -lc 'export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"; "$NODE_CORE_DATA_DIR/bin/ipfs" cat '"$CID"' | sha256sum' | awk '{print $1}')"
             test "$ACTUAL_SHA" = "$EXPECTED_SHA"
             printf 'KUBO_CONTENT_OK node=%s cid=%s sha256=%s\\n' "$node" "$CID" "$ACTUAL_SHA"
           done
