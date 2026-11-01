@@ -70,4 +70,16 @@ class GitHubAppAuthTests(unittest.TestCase):
         self.assertEqual(json.loads(base64.urlsafe_b64decode(header+"="*(-len(header)%4)))["alg"],"RS256")
         self.assertTrue(signature)
 
+
+    def test_saved_operator_record_includes_client_id_and_secure_modes(self):
+        data={"device_code":"device","user_code":"ABCD","verification_uri":"https://github.com/login/device","expires_in":900,"interval":1}
+        with patch.object(GitHubAppAuth,"_post_form",return_value=data),patch("node_core.github_app_auth.time.time",return_value=100):
+            self.auth.start_device_flow("client-id")
+        with patch("node_core.github_app_auth.time.time",return_value=102),patch.object(GitHubAppAuth,"_post_form",return_value={"access_token":"user-token","refresh_token":"refresh-value","expires_in":28800,"refresh_token_expires_in":15552000}),patch.object(GitHubAppAuth,"_get_json",return_value={"login":"octocat"}):
+            self.auth.poll_device_flow("octocat")
+        saved=json.loads(self.auth.operator_path.read_text())
+        self.assertEqual(saved["client_id"],"client-id")
+        self.assertEqual(self.auth.root.stat().st_mode & 0o777,0o700)
+        self.assertEqual(self.auth.operator_path.stat().st_mode & 0o777,0o600)
+
 if __name__=="__main__": unittest.main()
