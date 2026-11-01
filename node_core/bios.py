@@ -515,6 +515,10 @@ class BIOSMenu:
             print("6. Synchronize pending records to the operator repository")
             print("7. List local pending and synchronized records")
             print("8. Replicate synchronized records to one trusted Node Core peer")
+            print("9. Refresh GitHub operator access token")
+            print("Access token expires:", operator.get("expires_at_utc") or "not expiring / not reported")
+            print("Refresh token available:", operator.get("refresh_available", False))
+            print("Reauthorization required:", operator.get("reauthorization_required", False))
             choice = input("> ").strip()
             if choice == "0":
                 return
@@ -581,6 +585,9 @@ class BIOSMenu:
                             "P2P record replication",
                             self.runtime.replicate_synced_github_records(host, port, peer_id),
                         )
+                elif choice == "9":
+                    auth.refresh_user_access_token()
+                    print("GitHub operator access token refreshed and account revalidated.")
                 else:
                     print("Unknown GitHub Node Binding option.")
             except (GitHubAppError, GitHubBindingError, OSError, RuntimeError, ValueError) as exc:

@@ -333,9 +333,14 @@ class NodeCoreRequestHandler(BaseHTTPRequestHandler):
             return
 
         path = urlsplit(self.path).path
-        if path in {"/api/github/device/start", "/api/github/device/poll", "/api/github/configure", "/api/github/records", "/api/github/sync", "/api/github/export"}:
+        if path in {"/api/github/device/start", "/api/github/device/poll", "/api/github/device/refresh", "/api/github/configure", "/api/github/records", "/api/github/sync", "/api/github/export"}:
             try:
                 request_data = self._read_json()
+                if path == "/api/github/device/refresh":
+                    auth = GitHubAppAuth(self.server.runtime.config.data_dir)
+                    auth.refresh_user_access_token()
+                    self._send_json(HTTPStatus.OK, auth.operator_status())
+                    return
                 if path == "/api/github/device/start":
                     client_id = request_data.get("client_id") or os.environ.get("NODE_CORE_GITHUB_APP_CLIENT_ID", "")
                     result = GitHubAppAuth(self.server.runtime.config.data_dir).start_device_flow(client_id)
