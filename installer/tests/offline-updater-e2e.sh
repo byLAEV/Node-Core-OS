@@ -59,6 +59,10 @@ NO_NETWORK
   chmod +x "$TEMP_ROOT/fake-bin/$command_name"
 done
 export PATH="$TEMP_ROOT/fake-bin:$PATH"
+# Keep pip offline even if a future updater edit omits the explicit --no-index flag.
+export PIP_NO_INDEX=1
+export PIP_CONFIG_FILE=/dev/null
+export PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # The actual release updater must consume its adjacent bundled source snapshot.
 printf 'y\n' | bash "$UPDATE_DIR/update.sh" > "$TEMP_ROOT/updater.log" 2>&1 || {
