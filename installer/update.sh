@@ -219,10 +219,18 @@ ensure_python_environment() {
     return 0
   fi
   if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
-    "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
-      printf 'Could not install Node Core OS Python dependencies.\n' >&2
-      return 1
-    }
+    local wheel_dir="$NODE_CORE_APP_DIR/installer/vendor/python-wheels"
+    if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
+      "$python_environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file" || {
+        printf 'Bundled Python dependencies could not be installed offline.\n' >&2
+        return 1
+      }
+    else
+      "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+        printf 'Could not install Node Core OS Python dependencies.\n' >&2
+        return 1
+      }
+    fi
   fi
   if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
     "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
@@ -578,7 +586,13 @@ main() {
   require_no_pending_recovery
   require_installation
   migrate_termux_config
-  ensure_python_environment
+  local package_dir
+  package_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "$package_dir/source-package.tar.gz" && -f "$package_dir/SOURCE_COMMIT" ]]; then
+    printf 'Bundled source package detected; deferring Python setup until its offline dependencies are available.\n'
+  else
+    ensure_python_environment
+  fi
   ensure_launchers
   refresh_kubo_service_unit_if_present
 
