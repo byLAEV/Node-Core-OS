@@ -56,6 +56,7 @@ jobs:
           mkdir -p "$stage/$install_name/installer/vendor/python-wheels" "$stage/$install_name/installer/vendor/kubo"
           if [[ -d installer/vendor/python-wheels ]]; then cp -R installer/vendor/python-wheels/. "$stage/$install_name/installer/vendor/python-wheels/"; fi
           if [[ -d installer/vendor/kubo ]]; then cp -R installer/vendor/kubo/. "$stage/$install_name/installer/vendor/kubo/"; fi
+          python -m pip download --disable-pip-version-check --only-binary=:all: --dest "$stage/$install_name/installer/vendor/python-wheels" -r requirements.txt
           tar -czf "dist/$install_name.tar.gz" -C "$stage" "$install_name"
           mkdir -p "$stage/$update_name"
           cp installer/update.sh "$stage/$update_name/update.sh"
@@ -100,6 +101,8 @@ jobs:
           grep -q 'SOURCE_COMMIT' "$update_listing"
           bundled_commit="$(tar -xOf "dist/${{ steps.package.outputs.update }}.tar.gz" "${{ steps.package.outputs.update }}/SOURCE_COMMIT")"
           [[ "$bundled_commit" == "${{ steps.package.outputs.commit }}" ]] || { echo 'Bundled SOURCE_COMMIT does not match the package source.' >&2; exit 1; }
+      - name: Run self-contained offline updater E2E
+        run: bash installer/tests/offline-updater-e2e.sh "dist/${{ steps.package.outputs.update }}.tar.gz"
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4
         with:
