@@ -115,7 +115,7 @@ jobs:
           mkdir -p "dist/$package"
           cp installer/update.sh "dist/$package/update.sh"
           cp "dist/$source_package" "dist/$package/source-package.tar.gz"
-          printf '%s\\n' "${{ steps.versions.outputs.commit }}" > "dist/$package/SOURCE_COMMIT"
+          echo "${{ steps.versions.outputs.commit }}" > "dist/$package/SOURCE_COMMIT"
           cat > "dist/$package/README.txt" <<'EOF'
           Node Core OS self-contained updater package
 
