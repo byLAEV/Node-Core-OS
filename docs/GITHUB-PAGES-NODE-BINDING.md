@@ -21,6 +21,42 @@ The exported `node-core-client.json` contains the public account, repository,
 Pages URL, node ID and Node API URL. It does not contain a GitHub access token
 or App private key.
 
+## GitHub operator token lifecycle and local protection
+
+Device Flow requests the `offline_access` scope. When GitHub returns an
+expiring user token pair, Node Core OS stores the Client ID, access token,
+refresh token and expiry metadata in
+`~/.node-core/identity/github-binding/operator-github.json`.
+
+Credential writes are atomic. The credential directory is set to mode
+`0700`, and credential files are written with mode `0600`. This protects
+against other unprivileged local accounts on a correctly configured Unix
+filesystem. **The token JSON is not encrypted at rest**; disk encryption or a
+future OS-backed secret store is required for protection against offline
+disk access or a compromised owner account. Never copy this file into a
+repository, Pages export, issue, log or support bundle.
+
+GitHub rotates refresh tokens: after a refresh, the previous refresh token
+and previous access token are invalid. Node Core OS therefore writes the
+new token pair atomically before validating that the token still resolves to
+the previously linked GitHub login. If the refresh token has expired or been
+revoked, the operator must repeat Device Flow authorization.
+
+In **GitHub Node Binding**, option 9 explicitly refreshes the operator token.
+The menu displays expiry and reauthorization status but never prints token
+values. User access tokens identify the operator; installation access tokens
+are separate, short-lived credentials used for repository operations. The
+repository sync path continues to prefer a repository-scoped GitHub App
+installation token, or the explicitly configured `gh auth` fallback.
+
+For a live acceptance test, use a dedicated GitHub test account and a
+GitHub App with Device Flow enabled. Do not use a production owner's account
+for the first validation. Confirm that the browser authorization login
+matches the expected operator, that the returned access token resolves to
+`GET /user`, that refresh rotates both tokens, and that a revoked/expired
+refresh token requires a new Device Flow. Do not paste codes, access tokens,
+refresh tokens or private keys into ChatGPT or repository files.
+
 ## Start the Node API
 
 Open **Node Core BIOS → Services**:
