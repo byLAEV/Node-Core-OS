@@ -40,6 +40,7 @@ jobs:
           [[ "$node_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           echo "node=$node_version" >> "$GITHUB_OUTPUT"
           echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Validate installer shell scripts
         shell: bash
@@ -110,19 +111,45 @@ jobs:
         run: |
           set -euo pipefail
           package="node-core-os-updater-${{ steps.versions.outputs.node }}"
+          source_package="node-core-os-installer-${{ steps.versions.outputs.node }}.tar.gz"
           mkdir -p "dist/$package"
-          cp installer/update.sh "dist/$package/"
+          cp installer/update.sh "dist/$package/update.sh"
+          cp "dist/$source_package" "dist/$package/source-package.tar.gz"
+          printf '%s\\n' "${{ steps.versions.outputs.commit }}" > "dist/$package/SOURCE_COMMIT"
           cat > "dist/$package/README.txt" <<'EOF'
-          Node Core OS updater package
+          Node Core OS self-contained updater package
+
+          This archive contains:
+          - update.sh: the protected updater
+          - source-package.tar.gz: the exact installation source snapshot and bundled Python wheels
+          - SOURCE_COMMIT: the full source commit associated with the archive
 
           Run as the normal installation user, never as root:
             bash update.sh
 
-          This package is only for an existing Node Core OS installation.
-          It does not perform a fresh installation.
+          Extract this archive and run the updater from the extracted directory.
+          The updater applies the included source package without downloading application source.
+          Python dependencies are installed from the included wheelhouse when compatible.
           EOF
           tar -czf "dist/$package.tar.gz" -C dist "$package"
           sha512sum "dist/$package.tar.gz" > "dist/$package.tar.gz.sha512"
+
+      - name: Verify and run self-contained offline updater E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="node-core-os-updater-${{ steps.versions.outputs.node }}"
+          updater_archive="dist/$package.tar.gz"
+          sha512sum --check "$updater_archive.sha512"
+          listing="$(mktemp)"
+          trap 'rm -f "$listing"' EXIT
+          tar -tzf "$updater_archive" > "$listing"
+          grep -q 'update.sh' "$listing"
+          grep -q 'source-package.tar.gz' "$listing"
+          grep -q 'SOURCE_COMMIT' "$listing"
+          bundled_commit="$(tar -xOf "$updater_archive" "$package/SOURCE_COMMIT")"
+          [[ "$bundled_commit" == "${{ steps.versions.outputs.commit }}" ]]
+          bash installer/tests/offline-updater-e2e.sh "$updater_archive"
 
       - name: Upload downloadable package artifacts
         uses: actions/upload-artifact@v4
