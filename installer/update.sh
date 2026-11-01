@@ -585,6 +585,7 @@ main() {
   recover_stale_cleanup_if_safe
   require_no_pending_recovery
   require_installation
+  mkdir -p "$NODE_CORE_UPDATE_DIR"
   migrate_termux_config
   local package_dir
   package_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
