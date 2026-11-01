@@ -91,8 +91,8 @@ class IdentityProfileStoreTests(unittest.TestCase):
             )
 
     def test_main_menu_shows_all_saved_identity_values_and_consensus_status(self):
-        profile = self.save_sample()
-        self.store.associate_node("12D3KooWExamplePeerId")
+        self.save_sample()
+        profile = self.store.associate_node("12D3KooWExamplePeerId")
         menu = MainMenu(SimpleNamespace(identity_profile=self.store))
         output = StringIO()
         with redirect_stdout(output):
