@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - feat/github-pages-node-binding
   pull_request:
     branches:
       - main
+      - feat/bios-functional-menus-packaging
   workflow_dispatch:
     inputs:
       pr_number:

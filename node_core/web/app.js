@@ -166,3 +166,95 @@
 
   byId("refresh").addEventListener("click", refreshStatus);
   refreshStatus();
+
+
+  const githubResult = byId("github-result");
+  async function githubRequest(path, body) {
+    const response = await fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store"
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.detail || "GitHub operation failed.");
+    return data;
+  }
+  function showGitHub(value) {
+    githubResult.textContent = JSON.stringify(value, null, 2);
+  }
+  byId("github-config-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = byId("github-configure");
+    button.disabled = true;
+    try {
+      const result = await githubRequest("/api/github/configure", {
+        github_login: byId("github-login").value.trim(),
+        repository: byId("github-repository").value.trim(),
+        node_api_url: byId("github-api-url").value.trim(),
+        github_app_installation_id: byId("github-installation").value.trim()
+      });
+      showGitHub(result);
+    } catch (error) {
+      githubResult.textContent = "Error: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  byId("github-status").addEventListener("click", async () => {
+    try { showGitHub(await githubRequest("/api/github/binding")); }
+    catch (error) { githubResult.textContent = "Error: " + error.message; }
+  });
+  byId("github-export").addEventListener("click", async () => {
+    try { showGitHub(await githubRequest("/api/github/export", {})); }
+    catch (error) { githubResult.textContent = "Error: " + error.message; }
+  });
+  byId("github-sync").addEventListener("click", async () => {
+    try { showGitHub(await githubRequest("/api/github/sync", {})); }
+    catch (error) { githubResult.textContent = "Error: " + error.message; }
+  });
+
+  const githubDeviceResult = byId("github-device-result");
+  async function deviceRequest(path, body) {
+    const response = await fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "Content-Type": "application/json" } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store"
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || data.detail || "GitHub device flow failed.");
+    return data;
+  }
+  byId("github-device-start").addEventListener("click", async () => {
+    const button = byId("github-device-start");
+    button.disabled = true;
+    try {
+      const result = await deviceRequest("/api/github/device/start", {});
+      githubDeviceResult.textContent =
+        "Abre " + result.verification_uri + "\nCódigo: " + result.user_code +
+        "\nExpira en " + result.expires_in + " segundos. Después pulsa Comprobar autorización.";
+    } catch (error) {
+      githubDeviceResult.textContent = "Error: " + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  byId("github-device-poll").addEventListener("click", async () => {
+    try {
+      const expected = byId("github-login").value.trim();
+      const result = await deviceRequest("/api/github/device/poll", { expected_login: expected });
+      githubDeviceResult.textContent = JSON.stringify(result, null, 2);
+    } catch (error) {
+      githubDeviceResult.textContent = "Error: " + error.message;
+    }
+  });
+  byId("github-device-status").addEventListener("click", async () => {
+    try {
+      githubDeviceResult.textContent = JSON.stringify(
+        await deviceRequest("/api/github/device/status"), null, 2
+      );
+    } catch (error) {
+      githubDeviceResult.textContent = "Error: " + error.message;
+    }
+  });

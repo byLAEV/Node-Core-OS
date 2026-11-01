@@ -28,3 +28,9 @@
     .menu-detail { margin-top: 16px; }
     .menu-detail h3 { margin-top: 0; }
     .menu-detail li { overflow-wrap: anywhere; margin: 6px 0; }
+
+.github-panel { margin-top: 18px; }
+.github-panel form { display: grid; gap: 8px; max-width: 640px; }
+.github-panel input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #0a0d12; color: var(--text); font: inherit; }
+.github-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.github-result { overflow-wrap: anywhere; white-space: pre-wrap; background: #080b10; border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: 320px; overflow: auto; }

@@ -4,14 +4,18 @@ on:
   push:
     branches:
       - main
+      - feat/github-pages-node-binding
     paths:
       - ".github/workflows/two-node-network.yml"
       - "installer/tests/two-kubo-nodes.sh"
       - "node_core/network.py"
       - "tests/test_network.py"
+      - "node_core/record_replication.py"
+      - "tests/test_github_record_replication.py"
   pull_request:
     branches:
       - main
+      - feat/bios-functional-menus-packaging
     paths:
       - ".github/workflows/two-node-network.yml"
       - "installer/tests/two-kubo-nodes.sh"
