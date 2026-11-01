@@ -93,4 +93,11 @@ class GitHubAppAuthTests(unittest.TestCase):
         saved=json.loads(self.auth.operator_path.read_text())
         self.assertEqual(saved["refresh_token"],"rotated-refresh")
 
+
+    def test_missing_refresh_credential_fails_closed(self):
+        self.auth._write(self.auth.operator_path,{"github_login":"octocat","client_id":"client-id","access_token":"old-access","expires_at":900})
+        with patch("node_core.github_app_auth.time.time",return_value=1000):
+            with self.assertRaises(GitHubAppError):
+                self.auth.user_access_token()
+
 if __name__=="__main__": unittest.main()
