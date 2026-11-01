@@ -1,5 +1,6 @@
 """Runtime orchestration for Node Core OS."""
 from pathlib import Path
+import os
 from datetime import datetime, timezone
 import threading
 from typing import Any
@@ -99,6 +100,12 @@ class NodeRuntime:
         return self._p2p_tls
 
     def boot(self) -> None:
+        geteuid = getattr(os, "geteuid", None)
+        if geteuid is not None and geteuid() == 0:
+            raise RuntimeError(
+                "Node Core OS is user-only. Exit the root shell and launch Node Core "
+                "from your normal Termux/Linux user without sudo or su."
+            )
         self.config.ensure_directories()
         self.storage.initialize()
         self.config.save()
