@@ -221,10 +221,13 @@ ensure_python_environment() {
   if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
     local wheel_dir="$NODE_CORE_APP_DIR/installer/vendor/python-wheels"
     if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
-      "$python_environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file" || {
-        printf 'Bundled Python dependencies could not be installed offline.\n' >&2
-        return 1
-      }
+      if ! "$python_environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
+        printf 'Bundled wheels do not satisfy this platform; falling back to the configured Python package index.\n' >&2
+        "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+          printf 'Could not install Node Core OS Python dependencies from the bundled wheelhouse or configured package index.\n' >&2
+          return 1
+        }
+      fi
     else
       "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
         printf 'Could not install Node Core OS Python dependencies.\n' >&2
