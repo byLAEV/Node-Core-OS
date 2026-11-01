@@ -42,7 +42,7 @@ UPDATE_DIR="$(find "$TEMP_ROOT/package" -mindepth 1 -maxdepth 1 -type d -print -
   printf 'FAIL: update package is missing update.sh, source-package.tar.gz, or SOURCE_COMMIT.\n' >&2
   exit 1
 }
-EXPECTED_COMMIT="$(tr -d '\\r\n' < "$UPDATE_DIR/SOURCE_COMMIT")"
+IFS= read -r EXPECTED_COMMIT < "$UPDATE_DIR/SOURCE_COMMIT"
 [[ "$EXPECTED_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]] || {
   printf 'FAIL: invalid SOURCE_COMMIT in update package.\n' >&2
   exit 1
