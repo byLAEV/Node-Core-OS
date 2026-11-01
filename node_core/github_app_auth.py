@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import secrets
 import time
 import urllib.error
 import urllib.parse
@@ -41,13 +42,36 @@ class GitHubAppAuth:
     @staticmethod
     def _write(path: Path, value: dict[str, Any]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(path.suffix + ".tmp")
-        temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         try:
-            os.chmod(temporary, 0o600)
+            os.chmod(path.parent, 0o700)
         except OSError:
             pass
-        temporary.replace(path)
+        temporary = path.with_name(path.name + "." + secrets.token_hex(8) + ".tmp")
+        payload = (json.dumps(value, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        descriptor = os.open(temporary, flags, 0o600)
+        try:
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, path)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+            directory_flag = getattr(os, "O_DIRECTORY", 0)
+            if directory_flag:
+                directory_fd = os.open(path.parent, os.O_RDONLY | directory_flag)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+        finally:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def start_device_flow(self, client_id: str) -> dict[str, Any]:
         client_id = str(client_id or "").strip()
@@ -124,9 +148,10 @@ class GitHubAppAuth:
 
         operator = {
             "github_login": login,
+            "client_id": state["client_id"],
             "access_token": access_token,
             "refresh_token": data.get("refresh_token"),
-            "expires_at": now + int(data.get("expires_in", 28800)),
+            "expires_at": now + int(data["expires_in"]) if data.get("expires_in") else None,
             "refresh_token_expires_at": (
                 now + int(data["refresh_token_expires_in"])
                 if data.get("refresh_token_expires_in") else None
@@ -145,14 +170,89 @@ class GitHubAppAuth:
         if not self.operator_path.is_file():
             return {"authorized": False, "github_login": None}
         value = json.loads(self.operator_path.read_text(encoding="utf-8"))
+        expires_at = value.get("expires_at")
         return {
             "authorized": bool(value.get("access_token")),
             "github_login": value.get("github_login"),
             "authorized_at_utc": value.get("authorized_at_utc"),
-            "expires_at_utc": datetime.fromtimestamp(
-                float(value.get("expires_at", 0)), timezone.utc
-            ).isoformat(),
+            "expires_at_utc": (
+                datetime.fromtimestamp(float(expires_at), timezone.utc).isoformat()
+                if expires_at else None
+            ),
+            "refresh_available": bool(value.get("refresh_token")),
+            "reauthorization_required": bool(
+                not value.get("access_token")
+                or (
+                    expires_at and time.time() >= float(expires_at)
+                    and not value.get("refresh_token")
+                )
+            ),
         }
+
+    def user_access_token(self, refresh_before_seconds: int = 60) -> str:
+        if not self.operator_path.is_file():
+            raise GitHubAppError("GitHub operator account is not authorized.")
+        operator = json.loads(self.operator_path.read_text(encoding="utf-8"))
+        access_token = str(operator.get("access_token") or "")
+        if not access_token:
+            raise GitHubAppError("GitHub operator access token is missing; authorize again.")
+        expires_at = operator.get("expires_at")
+        if expires_at and time.time() >= float(expires_at) - max(0, int(refresh_before_seconds)):
+            return self.refresh_user_access_token()
+        return access_token
+
+    def refresh_user_access_token(self) -> str:
+        if not self.operator_path.is_file():
+            raise GitHubAppError("GitHub operator account is not authorized.")
+        operator = json.loads(self.operator_path.read_text(encoding="utf-8"))
+        client_id = str(operator.get("client_id") or "")
+        refresh_token = str(operator.get("refresh_token") or "")
+        if not client_id or not refresh_token:
+            raise GitHubAppError(
+                "No usable GitHub refresh token is stored; repeat Device Flow authorization."
+            )
+        refresh_expires_at = operator.get("refresh_token_expires_at")
+        if refresh_expires_at and time.time() >= float(refresh_expires_at):
+            raise GitHubAppError("GitHub refresh token expired; repeat Device Flow authorization.")
+        data = self._post_form(OAUTH_TOKEN_URL, {
+            "client_id": client_id,
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        })
+        if data.get("error"):
+            error = str(data["error"])
+            if error in {"bad_refresh_token", "expired_token", "invalid_grant"}:
+                raise GitHubAppError(
+                    "GitHub refresh token is invalid or expired; repeat Device Flow authorization."
+                )
+            raise GitHubAppError("GitHub token refresh failed: " + error)
+        access_token = str(data.get("access_token") or "")
+        if not access_token:
+            raise GitHubAppError("GitHub token refresh returned no access token.")
+        now = time.time()
+        rotated = dict(operator)
+        rotated["access_token"] = access_token
+        rotated["expires_at"] = now + int(data["expires_in"]) if data.get("expires_in") else None
+        if data.get("refresh_token"):
+            rotated["refresh_token"] = str(data["refresh_token"])
+            rotated["refresh_token_expires_at"] = (
+                now + int(data["refresh_token_expires_in"])
+                if data.get("refresh_token_expires_in") else None
+            )
+        else:
+            rotated["refresh_token"] = None
+            rotated["refresh_token_expires_at"] = None
+        rotated["last_refreshed_at_utc"] = datetime.now(timezone.utc).isoformat()
+        # Persist the rotated pair atomically: GitHub invalidates the old refresh token on use.
+        self._write(self.operator_path, rotated)
+        user = self._get_json(API_URL + "/user", access_token)
+        login = str(user.get("login", "")).strip().lower()
+        if not login or login != str(operator.get("github_login", "")).strip().lower():
+            self.operator_path.unlink(missing_ok=True)
+            raise GitHubAppError(
+                "Refreshed GitHub token did not resolve to the previously linked account; authorize again."
+            )
+        return access_token
 
     def installation_token(
         self,
