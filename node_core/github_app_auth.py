@@ -171,21 +171,27 @@ class GitHubAppAuth:
             return {"authorized": False, "github_login": None}
         value = json.loads(self.operator_path.read_text(encoding="utf-8"))
         expires_at = value.get("expires_at")
+        refresh_expires_at = value.get("refresh_token_expires_at")
+        refresh_expired = bool(
+            refresh_expires_at and time.time() >= float(refresh_expires_at)
+        )
+        access_expired = bool(expires_at and time.time() >= float(expires_at))
         return {
-            "authorized": bool(value.get("access_token")),
+            "authorized": bool(value.get("access_token")) and not access_expired,
             "github_login": value.get("github_login"),
             "authorized_at_utc": value.get("authorized_at_utc"),
             "expires_at_utc": (
                 datetime.fromtimestamp(float(expires_at), timezone.utc).isoformat()
                 if expires_at else None
             ),
-            "refresh_available": bool(value.get("refresh_token")),
+            "refresh_token_expires_at_utc": (
+                datetime.fromtimestamp(float(refresh_expires_at), timezone.utc).isoformat()
+                if refresh_expires_at else None
+            ),
+            "refresh_available": bool(value.get("refresh_token")) and not refresh_expired,
             "reauthorization_required": bool(
                 not value.get("access_token")
-                or (
-                    expires_at and time.time() >= float(expires_at)
-                    and not value.get("refresh_token")
-                )
+                or (access_expired and (not value.get("refresh_token") or refresh_expired))
             ),
         }
 
@@ -213,6 +219,12 @@ class GitHubAppAuth:
             )
         refresh_expires_at = operator.get("refresh_token_expires_at")
         if refresh_expires_at and time.time() >= float(refresh_expires_at):
+            operator["access_token"] = None
+            operator["refresh_token"] = None
+            operator["expires_at"] = None
+            operator["refresh_token_expires_at"] = None
+            operator["reauthorization_required"] = True
+            self._write(self.operator_path, operator)
             raise GitHubAppError("GitHub refresh token expired; repeat Device Flow authorization.")
         data = self._post_form(OAUTH_TOKEN_URL, {
             "client_id": client_id,
@@ -222,6 +234,12 @@ class GitHubAppAuth:
         if data.get("error"):
             error = str(data["error"])
             if error in {"bad_refresh_token", "expired_token", "invalid_grant"}:
+                operator["access_token"] = None
+                operator["refresh_token"] = None
+                operator["expires_at"] = None
+                operator["refresh_token_expires_at"] = None
+                operator["reauthorization_required"] = True
+                self._write(self.operator_path, operator)
                 raise GitHubAppError(
                     "GitHub refresh token is invalid or expired; repeat Device Flow authorization."
                 )
