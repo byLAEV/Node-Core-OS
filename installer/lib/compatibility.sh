@@ -14,6 +14,10 @@ node_core_compatibility_preflight() {
     return 0
   else
     local result=$?
+    if [[ "$mode" == "prepare" && "$result" -eq 2 ]]; then
+      printf 'Compatibility profile recognized; dependency preparation is required before installation.\n'
+      return 0
+    fi
     printf 'Terminal compatibility preflight rejected this environment (exit %s).\n' "$result" >&2
     printf '%s\n' 'No Node Core application files were changed by this preflight.' >&2
     return "$result"
