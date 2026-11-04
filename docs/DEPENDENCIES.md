@@ -38,7 +38,7 @@ The Node Core Python runtime currently has one declared third-party distribution
 
 The installed application runs with `~/.node-core/runtime/node-core-venv/bin/python`.
 
-GNU/Linux installs requirements into this private virtual environment, using bundled wheels when compatible and the configured Python package index otherwise. Installation verifies the `cryptography` import and an Ed25519 key-generation operation.
+GNU/Linux installs requirements into this private virtual environment, using compatible binary wheels only, preferring bundled wheels and then the configured Python package index. Source compilation is not an automatic fallback. Install, verification, update candidate validation and CI use the shared `node_core.security.crypto_health` self-test for version, Ed25519 sign/verify/tamper rejection, PKCS8 PEM round-trip and SHA-256.
 
 Native Termux uses its Android-native `python-cryptography` package. Its virtual environment exposes Termux site-packages; GNU/Linux manylinux wheels must not be installed into Android Python.
 
@@ -55,6 +55,8 @@ The core GNU/Linux CI workflow uses `actions/checkout@v5` and `actions/setup-pyt
 The current code uses `cryptography` for persistent Ed25519 technical node identity and cryptographic functions in certificate, TLS, signed-policy and secure-messaging modules. The exact availability and verification status of each feature must be reported separately.
 
 A technical node key proves control of that key, not a person's civil identity, uniqueness, legal status or trustworthiness. The technical private key is stored as a PEM file protected by filesystem permissions; the current identity store does not encrypt it at rest.
+
+See [Cryptographic Runtime Contract and Recovery](CRYPTOGRAPHY-OPERATIONS.md) for platform-specific installation and failure recovery.
 
 ## Installer-only and optional dependencies
 

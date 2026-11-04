@@ -68,6 +68,13 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertIn("cryptography>=42.0.0", self.installer_docs)
         self.assertIn("Python 3.10", self.dependencies)
 
+    def test_crypto_health_is_shared(self):
+        self.assertTrue((ROOT / "node_core/security/crypto_health.py").is_file())
+        self.assertIn("node_core.security.crypto_health", self.install)
+        self.assertIn("node_core.security.crypto_health", self.verify)
+        self.assertIn("node_core.security.crypto_health", self.update)
+        self.assertIn("--only-binary=:all:", (ROOT / "installer/lib/python.sh").read_text())
+
     def test_release_tag_snapshot_is_not_misrepresented(self):
         coherence = (ROOT / "docs/REPOSITORY-COHERENCE.md").read_text()
         self.assertIn("41 commits ahead", coherence)

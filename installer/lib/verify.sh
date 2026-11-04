@@ -59,7 +59,7 @@ verify_installation() {
     printf 'Verification failed: Node Core private Python interpreter is missing: %s\n' "$python_environment" >&2
     failures=1
   else
-    if ! "$python_environment" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; Ed25519PrivateKey.generate()'; then
+    if ! PYTHONPATH="$app_dir" "$python_environment" -m node_core.security.crypto_health --json; then
       printf 'Verification failed: cryptography/Ed25519 is unavailable in the application runtime.\n' >&2
       failures=1
     fi

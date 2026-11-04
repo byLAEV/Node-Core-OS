@@ -74,7 +74,7 @@ PY
     if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
       # Termux wheels are Android-native packages installed by pkg. PyPI manylinux
       # wheels are glibc binaries and must never be installed into Android Python.
-      "$environment/bin/python" -c 'import cryptography, re; from cryptography.hazmat.primitives.asymmetric import ed25519; version = tuple(map(int, re.match(r"^(\d+)\.(\d+)\.(\d+)", cryptography.__version__).groups())); assert version >= (42, 0, 0); ed25519.Ed25519PrivateKey.generate(); print("Verified Termux cryptography:", cryptography.__version__)' || {
+      PYTHONPATH="$NODE_CORE_DATA_DIR/app" "$environment/bin/python" -m node_core.security.crypto_health --json || {
         printf 'Termux cryptography is unavailable in the private environment.\n' >&2
         printf 'Install it with: pkg install python-cryptography\n' >&2
         return 1
@@ -82,15 +82,15 @@ PY
     else
       local wheel_dir="$NODE_CORE_DATA_DIR/app/installer/vendor/python-wheels"
       if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
-        if ! "$environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
+        if ! "$environment/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
           printf 'Bundled wheels do not match this Linux architecture; trying the configured Python package index.\n' >&2
-          "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+          "$environment/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --upgrade -r "$requirements_file" || {
             printf 'Could not install Node Core OS Python dependencies from the bundled wheelhouse or configured package index.\n' >&2
             return 1
           }
         fi
       else
-        "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+        "$environment/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --upgrade -r "$requirements_file" || {
           printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
           return 1
         }
@@ -99,7 +99,7 @@ PY
   fi
 
   if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
-    "$environment/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); print("Verified cryptography and Ed25519:", cryptography.__version__)' || {
+    PYTHONPATH="$NODE_CORE_DATA_DIR/app" "$environment/bin/python" -m node_core.security.crypto_health --json || {
       printf 'The cryptography dependency failed its import or Ed25519 verification.\n' >&2
       return 1
     }

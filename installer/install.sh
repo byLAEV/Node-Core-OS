@@ -40,7 +40,7 @@ main() {
 
   # Validate the cryptographic engine inside the exact virtual environment used
   # by the installed application, then create this node's persistent identity.
-  if ! "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; print("Verified cryptographic engine:", cryptography.__version__, "| Ed25519: available")'; then
+  if ! PYTHONPATH="$NODE_CORE_DATA_DIR/app" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m node_core.security.crypto_health --json; then
     printf 'Cryptographic engine verification failed; refusing to finish installation.\n' >&2
     exit 1
   fi

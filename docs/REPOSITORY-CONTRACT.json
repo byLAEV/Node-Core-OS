@@ -91,5 +91,19 @@
     "checkout_action": "actions/checkout@v5",
     "setup_python_action": "actions/setup-python@v6",
     "minimum_runner_version": "2.327.1"
+  },
+  "cryptography": {
+    "distribution": "cryptography",
+    "minimum_version": "42.0.0",
+    "gnu_linux_install": "private-venv-binary-wheels-only",
+    "termux_install": "native-python-cryptography",
+    "self_test": "node_core.security.crypto_health",
+    "algorithms": [
+      "Ed25519",
+      "SHA-256"
+    ],
+    "serialization": "PKCS8 PEM",
+    "private_key_encryption_at_rest": false,
+    "identity_recovery": "fail_closed_preserve_key_never_regenerate"
   }
 }
