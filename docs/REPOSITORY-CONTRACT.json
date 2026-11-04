@@ -105,5 +105,30 @@
     "serialization": "PKCS8 PEM",
     "private_key_encryption_at_rest": false,
     "identity_recovery": "fail_closed_preserve_key_never_regenerate"
+  },
+  "terminal_compatibility": {
+    "contract_id": "NCTCL-1",
+    "manifest": "compatibility/manifest.json",
+    "schema": "schemas/compatibility-manifest.schema.json",
+    "implementation": "node_core/compatibility",
+    "installer_preflight": "installer/lib/compatibility.sh",
+    "diagnostic_command": "~/.node-core/bin/node-core-compatibility",
+    "decision_states": [
+      "ready",
+      "requires_preparation",
+      "unsupported"
+    ],
+    "gnu_linux_architectures": [
+      "x86_64",
+      "aarch64"
+    ],
+    "termux_architectures": [
+      "aarch64"
+    ],
+    "distribution_policy": "capability_based_not_hardcoded_allowlist",
+    "terminal_emulator_policy": "informational_only_generic_posix_tty_detection",
+    "systemd_user": "optional_manual_service_fallback",
+    "preflight_mutates_host": false,
+    "compatibility_match_is_installation_evidence": false
   }
 }

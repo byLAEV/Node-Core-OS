@@ -60,6 +60,10 @@ Kubo is an external infrastructure dependency; Node Core OS does not reimplement
 
 See [Implementation Architecture](docs/ARCHITECTURE.md).
 
+### Linux terminal compatibility
+
+Node Core OS is designed for Linux consoles and terminal environments first. Its Terminal Compatibility Layer (NCTCL) uses versioned manifests and executable capability checks to detect the distribution, architecture, shell, terminal behavior, Python runtime, dependencies and optional service managers. It supports one core and one installer with platform adapters, rather than separate products for each terminal. Terminal emulator names are not an allowlist: the system uses generic TTY/ANSI detection and text fallback. See [Terminal Compatibility Contract](docs/TERMINAL-COMPATIBILITY.md). A detected profile is not claimed as tested until the matching installation tests pass.
+
 ### Local storage
 
 Local storage is used for resources and application data managed by the Node Core OS installation. The installed data directory is normally under `~/.node-core/`, with separate areas for application code, configuration, storage, logs, runtime files, and IPFS data.

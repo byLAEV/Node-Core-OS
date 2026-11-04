@@ -70,6 +70,13 @@ verify_installation() {
   fi
 
   check_executable "$NODE_CORE_DATA_DIR/bin/node-core"
+  check_executable "$NODE_CORE_DATA_DIR/bin/node-core-compatibility"
+  if [[ -x "$python_environment" && -f "$app_dir/compatibility/manifest.json" ]]; then
+    if ! PYTHONPATH="$app_dir" "$python_environment" -m node_core.compatibility --mode runtime; then
+      printf 'Verification failed: installed runtime does not satisfy the terminal compatibility contract.\n' >&2
+      failures=1
+    fi
+  fi
   check_executable "$executable"
 
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"

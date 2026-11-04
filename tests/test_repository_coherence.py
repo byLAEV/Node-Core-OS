@@ -20,6 +20,8 @@ class RepositoryCoherenceTests(unittest.TestCase):
         cls.verify = (ROOT / "installer/lib/verify.sh").read_text()
         cls.update = (ROOT / "installer/update.sh").read_text()
         cls.ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        cls.compatibility_manifest = json.loads((ROOT / "compatibility/manifest.json").read_text())
+        cls.compatibility_docs = (ROOT / "docs/TERMINAL-COMPATIBILITY.md").read_text()
 
     def test_version_matches_contract_and_readme(self):
         version = (ROOT / "VERSION").read_text().strip()
@@ -74,6 +76,15 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertIn("node_core.security.crypto_health", self.verify)
         self.assertIn("node_core.security.crypto_health", self.update)
         self.assertIn("--only-binary=:all:", (ROOT / "installer/lib/python.sh").read_text())
+
+    def test_terminal_compatibility_contract_is_integrated(self):
+        self.assertEqual(self.compatibility_manifest["contract_id"], "NCTCL-1")
+        self.assertEqual(self.compatibility_manifest["supported_environments"]["gnu_linux"]["architectures"], ["x86_64", "aarch64"])
+        self.assertIn("capability_based", self.compatibility_manifest["supported_environments"]["gnu_linux"]["distribution_policy"])
+        self.assertIn("node_core_compatibility_preflight", self.install)
+        self.assertIn("node_core_compatibility_preflight", self.update)
+        self.assertIn("node_core.compatibility", self.compatibility_docs)
+        self.assertTrue((ROOT / "schemas/compatibility-manifest.schema.json").is_file())
 
     def test_release_tag_snapshot_is_not_misrepresented(self):
         coherence = (ROOT / "docs/REPOSITORY-COHERENCE.md").read_text()

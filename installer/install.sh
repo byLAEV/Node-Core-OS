@@ -10,6 +10,7 @@ INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$INSTALLER_DIR/.." && pwd)"
 source "$INSTALLER_DIR/config/defaults"
 source "$INSTALLER_DIR/lib/platform.sh"
+source "$INSTALLER_DIR/lib/compatibility.sh"
 source "$INSTALLER_DIR/lib/dependencies.sh"
 source "$INSTALLER_DIR/lib/network.sh"
 source "$INSTALLER_DIR/lib/filesystem.sh"
@@ -29,6 +30,7 @@ main() {
     exit 1
   fi
   ensure_dependencies
+  node_core_compatibility_preflight "$PROJECT_ROOT" "install"
   if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     printf 'Existing Node Core OS installation detected.\n'
     printf 'Delegating to the protected updater; persistent data will be preserved.\n'

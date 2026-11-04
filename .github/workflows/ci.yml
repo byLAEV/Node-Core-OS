@@ -58,6 +58,8 @@ jobs:
           set -euo pipefail
           python -m node_core.security.crypto_health --json
           python -m unittest tests.test_crypto_health tests.test_node_identity -v
+          python -m node_core.compatibility --mode diagnose --json
+          python -m unittest tests.test_compatibility -v
 
       - name: Verify supported platform
         run: |
@@ -77,6 +79,7 @@ jobs:
           set -euo pipefail
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
+          bash installer/tests/compatibility.sh
           bash installer/tests/detect-installation.sh
           bash installer/tests/manifest.sh
           bash installer/tests/plan.sh

@@ -16,7 +16,7 @@ This document describes dependencies required by executable code and installer b
 | Other Linux architectures | Not supported by current installer | Fail closed; never substitute another architecture's binary |
 | Windows / macOS | Not supported | No compatibility claim |
 
-Termux compatibility is implemented inside the shared Linux-terminal installer. `installer/termux-install.sh` is a compatibility alias, not a second installer.
+Termux compatibility is implemented inside the shared Linux-terminal installer. `installer/termux-install.sh` is a compatibility alias, not a second installer. The Node Core Terminal Compatibility Layer (NCTCL) evaluates declared capabilities rather than requiring a fixed terminal-emulator or distribution-name allowlist. See [TERMINAL-COMPATIBILITY.md](TERMINAL-COMPATIBILITY.md).
 
 ## Required runtime dependencies
 

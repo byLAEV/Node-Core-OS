@@ -128,3 +128,8 @@ The public [Remembering & Forgetting roadmap](../web-test-bench/remembering.html
     registry/
       content.json
   ipfs/
+
+
+## Node Core Terminal Compatibility Layer (NCTCL)
+
+Node Core OS uses one manifest-driven compatibility layer for Linux terminal environments. The NCTCL detects the operating-system family, distribution metadata, architecture, libc, Python runtime, installer shell, TTY/ANSI capabilities, required commands, Kubo CLI and optional systemd-user manager. It evaluates the repository-owned `compatibility/manifest.json` and selects the GNU/Linux or native Termux profile. Terminal emulator names are informational; compatibility is based on POSIX terminal capabilities rather than an allowlist. Unknown Linux distributions are evaluated against required capabilities, while unlisted architectures fail closed. The diagnostic is read-only and does not install dependencies or modify user data. A profile match is not a substitute for real installation evidence on each supported distribution and architecture. See [Terminal Compatibility Contract](TERMINAL-COMPATIBILITY.md).

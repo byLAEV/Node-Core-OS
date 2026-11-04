@@ -136,6 +136,13 @@ exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
 
+  cat > "$NODE_CORE_DATA_DIR/bin/node-core-compatibility" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m node_core.compatibility "\$@"
+EOF
+  chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-compatibility"
+
   # HashPaper launcher intentionally not installed while the application is suspended.
 
 }
