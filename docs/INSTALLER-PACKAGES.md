@@ -25,13 +25,13 @@ tar -xzf node-core-os-installer-VERSION.tar.gz
 cd node-core-os-installer-VERSION
 ```
 
-For GNU/Linux, run `bash installer/install.sh`. For native Android Termux ARM64, run `bash installer/termux-install.sh` from inside Termux. Run every installation and update command as the normal user, never as root or with `sudo`.
+From any supported Linux terminal, including native Termux, run the same command: `bash installer/install.sh`. The legacy `bash installer/termux-install.sh` remains a compatibility alias only. Run every installation and update command as the normal user, never as root or with `sudo`.
 
 ## Platform and dependency boundaries
 
 - The GNU/Linux package workflow currently builds the bundled Kubo archive for Ubuntu 24.04 x86_64. Other supported GNU/Linux architectures may download their matching Kubo release during installation.
 - Python wheels in the package are built for the GNU/Linux packaging runner. They must not be installed into Termux/Android.
-- Termux uses its native `python-cryptography` and `kubo` packages and a Python virtual environment that can access Termux system packages.
-- Automated Termux tests run on GNU/Linux fixtures. They do not prove successful execution on a physical Android device; a real-device smoke test is still required.
+- The unified installer detects native Termux and uses its native `python-cryptography` and `kubo` packages with a Python virtual environment that can access Termux system packages. This is environment-specific dependency selection inside the same Linux terminal installer.
+- Automated Termux compatibility tests run on GNU/Linux fixtures. They do not prove successful execution on a physical Android device; a real-device smoke test is still required.
 
 A successful package build proves packaging and the tests that ran in CI. It does not, by itself, prove installation on every operating system, architecture, or Android device.
