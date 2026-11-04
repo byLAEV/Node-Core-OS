@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
+from node_core.p2p.discovery import create_announcement, parse_announcement
 from node_core.p2p.restricted_session import (
     RestrictedPeerSession,
     RestrictedSessionAdmission,
@@ -22,7 +23,10 @@ def _restricted_server_process(server_dir, client_node_id, client_certificate, r
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
     listener.listen(1)
-    result_queue.put(("ready", listener.getsockname()[1]))
+    server_announcement = create_announcement(
+        store, "127.0.0.1", listener.getsockname()[1]
+    )
+    result_queue.put(("ready", listener.getsockname()[1], server_announcement))
     try:
         raw, _ = listener.accept()
         with transport.server_context([client_certificate]).wrap_socket(raw, server_side=True) as tls_socket:
@@ -61,16 +65,21 @@ class RestrictedPeerSessionTests(unittest.TestCase):
             args=(
                 str(self.server_store.data_dir),
                 self.server_meta["node_id"],
-                self.client_cert,
+                client_announcement.tls_certificate_pem,
                 queue,
             ),
         )
         process.start()
         try:
-            state, port = queue.get(timeout=10)
+            state, port, server_announcement_payload = queue.get(timeout=10)
             self.assertEqual(state, "ready")
+            client_announcement = parse_announcement(
+                create_announcement(self.client_store, "127.0.0.1", 0)
+            )
+            server_announcement = parse_announcement(server_announcement_payload)
             response = RestrictedPeerSession(self.client_store, self.client_tls).request_status(
-                "127.0.0.1", port, self.server_meta["node_id"], self.server_cert
+                "127.0.0.1", port, self.server_meta["node_id"],
+                server_announcement.tls_certificate_pem,
             )
             self.assertEqual(response["type"], "IDENTITY_STATUS_RESPONSE")
             self.assertEqual(response["node_id"], self.server_meta["node_id"])
