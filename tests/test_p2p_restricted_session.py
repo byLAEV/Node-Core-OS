@@ -15,7 +15,7 @@ from node_core.p2p.tls_transport import NodeTLSTransport
 from node_core.p2p.trust_store import PeerTrustStore
 
 
-def _restricted_server_process(server_dir, server_node_id, client_certificate, result_queue):
+def _restricted_server_process(server_dir, client_node_id, client_certificate, result_queue):
     store = NodeIdentityStore(Path(server_dir))
     transport = NodeTLSTransport(store)
     transport.ensure_certificate()
@@ -27,7 +27,7 @@ def _restricted_server_process(server_dir, server_node_id, client_certificate, r
         raw, _ = listener.accept()
         with transport.server_context([client_certificate]).wrap_socket(raw, server_side=True) as tls_socket:
             RestrictedPeerSession(store, transport).serve_one(
-                tls_socket, server_node_id if False else _expected_client_node_id,
+                tls_socket, client_node_id,
                 is_revoked=lambda _node_id: False,
                 availability="available",
             )
@@ -54,8 +54,6 @@ class RestrictedPeerSessionTests(unittest.TestCase):
         self.server_cert = self.server_tls.ensure_certificate()
 
     def test_two_independent_linux_processes_authenticate_and_exchange_only_status(self):
-        global _expected_client_node_id
-        _expected_client_node_id = self.client_meta["node_id"]
         ctx = multiprocessing.get_context("spawn")
         queue = ctx.Queue()
         process = ctx.Process(
