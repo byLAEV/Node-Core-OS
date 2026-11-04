@@ -17,7 +17,6 @@ grep -q 'must be run inside Termux' "$TEMP_ROOT/non-termux.err"
 # installing Android packages on the CI runner.
 export TERMUX_VERSION="test-termux"
 export PREFIX="$TEMP_ROOT/prefix"
-export TERMUX_INSTALLER_LIBRARY_ONLY=1
 mkdir -p "$PREFIX/bin" "$TEMP_ROOT/fake-bin"
 export TERMUX_PKG_LOG="$TEMP_ROOT/pkg.log"
 cat > "$TEMP_ROOT/fake-bin/pkg" <<'PKG'
@@ -25,6 +24,7 @@ cat > "$TEMP_ROOT/fake-bin/pkg" <<'PKG'
 printf '%s\n' "$*" >> "$TERMUX_PKG_LOG"
 PKG
 chmod +x "$TEMP_ROOT/fake-bin/pkg"
+
 REAL_PYTHON3="$(command -v python3)"
 cat > "$TEMP_ROOT/fake-bin/python3" <<'PYTHON'
 #!/usr/bin/env bash
@@ -37,15 +37,13 @@ chmod +x "$TEMP_ROOT/fake-bin/python3"
 export REAL_PYTHON3
 export PATH="$TEMP_ROOT/fake-bin:$PATH"
 
-# Force the native cryptography import to be unavailable so package selection
-# is deterministic even when the CI host happens to have cryptography installed.
+# Force native cryptography to be unavailable so package selection is
+# deterministic even if the CI host already has cryptography installed.
 source "$REPOSITORY_ROOT/installer/termux-install.sh"
 packages="$(termux_missing_packages)"
-grep -qx 'kubo' <<<"$packages"
 grep -qx 'python-cryptography' <<<"$packages"
+grep -qx 'kubo' <<<"$packages"
 termux_install_dependencies
-grep -q '^install -y kubo python-cryptography
-printf 'Termux installer platform and dependency-selection tests passed.\n'
- "$TERMUX_PKG_LOG"
+grep -q '^install -y python-cryptography kubo$' "$TERMUX_PKG_LOG"
 
 printf 'Termux installer platform and dependency-selection tests passed.\n'
