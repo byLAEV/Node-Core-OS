@@ -1,9 +1,8 @@
 """Mutual cryptographic authentication helpers for Node Core OS P2P peers.
 
-This module builds and verifies handshake messages. It does not open sockets,
-encrypt traffic, discover peers, or manage connection lifecycle.
+This module builds and verifies bounded handshake messages. It does not open
+sockets, encrypt traffic, discover peers, or manage connection lifecycle.
 """
-
 from __future__ import annotations
 
 import hashlib
@@ -26,7 +25,32 @@ class PeerAuthenticator:
 
     PROTOCOL_VERSION = 1
     PURPOSE = "node-core-os/p2p-peer-authentication/v1"
-    ROLES = {"initiator", "responder"}
+    ROLES = frozenset({"initiator", "responder"})
+    NONCE_BYTES = 32
+    PUBLIC_KEY_BYTES = 32
+    SIGNATURE_BYTES = 64
+    MAX_HANDSHAKE_MESSAGE_BYTES = 4096
+    _HEX = frozenset("0123456789abcdef")
+
+    @classmethod
+    def _is_lower_hex(cls, value: object, length: int) -> bool:
+        return (
+            isinstance(value, str)
+            and len(value) == length
+            and all(character in cls._HEX for character in value)
+        )
+
+    @classmethod
+    def _canonical(cls, payload: dict[str, Any]) -> bytes:
+        try:
+            encoded = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+            ).encode("ascii")
+        except (TypeError, ValueError) as exc:
+            raise PeerAuthenticationError("Handshake transcript is not canonical JSON.") from exc
+        if not encoded or len(encoded) > cls.MAX_HANDSHAKE_MESSAGE_BYTES:
+            raise PeerAuthenticationError("Handshake transcript exceeds the size limit.")
+        return encoded
 
     @classmethod
     def create_hello(cls, identity_store: NodeIdentityStore) -> dict[str, Any]:
@@ -35,13 +59,15 @@ class PeerAuthenticator:
             metadata = identity_store.load()
         except NodeIdentityError as exc:
             raise PeerAuthenticationError("Local technical identity is unavailable.") from exc
-        return {
+        hello = {
             "type": "HELLO",
             "protocol_version": cls.PROTOCOL_VERSION,
             "node_id": metadata["node_id"],
             "public_key": metadata["public_key"],
-            "nonce": secrets.token_hex(32),
+            "nonce": secrets.token_hex(cls.NONCE_BYTES),
         }
+        cls._validate_hello(hello)
+        return hello
 
     @classmethod
     def create_auth(
@@ -56,18 +82,20 @@ class PeerAuthenticator:
         cls._validate_hello(local_hello)
         cls._validate_hello(remote_hello)
         cls._ensure_distinct_peers(local_hello, remote_hello)
-        metadata = identity_store.load()
-        if (
-            metadata["node_id"] != local_hello["node_id"]
-            or metadata["public_key"] != local_hello["public_key"]
-        ):
-            raise PeerAuthenticationError("Local HELLO does not match the local identity.")
-        transcript = cls._transcript(local_hello, remote_hello, local_role)
         try:
+            metadata = identity_store.load()
+            if (
+                metadata["node_id"] != local_hello["node_id"]
+                or metadata["public_key"] != local_hello["public_key"]
+            ):
+                raise PeerAuthenticationError("Local HELLO does not match the local identity.")
+            transcript = cls._transcript(local_hello, remote_hello, local_role)
             signature = identity_store.sign(transcript)
         except NodeIdentityError as exc:
             raise PeerAuthenticationError("Unable to sign peer authentication transcript.") from exc
-        return {
+        if not isinstance(signature, bytes) or len(signature) != cls.SIGNATURE_BYTES:
+            raise PeerAuthenticationError("Local identity returned an invalid signature.")
+        auth = {
             "type": "AUTH",
             "protocol_version": cls.PROTOCOL_VERSION,
             "node_id": metadata["node_id"],
@@ -75,6 +103,8 @@ class PeerAuthenticator:
             "transcript_sha256": hashlib.sha256(transcript).hexdigest(),
             "signature": signature.hex(),
         }
+        cls._validate_auth_shape(auth)
+        return auth
 
     @classmethod
     def verify_auth(
@@ -89,21 +119,15 @@ class PeerAuthenticator:
         cls._validate_hello(expected_peer_hello)
         cls._validate_hello(local_hello)
         cls._ensure_distinct_peers(local_hello, expected_peer_hello)
-        if not isinstance(auth_message, dict):
-            raise PeerAuthenticationError("AUTH message must be an object.")
+        cls._validate_auth_shape(auth_message)
         if (
-            auth_message.get("type") != "AUTH"
-            or auth_message.get("protocol_version") != cls.PROTOCOL_VERSION
-        ):
-            raise PeerAuthenticationError("Unsupported or malformed AUTH message.")
-        if (
-            auth_message.get("node_id") != expected_peer_hello["node_id"]
-            or auth_message.get("public_key") != expected_peer_hello["public_key"]
+            auth_message["node_id"] != expected_peer_hello["node_id"]
+            or auth_message["public_key"] != expected_peer_hello["public_key"]
         ):
             raise PeerAuthenticationError("AUTH identity does not match the peer HELLO.")
         transcript = cls._transcript(local_hello, expected_peer_hello, local_role)
         expected_hash = hashlib.sha256(transcript).hexdigest()
-        if auth_message.get("transcript_sha256") != expected_hash:
+        if auth_message["transcript_sha256"] != expected_hash:
             raise PeerAuthenticationError("AUTH transcript does not match this handshake.")
         try:
             signature = bytes.fromhex(auth_message["signature"])
@@ -120,26 +144,64 @@ class PeerAuthenticator:
 
     @classmethod
     def _validate_hello(cls, hello: dict[str, Any]) -> None:
-        if not isinstance(hello, dict):
-            raise PeerAuthenticationError("HELLO message must be an object.")
-        if hello.get("type") != "HELLO" or hello.get("protocol_version") != cls.PROTOCOL_VERSION:
+        if not isinstance(hello, dict) or set(hello) != {
+            "type", "protocol_version", "node_id", "public_key", "nonce"
+        }:
+            raise PeerAuthenticationError("HELLO fields are invalid.")
+        if (
+            hello["type"] != "HELLO"
+            or type(hello["protocol_version"]) is not int
+            or hello["protocol_version"] != cls.PROTOCOL_VERSION
+        ):
             raise PeerAuthenticationError("Unsupported or malformed HELLO message.")
-        node_id = hello.get("node_id")
-        public_key_hex = hello.get("public_key")
-        nonce = hello.get("nonce")
-        if not all(isinstance(value, str) and value for value in (node_id, public_key_hex, nonce)):
-            raise PeerAuthenticationError("HELLO is missing identity or nonce fields.")
-        try:
-            public_bytes = bytes.fromhex(public_key_hex)
-            Ed25519PublicKey.from_public_bytes(public_bytes)
-            nonce_bytes = bytes.fromhex(nonce)
-        except (ValueError, TypeError) as exc:
-            raise PeerAuthenticationError("HELLO public key or nonce is invalid.") from exc
-        if len(public_bytes) != 32 or len(nonce_bytes) != 32:
-            raise PeerAuthenticationError("HELLO key and nonce must each be 32 bytes.")
+        node_id = hello["node_id"]
+        public_key_hex = hello["public_key"]
+        nonce = hello["nonce"]
+        if (
+            not isinstance(node_id, str)
+            or len(node_id) != 71
+            or not node_id.startswith("sha256:")
+            or any(character not in cls._HEX for character in node_id[7:])
+        ):
+            raise PeerAuthenticationError("HELLO node ID is invalid.")
+        if not cls._is_lower_hex(public_key_hex, cls.PUBLIC_KEY_BYTES * 2):
+            raise PeerAuthenticationError("HELLO public key is invalid.")
+        if not cls._is_lower_hex(nonce, cls.NONCE_BYTES * 2):
+            raise PeerAuthenticationError("HELLO nonce is invalid.")
+        public_bytes = bytes.fromhex(public_key_hex)
         expected_id = "sha256:" + hashlib.sha256(public_bytes).hexdigest()
         if node_id != expected_id:
             raise PeerAuthenticationError("HELLO node ID does not match its public key.")
+        cls._canonical(hello)
+
+    @classmethod
+    def _validate_auth_shape(cls, auth_message: dict[str, Any]) -> None:
+        if not isinstance(auth_message, dict) or set(auth_message) != {
+            "type", "protocol_version", "node_id", "public_key",
+            "transcript_sha256", "signature"
+        }:
+            raise PeerAuthenticationError("AUTH fields are invalid.")
+        if (
+            auth_message["type"] != "AUTH"
+            or type(auth_message["protocol_version"]) is not int
+            or auth_message["protocol_version"] != cls.PROTOCOL_VERSION
+        ):
+            raise PeerAuthenticationError("Unsupported or malformed AUTH message.")
+        node_id = auth_message["node_id"]
+        if (
+            not isinstance(node_id, str)
+            or len(node_id) != 71
+            or not node_id.startswith("sha256:")
+            or any(character not in cls._HEX for character in node_id[7:])
+        ):
+            raise PeerAuthenticationError("AUTH node ID is invalid.")
+        if not cls._is_lower_hex(auth_message["public_key"], cls.PUBLIC_KEY_BYTES * 2):
+            raise PeerAuthenticationError("AUTH public key is invalid.")
+        if not cls._is_lower_hex(auth_message["transcript_sha256"], 64):
+            raise PeerAuthenticationError("AUTH transcript digest is invalid.")
+        if not cls._is_lower_hex(auth_message["signature"], cls.SIGNATURE_BYTES * 2):
+            raise PeerAuthenticationError("AUTH signature is invalid.")
+        cls._canonical(auth_message)
 
     @classmethod
     def _ensure_distinct_peers(
@@ -165,9 +227,7 @@ class PeerAuthenticator:
             "initiator": initiator,
             "responder": responder,
         }
-        return json.dumps(
-            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-        ).encode("utf-8")
+        return cls._canonical(payload)
 
     @classmethod
     def _validate_role(cls, role: str) -> None:
