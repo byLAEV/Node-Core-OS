@@ -34,7 +34,7 @@ ensure_python_environment() {
     if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
       # Termux wheels are Android-native packages installed by pkg. PyPI manylinux
       # wheels are glibc binaries and must never be installed into Android Python.
-      "$environment/bin/python" -c 'import cryptography; print("Verified Termux cryptography:", cryptography.__version__)' || {
+      "$environment/bin/python" -c 'import cryptography, re; from cryptography.hazmat.primitives.asymmetric import ed25519; version = tuple(map(int, re.match(r"^(\\d+)\\.(\\d+)\\.(\\d+)", cryptography.__version__).groups())); assert version >= (42, 0, 0); ed25519.Ed25519PrivateKey.generate(); print("Verified Termux cryptography:", cryptography.__version__)' || {
         printf 'Termux cryptography is unavailable in the private environment.\n' >&2
         printf 'Install it with: pkg install python-cryptography\n' >&2
         return 1
