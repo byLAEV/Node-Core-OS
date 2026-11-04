@@ -58,6 +58,9 @@ class RestrictedPeerSessionTests(unittest.TestCase):
         self.server_cert = self.server_tls.ensure_certificate()
 
     def test_two_independent_linux_processes_authenticate_and_exchange_only_status(self):
+        client_announcement = parse_announcement(
+            create_announcement(self.client_store, "127.0.0.1", 0)
+        )
         ctx = multiprocessing.get_context("spawn")
         queue = ctx.Queue()
         process = ctx.Process(
@@ -73,9 +76,6 @@ class RestrictedPeerSessionTests(unittest.TestCase):
         try:
             state, port, server_announcement_payload = queue.get(timeout=10)
             self.assertEqual(state, "ready")
-            client_announcement = parse_announcement(
-                create_announcement(self.client_store, "127.0.0.1", 0)
-            )
             server_announcement = parse_announcement(server_announcement_payload)
             response = RestrictedPeerSession(self.client_store, self.client_tls).request_status(
                 "127.0.0.1", port, self.server_meta["node_id"],
