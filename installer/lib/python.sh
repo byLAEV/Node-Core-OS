@@ -30,6 +30,46 @@ ensure_python_environment() {
     fi
   fi
 
+  if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
+    # Existing venvs created by older installers may hide Termux's native
+    # site-packages. Enable system packages without deleting the old venv.
+    [[ -f "$environment/pyvenv.cfg" && ! -L "$environment/pyvenv.cfg" ]] || {
+      printf 'Termux Python environment is missing a safe pyvenv.cfg file: %s\\n' "$environment" >&2
+      return 1
+    }
+    python3 - "$environment/pyvenv.cfg" <<'PY'
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+updated = False
+for index, line in enumerate(lines):
+    if line.strip().startswith("include-system-site-packages"):
+        lines[index] = "include-system-site-packages = true"
+        updated = True
+        break
+if not updated:
+    lines.append("include-system-site-packages = true")
+fd, temporary = tempfile.mkstemp(prefix=".pyvenv.", dir=str(path.parent))
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        stream.write("\\n".join(lines) + "\\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.chmod(temporary, path.stat().st_mode & 0o777)
+    os.replace(temporary, path)
+except BaseException:
+    try:
+        os.unlink(temporary)
+    except FileNotFoundError:
+        pass
+    raise
+PY
+  fi
+
   if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
     if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
       # Termux wheels are Android-native packages installed by pkg. PyPI manylinux
