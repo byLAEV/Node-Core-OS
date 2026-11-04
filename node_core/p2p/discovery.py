@@ -14,6 +14,10 @@ import time
 from typing import Any
 
 from node_core.identity.node_identity import NodeIdentityStore
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from node_core.p2p.tls_transport import NodeTLSTransport
 
 
 MAX_ANNOUNCEMENT_BYTES = 4096
@@ -34,6 +38,7 @@ class DiscoveryAnnouncement:
     port: int
     timestamp: int
     protocol_version: int = DISCOVERY_PROTOCOL_VERSION
+    tls_certificate_pem: bytes | None = None
 
 
 def _canonical_payload(fields: dict[str, Any]) -> bytes:
@@ -67,6 +72,7 @@ def create_announcement(
         "host": str(address),
         "port": int(port),
         "timestamp": int(time.time() if timestamp is None else timestamp),
+        "tls_certificate": base64.b64encode(NodeTLSTransport(identity_store).ensure_certificate()).decode("ascii"),
     }
     signature = identity_store.sign(_canonical_payload(fields))
     message = dict(fields)
@@ -97,10 +103,11 @@ def parse_announcement(
     if not isinstance(message, dict):
         raise DiscoveryAnnouncementError("Discovery announcement must be a JSON object.")
 
-    expected_keys = {
+    required_keys = {
         "version", "node_id", "public_key", "host", "port", "timestamp", "signature"
     }
-    if set(message) != expected_keys:
+    allowed_keys = required_keys | {"tls_certificate"}
+    if not required_keys.issubset(message) or not set(message).issubset(allowed_keys):
         raise DiscoveryAnnouncementError("Discovery announcement fields are invalid.")
 
     version = message["version"]
@@ -149,9 +156,36 @@ def parse_announcement(
     except (ValueError, base64.binascii.Error) as exc:
         raise DiscoveryAnnouncementError("Discovery signature is not valid base64.") from exc
 
-    unsigned_fields = {key: message[key] for key in expected_keys if key != "signature"}
+    unsigned_fields = {key: value for key, value in message.items() if key != "signature"}
     if not NodeIdentityStore.verify(public_key, _canonical_payload(unsigned_fields), signature):
         raise DiscoveryAnnouncementError("Discovery announcement signature is invalid.")
+
+    certificate_pem = None
+    if "tls_certificate" in message:
+        certificate_text = message["tls_certificate"]
+        if not isinstance(certificate_text, str) or len(certificate_text) > 4096:
+            raise DiscoveryAnnouncementError("Discovery TLS certificate field is invalid.")
+        try:
+            certificate_pem = base64.b64decode(certificate_text, validate=True)
+            cert = x509.load_pem_x509_certificate(certificate_pem)
+            cert_key = cert.public_key()
+            if not isinstance(cert_key, Ed25519PublicKey):
+                raise DiscoveryAnnouncementError("Discovery TLS certificate must use Ed25519.")
+            cert_raw = cert_key.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+            if cert_raw.hex() != public_key or cert.subject != cert.issuer:
+                raise DiscoveryAnnouncementError("Discovery TLS certificate identity mismatch.")
+            cert_key.verify(cert.signature, cert.tbs_certificate_bytes)
+            from datetime import datetime, timezone
+            now_utc = datetime.now(timezone.utc)
+            if now_utc < cert.not_valid_before_utc or now_utc > cert.not_valid_after_utc:
+                raise DiscoveryAnnouncementError("Discovery TLS certificate is outside its validity period.")
+            san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+            if "urn:node-core-os:node:" + node_id not in san.get_values_for_type(x509.UniformResourceIdentifier):
+                raise DiscoveryAnnouncementError("Discovery TLS certificate SAN does not match node ID.")
+        except Exception as exc:
+            if isinstance(exc, DiscoveryAnnouncementError):
+                raise
+            raise DiscoveryAnnouncementError("Discovery TLS certificate is invalid.") from exc
 
     return DiscoveryAnnouncement(
         node_id=node_id,
@@ -160,4 +194,5 @@ def parse_announcement(
         port=port,
         timestamp=timestamp,
         protocol_version=version,
+        tls_certificate_pem=certificate_pem,
     )
