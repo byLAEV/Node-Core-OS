@@ -25,14 +25,27 @@ cat > "$TEMP_ROOT/fake-bin/pkg" <<'PKG'
 printf '%s\n' "$*" >> "$TERMUX_PKG_LOG"
 PKG
 chmod +x "$TEMP_ROOT/fake-bin/pkg"
+REAL_PYTHON3="$(command -v python3)"
+cat > "$TEMP_ROOT/fake-bin/python3" <<'PYTHON'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-c" && "${2:-}" == *"import cryptography"* ]]; then
+  exit 1
+fi
+exec "$REAL_PYTHON3" "$@"
+PYTHON
+chmod +x "$TEMP_ROOT/fake-bin/python3"
+export REAL_PYTHON3
 export PATH="$TEMP_ROOT/fake-bin:$PATH"
 
-# On the CI host, standard shell dependencies exist, but the Termux ipfs
-# executable does not. The wrapper should select the Kubo package.
+# Force the native cryptography import to be unavailable so package selection
+# is deterministic even when the CI host happens to have cryptography installed.
 source "$REPOSITORY_ROOT/installer/termux-install.sh"
 packages="$(termux_missing_packages)"
 grep -qx 'kubo' <<<"$packages"
+grep -qx 'python-cryptography' <<<"$packages"
 termux_install_dependencies
-grep -q '^install -y kubo$' "$TERMUX_PKG_LOG"
+grep -q '^install -y kubo python-cryptography
+printf 'Termux installer platform and dependency-selection tests passed.\n'
+ "$TERMUX_PKG_LOG"
 
 printf 'Termux installer platform and dependency-selection tests passed.\n'
