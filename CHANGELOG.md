@@ -2,6 +2,16 @@
 
 All notable changes to Node Core OS are documented here.
 
+## Repository coherence audit — 2026-11-04 (maintenance correction for 1.5.6)
+
+- Align the README, dependency contract, installer specification, architecture and development guide with executable 1.5.6 behavior.
+- Record `cryptography>=42.0.0` as a real third-party runtime dependency and `urllib` as the standard-library HTTP client; do not add an unused `requests` dependency.
+- Document one canonical Linux-terminal installer, GNU/Linux and native Termux dependency selection, Python 3.10+, CI Python 3.12 and the Kubo v0.43.1 GNU/Linux baseline.
+- Make installation verification and updater recovery use the private Node Core Python environment for cryptographic smoke checks, compilation and unit tests.
+- Add a machine-readable repository contract and regression test to detect metadata drift.
+- Clarify the difference between repository tag 1.5.6 and later commits on main. This maintenance change does not rewrite the tag or claim that the tag contains post-tag changes.
+
+
 ## Node Core OS [1.5.6] - 2026-11-01
 
 ### Added
