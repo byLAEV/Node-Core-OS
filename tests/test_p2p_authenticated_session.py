@@ -40,6 +40,15 @@ class AuthenticatedPeerSessionTests(unittest.TestCase):
         worker.join(timeout=2)
         self.assertFalse(worker.is_alive())
 
+    def test_reject_duplicate_json_fields_in_authenticated_frames(self):
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+        payload = b'{"type":"HELLO","type":"AUTH"}'
+        left.sendall(len(payload).to_bytes(4, "big") + payload)
+        with self.assertRaises(PeerSessionError):
+            _receive_message(right)
+
     def test_reject_oversized_message(self):
         left, right = socket.socketpair()
         self.addCleanup(left.close)
