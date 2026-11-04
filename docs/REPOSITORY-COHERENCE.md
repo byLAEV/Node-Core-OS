@@ -31,6 +31,8 @@ This order does not mean an adopted security or product requirement should be we
 - Root and sudo are forbidden for installation, update, tests and normal runtime operation.
 - Installed runtime Python: `~/.node-core/runtime/node-core-venv/bin/python`. Compilation, crypto smoke tests, test execution and recovery validation must use this interpreter.
 - Updates replace application code and a protected commit marker; they must preserve user data and Kubo state and stop when recovery state is ambiguous.
+- Recovery validates dependencies against the recovered application's own manifest. The Ed25519 smoke test is required when that manifest declares `cryptography`; a legacy release without that declaration is not rejected for a dependency introduced later.
+- Core GNU/Linux CI uses Node.js 24-compatible `actions/checkout@v5` and `actions/setup-python@v6`. The Actions runtime is independent of the product's Python runtime.
 
 ## Product and application boundaries
 
