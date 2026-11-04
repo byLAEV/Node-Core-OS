@@ -162,7 +162,8 @@ class RestrictedPeerSession:
         *,
         is_revoked: Callable[[str], bool],
         availability: str = "available",
-    ) -> None:
+        on_authenticated: Callable[[str], None] | None = None,
+    ) -> str:
         """Authenticate one discovered peer and serve only one status request."""
         if availability not in {"available", "busy", "unavailable"}:
             raise ValueError("availability is invalid.")
@@ -173,6 +174,8 @@ class RestrictedPeerSession:
         ).establish(tls_socket, "responder")
         if is_revoked(peer["node_id"]):
             raise RestrictedSessionError("Peer identity is revoked.")
+        if on_authenticated is not None:
+            on_authenticated(peer["node_id"])
         request_id = _validate_request(_receive_restricted(tls_socket))
         if is_revoked(peer["node_id"]):
             raise RestrictedSessionError("Peer identity was revoked during the request.")
@@ -185,6 +188,7 @@ class RestrictedPeerSession:
             "protocol_version": 1,
             "availability": availability,
         })
+        return peer["node_id"]
 
 
 class RestrictedSessionAdmission:
