@@ -38,7 +38,7 @@ termux_missing_packages() {
   command -v bash >/dev/null 2>&1 || termux_add_package_once bash
   command -v python3 >/dev/null 2>&1 || termux_add_package_once python
   # Cryptography must come from Termux, never from a glibc manylinux wheel.
-  python3 -c 'import cryptography' >/dev/null 2>&1 || termux_add_package_once python-cryptography
+  python3 -c 'import cryptography, re; version = tuple(map(int, re.match(r"^(\\d+)\\.(\\d+)\\.(\\d+)", cryptography.__version__).groups())); raise SystemExit(version < (42, 0, 0))' >/dev/null 2>&1 || termux_add_package_once python-cryptography
   command -v tar >/dev/null 2>&1 || termux_add_package_once tar
   command -v curl >/dev/null 2>&1 || termux_add_package_once curl
   command -v grep >/dev/null 2>&1 || termux_add_package_once grep
@@ -76,7 +76,7 @@ termux_check_dependencies() {
       return 1
     fi
   done
-  python3 -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate()' || {
+  python3 -c 'import cryptography, re; from cryptography.hazmat.primitives.asymmetric import ed25519; version = tuple(map(int, re.match(r"^(\\d+)\\.(\\d+)\\.(\\d+)", cryptography.__version__).groups())); assert version >= (42, 0, 0); ed25519.Ed25519PrivateKey.generate()' || {
     printf 'Termux Python cryptography package is missing or unusable. Install it with pkg install python-cryptography.\n' >&2
     return 1
   }
