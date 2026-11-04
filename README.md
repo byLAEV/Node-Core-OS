@@ -1,5 +1,3 @@
-> “I am mentally retarded, but not so mentally retarded that I don't know how to make the original the original and the copy the copy.”
-
 # Node Core OS byLAEV
 
 **Personal digital infrastructure for local storage, decentralized content, identity, evidence, and reusable protocols.**
@@ -7,7 +5,9 @@
 Node Core OS is an infrastructure project designed to give people and entities a digital core from which to manage resources, records, identity-related data, and applications. It combines local storage with integration for Kubo/IPFS and provides a foundation on which additional protocols and applications can be developed.
 
 - **Repository:** https://github.com/byLAEV/Node-Core-OS/
-- **Version recorded in `VERSION`:** 1.5.4
+- **Repository version (`VERSION`):** 1.5.6
+- **Canonical installer:** `bash installer/install.sh` (GNU/Linux and native Termux ARM64)
+- **Release/tag note:** tag `1.5.6` is an earlier source snapshot; `main` contains 41 commits after that tag at the 2026-11-04 audit. The tag does not contain all current `main` changes.
 - **Primary environment:** GNU/Linux terminal
 - **Project status:** Active development; individual capabilities have different implementation and verification states.
 
@@ -236,9 +236,9 @@ Do not treat proposed endpoints or SDKs as available until they are implemented,
 
 ## 10. Installation
 
-### GNU/Linux
+### Supported Linux terminal environments
 
-The documented primary platform is a GNU/Linux terminal environment. The installer is designed to run as the normal user and refuses root execution.
+Node Core OS has one product and one canonical installer: `bash installer/install.sh`. GNU/Linux is the primary target; native Termux on Android ARM64 is supported by the same installer with Android-native dependency selection. Installation and update run as the normal user and reject UID 0.
 
 Requirements include GNU/Linux, Bash, Python 3.10 or later, standard terminal utilities, and the required download and verification tools. Kubo is required for IPFS-dependent features. See [Dependencies](docs/DEPENDENCIES.md) for the full contract.
 
@@ -258,17 +258,13 @@ See [Installer Specification](docs/INSTALLER.md).
 
 ### Termux on Android
 
-The repository also contains a Termux-specific installer entry point for Android ARM64:
+Native Termux on Android ARM64 uses the same canonical command:
 
 ```bash
-bash installer/termux-install.sh
+bash installer/install.sh
 ```
 
-This command is intended to be run from the appropriate Termux environment, not from a generic GNU/Linux shell. It checks the Termux environment and installs missing Termux packages before invoking the main installer.
-
-The repository's platform documents have not always described Termux consistently. Check [Termux documentation](docs/TERMUX.md) and [Dependencies](docs/DEPENDENCIES.md) for current restrictions and release-specific prerequisites before relying on a published package. Do not assume a release archive contains a wrapper added after that release was built.
-
-Windows and macOS are not documented as supported targets.
+The installer detects Termux and selects Android-native packages through `pkg`, including `python-cryptography` and Kubo. The historical `bash installer/termux-install.sh` remains only as a compatibility alias; it is not a second implementation. Linux CI fixtures do not replace physical Android-device validation. Windows and macOS are not supported.
 
 ## 11. Implementation status and roadmap
 
@@ -324,7 +320,9 @@ Before proposing a new protocol, define its purpose, participants, inputs, outpu
 | [API Contract](docs/API-CONTRACT.md) | Proposed public API contract. |
 | [SDK Integration](docs/SDK-INTEGRATION.md) | Integration requirements and roadmap. |
 | [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |
-| [Implementation Status and Evidence Policy](docs/IMPLEMENTATION-STATUS-POLICY.md) | Required status vocabulary and evidence for claims about implementation, tests, security review, and operation. |\n| [Identity Tools catalog](tools/README.md) | Product scope, service families, implementation boundaries, and acceptance stages. |
+| [Implementation Status and Evidence Policy](docs/IMPLEMENTATION-STATUS-POLICY.md) | Required status vocabulary and evidence for claims about implementation, tests, security review, and operation. |
+| [Repository Coherence Contract](docs/REPOSITORY-COHERENCE.md) | Canonical version, platform, runtime dependencies and consistency rules. |
+| [Identity Tools catalog](tools/README.md) | Product scope, service families, implementation boundaries, and acceptance stages. |
 | [Remembering & Forgetting](docs/REMEMBERING-FORGETTING.md) | Proposed contextual-history architecture. |
 | [Use Cases](docs/USE-CASES.md) | Protocol and application catalog. |
 | [My Life / Node Blog](docs/MY-LIFE-BLOG.md) | Personal records and IPFS publication behavior. |
