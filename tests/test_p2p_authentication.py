@@ -115,6 +115,10 @@ class PeerAuthenticatorTests(unittest.TestCase):
         with self.assertRaises(PeerAuthenticationError):
             PeerAuthenticator.verify_auth(candidate, self.hello_a, self.hello_b, "responder")
 
+    def test_rejects_non_string_role(self):
+        with self.assertRaises(PeerAuthenticationError):
+            PeerAuthenticator.create_auth(self.node_a, self.hello_a, self.hello_b, {})
+
     def test_rejects_invalid_local_identity_metadata_before_signing(self):
         malformed = dict(self.hello_a)
         malformed["public_key"] = "00" * 32
