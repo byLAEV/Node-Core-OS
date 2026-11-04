@@ -14,7 +14,7 @@ kubo_asset() {
   esac
 }
 is_termux() {
-  [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -x "$PREFIX/bin/ipfs" ]]
+  node_core_is_termux && [[ -x "$PREFIX/bin/ipfs" ]]
 }
 resolve_kubo_executable() {
   if is_termux; then
