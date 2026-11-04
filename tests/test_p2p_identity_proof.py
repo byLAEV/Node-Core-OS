@@ -77,7 +77,7 @@ class LANIdentityProofTests(unittest.TestCase):
         challenge = create_challenge()
         response = create_response(self.node_b, challenge)
         for field, invalid in (
-            ("public_key", response["public_key"].upper()),
+            ("public_key", "A" + response["public_key"][1:]),
             ("signature", response["signature"] + " " * 5),
             ("signature", "f" * (MAX_MESSAGE_BYTES * 2)),
         ):
