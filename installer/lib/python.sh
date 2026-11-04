@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "$(id -u)" == "0" ]]; then
-  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\\n' >&2
+  printf 'Node Core OS installer helpers cannot run as root. Use the normal user account without sudo.\n' >&2
   return 1 2>/dev/null || exit 1
 fi
 
@@ -14,29 +14,51 @@ ensure_python_environment() {
     return 1
   }
   mkdir -p "$NODE_CORE_DATA_DIR/runtime"
+
   if [[ ! -x "$environment/bin/python" ]]; then
-    python3 -m venv "$environment" || {
-      printf 'Could not create the private Python environment. Install the python3-venv package and retry.\n' >&2
-      return 1
-    }
-  fi
-  if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
-    local wheel_dir="$NODE_CORE_DATA_DIR/app/installer/vendor/python-wheels"
-    if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
-      "$environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file" || {
-        printf 'Bundled Python dependencies could not be installed offline.\n' >&2
+    if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
+      python3 -m venv --system-site-packages "$environment" || {
+        printf 'Could not create the Termux Python environment with access to Termux packages.\n' >&2
+        printf 'Verify that the Termux python and python-pip packages are installed.\n' >&2
         return 1
       }
     else
-      "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
-      printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
-      return 1
+      python3 -m venv "$environment" || {
+        printf 'Could not create the private Python environment. Install the python3-venv package and retry.\n' >&2
+        return 1
       }
     fi
   fi
+
+  if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
+    if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
+      # Termux wheels are Android-native packages installed by pkg. PyPI manylinux
+      # wheels are glibc binaries and must never be installed into Android Python.
+      "$environment/bin/python" -c 'import cryptography; print("Verified Termux cryptography:", cryptography.__version__)' || {
+        printf 'Termux cryptography is unavailable in the private environment.\n' >&2
+        printf 'Install it with: pkg install python-cryptography\n' >&2
+        return 1
+      }
+    else
+      local wheel_dir="$NODE_CORE_DATA_DIR/app/installer/vendor/python-wheels"
+      if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
+        "$environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file" || {
+          printf 'Bundled Python dependencies could not be installed offline for this platform.\n' >&2
+          printf 'Use a package built for this architecture or install dependencies from the configured Python package index.\n' >&2
+          return 1
+        }
+      else
+        "$environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+          printf 'Could not install Node Core OS Python dependencies in its private environment.\n' >&2
+          return 1
+        }
+      fi
+    fi
+  fi
+
   if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
-    "$environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || {
-      printf 'The cryptography dependency failed its import verification.\n' >&2
+    "$environment/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); print("Verified cryptography and Ed25519:", cryptography.__version__)' || {
+      printf 'The cryptography dependency failed its import or Ed25519 verification.\n' >&2
       return 1
     }
   fi
