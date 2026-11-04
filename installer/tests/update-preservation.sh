@@ -193,13 +193,16 @@ grep -qx 'preserve HashPaper package' "$NODE_CORE_DATA_DIR/hashpaper/packages/do
 grep -qx 'preserve HashPaper record' "$NODE_CORE_DATA_DIR/hashpaper/records/publication-001.json"
 printf 'Updater happy-path persistence checks passed.\\n'
 
-# A clean installer invocation must not erase an existing installation.
+# The canonical installer must hand existing installations to the protected updater.
+# The fixture's remote and installed commit match, so this path must be a safe no-op.
 set +e
-bash "$REPOSITORY_ROOT/installer/install.sh" > "$TEMP_ROOT/reinstall-refused.log" 2>&1
+printf 'n\n' | bash "$REPOSITORY_ROOT/installer/install.sh" > "$TEMP_ROOT/reinstall-delegation.log" 2>&1
 reinstall_status=$?
 set -e
-test "$reinstall_status" -ne 0
-grep -q 'Use .*node-core-update to update an existing installation' "$TEMP_ROOT/reinstall-refused.log"
+test "$reinstall_status" -eq 0
+grep -q 'Existing Node Core OS installation detected.' "$TEMP_ROOT/reinstall-delegation.log"
+grep -q 'Delegating to the protected updater' "$TEMP_ROOT/reinstall-delegation.log"
+grep -q 'Node Core OS is already up to date.' "$TEMP_ROOT/reinstall-delegation.log"
 grep -q 'updated application' "$NODE_CORE_DATA_DIR/app/main.py"
 grep -qx 'preserve local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
