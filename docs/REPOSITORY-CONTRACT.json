@@ -1,0 +1,83 @@
+{
+  "contract_schema_version": 1,
+  "product": "Node Core OS byLAEV",
+  "repository": "byLAEV/Node-Core-OS",
+  "version_file": "VERSION",
+  "version": "1.5.6",
+  "canonical_installer": "installer/install.sh",
+  "legacy_installer_alias": "installer/termux-install.sh",
+  "platforms": [
+    {
+      "id": "gnu-linux-x86_64",
+      "status": "primary",
+      "kubo": "v0.43.1"
+    },
+    {
+      "id": "gnu-linux-aarch64",
+      "status": "supported-installer-target",
+      "kubo": "v0.43.1"
+    },
+    {
+      "id": "termux-android-aarch64",
+      "status": "compatible-terminal-target",
+      "package_manager": "pkg",
+      "native_python_crypto": "python-cryptography",
+      "native_kubo": "kubo",
+      "physical_device_validation": "must_be_reported_separately"
+    }
+  ],
+  "unsupported_platforms": [
+    "windows",
+    "macos",
+    "other_untested_architectures"
+  ],
+  "python": {
+    "minimum": "3.10",
+    "ci": "3.12",
+    "runtime_requirements": [
+      "cryptography>=42.0.0"
+    ],
+    "http_client": "urllib (standard library)"
+  },
+  "kubo": {
+    "gnu_linux_pinned": "v0.43.1",
+    "termux": "native Termux kubo package"
+  },
+  "privilege": {
+    "root": false,
+    "sudo": false,
+    "systemd_user": "optional"
+  },
+  "runtime_python": "~/.node-core/runtime/node-core-venv/bin/python",
+  "active_core": [
+    "terminal BIOS",
+    "local storage",
+    "Kubo/IPFS adapter",
+    "content registry",
+    "persistent Ed25519 technical node identity",
+    "locally declared identity profile",
+    "My Life local-first records",
+    "network and P2P modules subject to per-feature evidence"
+  ],
+  "suspended_or_not_claimed": [
+    "HashPaper bundled application is suspended and removed from installed app tree",
+    "P2P Contracts bundled application is suspended and removed from installed app tree",
+    "public stable API",
+    "official SDK",
+    "global human identity uniqueness",
+    "production personhood verification",
+    "anti-Sybil guarantee",
+    "production distributed consensus",
+    "zero-knowledge proof system",
+    "encrypted-at-rest technical identity private key",
+    "physical Termux device validation inferred from Linux CI"
+  ],
+  "release_truth": {
+    "tag": "1.5.6",
+    "tag_commit": "c3a8f789580d193fff0d4ecb8eea4a83baee1de8",
+    "main_commit_at_audit": "419bfa7c33f80aadd7a69556674a93cba561293b",
+    "main_commits_ahead": 41,
+    "release_assets_at_audit": 0
+  },
+  "evidence_policy": "docs/IMPLEMENTATION-STATUS-POLICY.md"
+}
