@@ -19,7 +19,7 @@ source "$INSTALLER_DIR/lib/service.sh"
 source "$INSTALLER_DIR/lib/verify.sh"
 main() {
   printf '%s\n' 'Node Core OS installer'
-  printf '%s\n' 'GNU/Linux terminal only'
+  node_core_platform_name
   printf '%s\n\n' 'byLAEV'
   require_bash
   require_user_installation
