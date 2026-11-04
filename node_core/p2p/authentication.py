@@ -231,5 +231,5 @@ class PeerAuthenticator:
 
     @classmethod
     def _validate_role(cls, role: str) -> None:
-        if role not in cls.ROLES:
+        if not isinstance(role, str) or role not in cls.ROLES:
             raise PeerAuthenticationError("Role must be 'initiator' or 'responder'.")
