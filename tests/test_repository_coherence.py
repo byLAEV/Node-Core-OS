@@ -38,7 +38,10 @@ class RepositoryCoherenceTests(unittest.TestCase):
         declared = [line.strip() for line in self.requirements.splitlines()
                     if line.strip() and not line.lstrip().startswith("#")]
         self.assertEqual(declared, self.contract["python"]["runtime_requirements"])
-        self.assertIn("cryptography>=42.0.0", self.dependencies)
+        # The dependency contract presents the package name and minimum version
+        # in separate Markdown table cells; assert the canonical row rather than
+        # expecting the pip requirements token to appear verbatim.
+        self.assertIn("| `cryptography` | Core runtime | `>=42.0.0` |", self.dependencies)
         self.assertIn("urllib", self.contract["python"]["http_client"])
         self.assertNotIn("requests", declared)
 
