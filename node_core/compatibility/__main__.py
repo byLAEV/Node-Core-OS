@@ -9,7 +9,7 @@ from .policy import evaluate_environment, load_manifest, render_report
 def main() -> int:
     parser = argparse.ArgumentParser(description="Detecta y evalúa compatibilidad de terminales Linux con Node Core OS.")
     parser.add_argument("--manifest", default=None)
-    parser.add_argument("--mode", choices=("diagnose", "install", "update", "runtime"), default="diagnose")
+    parser.add_argument("--mode", choices=("diagnose", "prepare", "install", "update", "runtime"), default="diagnose")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     result = evaluate_environment(detect_environment(), load_manifest(args.manifest), mode=args.mode)

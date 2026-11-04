@@ -120,6 +120,24 @@ PY
 tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
   -C "$TEST_FIXTURES/release" Node-Core-OS-test
 
+cat > "$TEMP_ROOT/fake-bin/pkg" <<'FAKE_PKG'
+#!/usr/bin/env bash
+exit 0
+FAKE_PKG
+chmod +x "$TEMP_ROOT/fake-bin/pkg"
+
+REAL_UNAME="$(command -v uname)"
+cat > "$TEMP_ROOT/fake-bin/uname" <<'FAKE_UNAME'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" ]]; then
+  printf 'aarch64\\n'
+else
+  exec "$REAL_UNAME" "$@"
+fi
+FAKE_UNAME
+chmod +x "$TEMP_ROOT/fake-bin/uname"
+export REAL_UNAME
+
 cat > "$TEMP_ROOT/fake-bin/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -140,7 +158,7 @@ case "$url" in
 esac
 FAKE_CURL
 chmod +x "$TEMP_ROOT/fake-bin/curl"
-export PATH="$TEMP_ROOT/fake-bin:$PATH"
+export PATH="$TEMP_ROOT/fake-bin:$PREFIX/bin:$PATH"
 
 printf "y\n" | bash "$REPOSITORY_ROOT/installer/update.sh"
 
