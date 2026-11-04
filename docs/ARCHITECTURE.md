@@ -110,12 +110,7 @@ consensus acceptance, persistence, or confidentiality. Sensitive evidence must b
 private or encrypted by design; public manifests must not reveal sensitive labels
 by default.
 
-The current identity implementation is a local structural/time validator only. It
-does not verify signatures cryptographically, establish that an identity is a real
-person, implement anti-Sybil controls, propagate evidence across peers, run distributed
-consensus, issue personal credentials, or generate ZKPs. The next phases must define
-the threat model, schemas, cryptographic contracts, and tests before network behavior
-is claimed.
+The runtime has two distinct identity components. `NodeIdentityStore` manages a persistent technical Ed25519 node key, validates that its public key and `sha256:` node identifier match, and signs/verifies supported payloads. `IdentityProfileStore` stores user-entered personal profile fields locally with `identity_status=declared`; it does not establish civil identity or verify the truth of those fields. These components do not, by themselves, provide global uniqueness, anti-Sybil protection, production personhood verification, production credential issuance, network-wide consensus or zero-knowledge proofs. Those remain separate proposals or work requiring their own evidence.
 
 ## Remembering & Forgetting (future layer)
 
@@ -133,3 +128,8 @@ The public [Remembering & Forgetting roadmap](../web-test-bench/remembering.html
     registry/
       content.json
   ipfs/
+
+
+## Node Core Terminal Compatibility Layer (NCTCL)
+
+Node Core OS uses one manifest-driven compatibility layer for Linux terminal environments. The NCTCL detects the operating-system family, distribution metadata, architecture, libc, Python runtime, installer shell, TTY/ANSI capabilities, required commands, Kubo CLI and optional systemd-user manager. It evaluates the repository-owned `compatibility/manifest.json` and selects the GNU/Linux or native Termux profile. Terminal emulator names are informational; compatibility is based on POSIX terminal capabilities rather than an allowlist. Unknown Linux distributions are evaluated against required capabilities, while unlisted architectures fail closed. The diagnostic is read-only and does not install dependencies or modify user data. A profile match is not a substitute for real installation evidence on each supported distribution and architecture. See [Terminal Compatibility Contract](TERMINAL-COMPATIBILITY.md).

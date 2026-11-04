@@ -41,10 +41,10 @@ jobs:
           printf 'Execution user: %s (uid=%s)\n' "$(id -un)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -52,6 +52,14 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Verify cryptographic runtime
+        run: |
+          set -euo pipefail
+          python -m node_core.security.crypto_health --json
+          python -m unittest tests.test_crypto_health tests.test_node_identity -v
+          python -m node_core.compatibility --mode diagnose --json
+          python -m unittest tests.test_compatibility -v
 
       - name: Verify supported platform
         run: |
@@ -71,6 +79,7 @@ jobs:
           set -euo pipefail
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
+          bash installer/tests/compatibility.sh
           bash installer/tests/detect-installation.sh
           bash installer/tests/manifest.sh
           bash installer/tests/plan.sh
@@ -105,10 +114,10 @@ jobs:
           printf 'Execution user: %s (uid=%s)\\n' "$(id -un)" "$(id -u)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -188,7 +197,7 @@ jobs:
           }
 
       - name: Checkout Node Core OS candidate without persisted Git credentials
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.pr_head_sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false

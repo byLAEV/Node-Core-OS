@@ -10,6 +10,7 @@ INSTALLER_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "$INSTALLER_DIR/.." && pwd)"
 source "$INSTALLER_DIR/config/defaults"
 source "$INSTALLER_DIR/lib/platform.sh"
+source "$INSTALLER_DIR/lib/compatibility.sh"
 source "$INSTALLER_DIR/lib/dependencies.sh"
 source "$INSTALLER_DIR/lib/network.sh"
 source "$INSTALLER_DIR/lib/filesystem.sh"
@@ -28,7 +29,9 @@ main() {
     printf 'Unsafe application path: %s is not a real directory.\n' "$NODE_CORE_DATA_DIR/app" >&2
     exit 1
   fi
+  node_core_compatibility_preflight "$PROJECT_ROOT" "prepare"
   ensure_dependencies
+  node_core_compatibility_preflight "$PROJECT_ROOT" "install"
   if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
     printf 'Existing Node Core OS installation detected.\n'
     printf 'Delegating to the protected updater; persistent data will be preserved.\n'
@@ -40,7 +43,7 @@ main() {
 
   # Validate the cryptographic engine inside the exact virtual environment used
   # by the installed application, then create this node's persistent identity.
-  if ! "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; print("Verified cryptographic engine:", cryptography.__version__, "| Ed25519: available")'; then
+  if ! PYTHONPATH="$NODE_CORE_DATA_DIR/app" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m node_core.security.crypto_health --json; then
     printf 'Cryptographic engine verification failed; refusing to finish installation.\n' >&2
     exit 1
   fi

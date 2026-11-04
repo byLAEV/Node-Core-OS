@@ -120,6 +120,24 @@ PY
 tar -czf "$TEST_FIXTURES/5555555555555555555555555555555555555555.tar.gz" \
   -C "$TEST_FIXTURES/release" Node-Core-OS-test
 
+cat > "$TEMP_ROOT/fake-bin/pkg" <<'FAKE_PKG'
+#!/usr/bin/env bash
+exit 0
+FAKE_PKG
+chmod +x "$TEMP_ROOT/fake-bin/pkg"
+
+REAL_UNAME="$(command -v uname)"
+cat > "$TEMP_ROOT/fake-bin/uname" <<'FAKE_UNAME'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "-m" ]]; then
+  printf 'aarch64\\n'
+else
+  exec "$REAL_UNAME" "$@"
+fi
+FAKE_UNAME
+chmod +x "$TEMP_ROOT/fake-bin/uname"
+export REAL_UNAME
+
 cat > "$TEMP_ROOT/fake-bin/curl" <<'FAKE_CURL'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -140,9 +158,9 @@ case "$url" in
 esac
 FAKE_CURL
 chmod +x "$TEMP_ROOT/fake-bin/curl"
-export PATH="$TEMP_ROOT/fake-bin:$PATH"
+export PATH="$TEMP_ROOT/fake-bin:$PREFIX/bin:$PATH"
 
-printf "y\n" | bash "$REPOSITORY_ROOT/installer/update.sh"
+printf "y\n" | bash "$NODE_CORE_DATA_DIR/app/installer/update.sh"
 
 python3 - "$NODE_CORE_DATA_DIR/config.json" "$PREFIX/bin/ipfs" <<'PY'
 import json
@@ -176,7 +194,7 @@ grep -q '^include-system-site-packages = true$' "$NODE_CORE_DATA_DIR/runtime/nod
 printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"
 printf 'present\n' > "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-state"
 test ! -e "$NODE_CORE_DATA_DIR/runtime/update/app-backup"
-bash "$REPOSITORY_ROOT/installer/update.sh" > "$TEMP_ROOT/stale-cleanup-recovery.log" 2>&1
+bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" > "$TEMP_ROOT/stale-cleanup-recovery.log" 2>&1
 grep -q 'Installed application validation passed' "$TEMP_ROOT/stale-cleanup-recovery.log"
 grep -q 'Recovery markers archived at:' "$TEMP_ROOT/stale-cleanup-recovery.log"
 test ! -e "$NODE_CORE_DATA_DIR/runtime/update/commit-marker-backup"

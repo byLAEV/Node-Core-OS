@@ -32,14 +32,18 @@ Run the same command from any supported Linux terminal, including native Termux 
 bash installer/install.sh
 ```
 
-The installer detects the Linux terminal environment and selects the compatible dependency/runtime path. On GNU/Linux distributions it checks host tools and uses the pinned Linux Kubo binary. In native Termux it uses `pkg` to install only missing user-space dependencies, uses Termux-native Python cryptography and Kubo packages, and avoids GNU/Linux manylinux binaries. Both paths use the same Node Core installation layout, identity initialization, verification and updater.
+The installer runs the manifest-driven Node Core Terminal Compatibility Layer (NCTCL) after dependency preparation and before application filesystem changes. It detects the Linux environment and evaluates capabilities rather than relying on terminal-emulator or distribution-name allowlists. On GNU/Linux distributions it checks host tools and uses the pinned Linux Kubo binary. In native Termux it uses `pkg` to install only missing user-space dependencies, uses Termux-native Python cryptography and Kubo packages, and avoids GNU/Linux manylinux binaries. Both paths use the same Node Core installation layout, identity initialization, verification and updater.
 
 The legacy `installer/termux-install.sh` command remains as a backward-compatible alias to `installer/install.sh`; it contains no separate installation implementation. Debian/PRoot are not required for native Termux. Windows and macOS are not supported.
+
+## Terminal compatibility preflight
+
+NCTCL reads `compatibility/manifest.json`, validates the GNU/Linux or native Termux profile, checks architecture, Python, required commands, terminal TTY/ANSI capabilities and optional `systemd --user`. It returns `ready`, `requires_preparation` or `unsupported`. Unknown GNU/Linux distribution IDs and terminal emulator names are evaluated by capabilities; unsupported architectures fail closed. The preflight is read-only and never installs packages or modifies user data. See [Terminal Compatibility Contract](TERMINAL-COMPATIBILITY.md).
 
 ## Installation phases
 
 1. Platform check
-2. Dependency check (no host package installation)
+2. Dependency check (GNU/Linux package-manager agnostic; native Termux may use `pkg` for missing user-space packages)
 3. Prepare user-owned filesystem
 4. Install/copy Node Core application
 5. Install Kubo and verify checksum
@@ -58,6 +62,7 @@ The legacy `installer/termux-install.sh` command remains as a backward-compatibl
 ├── app/
 ├── bin/
 │   ├── node-core
+│   ├── node-core-compatibility
 │   └── ipfs
 ├── storage/
 ├── ipfs/
@@ -81,6 +86,8 @@ The installer verification contract explicitly checks the identity-profile modul
 
 ## Node Core launcher
 
+The installer also creates `~/.node-core/bin/node-core-compatibility`, which runs the same compatibility diagnostic using the installed private Python runtime.
+
 The installer creates:
 
 ```
@@ -93,13 +100,13 @@ The installer does not modify the user's shell startup files automatically. This
 
 ## Python
 
-The installer requires Python 3.10 or newer and the `cryptography>=42.0.0` package for Ed25519 node identity operations.
+The installer requires Python 3.10 or newer and `cryptography>=42.0.0` for persistent Ed25519 node identity and other cryptographic runtime modules.
 
 - GNU/Linux installs Python dependencies into the private virtual environment, using bundled wheels when they match the host architecture and the configured Python package index when they do not.
 - Termux installs the Android-native `python-cryptography` package through `pkg`. Its virtual environment uses `--system-site-packages` so the Android-native extension remains available. GNU/Linux manylinux wheels are never installed into Termux.
 - The installer verifies the cryptography import and generates an Ed25519 key in the target runtime before it initializes persistent node identity.
 
-The installer verifies:
+The installer verifies using the private runtime interpreter at `~/.node-core/runtime/node-core-venv/bin/python`:
 
 - Python executable exists and is Python 3.10 or newer
 - Required cryptography dependency is importable

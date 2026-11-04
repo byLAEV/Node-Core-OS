@@ -13,6 +13,11 @@ NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
 NODE_CORE_APP_DIR="$NODE_CORE_DATA_DIR/app"
 NODE_CORE_UPDATE_DIR="$NODE_CORE_DATA_DIR/runtime/update"
 NODE_CORE_COMMIT_FILE="$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+UPDATE_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+UPDATE_SOURCE_ROOT="$(cd -- "$UPDATE_SCRIPT_DIR/.." && pwd)"
+if [[ -f "$UPDATE_SOURCE_ROOT/installer/lib/compatibility.sh" ]]; then
+  source "$UPDATE_SOURCE_ROOT/installer/lib/compatibility.sh"
+fi
 
 require_user_installation() {
   if [[ "$(id -u)" == "0" ]]; then
@@ -85,12 +90,32 @@ require_installation() {
   }
 }
 
+requirements_declare_cryptography() {
+  local requirements_file="$1"
+  [[ -f "$requirements_file" ]] &&
+    grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"
+}
+
+verify_declared_cryptography() {
+  local python_executable="$1"
+  PYTHONPATH="$NODE_CORE_APP_DIR" "$python_executable" -m node_core.security.crypto_health --json || {
+    printf 'The installed application declares cryptography, but its private Python runtime failed the Ed25519 check.\n' >&2
+    return 1
+  }
+}
+
 validate_installed_application_for_recovery() {
-  [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+  local requirements_file="$NODE_CORE_APP_DIR/requirements.txt"
+  [[ -f "$NODE_CORE_APP_DIR/main.py" && -x "$python_environment" ]] || return 1
+  # Recovery checks only dependencies declared by the application being recovered.
+  if requirements_declare_cryptography "$requirements_file"; then
+    verify_declared_cryptography "$python_environment" || return 1
+  fi
+  "$python_environment" -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest discover -s tests -v
+    "$python_environment" -m unittest discover -s tests -v
   )
 }
 
@@ -269,22 +294,22 @@ PY
     if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
       # Termux provides cryptography as an Android-native package; never pip-install
       # Linux manylinux wheels into the Android Python runtime.
-      "$python_environment/bin/python" -c 'import cryptography, re; from cryptography.hazmat.primitives.asymmetric import ed25519; version = tuple(map(int, re.match(r"^(\d+)\.(\d+)\.(\d+)", cryptography.__version__).groups())); assert version >= (42, 0, 0); ed25519.Ed25519PrivateKey.generate(); print("Verified Termux cryptography:", cryptography.__version__)' || {
+      PYTHONPATH="$NODE_CORE_APP_DIR" "$python_environment/bin/python" -m node_core.security.crypto_health --json || {
         printf 'Termux cryptography is unavailable. Run: pkg install python-cryptography\n' >&2
         return 1
       }
     else
       local wheel_dir="$NODE_CORE_APP_DIR/installer/vendor/python-wheels"
       if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
-        if ! "$python_environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
+        if ! "$python_environment/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
           printf 'Bundled wheels do not satisfy this platform; falling back to the configured Python package index.\n' >&2
-          "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+          "$python_environment/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --upgrade -r "$requirements_file" || {
             printf 'Could not install Node Core OS Python dependencies from the bundled wheelhouse or configured package index.\n' >&2
             return 1
           }
         fi
       else
-        "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+        "$python_environment/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --upgrade -r "$requirements_file" || {
           printf 'Could not install Node Core OS Python dependencies.\n' >&2
           return 1
         }
@@ -292,7 +317,7 @@ PY
     fi
   fi
   if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
-    "$python_environment/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); print("Verified cryptography and Ed25519:", cryptography.__version__)' || return 1
+    PYTHONPATH="$NODE_CORE_APP_DIR" "$python_environment/bin/python" -m node_core.security.crypto_health --json || return 1
   fi
 }
 
@@ -313,6 +338,13 @@ set -euo pipefail
 exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+
+  cat > "$NODE_CORE_DATA_DIR/bin/node-core-compatibility" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m node_core.compatibility "\$@"
+EOF
+  chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-compatibility"
 
   # Remove only the legacy launcher generated by the bundled-app installer.
   local legacy_hashpaper_launcher="$NODE_CORE_DATA_DIR/bin/hashpaper"
@@ -577,7 +609,11 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
     raise SystemExit(f"Invalid Node Core OS version in {path}: {version!r}")
 print("Node Core OS version:", version)
 PY
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  # Require the crypto smoke test only when the candidate release declares it.
+  if requirements_declare_cryptography "$NODE_CORE_APP_DIR/requirements.txt"; then
+    verify_declared_cryptography "$python_environment/bin/python" || return 1
+  fi
+  "$python_environment/bin/python" -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
   (cd "$NODE_CORE_APP_DIR" && "$python_environment/bin/python" -m unittest discover -s tests -v) || return 1
   printf '✓ Node Core OS core tests validated.\n'
 )
@@ -641,6 +677,13 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
+  if declare -F node_core_compatibility_preflight >/dev/null 2>&1; then
+    compatibility_python="python3"
+    if [[ -x "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" ]]; then
+      compatibility_python="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+    fi
+    node_core_compatibility_preflight "$UPDATE_SOURCE_ROOT" "prepare" "$compatibility_python"
+  fi
   if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -f "$NODE_CORE_APP_DIR/installer/lib/platform.sh" && -f "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh" ]]; then
     # Direct updater launches receive the same Termux dependency preparation
     # as the unified installer command.
@@ -648,6 +691,15 @@ main() {
     source "$NODE_CORE_APP_DIR/installer/lib/platform.sh"
     source "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh"
     ensure_dependencies
+  fi
+  if declare -F node_core_compatibility_preflight >/dev/null 2>&1; then
+    compatibility_python="python3"
+    if [[ -x "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" ]]; then
+      compatibility_python="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+    fi
+    node_core_compatibility_preflight "$UPDATE_SOURCE_ROOT" "update" "$compatibility_python"
+  else
+    printf 'Legacy updater has no NCTCL manifest; compatibility preflight will be available after this update.\n'
   fi
   recover_stale_cleanup_if_safe
   require_no_pending_recovery

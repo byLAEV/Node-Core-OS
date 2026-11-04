@@ -18,8 +18,9 @@ wait_for_kubo_api() {
 }
 
 verify_installation() {
-  local failures=0 executable app_dir
+  local failures=0 executable app_dir python_environment
   app_dir="$NODE_CORE_DATA_DIR/app"
+  python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
   executable="${NODE_CORE_KUBO_EXECUTABLE:-$NODE_CORE_DATA_DIR/bin/ipfs}"
 
   check_file() {
@@ -54,12 +55,28 @@ verify_installation() {
     fi
   fi
 
-  if ! python3 -m compileall -q "$app_dir/main.py" "$app_dir/node_core"; then
-    printf 'Verification failed: Python compilation failed for the installed application.\n' >&2
+  if [[ ! -x "$python_environment" ]]; then
+    printf 'Verification failed: Node Core private Python interpreter is missing: %s\n' "$python_environment" >&2
     failures=1
+  else
+    if ! PYTHONPATH="$app_dir" "$python_environment" -m node_core.security.crypto_health --json; then
+      printf 'Verification failed: cryptography/Ed25519 is unavailable in the application runtime.\n' >&2
+      failures=1
+    fi
+    if ! "$python_environment" -m compileall -q "$app_dir/main.py" "$app_dir/node_core"; then
+      printf 'Verification failed: Python compilation failed for the installed application.\n' >&2
+      failures=1
+    fi
   fi
 
   check_executable "$NODE_CORE_DATA_DIR/bin/node-core"
+  check_executable "$NODE_CORE_DATA_DIR/bin/node-core-compatibility"
+  if [[ -x "$python_environment" && -f "$app_dir/compatibility/manifest.json" ]]; then
+    if ! PYTHONPATH="$app_dir" "$python_environment" -m node_core.compatibility --mode runtime; then
+      printf 'Verification failed: installed runtime does not satisfy the terminal compatibility contract.\n' >&2
+      failures=1
+    fi
+  fi
   check_executable "$executable"
 
   export IPFS_PATH="$NODE_CORE_DATA_DIR/ipfs"
