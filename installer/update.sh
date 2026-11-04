@@ -230,7 +230,7 @@ ensure_python_environment() {
     if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
       # Termux provides cryptography as an Android-native package; never pip-install
       # Linux manylinux wheels into the Android Python runtime.
-      "$python_environment/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); print("Verified Termux cryptography:", cryptography.__version__)' || {
+      "$python_environment/bin/python" -c 'import cryptography, re; from cryptography.hazmat.primitives.asymmetric import ed25519; version = tuple(map(int, re.match(r"^(\\d+)\\.(\\d+)\\.(\\d+)", cryptography.__version__).groups())); assert version >= (42, 0, 0); ed25519.Ed25519PrivateKey.generate(); print("Verified Termux cryptography:", cryptography.__version__)' || {
         printf 'Termux cryptography is unavailable. Run: pkg install python-cryptography\\n' >&2
         return 1
       }
