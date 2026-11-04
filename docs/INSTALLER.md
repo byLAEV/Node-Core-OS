@@ -2,7 +2,7 @@
 
 ## Objective
 
-The installer converts a supported GNU/Linux terminal environment into a usable Node Core OS installation.
+The installer converts a supported Linux terminal environment into a usable Node Core OS installation. GNU/Linux distributions and Termux are supported environments for the same terminal-first installer.
 
 The installation boundary is:
 
@@ -24,14 +24,17 @@ Node Core launcher
 verification
 ```
 
-## Supported entry points
+## Single installer entry point
 
-- **GNU/Linux:** run `bash installer/install.sh` as the normal user.
-- **Termux on Android ARM64:** run `bash installer/termux-install.sh` as the normal Termux user. This dedicated entry point installs only missing Termux packages with `pkg`, including the Android-native `kubo` package, then invokes the same Node Core installer. Debian and PRoot are not required.
+Run the same command from any supported Linux terminal, including native Termux on Android:
 
-Both entry points require a Linux kernel. The generic installer is not an Android installer by itself; Termux-specific dependency preparation is isolated in `installer/termux-install.sh`.
+```bash
+bash installer/install.sh
+```
 
-Windows and macOS are not supported.
+The installer detects the Linux terminal environment and selects the compatible dependency/runtime path. On GNU/Linux distributions it checks host tools and uses the pinned Linux Kubo binary. In native Termux it uses `pkg` to install only missing user-space dependencies, uses Termux-native Python cryptography and Kubo packages, and avoids GNU/Linux manylinux binaries. Both paths use the same Node Core installation layout, identity initialization, verification and updater.
+
+The legacy `installer/termux-install.sh` command remains as a backward-compatible alias to `installer/install.sh`; it contains no separate installation implementation. Debian/PRoot are not required for native Termux. Windows and macOS are not supported.
 
 ## Installation phases
 
@@ -122,7 +125,7 @@ The updater installs this behavior by replacing the application code from the se
 
 ## Kubo
 
-On GNU/Linux, the installer downloads the pinned Kubo release and verifies its SHA-512 checksum. On Termux, the dedicated entry point uses Termux's Android-native `kubo` package and never attempts to run the GNU/Linux Kubo binary. The executable is expected at `$PREFIX/bin/ipfs`.
+On GNU/Linux, the installer downloads the pinned Kubo release and verifies its SHA-512 checksum. On Termux, the unified installer uses Termux's Android-native `kubo` package and never attempts to run the GNU/Linux Kubo binary. The executable is expected at `$PREFIX/bin/ipfs`.
 
 The GNU/Linux Kubo installer performs:
 
@@ -148,7 +151,7 @@ ipfs init
 health check
 ```
 
-The GNU/Linux installer pins Kubo v0.43.1. Termux uses the version provided by the configured Termux package repository so that the executable is built for Android's runtime.
+The GNU/Linux installer pins Kubo v0.43.1. Native Termux uses the version provided by the configured Termux package repository so that the executable is built for Android's runtime.
 
 Supported Kubo installation paths:
 
@@ -229,7 +232,7 @@ The installer intentionally avoids:
 - systemd as a universal prerequisite
 - fixed system paths
 - graphical installers
-- mixing Termux-specific package operations into the generic GNU/Linux installer
+- assuming GNU/Linux glibc binaries or Python wheels are compatible with Android/Termux
 - unversioned Kubo downloads
 
 
@@ -237,7 +240,7 @@ The installer intentionally avoids:
 
 The generic GNU/Linux installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths.
 
-The Termux-only wrapper is an explicit exception: it installs only missing user-space packages with `pkg install -y`. It does not use root or sudo. CI tests exercise Termux platform checks and dependency selection as well as the root-rejection and HOME-boundary guards.
+The unified installer detects native Termux and installs only missing user-space packages with `pkg install -y`. On other Linux terminals it never invokes a package manager. Neither path uses root or sudo. CI tests exercise environment detection and dependency selection as well as the root-rejection and HOME-boundary guards.
 
 ## Third-party installation boundary
 
