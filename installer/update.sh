@@ -86,11 +86,13 @@ require_installation() {
 }
 
 validate_installed_application_for_recovery() {
-  [[ -f "$NODE_CORE_APP_DIR/main.py" ]] || return 1
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+  [[ -f "$NODE_CORE_APP_DIR/main.py" && -x "$python_environment" ]] || return 1
+  "$python_environment" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; Ed25519PrivateKey.generate()' || return 1
+  "$python_environment" -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
   (
     cd "$NODE_CORE_APP_DIR"
-    python3 -m unittest discover -s tests -v
+    "$python_environment" -m unittest discover -s tests -v
   )
 }
 
@@ -577,7 +579,8 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
     raise SystemExit(f"Invalid Node Core OS version in {path}: {version!r}")
 print("Node Core OS version:", version)
 PY
-  python3 -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
+  "$python_environment/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey; Ed25519PrivateKey.generate()' || return 1
+  "$python_environment/bin/python" -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
   (cd "$NODE_CORE_APP_DIR" && "$python_environment/bin/python" -m unittest discover -s tests -v) || return 1
   printf '✓ Node Core OS core tests validated.\n'
 )
