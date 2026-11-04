@@ -110,12 +110,7 @@ consensus acceptance, persistence, or confidentiality. Sensitive evidence must b
 private or encrypted by design; public manifests must not reveal sensitive labels
 by default.
 
-The current identity implementation is a local structural/time validator only. It
-does not verify signatures cryptographically, establish that an identity is a real
-person, implement anti-Sybil controls, propagate evidence across peers, run distributed
-consensus, issue personal credentials, or generate ZKPs. The next phases must define
-the threat model, schemas, cryptographic contracts, and tests before network behavior
-is claimed.
+The runtime has two distinct identity components. `NodeIdentityStore` manages a persistent technical Ed25519 node key, validates that its public key and `sha256:` node identifier match, and signs/verifies supported payloads. `IdentityProfileStore` stores user-entered personal profile fields locally with `identity_status=declared`; it does not establish civil identity or verify the truth of those fields. These components do not, by themselves, provide global uniqueness, anti-Sybil protection, production personhood verification, production credential issuance, network-wide consensus or zero-knowledge proofs. Those remain separate proposals or work requiring their own evidence.
 
 ## Remembering & Forgetting (future layer)
 
