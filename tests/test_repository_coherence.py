@@ -19,6 +19,7 @@ class RepositoryCoherenceTests(unittest.TestCase):
         cls.install = (ROOT / "installer/install.sh").read_text()
         cls.verify = (ROOT / "installer/lib/verify.sh").read_text()
         cls.update = (ROOT / "installer/update.sh").read_text()
+        cls.ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 
     def test_version_matches_contract_and_readme(self):
         version = (ROOT / "VERSION").read_text().strip()
@@ -48,6 +49,18 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertIn('python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"', self.verify)
         self.assertIn('"$python_environment" -m compileall', self.verify)
         self.assertIn('"$python_environment" -m unittest', self.update)
+
+    def test_updater_recovery_obeys_the_installed_release_manifest(self):
+        self.assertIn("requirements_declare_cryptography()", self.update)
+        self.assertIn('if requirements_declare_cryptography "$requirements_file"; then', self.update)
+        self.assertIn('if requirements_declare_cryptography "$NODE_CORE_APP_DIR/requirements.txt"; then', self.update)
+        self.assertIn("verify_declared_cryptography", self.update)
+
+    def test_core_ci_uses_node_24_compatible_actions(self):
+        self.assertIn("uses: actions/checkout@v5", self.ci_workflow)
+        self.assertIn("uses: actions/setup-python@v6", self.ci_workflow)
+        self.assertNotIn("actions/checkout@v4", self.ci_workflow)
+        self.assertNotIn("actions/setup-python@v5", self.ci_workflow)
 
     def test_platform_and_crypto_contract_are_documented(self):
         self.assertIn("Termux", self.dependencies)

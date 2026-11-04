@@ -79,5 +79,17 @@
     "main_commits_ahead": 41,
     "release_assets_at_audit": 0
   },
-  "evidence_policy": "docs/IMPLEMENTATION-STATUS-POLICY.md"
+  "evidence_policy": "docs/IMPLEMENTATION-STATUS-POLICY.md",
+  "recovery_validation": {
+    "interpreter": "~/.node-core/runtime/node-core-venv/bin/python",
+    "cryptography_smoke_test": "only_when_declared_by_recovered_application_requirements",
+    "legacy_without_cryptography_requirement": "compile_and_run_own_tests_without_new_dependency_assumptions",
+    "ambiguous_transaction": "preserve_recovery_data_and_stop"
+  },
+  "github_actions": {
+    "core_ci_node_runtime": "24",
+    "checkout_action": "actions/checkout@v5",
+    "setup_python_action": "actions/setup-python@v6",
+    "minimum_runner_version": "2.327.1"
+  }
 }

@@ -42,7 +42,13 @@ GNU/Linux installs requirements into this private virtual environment, using bun
 
 Native Termux uses its Android-native `python-cryptography` package. Its virtual environment exposes Termux site-packages; GNU/Linux manylinux wheels must not be installed into Android Python.
 
-Application compilation, cryptographic smoke checks, tests and updater recovery validation must use the same private interpreter as the installed application. A system `python3` test is not evidence that the installed runtime environment is healthy.
+Application compilation, tests and updater recovery validation must use the same private interpreter as the installed application. A system `python3` test is not evidence that the installed runtime environment is healthy.
+
+Recovery checks dependencies against the recovered application's own `requirements.txt`. The Ed25519 smoke test is required when that manifest declares `cryptography`; legacy installations without that declaration are still checked using their own interpreter, compilation and test suite. They are not rejected merely because a later release introduced a dependency. Candidate releases install and verify all dependencies they declare before activation.
+
+## GitHub Actions runtime
+
+The core GNU/Linux CI workflow uses `actions/checkout@v5` and `actions/setup-python@v6`, which run on the GitHub Actions Node.js 24 runtime. This is separate from the Node Core application runtime: the product still requires Python 3.10 or newer and does not require global Node.js. These actions require Actions Runner 2.327.1 or newer; GitHub-hosted Ubuntu runners meet that baseline.
 
 ## Cryptographic capabilities and limits
 
