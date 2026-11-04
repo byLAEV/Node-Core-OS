@@ -39,7 +39,7 @@ The legacy `installer/termux-install.sh` command remains as a backward-compatibl
 ## Installation phases
 
 1. Platform check
-2. Dependency check (no host package installation)
+2. Dependency check (GNU/Linux package-manager agnostic; native Termux may use `pkg` for missing user-space packages)
 3. Prepare user-owned filesystem
 4. Install/copy Node Core application
 5. Install Kubo and verify checksum
@@ -93,13 +93,13 @@ The installer does not modify the user's shell startup files automatically. This
 
 ## Python
 
-The installer requires Python 3.10 or newer and the `cryptography>=42.0.0` package for Ed25519 node identity operations.
+The installer requires Python 3.10 or newer and `cryptography>=42.0.0` for persistent Ed25519 node identity and other cryptographic runtime modules.
 
 - GNU/Linux installs Python dependencies into the private virtual environment, using bundled wheels when they match the host architecture and the configured Python package index when they do not.
 - Termux installs the Android-native `python-cryptography` package through `pkg`. Its virtual environment uses `--system-site-packages` so the Android-native extension remains available. GNU/Linux manylinux wheels are never installed into Termux.
 - The installer verifies the cryptography import and generates an Ed25519 key in the target runtime before it initializes persistent node identity.
 
-The installer verifies:
+The installer verifies using the private runtime interpreter at `~/.node-core/runtime/node-core-venv/bin/python`:
 
 - Python executable exists and is Python 3.10 or newer
 - Required cryptography dependency is importable
