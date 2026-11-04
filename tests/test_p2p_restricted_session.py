@@ -1,5 +1,6 @@
 import multiprocessing
 import socket
+import struct
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,8 @@ from node_core.p2p.restricted_session import (
     RestrictedSessionAdmission,
     RestrictedSessionError,
     _validate_request,
+    _receive_restricted,
+    MAX_RESTRICTED_FRAME_BYTES,
 )
 from node_core.p2p.tls_transport import NodeTLSTransport
 from node_core.p2p.trust_store import PeerTrustStore
@@ -113,6 +116,22 @@ class RestrictedPeerSessionTests(unittest.TestCase):
             _validate_request({
                 "version": 1, "type": "IDENTITY_STATUS_REQUEST", "request_id": "bad",
             })
+
+    def test_restricted_decoder_rejects_duplicate_keys_and_oversized_frames(self):
+        left, right = socket.socketpair()
+        self.addCleanup(left.close)
+        self.addCleanup(right.close)
+        duplicate = b'{"version":1,"type":"IDENTITY_STATUS_REQUEST","type":"MESSAGE","request_id":"' + b"a" * 32 + b'"}'
+        left.sendall(struct.pack("!I", len(duplicate)) + duplicate)
+        with self.assertRaises(RestrictedSessionError):
+            _receive_restricted(right)
+
+        left2, right2 = socket.socketpair()
+        self.addCleanup(left2.close)
+        self.addCleanup(right2.close)
+        left2.sendall(struct.pack("!I", MAX_RESTRICTED_FRAME_BYTES + 1))
+        with self.assertRaises(RestrictedSessionError):
+            _receive_restricted(right2)
 
     def test_admission_limits_workers_and_source_rate(self):
         admission = RestrictedSessionAdmission(max_workers=1, requests_per_minute=2)
