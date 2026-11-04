@@ -641,6 +641,14 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
+  if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -f "$NODE_CORE_APP_DIR/installer/lib/platform.sh" && -f "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh" ]]; then
+    # Direct updater launches receive the same Termux dependency preparation
+    # as the unified installer command.
+    source "$NODE_CORE_APP_DIR/installer/config/defaults"
+    source "$NODE_CORE_APP_DIR/installer/lib/platform.sh"
+    source "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh"
+    ensure_dependencies
+  fi
   recover_stale_cleanup_if_safe
   require_no_pending_recovery
   require_installation
