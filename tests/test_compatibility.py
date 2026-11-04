@@ -61,6 +61,14 @@ class TerminalCompatibilityTests(unittest.TestCase):
             command_lookup=lookup_from(names),current_uid=10000,libc_info=("bionic","unknown"))
         self.assertEqual(env["target"]["family"],"termux")
         self.assertEqual(evaluate_environment(env,self.manifest)["status"],"ready")
+    def test_termux_markers_without_pkg_are_not_misclassified_as_gnu_linux(self):
+        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
+            system="Linux",machine="aarch64",python_version=(3,12,4),terminal_isatty=True,os_release_text="",
+            command_lookup=lookup_from(BASE_COMMANDS-{"pkg"}),current_uid=10000)
+        self.assertEqual(env["target"]["family"],"termux")
+        result=evaluate_environment(env,self.manifest,mode="prepare")
+        self.assertEqual(result["status"],"requires_preparation")
+        self.assertIn("pkg",result["missing_requirements"])
     def test_termux_x86_64_is_unsupported(self):
         names=BASE_COMMANDS|{"pkg","ipfs"}
         env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},

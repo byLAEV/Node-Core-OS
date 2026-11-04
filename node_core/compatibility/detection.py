@@ -81,7 +81,7 @@ def detect_environment(
     prefix = env_values.get("PREFIX", "")
     termux_marker = bool(env_values.get("TERMUX_VERSION") and prefix)
     termux_pkg = bool(lookup("pkg") or (prefix and (Path(prefix) / "bin" / "pkg").is_file()))
-    is_termux = active_system == "Linux" and termux_marker and termux_pkg
+    is_termux = active_system == "Linux" and termux_marker
     family = "termux" if is_termux else ("gnu_linux" if active_system == "Linux" else "unsupported")
     architecture = normalize_architecture(active_machine)
 

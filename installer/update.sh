@@ -677,6 +677,13 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
+  if declare -F node_core_compatibility_preflight >/dev/null 2>&1; then
+    compatibility_python="python3"
+    if [[ -x "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" ]]; then
+      compatibility_python="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+    fi
+    node_core_compatibility_preflight "$UPDATE_SOURCE_ROOT" "prepare" "$compatibility_python"
+  fi
   if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -f "$NODE_CORE_APP_DIR/installer/lib/platform.sh" && -f "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh" ]]; then
     # Direct updater launches receive the same Termux dependency preparation
     # as the unified installer command.

@@ -29,6 +29,7 @@ main() {
     printf 'Unsafe application path: %s is not a real directory.\n' "$NODE_CORE_DATA_DIR/app" >&2
     exit 1
   fi
+  node_core_compatibility_preflight "$PROJECT_ROOT" "prepare"
   ensure_dependencies
   node_core_compatibility_preflight "$PROJECT_ROOT" "install"
   if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then

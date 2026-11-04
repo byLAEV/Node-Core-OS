@@ -15,7 +15,7 @@ import json,sys
 from pathlib import Path
 result=json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert result["compatibility_contract"]=="NCTCL-1"
-assert result["status"] in {"ready","requires_preparation","unsupported"}
+assert result["status"] == "ready"
 assert "environment" in result and "recommended_actions" in result
 print("Terminal compatibility CLI: valid machine-readable report")
 print("Detected profile:",result["profile"])

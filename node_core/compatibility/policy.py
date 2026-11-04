@@ -47,7 +47,7 @@ def _version_pair(value: str) -> tuple[int, int]:
 
 def evaluate_environment(environment: dict[str, Any], manifest: dict[str, Any] | None = None, *, mode: str = "diagnose") -> dict[str, Any]:
     selected = manifest if manifest is not None else load_manifest()
-    if mode not in {"diagnose", "install", "update", "runtime"}:
+    if mode not in {"diagnose", "prepare", "install", "update", "runtime"}:
         raise ValueError(f"Unsupported compatibility mode: {mode}")
     target, os_info = environment["target"], environment["os"]
     family, architecture = target["family"], target["architecture"]
