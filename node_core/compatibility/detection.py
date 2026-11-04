@@ -22,9 +22,9 @@ def parse_os_release(text: str) -> dict[str, str]:
             continue
         try:
             parts = shlex.split(raw_value.strip(), posix=True)
-            value = parts[0] if len(parts) == 1 else raw_value.strip("\\"'")
+            value = parts[0] if len(parts) == 1 else raw_value.strip().strip(chr(34)).strip(chr(39))
         except ValueError:
-            value = raw_value.strip("\\"'")
+            value = raw_value.strip().strip(chr(34)).strip(chr(39))
         result[key] = value
     return result
 
