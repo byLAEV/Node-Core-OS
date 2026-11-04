@@ -26,6 +26,8 @@ class DiscoveryAnnouncementTests(unittest.TestCase):
         self.assertEqual(announcement.node_id, self.identity.load()["node_id"])
         self.assertEqual(announcement.host, "192.168.1.10")
         self.assertEqual(announcement.port, 4242)
+        self.assertIsNotNone(announcement.tls_certificate_pem)
+        self.assertIn(b"-----BEGIN CERTIFICATE-----", announcement.tls_certificate_pem)
 
     def test_rejects_tampered_announcement(self):
         payload = create_announcement(
