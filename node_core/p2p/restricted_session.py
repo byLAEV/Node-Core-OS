@@ -7,6 +7,7 @@ signed discovery record; the certificate is an ephemeral TLS pin, not durable tr
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import socket
 import struct
@@ -15,6 +16,8 @@ import time
 from collections import defaultdict
 from typing import Callable
 
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.session import AuthenticatedPeerSession, PeerSessionError
 from node_core.p2p.tls_transport import NodeTLSTransport, TLSTransportError
@@ -322,7 +325,19 @@ class RestrictedPeerService:
             tls_socket.settimeout(self.timeout_seconds)
             peer = self.tls_transport.verify_peer_identity(tls_socket)
             peer_node_id = peer["node_id"]
-            if peer_node_id not in candidates or self.is_revoked(peer_node_id):
+            candidate_pem = candidates.get(peer_node_id)
+            if candidate_pem is None:
+                raise RestrictedSessionError("Peer certificate is not in the discovery candidate set.")
+            candidate_der = x509.load_pem_x509_certificate(candidate_pem).public_bytes(
+                serialization.Encoding.DER
+            )
+            presented_der = tls_socket.getpeercert(binary_form=True)
+            if not presented_der or not __import__("hmac").compare_digest(
+                hashlib.sha256(candidate_der).digest(),
+                hashlib.sha256(presented_der).digest(),
+            ):
+                raise RestrictedSessionError("TLS peer certificate differs from its signed discovery candidate.")
+            if self.is_revoked(peer_node_id):
                 raise RestrictedSessionError("Peer is not currently eligible for restricted access.")
 
             def register(node_id: str) -> None:
