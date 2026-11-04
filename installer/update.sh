@@ -209,34 +209,90 @@ ensure_python_environment() {
   local python_environment="$NODE_CORE_DATA_DIR/runtime/node-core-venv"
   mkdir -p "$NODE_CORE_DATA_DIR/runtime"
   if [[ ! -x "$python_environment/bin/python" ]]; then
-    python3 -m venv "$python_environment" || {
-      printf 'Could not create the private Python environment. Install python3-venv and retry.\n' >&2
+    if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
+      python3 -m venv --system-site-packages "$python_environment" || {
+        printf 'Could not create the Termux Python environment with access to Termux packages.\n' >&2
+        printf 'Verify that Termux python and python-pip are installed.\n' >&2
+        return 1
+      }
+    else
+      python3 -m venv "$python_environment" || {
+        printf 'Could not create the private Python environment. Install python3-venv and retry.\n' >&2
+        return 1
+      }
+    fi
+  fi
+  if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
+    # Migrate old venv metadata without deleting the environment or user data.
+    [[ -f "$python_environment/pyvenv.cfg" && ! -L "$python_environment/pyvenv.cfg" ]] || {
+      printf 'Termux Python environment is missing a safe pyvenv.cfg file: %s\n' "$python_environment" >&2
       return 1
     }
+    python3 - "$python_environment/pyvenv.cfg" <<'PY'
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines()
+updated = False
+for index, line in enumerate(lines):
+    if line.strip().startswith("include-system-site-packages"):
+        lines[index] = "include-system-site-packages = true"
+        updated = True
+        break
+if not updated:
+    lines.append("include-system-site-packages = true")
+fd, temporary = tempfile.mkstemp(prefix=".pyvenv.", dir=str(path.parent))
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        stream.write("\n".join(lines) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.chmod(temporary, path.stat().st_mode & 0o777)
+    os.replace(temporary, path)
+except BaseException:
+    try:
+        os.unlink(temporary)
+    except FileNotFoundError:
+        pass
+    raise
+PY
   fi
+
   if [[ ! -f "$requirements_file" ]]; then
     printf 'No requirements.txt in the current installation; preserving compatibility until the update archive is installed.\n'
     return 0
   fi
   if grep -Eq '^[[:space:]]*[^#[:space:]]' "$requirements_file"; then
-    local wheel_dir="$NODE_CORE_APP_DIR/installer/vendor/python-wheels"
-    if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
-      if ! "$python_environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
-        printf 'Bundled wheels do not satisfy this platform; falling back to the configured Python package index.\n' >&2
+    if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" ]]; then
+      # Termux provides cryptography as an Android-native package; never pip-install
+      # Linux manylinux wheels into the Android Python runtime.
+      "$python_environment/bin/python" -c 'import cryptography, re; from cryptography.hazmat.primitives.asymmetric import ed25519; version = tuple(map(int, re.match(r"^(\d+)\.(\d+)\.(\d+)", cryptography.__version__).groups())); assert version >= (42, 0, 0); ed25519.Ed25519PrivateKey.generate(); print("Verified Termux cryptography:", cryptography.__version__)' || {
+        printf 'Termux cryptography is unavailable. Run: pkg install python-cryptography\n' >&2
+        return 1
+      }
+    else
+      local wheel_dir="$NODE_CORE_APP_DIR/installer/vendor/python-wheels"
+      if [[ -d "$wheel_dir" ]] && find "$wheel_dir" -maxdepth 1 -type f -name '*.whl' -print -quit | grep -q .; then
+        if ! "$python_environment/bin/python" -m pip install --disable-pip-version-check --no-index --find-links "$wheel_dir" --upgrade -r "$requirements_file"; then
+          printf 'Bundled wheels do not satisfy this platform; falling back to the configured Python package index.\n' >&2
+          "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
+            printf 'Could not install Node Core OS Python dependencies from the bundled wheelhouse or configured package index.\n' >&2
+            return 1
+          }
+        fi
+      else
         "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
-          printf 'Could not install Node Core OS Python dependencies from the bundled wheelhouse or configured package index.\n' >&2
+          printf 'Could not install Node Core OS Python dependencies.\n' >&2
           return 1
         }
       fi
-    else
-      "$python_environment/bin/python" -m pip install --disable-pip-version-check --upgrade -r "$requirements_file" || {
-        printf 'Could not install Node Core OS Python dependencies.\n' >&2
-        return 1
-      }
     fi
   fi
   if grep -Eiq '^[[:space:]]*cryptography([<=>!~[:space:]]|$)' "$requirements_file"; then
-    "$python_environment/bin/python" -c 'import cryptography; print("Verified cryptography:", cryptography.__version__)' || return 1
+    "$python_environment/bin/python" -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate(); print("Verified cryptography and Ed25519:", cryptography.__version__)' || return 1
   fi
 }
 
@@ -585,6 +641,14 @@ main() {
   printf '%s\n' 'byLAEV'
   printf '\n'
   require_user_installation
+  if [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -f "$NODE_CORE_APP_DIR/installer/lib/platform.sh" && -f "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh" ]]; then
+    # Direct updater launches receive the same Termux dependency preparation
+    # as the unified installer command.
+    source "$NODE_CORE_APP_DIR/installer/config/defaults"
+    source "$NODE_CORE_APP_DIR/installer/lib/platform.sh"
+    source "$NODE_CORE_APP_DIR/installer/lib/dependencies.sh"
+    ensure_dependencies
+  fi
   recover_stale_cleanup_if_safe
   require_no_pending_recovery
   require_installation

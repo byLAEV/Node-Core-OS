@@ -19,7 +19,7 @@ source "$INSTALLER_DIR/lib/service.sh"
 source "$INSTALLER_DIR/lib/verify.sh"
 main() {
   printf '%s\n' 'Node Core OS installer'
-  printf '%s\n' 'GNU/Linux terminal only'
+  node_core_platform_name
   printf '%s\n\n' 'byLAEV'
   require_bash
   require_user_installation
@@ -28,12 +28,12 @@ main() {
     printf 'Unsafe application path: %s is not a real directory.\n' "$NODE_CORE_DATA_DIR/app" >&2
     exit 1
   fi
-  if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-    printf 'A Node Core OS application already exists at %s.\n' "$NODE_CORE_DATA_DIR/app" >&2
-    printf 'Use %s/bin/node-core-update to update an existing installation without reinstalling it.\n' "$NODE_CORE_DATA_DIR" >&2
-    exit 1
-  fi
   ensure_dependencies
+  if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    printf 'Existing Node Core OS installation detected.\n'
+    printf 'Delegating to the protected updater; persistent data will be preserved.\n'
+    exec bash "$INSTALLER_DIR/update.sh" "$@"
+  fi
   prepare_filesystem
   install_application "$PROJECT_ROOT"
   ensure_python_environment "$NODE_CORE_DATA_DIR/app/requirements.txt"

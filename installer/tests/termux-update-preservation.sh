@@ -37,6 +37,10 @@ chmod +x "$PREFIX/bin/ipfs"
 printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/latest-commit.json"
 
+# Simulate a venv created by the older installer without system-site-packages.
+python3 -m venv "$NODE_CORE_DATA_DIR/runtime/node-core-venv"
+grep -q '^include-system-site-packages = false$' "$NODE_CORE_DATA_DIR/runtime/node-core-venv/pyvenv.cfg"
+
 # Build a local release archive to exercise the actual update path without network access.
 mkdir -p "$TEST_FIXTURES/release/Node-Core-OS-test/node_core" \
   "$TEST_FIXTURES/release/Node-Core-OS-test/tests" \
@@ -165,6 +169,7 @@ test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2
 test ! -e "$NODE_CORE_DATA_DIR/app/.github/workflows/three-independent-ubuntu-p2p-e2e.yml"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core"
 test -x "$NODE_CORE_DATA_DIR/bin/node-core-update"
+grep -q '^include-system-site-packages = true$' "$NODE_CORE_DATA_DIR/runtime/node-core-venv/pyvenv.cfg"
 
 # An interrupted cleanup can leave marker files after the app backup has gone.
 # The updater must validate the installed app, archive the markers, and continue.
