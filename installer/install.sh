@@ -29,9 +29,10 @@ main() {
     exit 1
   fi
   if [[ -d "$NODE_CORE_DATA_DIR/app" ]] && [[ -n "$(find "$NODE_CORE_DATA_DIR/app" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
-    printf 'A Node Core OS application already exists at %s.\n' "$NODE_CORE_DATA_DIR/app" >&2
-    printf 'Use %s/bin/node-core-update to update an existing installation without reinstalling it.\n' "$NODE_CORE_DATA_DIR" >&2
-    exit 1
+    printf 'Existing Node Core OS installation detected.\n'
+    printf 'Preparing this Linux terminal environment, then delegating to the protected updater.\n'
+    ensure_dependencies
+    exec bash "$INSTALLER_DIR/update.sh" "$@"
   fi
   ensure_dependencies
   prepare_filesystem
