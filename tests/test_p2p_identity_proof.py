@@ -5,6 +5,7 @@ from pathlib import Path
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.identity_proof import (
     IdentityProofError,
+    MAX_MESSAGE_BYTES,
     create_challenge,
     create_response,
     verify_response,
@@ -52,14 +53,17 @@ class LANIdentityProofTests(unittest.TestCase):
             verify_response(challenge, response)
 
     def test_malformed_challenge_is_rejected(self):
-        with self.assertRaises(IdentityProofError):
-            create_response(self.node_b, {"nonce": "00"})
-        with self.assertRaises(IdentityProofError):
-            verify_response(
-                {"type": "IDENTITY_CHALLENGE", "protocol_version": True,
-                 "purpose": "wrong", "nonce": "00" * 32},
-                {},
-            )
+        malformed = [
+            {"nonce": "00"},
+            {"type": "IDENTITY_CHALLENGE", "protocol_version": True,
+             "purpose": "wrong", "nonce": "00" * 32},
+            {"type": "IDENTITY_CHALLENGE", "protocol_version": 1,
+             "purpose": "node-core-os/p2p-lan-identity-proof/v1", "nonce": "aa " * 32},
+        ]
+        for challenge in malformed:
+            with self.subTest(challenge=challenge):
+                with self.assertRaises(IdentityProofError):
+                    create_response(self.node_b, challenge)
 
     def test_replay_requires_a_new_challenge_and_fails(self):
         old_challenge = create_challenge()
@@ -69,10 +73,31 @@ class LANIdentityProofTests(unittest.TestCase):
         with self.assertRaises(IdentityProofError):
             verify_response(new_challenge, old_response)
 
+    def test_signature_and_public_fields_require_strict_lowercase_hex(self):
+        challenge = create_challenge()
+        response = create_response(self.node_b, challenge)
+        for field, invalid in (
+            ("public_key", response["public_key"].upper()),
+            ("signature", response["signature"] + " " * 5),
+            ("signature", "f" * (MAX_MESSAGE_BYTES * 2)),
+        ):
+            candidate = dict(response)
+            candidate[field] = invalid
+            with self.subTest(field=field, value_length=len(invalid)):
+                with self.assertRaises(IdentityProofError):
+                    verify_response(challenge, candidate)
+
+    def test_identity_id_requires_canonical_sha256_hex(self):
+        challenge = create_challenge()
+        response = create_response(self.node_b, challenge)
+        response["node_id"] = "sha256:" + "A" * 64
+        with self.assertRaises(IdentityProofError):
+            verify_response(challenge, response)
+
     def test_identity_proof_is_bounded_and_does_not_require_kubo(self):
         challenge = create_challenge()
         response = create_response(self.node_b, challenge)
-        self.assertLess(len(str(response).encode("utf-8")), 4096)
+        self.assertLess(len(str(response).encode("utf-8")), MAX_MESSAGE_BYTES)
         self.assertEqual(verify_response(challenge, response)["authorization"], "none")
 
 
