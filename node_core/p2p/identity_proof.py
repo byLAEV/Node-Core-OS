@@ -17,7 +17,10 @@ from node_core.identity.node_identity import NodeIdentityError, NodeIdentityStor
 PROTOCOL_VERSION = 1
 PURPOSE = "node-core-os/p2p-lan-identity-proof/v1"
 NONCE_BYTES = 32
+PUBLIC_KEY_BYTES = 32
+SIGNATURE_BYTES = 64
 MAX_MESSAGE_BYTES = 4096
+_HEX = frozenset("0123456789abcdef")
 
 
 class IdentityProofError(ValueError):
@@ -26,11 +29,22 @@ class IdentityProofError(ValueError):
 
 def _canonical(value: dict[str, Any]) -> bytes:
     try:
-        return json.dumps(
+        encoded = json.dumps(
             value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
         ).encode("ascii")
     except (TypeError, ValueError) as exc:
         raise IdentityProofError("Identity proof message is not canonical JSON.") from exc
+    if not encoded or len(encoded) > MAX_MESSAGE_BYTES:
+        raise IdentityProofError("Identity proof message exceeds the size limit.")
+    return encoded
+
+
+def _is_lower_hex(value: object, expected_length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == expected_length
+        and all(character in _HEX for character in value)
+    )
 
 
 def create_challenge() -> dict[str, Any]:
@@ -56,15 +70,9 @@ def _validate_challenge(challenge: dict[str, Any]) -> bytes:
     ):
         raise IdentityProofError("Unsupported identity challenge.")
     nonce = challenge["nonce"]
-    if not isinstance(nonce, str):
-        raise IdentityProofError("Identity challenge nonce is invalid.")
-    try:
-        raw_nonce = bytes.fromhex(nonce)
-    except ValueError as exc:
-        raise IdentityProofError("Identity challenge nonce is not hexadecimal.") from exc
-    if len(raw_nonce) != NONCE_BYTES:
-        raise IdentityProofError("Identity challenge nonce must be 32 bytes.")
-    return raw_nonce
+    if not _is_lower_hex(nonce, NONCE_BYTES * 2):
+        raise IdentityProofError("Identity challenge nonce must be 32-byte lowercase hexadecimal.")
+    return bytes.fromhex(nonce)
 
 
 def create_response(
@@ -74,25 +82,32 @@ def create_response(
     _validate_challenge(challenge)
     try:
         identity = identity_store.load()
+        public_key = identity["public_key"]
+        node_id = identity["node_id"]
+        if not _is_lower_hex(public_key, PUBLIC_KEY_BYTES * 2):
+            raise IdentityProofError("Local node public key metadata is invalid.")
+        if node_id != "sha256:" + hashlib.sha256(bytes.fromhex(public_key)).hexdigest():
+            raise IdentityProofError("Local node ID does not match its public key.")
         signed_fields = {
             "purpose": PURPOSE,
             "protocol_version": PROTOCOL_VERSION,
             "challenge": challenge,
-            "node_id": identity["node_id"],
-            "public_key": identity["public_key"],
+            "node_id": node_id,
+            "public_key": public_key,
         }
         signature = identity_store.sign(_canonical(signed_fields))
     except NodeIdentityError as exc:
         raise IdentityProofError("Local node identity is unavailable.") from exc
+    if not isinstance(signature, bytes) or len(signature) != SIGNATURE_BYTES:
+        raise IdentityProofError("Local identity returned an invalid signature.")
     response = {
         "type": "IDENTITY_PROOF",
         "protocol_version": PROTOCOL_VERSION,
-        "node_id": identity["node_id"],
-        "public_key": identity["public_key"],
+        "node_id": node_id,
+        "public_key": public_key,
         "signature": signature.hex(),
     }
-    if len(_canonical(response)) > MAX_MESSAGE_BYTES:
-        raise IdentityProofError("Identity proof exceeds the size limit.")
+    _canonical(response)
     return response
 
 
@@ -114,15 +129,20 @@ def verify_response(
     node_id = response["node_id"]
     public_key = response["public_key"]
     signature_text = response["signature"]
-    if not isinstance(public_key, str) or len(public_key) != 64:
+    if (
+        not isinstance(node_id, str)
+        or len(node_id) != 71
+        or not node_id.startswith("sha256:")
+        or any(character not in _HEX for character in node_id[7:])
+    ):
+        raise IdentityProofError("Identity proof node ID is invalid.")
+    if not _is_lower_hex(public_key, PUBLIC_KEY_BYTES * 2):
         raise IdentityProofError("Identity proof public key is invalid.")
-    try:
-        public_bytes = bytes.fromhex(public_key)
-        signature = bytes.fromhex(signature_text)
-    except (TypeError, ValueError) as exc:
-        raise IdentityProofError("Identity proof key or signature is malformed.") from exc
-    if len(public_bytes) != 32 or len(signature) != 64:
-        raise IdentityProofError("Identity proof key or signature has an invalid length.")
+    if not _is_lower_hex(signature_text, SIGNATURE_BYTES * 2):
+        raise IdentityProofError("Identity proof signature is invalid.")
+    _canonical(response)
+    public_bytes = bytes.fromhex(public_key)
+    signature = bytes.fromhex(signature_text)
     expected_node_id = "sha256:" + hashlib.sha256(public_bytes).hexdigest()
     if node_id != expected_node_id:
         raise IdentityProofError("Identity proof node ID does not match its public key.")
