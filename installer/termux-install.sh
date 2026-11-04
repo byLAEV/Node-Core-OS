@@ -37,6 +37,8 @@ termux_missing_packages() {
 
   command -v bash >/dev/null 2>&1 || termux_add_package_once bash
   command -v python3 >/dev/null 2>&1 || termux_add_package_once python
+  # Cryptography must come from Termux, never from a glibc manylinux wheel.
+  python3 -c 'import cryptography' >/dev/null 2>&1 || termux_add_package_once python-cryptography
   command -v tar >/dev/null 2>&1 || termux_add_package_once tar
   command -v curl >/dev/null 2>&1 || termux_add_package_once curl
   command -v grep >/dev/null 2>&1 || termux_add_package_once grep
@@ -74,6 +76,10 @@ termux_check_dependencies() {
       return 1
     fi
   done
+  python3 -c 'import cryptography; from cryptography.hazmat.primitives.asymmetric import ed25519; ed25519.Ed25519PrivateKey.generate()' || {
+    printf 'Termux Python cryptography package is missing or unusable. Install it with pkg install python-cryptography.\n' >&2
+    return 1
+  }
   [[ -x "$PREFIX/bin/ipfs" ]] || {
     printf 'Termux Kubo executable is missing: %s/bin/ipfs\n' "$PREFIX" >&2
     printf 'Install the Termux kubo package and retry.\n' >&2
