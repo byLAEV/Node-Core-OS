@@ -1,58 +1,55 @@
-# Node Core OS on Termux (Android)
+# Node Core OS — Linux terminal compatibility: Termux
 
-This is the native Termux installation path. It does not install Debian, Ubuntu, PRoot, or another Linux distribution.
+Node Core OS is a terminal-first Linux application. Termux on Android is one compatible Linux terminal environment; it is not a separate Node Core OS product or a separate installation implementation.
 
-## Supported environment
+## One installation command
 
-- Official Termux app with its package repositories configured.
-- Android ARM64/aarch64.
-- A normal Termux user session; never run the installer as root or with sudo.
-- Network access to the Termux package repository and GitHub.
-
-Automated CI tests validate the wrapper and preservation logic on GNU/Linux using fixtures. They do not replace a real-device Android smoke test. Termux support must be considered device-validated only after the complete install and runtime checks pass on Android.
-
-## Fresh installation
-
-Download the latest **Node Core OS installer source archive** and its matching SHA-512 file from the [official releases page](https://github.com/byLAEV/Node-Core-OS/releases). Extract the archive, enter its directory, and run:
+Inside a current Termux session, as the normal Termux user:
 
 ```bash
-tar -xzf node-core-os-installer-VERSION.tar.gz
-cd node-core-os-installer-VERSION
-bash installer/termux-install.sh
+bash installer/install.sh
 ```
 
-Replace `VERSION` with the version in the downloaded filename. Run the script inside Termux, not from a GNU/Linux shell or a PRoot distribution.
+Use this exact same entry point on GNU/Linux distributions. The installer detects native Termux and selects compatible Android-native dependencies automatically. Debian, Ubuntu, PRoot, root, and sudo are not required.
 
-The Termux wrapper checks the platform and installs only missing Termux packages. It requires the Termux-native `python-cryptography` package and Kubo package. The Python virtual environment is created with access to Termux's system packages; the installer does not attempt to install GNU/Linux manylinux wheels into Android Python.
+The old command `bash installer/termux-install.sh` remains available only as a backward-compatible alias. It forwards to the unified installer.
+
+## Environment-specific dependency selection
+
+- GNU/Linux distributions: the installer checks required host commands, prepares a private Python environment, and installs the matching pinned GNU/Linux Kubo binary.
+- Native Termux: the installer uses `pkg` only to install missing user-space packages, including Termux-native Python cryptography and Kubo. It does not install glibc manylinux wheels or GNU/Linux Kubo binaries into Android.
+- Both environments use the same Node Core application, `~/.node-core` data layout, identity initialization, launcher, verification contract, and updater.
+
+Every command must run as the normal user. Never run installation, update, or uninstallation with root or sudo.
 
 ## Existing installation and recovery
 
-The wrapper never overwrites an existing application as a fresh install. If it detects an existing Node Core OS application, it delegates to the updater. The updater preserves:
+The unified installer delegates an existing installation to the updater; it must not overwrite the application as a fresh installation. The updater preserves:
 
 - `~/.node-core/storage/`
 - `~/.node-core/ipfs/`
-- `~/.node-core/config.json`, except for the explicitly required Kubo executable path migration
-- The existing Termux Kubo executable at `$PREFIX/bin/ipfs`
+- `~/.node-core/config.json`, except for a required migration of the Kubo executable path to the Termux-native executable
+- Termux's existing Kubo executable at `$PREFIX/bin/ipfs`
 
 If the updater reports pending recovery files under `~/.node-core/runtime/update`, stop. Do not delete or rename those files. Preserve the complete directory and inspect the backup, commit marker state, and installed application before attempting recovery.
 
 ## Start Node Core OS
 
-After a successful installation:
-
 ```bash
 "$HOME/.node-core/bin/node-core"
 ```
 
-To make the launcher available in the current shell:
+To expose the launcher in the current shell:
 
 ```bash
 export PATH="$HOME/.node-core/bin:$PATH"
 ```
 
-## Evidence required for a real-device validation
+## Validation boundary
 
-After installation, collect the output of:
+CI can test Termux environment detection and dependency selection on GNU/Linux fixtures, but this does not replace a complete installation smoke test on a physical Android device. A Termux-compatible release should only be marked device-validated after the unified installer, Python cryptography/Ed25519 operation, Kubo startup/API, Node Core launcher, and update/data-preservation checks pass on a real Termux ARM64 environment.
+
+For diagnostic evidence, collect:
 
 ```bash
 uname -m
@@ -62,4 +59,4 @@ python3 --version
 "$HOME/.node-core/bin/node-core" --help
 ```
 
-If a command fails, preserve its complete output and the Kubo log at `~/.node-core/logs/kubo.log`. Do not remove runtime recovery files or user data while troubleshooting.
+If a command fails, preserve its complete output and `~/.node-core/logs/kubo.log`. Do not remove runtime recovery files or user data while troubleshooting.
