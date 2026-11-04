@@ -16,8 +16,9 @@ version, complete challenge, node ID, and public key.
 1. Verifier creates `IDENTITY_CHALLENGE` with a cryptographically random 32-byte nonce.
 2. Responder validates the exact challenge schema and signs the canonical transcript.
 3. Responder returns `IDENTITY_PROOF` containing node ID, public key, and signature.
-4. Verifier checks key length, derives the node ID from the public key, and verifies
-   the Ed25519 signature over the exact challenge.
+4. Verifier enforces exact fields, protocol version, lowercase hexadecimal encodings,
+   32-byte public key, 64-byte signature, bounded canonical JSON, derives the node ID
+   from the public key, and verifies the Ed25519 signature over the exact challenge.
 5. Verifier records only that key possession was proven for this challenge.
 
 ## Security boundaries
