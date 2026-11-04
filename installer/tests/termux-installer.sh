@@ -5,16 +5,10 @@ REPOSITORY_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 TEMP_ROOT="$(mktemp -d)"
 trap 'rm -rf "$TEMP_ROOT"' EXIT
 
-# The Termux wrapper must reject a non-Termux shell before package operations.
-unset TERMUX_VERSION PREFIX || true
-if bash "$REPOSITORY_ROOT/installer/termux-install.sh" 2>"$TEMP_ROOT/non-termux.err"; then
-  printf 'FAIL: Termux installer accepted a non-Termux shell.\n' >&2
-  exit 1
-fi
-grep -q 'must be run inside Termux' "$TEMP_ROOT/non-termux.err"
+# The legacy command is only an alias to the unified Linux terminal installer.
+grep -Fq 'exec bash "$INSTALLER_DIR/install.sh" "$@"' "$REPOSITORY_ROOT/installer/termux-install.sh"
 
-# Source helper functions so dependency selection can be tested without
-# installing Android packages on the CI runner.
+# Simulate Termux detection on a Linux CI host without installing packages.
 export TERMUX_VERSION="test-termux"
 export PREFIX="$TEMP_ROOT/prefix"
 mkdir -p "$PREFIX/bin" "$TEMP_ROOT/fake-bin"
@@ -37,13 +31,19 @@ chmod +x "$TEMP_ROOT/fake-bin/python3"
 export REAL_PYTHON3
 export PATH="$TEMP_ROOT/fake-bin:$PATH"
 
-# Force native cryptography to be unavailable so package selection is
-# deterministic even if the CI host already has cryptography installed.
-source "$REPOSITORY_ROOT/installer/termux-install.sh"
-packages="$(termux_missing_packages)"
-grep -qx 'python-cryptography' <<<"$packages"
-grep -qx 'kubo' <<<"$packages"
-termux_install_dependencies
+source "$REPOSITORY_ROOT/installer/config/defaults"
+source "$REPOSITORY_ROOT/installer/lib/platform.sh"
+source "$REPOSITORY_ROOT/installer/lib/dependencies.sh"
+
+node_core_is_termux
+[[ "$(node_core_platform_name)" == *"Termux-compatible"* ]]
+linux_terminal_install_missing_dependencies
 grep -q '^install -y python-cryptography kubo$' "$TERMUX_PKG_LOG"
 
-printf 'Termux installer platform and dependency-selection tests passed.\n'
+# Outside Termux, the same dependency function must not invoke pkg.
+unset TERMUX_VERSION PREFIX
+if node_core_is_termux; then
+  printf 'FAIL: generic Linux was misdetected as Termux.\n' >&2
+  exit 1
+fi
+printf 'Unified Linux terminal and Termux compatibility tests passed.\n'
