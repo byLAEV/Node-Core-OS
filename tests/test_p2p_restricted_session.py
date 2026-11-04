@@ -70,7 +70,7 @@ class RestrictedPeerSessionTests(unittest.TestCase):
             target=_restricted_server_process,
             args=(
                 str(self.server_store.data_dir),
-                self.server_meta["node_id"],
+                self.client_meta["node_id"],
                 client_announcement.tls_certificate_pem,
                 queue,
             ),
