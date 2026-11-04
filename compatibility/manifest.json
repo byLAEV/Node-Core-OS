@@ -1,0 +1,103 @@
+{
+  "manifest_version": 1,
+  "contract_id": "NCTCL-1",
+  "product": "Node Core OS byLAEV",
+  "purpose": "Declarative capability-based compatibility for Linux terminal environments.",
+  "minimum_python": "3.10",
+  "supported_environments": {
+    "gnu_linux": {
+      "operating_system": "Linux",
+      "architectures": [
+        "x86_64",
+        "aarch64"
+      ],
+      "distribution_policy": "capability_based",
+      "required_commands": [
+        "bash",
+        "python3",
+        "tar",
+        "sha512sum",
+        "mkdir",
+        "cp",
+        "rm",
+        "mktemp",
+        "uname",
+        "awk",
+        "realpath",
+        "stat",
+        "id",
+        "find",
+        "grep",
+        "sed",
+        "nohup"
+      ],
+      "download_commands_any_of": [
+        "curl",
+        "wget"
+      ],
+      "host_package_managers": "never_invoked"
+    },
+    "termux": {
+      "operating_system": "Linux",
+      "architectures": [
+        "aarch64"
+      ],
+      "marker_environment_variables": [
+        "TERMUX_VERSION",
+        "PREFIX"
+      ],
+      "package_manager": "pkg",
+      "required_commands": [
+        "bash",
+        "python3",
+        "tar",
+        "sha512sum",
+        "mkdir",
+        "cp",
+        "rm",
+        "mktemp",
+        "uname",
+        "awk",
+        "realpath",
+        "stat",
+        "id",
+        "find",
+        "grep",
+        "sed",
+        "nohup",
+        "pkg",
+        "ipfs"
+      ],
+      "download_commands_any_of": [
+        "curl"
+      ],
+      "native_packages": [
+        "python",
+        "python-cryptography",
+        "kubo"
+      ],
+      "package_manager_policy": "pkg_only_for_native_termux_user_space_packages"
+    }
+  },
+  "terminal_policy": {
+    "emulator_allowlist_required": false,
+    "terminal_emulator_detection": "informational_only",
+    "tty_detection": "stdin_and_stdout_isatty",
+    "interactive_menu_requires_tty": true,
+    "term_dumb_behavior": "plain_text_without_ansi",
+    "unknown_terminal": "generic_posix_capabilities"
+  },
+  "optional_capabilities": {
+    "systemd_user": "optional_manual_service_fallback",
+    "kubo_cli": "required_after_platform_specific_kubo_preparation",
+    "ansi_color": "optional_plain_text_fallback"
+  },
+  "validation_policy": {
+    "unknown_linux_distribution": "evaluate_required_capabilities_not_distro_name",
+    "unsupported_architecture": "fail_closed",
+    "profile_match_is_installation_evidence": false,
+    "real_platform_validation": "record_separately_for_each_distribution_and_architecture",
+    "diagnostics": "read_only_no_package_install_no_filesystem_mutation",
+    "system_package_managers": "not_invoked_on_gnu_linux"
+  }
+}

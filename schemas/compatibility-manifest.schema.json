@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/schemas/compatibility-manifest.schema.json",
+  "title": "Node Core OS Terminal Compatibility Manifest",
+  "type": "object",
+  "required": [
+    "manifest_version",
+    "contract_id",
+    "product",
+    "minimum_python",
+    "supported_environments",
+    "terminal_policy",
+    "optional_capabilities",
+    "validation_policy"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": 1
+    },
+    "contract_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "product": {
+      "type": "string",
+      "minLength": 1
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "minimum_python": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "supported_environments": {
+      "type": "object",
+      "required": [
+        "gnu_linux",
+        "termux"
+      ],
+      "properties": {
+        "gnu_linux": {
+          "$ref": "#/$defs/profile"
+        },
+        "termux": {
+          "$ref": "#/$defs/profile"
+        }
+      },
+      "additionalProperties": false
+    },
+    "terminal_policy": {
+      "type": "object"
+    },
+    "optional_capabilities": {
+      "type": "object"
+    },
+    "validation_policy": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "required": [
+        "operating_system",
+        "architectures",
+        "required_commands",
+        "download_commands_any_of"
+      ],
+      "properties": {
+        "operating_system": {
+          "const": "Linux"
+        },
+        "architectures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "required_commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "download_commands_any_of": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
