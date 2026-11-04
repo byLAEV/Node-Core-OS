@@ -225,3 +225,179 @@ class RestrictedSessionAdmission:
 
     def release_worker(self) -> None:
         self._slots.release()
+
+
+class RestrictedPeerService:
+    """Separate bounded listener for one-shot restricted identity/status requests."""
+
+    def __init__(
+        self,
+        identity_store: NodeIdentityStore,
+        tls_transport: NodeTLSTransport,
+        certificate_candidates: Callable[[], dict[str, bytes]],
+        *,
+        is_revoked: Callable[[str], bool],
+        host: str = "127.0.0.1",
+        port: int = 0,
+        timeout_seconds: float = 5.0,
+        max_workers: int = MAX_RESTRICTED_WORKERS,
+        requests_per_minute: int = MAX_REQUESTS_PER_SOURCE_PER_MINUTE,
+    ) -> None:
+        if not 0 <= port <= 65535 or timeout_seconds <= 0:
+            raise ValueError("Restricted listener address or timeout is invalid.")
+        self.identity_store = identity_store
+        self.tls_transport = tls_transport
+        self.certificate_candidates = certificate_candidates
+        self.is_revoked = is_revoked
+        self.host = host
+        self.port = port
+        self.timeout_seconds = timeout_seconds
+        self.admission = RestrictedSessionAdmission(
+            max_workers=max_workers, requests_per_minute=requests_per_minute
+        )
+        self._listener: socket.socket | None = None
+        self._stop = threading.Event()
+        self._accept_thread: threading.Thread | None = None
+        self._workers: set[threading.Thread] = set()
+        self._workers_lock = threading.Lock()
+        self._active: dict[str, set[socket.socket]] = defaultdict(set)
+        self._active_lock = threading.RLock()
+
+    @property
+    def address(self) -> tuple[str, int]:
+        if self._listener is None:
+            raise RestrictedSessionError("Restricted listener is not running.")
+        host, port = self._listener.getsockname()[:2]
+        return str(host), int(port)
+
+    def start(self) -> tuple[str, int]:
+        if self._listener is not None:
+            return self.address
+        self.tls_transport.ensure_certificate()
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind((self.host, self.port))
+        listener.listen(MAX_RESTRICTED_WORKERS)
+        listener.settimeout(0.5)
+        self._listener = listener
+        self._stop.clear()
+        self._accept_thread = threading.Thread(
+            target=self._accept_loop, name="node-core-p2p-restricted-accept", daemon=True
+        )
+        self._accept_thread.start()
+        return self.address
+
+    def _accept_loop(self) -> None:
+        listener = self._listener
+        while not self._stop.is_set() and listener is not None:
+            try:
+                raw, address = listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            source_ip = str(address[0])
+            if not self.admission.admit(source_ip) or not self.admission.acquire_worker():
+                raw.close()
+                continue
+            worker = threading.Thread(
+                target=self._handle_connection, args=(raw,),
+                name="node-core-p2p-restricted-worker", daemon=True,
+            )
+            with self._workers_lock:
+                self._workers.add(worker)
+            worker.start()
+
+    def _handle_connection(self, raw: socket.socket) -> None:
+        tls_socket: socket.socket | None = None
+        peer_node_id: str | None = None
+        try:
+            candidates = self.certificate_candidates()
+            if not candidates or any(not isinstance(value, bytes) for value in candidates.values()):
+                return
+            tls_socket = self.tls_transport.server_context(list(candidates.values())).wrap_socket(
+                raw, server_side=True
+            )
+            raw = None
+            tls_socket.settimeout(self.timeout_seconds)
+            peer = self.tls_transport.verify_peer_identity(tls_socket)
+            peer_node_id = peer["node_id"]
+            if peer_node_id not in candidates or self.is_revoked(peer_node_id):
+                raise RestrictedSessionError("Peer is not currently eligible for restricted access.")
+
+            def register(node_id: str) -> None:
+                with self._active_lock:
+                    self._active[node_id].add(tls_socket)
+
+            RestrictedPeerSession(
+                self.identity_store, self.tls_transport,
+                timeout_seconds=self.timeout_seconds,
+            ).serve_one(
+                tls_socket, peer_node_id, is_revoked=self.is_revoked,
+                on_authenticated=register,
+            )
+        except (OSError, PeerSessionError, TLSTransportError, RestrictedSessionError):
+            pass
+        finally:
+            if peer_node_id is not None and tls_socket is not None:
+                with self._active_lock:
+                    sessions = self._active.get(peer_node_id)
+                    if sessions is not None:
+                        sessions.discard(tls_socket)
+                        if not sessions:
+                            self._active.pop(peer_node_id, None)
+            for connection in (tls_socket, raw):
+                if connection is not None:
+                    try:
+                        connection.shutdown(socket.SHUT_RDWR)
+                    except OSError:
+                        pass
+                    try:
+                        connection.close()
+                    except OSError:
+                        pass
+            self.admission.release_worker()
+            with self._workers_lock:
+                self._workers.discard(threading.current_thread())
+
+    def revoke_peer(self, node_id: str) -> int:
+        """Close all currently authenticated restricted sessions for a revoked node."""
+        with self._active_lock:
+            connections = list(self._active.pop(node_id, set()))
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                connection.close()
+            except OSError:
+                pass
+        return len(connections)
+
+    def stop(self) -> None:
+        self._stop.set()
+        listener, self._listener = self._listener, None
+        if listener is not None:
+            try:
+                listener.close()
+            except OSError:
+                pass
+        if self._accept_thread is not None:
+            self._accept_thread.join(timeout=self.timeout_seconds + 1.0)
+        with self._workers_lock:
+            workers = list(self._workers)
+        with self._active_lock:
+            connections = [sock for sessions in self._active.values() for sock in sessions]
+            self._active.clear()
+        for connection in connections:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                connection.close()
+            except OSError:
+                pass
+        for worker in workers:
+            worker.join(timeout=self.timeout_seconds + 1.0)
