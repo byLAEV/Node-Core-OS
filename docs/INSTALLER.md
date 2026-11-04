@@ -241,7 +241,7 @@ The Termux-only wrapper is an explicit exception: it installs only missing user-
 
 ## Third-party installation boundary
 
-The installer installs Kubo as external infrastructure. Python third-party packages are intentionally not required by the current runtime.
+The installer installs Kubo as external infrastructure and the cryptography Python package required for Ed25519 node identity. GNU/Linux uses a private virtual environment; Termux uses the Android-native package provided by its package manager.
 
 The resulting dependency model is:
 
