@@ -90,14 +90,17 @@ The installer does not modify the user's shell startup files automatically. This
 
 ## Python
 
-The installer requires Python 3.10 or newer.
+The installer requires Python 3.10 or newer and the `cryptography>=42.0.0` package for Ed25519 node identity operations.
 
-The current repository uses only the standard library.
+- GNU/Linux installs Python dependencies into the private virtual environment, using bundled wheels when they match the host architecture and the configured Python package index when they do not.
+- Termux installs the Android-native `python-cryptography` package through `pkg`. Its virtual environment uses `--system-site-packages` so the Android-native extension remains available. GNU/Linux manylinux wheels are never installed into Termux.
+- The installer verifies the cryptography import and generates an Ed25519 key in the target runtime before it initializes persistent node identity.
 
 The installer verifies:
 
-- Python executable exists
-- Python major/minor version is supported
+- Python executable exists and is Python 3.10 or newer
+- Required cryptography dependency is importable
+- Ed25519 key generation succeeds
 - Python can compile the Node Core sources
 
 
@@ -173,7 +176,7 @@ Node Core only provides the abstraction used by the Node Core menus and runtime.
 
 The installer must not make systemd a universal prerequisite.
 
-The first installer baseline supports a user-owned/manual Kubo lifecycle through Node Core's existing Kubo manager. A future service adapter can use `systemd --user` or another Linux supervisor when available.
+The installer starts Kubo as the normal user. When a working `systemd --user` manager is available, it also installs a user service for subsequent sessions. Without a usable user service manager, Kubo remains in the Node Core-managed manual lifecycle. Systemd is optional.
 
 The abstraction is:
 
@@ -226,7 +229,7 @@ The installer intentionally avoids:
 - systemd as a universal prerequisite
 - fixed system paths
 - graphical installers
-- platform-specific branches for Termux/Android
+- mixing Termux-specific package operations into the generic GNU/Linux installer
 - unversioned Kubo downloads
 
 
@@ -246,6 +249,7 @@ The resulting dependency model is:
 GNU/Linux
 ├── Bash
 ├── Python 3.10+
+├── cryptography >= 42.0.0
 ├── tar
 ├── coreutils / sha512sum
 ├── awk
