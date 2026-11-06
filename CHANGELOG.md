@@ -10,7 +10,8 @@ All notable changes to Node Core OS are documented here.
 - The package workflow builds a source installer archive and a self-contained updater archive, generates SHA-512 files, verifies the offline updater package, and uploads assets to a version-tag Release.
 - GNU/Linux release automation targets Ubuntu 24.04 x86_64. Termux uses its Android ARM64 native package path; physical-device smoke testing remains a separate acceptance requirement.
 - P2P Contracts and HashPaper workflows explicitly suspended by repository policy remain excluded from release claims; skipped checks are not reported as passing.
-- PRs #206 and #207 remain separate draft work and are not part of the current release candidate unless separately approved and integrated.
+- PR #205's CDD intent-lobby correction is in the 1.5.6 release scope: it separates the 1 KiB ticket-consume limit from protected-origin upload policy, rejects duplicate JSON keys and non-JSON ticket requests, validates configured destination paths, and emits only fixed public IPFS gateway links. The lobby remains a single-process in-memory MVP; distributed replay prevention, local-Kubo lobby retrieval, anti-bot protection, and human-identity verification are not claimed.
+- PR #206 contributes an architecture-only ADR; it does not add restricted-session runtime behavior. PR #207's restricted-session implementation remains outside the 1.5.6 release scope pending additional security review and listener lifecycle validation.
 - Final publication is blocked until the exact release commit passes the required CI, package generation and checksum verification, the historical tag is reconciled, and all expected assets are visible on the Release page.
 
 ## Repository coherence audit — 2026-11-04 (maintenance correction for 1.5.6)
