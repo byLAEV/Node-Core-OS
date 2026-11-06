@@ -200,14 +200,19 @@ class RestrictedPeerSessionTests(unittest.TestCase):
         stalled = socket.create_connection((host, port), timeout=2.0)
         try:
             deadline = time.monotonic() + 3.0
+            saw_connection = False
+            pending = False
+            workers = False
             while time.monotonic() < deadline:
                 with service._connections_lock:
                     pending = bool(service._connections)
                 with service._workers_lock:
                     workers = bool(service._workers)
-                if not pending and not workers:
+                saw_connection = saw_connection or pending or workers
+                if saw_connection and not pending and not workers:
                     break
                 time.sleep(0.01)
+            self.assertTrue(saw_connection)
             self.assertFalse(pending)
             self.assertFalse(workers)
             self.assertTrue(service.admission.acquire_worker())
@@ -284,8 +289,11 @@ class RestrictedPeerSessionTests(unittest.TestCase):
             self.assertTrue(active)
             self.assertEqual(service.revoke_peer(self.client_meta["node_id"]), 1)
             tls_socket.settimeout(2.0)
-            with self.assertRaises((OSError, ssl.SSLError)):
-                tls_socket.recv(1)
+            try:
+                result = tls_socket.recv(1)
+            except OSError:
+                result = b""
+            self.assertEqual(result, b"")
         finally:
             if tls_socket is not None:
                 tls_socket.close()

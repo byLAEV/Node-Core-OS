@@ -150,12 +150,14 @@ class RestrictedPeerSession:
         tls_transport: NodeTLSTransport,
         *,
         timeout_seconds: float = DEFAULT_RESTRICTED_TIMEOUT_SECONDS,
+        handshake_timeout_seconds: float = DEFAULT_TLS_HANDSHAKE_TIMEOUT_SECONDS,
     ) -> None:
-        if timeout_seconds <= 0:
-            raise ValueError("timeout_seconds must be positive.")
+        if timeout_seconds <= 0 or handshake_timeout_seconds <= 0:
+            raise ValueError("Session timeouts must be positive.")
         self.identity_store = identity_store
         self.tls_transport = tls_transport
         self.timeout_seconds = timeout_seconds
+        self.handshake_timeout_seconds = handshake_timeout_seconds
 
     def request_status(
         self,
@@ -171,7 +173,7 @@ class RestrictedPeerSession:
             with self.tls_transport.client_context([discovered_certificate_pem]).wrap_socket(
                 raw, server_hostname=None, do_handshake_on_connect=False
             ) as tls_socket:
-                _perform_tls_handshake(tls_socket, self.timeout_seconds)
+                _perform_tls_handshake(tls_socket, self.handshake_timeout_seconds)
                 tls_socket.settimeout(self.timeout_seconds)
                 peer = AuthenticatedPeerSession(
                     self.identity_store, self.tls_transport, expected_node_id,
