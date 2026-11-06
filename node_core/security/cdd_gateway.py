@@ -20,6 +20,16 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate JSON object keys in internal gateway protocols."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON fields are forbidden.")
+        result[key] = value
+    return result
+
 from node_core.ipfs import KuboManager
 from node_core.security.cdd_intent import CDDIntentError, CDDIntentLobby
 from node_core.security.cdd import (
@@ -390,7 +400,7 @@ def make_cdd_handler(
                         page,
                         content_type="text/html; charset=utf-8",
                         extra_headers={
-                            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+                            "Content-Security-Policy": "default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
                             "X-Content-Type-Options": "nosniff",
                         },
                     )
@@ -424,9 +434,15 @@ def make_cdd_handler(
                 if config.intent_lobby is None:
                     self._respond(404, b"intent lobby is not enabled")
                     return
+                content_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+                if content_type != "application/json":
+                    self._respond(415, b"consume requires application/json")
+                    return
                 try:
-                    payload = json.loads(body.decode("utf-8"))
-                except (UnicodeDecodeError, json.JSONDecodeError):
+                    payload = json.loads(
+                        body.decode("utf-8"), object_pairs_hook=_unique_json_object
+                    )
+                except (UnicodeDecodeError, ValueError):
                     self._respond(400, b"invalid ticket JSON")
                     return
                 if not isinstance(payload, dict) or set(payload) != {"ticket"} or not isinstance(payload.get("ticket"), str):
