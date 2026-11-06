@@ -82,6 +82,10 @@ jobs:
           tar -czf "dist/$update_name.tar.gz" -C "$stage" "$update_name"
           sha256sum dist/*.tar.gz > dist/SHA256SUMS
           sha512sum dist/*.tar.gz > dist/SHA512SUMS
+          printf 'install_sha256=%s\n' "$(awk '{print $1}' dist/SHA256SUMS | sed -n '1p')" >> "$GITHUB_OUTPUT"
+          printf 'update_sha256=%s\n' "$(awk '{print $1}' dist/SHA256SUMS | sed -n '2p')" >> "$GITHUB_OUTPUT"
+          printf 'install_sha512=%s\n' "$(awk '{print $1}' dist/SHA512SUMS | sed -n '1p')" >> "$GITHUB_OUTPUT"
+          printf 'update_sha512=%s\n' "$(awk '{print $1}' dist/SHA512SUMS | sed -n '2p')" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
           printf 'install=%s\n' "$install_name" >> "$GITHUB_OUTPUT"
           printf 'update=%s\n' "$update_name" >> "$GITHUB_OUTPUT"
@@ -109,15 +113,52 @@ jobs:
           name: node-core-bios-packages-${{ steps.package.outputs.version }}
           path: |
             dist/*.tar.gz
-            dist/SHA256SUMS
-            dist/SHA512SUMS
           if-no-files-found: error
           retention-days: 90
-      - name: Publish release assets for version tags
+      - name: Publish exactly one installer and one updater
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Node Core OS ${{ steps.package.outputs.version }}" --notes "Complete Node Core BIOS installation and update packages. SHA-256 and SHA-512 checksums included. Existing installations must run the protected updater as the normal user, never root."
-          gh release upload "$GITHUB_REF_NAME" dist/*.tar.gz dist/SHA256SUMS dist/SHA512SUMS --clobber
+          tag="$GITHUB_REF_NAME"
+          version="${tag#v}"
+          [[ "$version" == "${{ steps.package.outputs.version }}" ]]
+          install_asset="node-core-os-install-$version.tar.gz"
+          update_asset="node-core-os-update-$version.tar.gz"
+          [[ -s "dist/$install_asset" && -s "dist/$update_asset" ]]
+          notes_file="$(mktemp)"
+          trap 'rm -f "$notes_file"' EXIT
+          cat > "$notes_file" <<EOF
+          Node Core OS byLAEV $version
+
+          Exactly two downloadable archives: one installer and one updater.
+          No platform-specific variants or separate checksum files are published.
+          Run installation and updates as the normal user, never root or sudo.
+          Automated GNU/Linux packaging targets Ubuntu 24.04 x86_64.
+          Termux uses native Android ARM64 dependencies; a physical-device smoke test remains separate from CI.
+
+          Source commit: ${{ steps.package.outputs.commit }}
+
+          Installer: $install_asset
+          SHA-256: ${{ steps.package.outputs.install_sha256 }}
+          SHA-512: ${{ steps.package.outputs.install_sha512 }}
+
+          Updater: $update_asset
+          SHA-256: ${{ steps.package.outputs.update_sha256 }}
+          SHA-512: ${{ steps.package.outputs.update_sha512 }}
+          EOF
+          if gh release view "$tag" >/dev/null 2>&1; then
+            existing="$(gh release view "$tag" --json assets --jq '.assets[].name' || true)"
+            if [[ -n "$existing" ]]; then
+              echo "Refusing to publish over a Release with existing assets; inspect and clean it first." >&2
+              printf '%s\n' "$existing" >&2
+              exit 1
+            fi
+            gh release edit "$tag" --notes-file "$notes_file"
+          else
+            gh release create "$tag" --title "Node Core OS $version" --notes-file "$notes_file"
+          fi
+          gh release upload "$tag" "dist/$install_asset" "dist/$update_asset"
+          count="$(gh release view "$tag" --json assets --jq '.assets | length')"
+          [[ "$count" == "2" ]] || { echo "Expected exactly two Release assets; found $count." >&2; exit 1; }
