@@ -39,8 +39,6 @@ class FakeKubo:
         return type("Added", (), {"cid": self.cid})()
 
     def cat(self, cid):
-        if cid == LOBBY_CID:
-            return b"<!doctype html><html><body>CDD gateway lobby</body></html>"
         if cid != self.cid or self.payload is None:
             raise ValueError("CID not found")
         return self.payload
@@ -133,7 +131,6 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         self.addCleanup(self.origin.server_close)
         self.addCleanup(self.origin_thread.join, 2)
         self.intent_now = [100.0]
-        self.lobby_kubo = FakeKubo()
         self.intent_lobby = CDDIntentLobby(
             {"read-document": IntentRoute(destination_id="web2:docs", content_cid="bafybeigdyrzt5sfp7udm7hu76uh4d3g5q4m3f4j2q")},
             clock=lambda: self.intent_now[0],
@@ -213,6 +210,35 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(response.status, 413)
         self.assertEqual(response.read(), b"request body too large")
+
+    def test_consume_rejects_duplicate_json_ticket_fields_without_consuming_ticket(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        ticket = json.loads(response.read().decode("utf-8"))["ticket"]
+        self.intent_now[0] += 3
+        encoded_ticket = ticket.encode("ascii")
+        duplicate = b'{"ticket":"' + encoded_ticket + b'","ticket":"' + encoded_ticket + b'"}'
+        rejected = self.request(
+            "/_cdd/consume", method="POST", data=duplicate,
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(rejected.status, 400)
+        self.assertEqual(rejected.read(), b"invalid ticket JSON")
+        self.assertEqual(self.intent_lobby.active_ticket_count, 1)
+        accepted = self.request(
+            "/_cdd/consume", method="POST",
+            data=json.dumps({"ticket": ticket}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(accepted.status, 200)
+        self.assertEqual(accepted.read(), b"origin:/intent-document")
+
+    def test_consume_requires_json_content_type(self):
+        response = self.request(
+            "/_cdd/consume", method="POST", data=b'{"ticket":"not-a-ticket"}',
+            headers={"Content-Type": "text/plain"},
+        )
+        self.assertEqual(response.status, 415)
+        self.assertEqual(response.read(), b"consume requires application/json")
 
     def test_consumed_ticket_cannot_be_replayed(self):
         response = self.request("/_cdd/lobby?intent=read-document")
