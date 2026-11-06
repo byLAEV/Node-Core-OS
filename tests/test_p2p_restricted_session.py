@@ -1,13 +1,16 @@
 import multiprocessing
 import socket
+import ssl
 import struct
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.p2p.discovery import create_announcement, parse_announcement
 from node_core.p2p.restricted_session import (
+    RestrictedPeerService,
     RestrictedPeerSession,
     RestrictedSessionAdmission,
     RestrictedSessionError,
@@ -15,6 +18,7 @@ from node_core.p2p.restricted_session import (
     _receive_restricted,
     MAX_RESTRICTED_FRAME_BYTES,
 )
+from node_core.p2p.session import AuthenticatedPeerSession
 from node_core.p2p.tls_transport import NodeTLSTransport
 from node_core.p2p.trust_store import PeerTrustStore
 
@@ -143,6 +147,152 @@ class RestrictedPeerSessionTests(unittest.TestCase):
         admission.release_worker()
         self.assertTrue(admission.acquire_worker())
         admission.release_worker()
+
+    def _wait_for_service_idle(self, service, timeout=3.0):
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with service._connections_lock:
+                connections = bool(service._connections)
+            with service._workers_lock:
+                workers = bool(service._workers)
+            if not connections and not workers:
+                return
+            time.sleep(0.01)
+        self.fail("RestrictedPeerService did not release its connection and worker.")
+
+    def test_service_handles_real_authenticated_request_and_releases_worker(self):
+        service = RestrictedPeerService(
+            self.server_store,
+            self.server_tls,
+            lambda: {self.client_meta["node_id"]: self.client_cert},
+            is_revoked=lambda _node_id: False,
+            timeout_seconds=5.0,
+            handshake_timeout_seconds=10.0,
+        )
+        host, port = service.start()
+        try:
+            response = RestrictedPeerSession(
+                self.client_store, self.client_tls, timeout_seconds=10.0
+            ).request_status(
+                host, port, self.server_meta["node_id"], self.server_cert
+            )
+            self.assertEqual(response["node_id"], self.server_meta["node_id"])
+            self.assertEqual(response["availability"], "available")
+        finally:
+            service.stop()
+        self._wait_for_service_idle(service)
+        self.assertTrue(service.admission.acquire_worker())
+        service.admission.release_worker()
+        self.assertEqual(PeerTrustStore(self.client_store.data_dir).list_peers(), [])
+        self.assertEqual(PeerTrustStore(self.server_store.data_dir).list_peers(), [])
+
+    def test_handshake_timeout_releases_worker_and_listener_recovers(self):
+        service = RestrictedPeerService(
+            self.server_store,
+            self.server_tls,
+            lambda: {self.client_meta["node_id"]: self.client_cert},
+            is_revoked=lambda _node_id: False,
+            timeout_seconds=2.0,
+            handshake_timeout_seconds=0.2,
+            max_workers=1,
+        )
+        host, port = service.start()
+        stalled = socket.create_connection((host, port), timeout=2.0)
+        try:
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline:
+                with service._connections_lock:
+                    pending = bool(service._connections)
+                with service._workers_lock:
+                    workers = bool(service._workers)
+                if not pending and not workers:
+                    break
+                time.sleep(0.01)
+            self.assertFalse(pending)
+            self.assertFalse(workers)
+            self.assertTrue(service.admission.acquire_worker())
+            service.admission.release_worker()
+
+            response = RestrictedPeerSession(
+                self.client_store, self.client_tls, timeout_seconds=5.0
+            ).request_status(
+                host, port, self.server_meta["node_id"], self.server_cert
+            )
+            self.assertEqual(response["availability"], "available")
+        finally:
+            stalled.close()
+            service.stop()
+        self._wait_for_service_idle(service)
+
+    def test_stop_closes_client_stalled_before_tls_authentication(self):
+        service = RestrictedPeerService(
+            self.server_store,
+            self.server_tls,
+            lambda: {self.client_meta["node_id"]: self.client_cert},
+            is_revoked=lambda _node_id: False,
+            timeout_seconds=20.0,
+            handshake_timeout_seconds=60.0,
+        )
+        host, port = service.start()
+        stalled = socket.create_connection((host, port), timeout=2.0)
+        try:
+            deadline = time.monotonic() + 2.0
+            while time.monotonic() < deadline:
+                with service._connections_lock:
+                    accepted = bool(service._connections)
+                if accepted:
+                    break
+                time.sleep(0.01)
+            self.assertTrue(accepted)
+            service.stop()
+            stalled.settimeout(2.0)
+            self.assertEqual(stalled.recv(1), b"")
+        finally:
+            stalled.close()
+            service.stop()
+        self._wait_for_service_idle(service)
+
+    def test_revoke_closes_authenticated_session_before_status_request(self):
+        service = RestrictedPeerService(
+            self.server_store,
+            self.server_tls,
+            lambda: {self.client_meta["node_id"]: self.client_cert},
+            is_revoked=lambda _node_id: False,
+            timeout_seconds=10.0,
+            handshake_timeout_seconds=10.0,
+        )
+        host, port = service.start()
+        raw = socket.create_connection((host, port), timeout=5.0)
+        tls_socket = None
+        try:
+            tls_socket = self.client_tls.client_context([self.server_cert]).wrap_socket(
+                raw, server_hostname=None
+            )
+            AuthenticatedPeerSession(
+                self.client_store,
+                self.client_tls,
+                self.server_meta["node_id"],
+                timeout_seconds=5.0,
+            ).establish(tls_socket, "initiator")
+            deadline = time.monotonic() + 3.0
+            while time.monotonic() < deadline:
+                with service._active_lock:
+                    active = bool(service._active.get(self.client_meta["node_id"]))
+                if active:
+                    break
+                time.sleep(0.01)
+            self.assertTrue(active)
+            self.assertEqual(service.revoke_peer(self.client_meta["node_id"]), 1)
+            tls_socket.settimeout(2.0)
+            with self.assertRaises((OSError, ssl.SSLError)):
+                tls_socket.recv(1)
+        finally:
+            if tls_socket is not None:
+                tls_socket.close()
+            else:
+                raw.close()
+            service.stop()
+        self._wait_for_service_idle(service)
 
 
 if __name__ == "__main__":

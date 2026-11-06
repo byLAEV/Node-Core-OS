@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import hashlib
 import re
+import selectors
 import socket
+import ssl
 import struct
 import threading
 import time
@@ -25,12 +27,45 @@ from node_core.p2p.tls_transport import NodeTLSTransport, TLSTransportError
 
 MAX_RESTRICTED_FRAME_BYTES = 1024
 MAX_RESTRICTED_WORKERS = 8
+DEFAULT_RESTRICTED_TIMEOUT_SECONDS = 30.0
+DEFAULT_TLS_HANDSHAKE_TIMEOUT_SECONDS = 60.0
 MAX_REQUESTS_PER_SOURCE_PER_MINUTE = 12
 REQUEST_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
 class RestrictedSessionError(RuntimeError):
     """Raised when a restricted identity/status session is invalid."""
+
+
+def _perform_tls_handshake(tls_socket: ssl.SSLSocket, timeout_seconds: float) -> None:
+    """Complete TLS without blocking a worker past one absolute deadline.
+
+    A non-blocking handshake lets shutdown interrupt clients that never send a
+    ClientHello. The deadline is independent of socket idle timeouts used after
+    the handshake, so slow but progressing connections receive a configurable
+    window instead of an arbitrary short per-read timeout.
+    """
+    if timeout_seconds <= 0:
+        raise ValueError("TLS handshake timeout must be positive.")
+    deadline = time.monotonic() + timeout_seconds
+    tls_socket.setblocking(False)
+    while True:
+        try:
+            tls_socket.do_handshake()
+            return
+        except ssl.SSLWantReadError:
+            event = selectors.EVENT_READ
+        except ssl.SSLWantWriteError:
+            event = selectors.EVENT_WRITE
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("TLS handshake exceeded its configured deadline.")
+        with selectors.DefaultSelector() as selector:
+            selector.register(tls_socket, event)
+            ready = selector.select(remaining)
+        if not ready:
+            raise TimeoutError("TLS handshake exceeded its configured deadline.")
 
 
 def _receive_exact(sock: socket.socket, size: int) -> bytes:
@@ -114,7 +149,7 @@ class RestrictedPeerSession:
         identity_store: NodeIdentityStore,
         tls_transport: NodeTLSTransport,
         *,
-        timeout_seconds: float = 5.0,
+        timeout_seconds: float = DEFAULT_RESTRICTED_TIMEOUT_SECONDS,
     ) -> None:
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive.")
@@ -134,8 +169,9 @@ class RestrictedPeerSession:
         raw = socket.create_connection((host, port), timeout=self.timeout_seconds)
         try:
             with self.tls_transport.client_context([discovered_certificate_pem]).wrap_socket(
-                raw, server_hostname=None
+                raw, server_hostname=None, do_handshake_on_connect=False
             ) as tls_socket:
+                _perform_tls_handshake(tls_socket, self.timeout_seconds)
                 tls_socket.settimeout(self.timeout_seconds)
                 peer = AuthenticatedPeerSession(
                     self.identity_store, self.tls_transport, expected_node_id,
@@ -242,11 +278,16 @@ class RestrictedPeerService:
         is_revoked: Callable[[str], bool],
         host: str = "127.0.0.1",
         port: int = 0,
-        timeout_seconds: float = 5.0,
+        timeout_seconds: float = DEFAULT_RESTRICTED_TIMEOUT_SECONDS,
+        handshake_timeout_seconds: float = DEFAULT_TLS_HANDSHAKE_TIMEOUT_SECONDS,
         max_workers: int = MAX_RESTRICTED_WORKERS,
         requests_per_minute: int = MAX_REQUESTS_PER_SOURCE_PER_MINUTE,
     ) -> None:
-        if not 0 <= port <= 65535 or timeout_seconds <= 0:
+        if (
+            not 0 <= port <= 65535
+            or timeout_seconds <= 0
+            or handshake_timeout_seconds <= 0
+        ):
             raise ValueError("Restricted listener address or timeout is invalid.")
         self.identity_store = identity_store
         self.tls_transport = tls_transport
@@ -255,6 +296,7 @@ class RestrictedPeerService:
         self.host = host
         self.port = port
         self.timeout_seconds = timeout_seconds
+        self.handshake_timeout_seconds = handshake_timeout_seconds
         self.admission = RestrictedSessionAdmission(
             max_workers=max_workers, requests_per_minute=requests_per_minute
         )
@@ -263,6 +305,10 @@ class RestrictedPeerService:
         self._accept_thread: threading.Thread | None = None
         self._workers: set[threading.Thread] = set()
         self._workers_lock = threading.Lock()
+        # Track accepted sockets before TLS starts; stop() must also close
+        # clients that have not authenticated yet.
+        self._connections: set[socket.socket] = set()
+        self._connections_lock = threading.RLock()
         self._active: dict[str, set[socket.socket]] = defaultdict(set)
         self._active_lock = threading.RLock()
 
@@ -303,13 +349,27 @@ class RestrictedPeerService:
             if not self.admission.admit(source_ip) or not self.admission.acquire_worker():
                 raw.close()
                 continue
+            with self._connections_lock:
+                if self._stop.is_set():
+                    raw.close()
+                    self.admission.release_worker()
+                    continue
+                self._connections.add(raw)
             worker = threading.Thread(
                 target=self._handle_connection, args=(raw,),
                 name="node-core-p2p-restricted-worker", daemon=True,
             )
             with self._workers_lock:
                 self._workers.add(worker)
-            worker.start()
+            try:
+                worker.start()
+            except RuntimeError:
+                with self._workers_lock:
+                    self._workers.discard(worker)
+                with self._connections_lock:
+                    self._connections.discard(raw)
+                raw.close()
+                self.admission.release_worker()
 
     def _handle_connection(self, raw: socket.socket) -> None:
         tls_socket: socket.socket | None = None
@@ -318,10 +378,19 @@ class RestrictedPeerService:
             candidates = self.certificate_candidates()
             if not candidates or any(not isinstance(value, bytes) for value in candidates.values()):
                 return
-            tls_socket = self.tls_transport.server_context(list(candidates.values())).wrap_socket(
-                raw, server_side=True
-            )
-            raw = None
+            tls_context = self.tls_transport.server_context(list(candidates.values()))
+            # Swap the tracked raw socket for its TLS wrapper while holding the
+            # same lock used by stop(), leaving no untracked shutdown window.
+            with self._connections_lock:
+                if self._stop.is_set():
+                    return
+                tls_socket = tls_context.wrap_socket(
+                    raw, server_side=True, do_handshake_on_connect=False
+                )
+                self._connections.discard(raw)
+                self._connections.add(tls_socket)
+                raw = None
+            _perform_tls_handshake(tls_socket, self.handshake_timeout_seconds)
             tls_socket.settimeout(self.timeout_seconds)
             peer = self.tls_transport.verify_peer_identity(tls_socket)
             peer_node_id = peer["node_id"]
@@ -341,7 +410,11 @@ class RestrictedPeerService:
                 raise RestrictedSessionError("Peer is not currently eligible for restricted access.")
 
             def register(node_id: str) -> None:
+                if self._stop.is_set():
+                    raise RestrictedSessionError("Restricted peer service is stopping.")
                 with self._active_lock:
+                    if self._stop.is_set():
+                        raise RestrictedSessionError("Restricted peer service is stopping.")
                     self._active[node_id].add(tls_socket)
 
             RestrictedPeerSession(
@@ -363,6 +436,8 @@ class RestrictedPeerService:
                             self._active.pop(peer_node_id, None)
             for connection in (tls_socket, raw):
                 if connection is not None:
+                    with self._connections_lock:
+                        self._connections.discard(connection)
                     try:
                         connection.shutdown(socket.SHUT_RDWR)
                     except OSError:
@@ -399,11 +474,13 @@ class RestrictedPeerService:
             except OSError:
                 pass
         if self._accept_thread is not None:
-            self._accept_thread.join(timeout=self.timeout_seconds + 1.0)
-        with self._workers_lock:
-            workers = list(self._workers)
+            self._accept_thread.join(timeout=1.0)
+        # Every accepted raw or TLS socket is tracked, including handshakes and
+        # authentication in progress. Shutdown must not wait for peer input.
+        with self._connections_lock:
+            connections = list(self._connections)
+            self._connections.clear()
         with self._active_lock:
-            connections = [sock for sessions in self._active.values() for sock in sessions]
             self._active.clear()
         for connection in connections:
             try:
@@ -414,5 +491,8 @@ class RestrictedPeerService:
                 connection.close()
             except OSError:
                 pass
+        with self._workers_lock:
+            workers = list(self._workers)
         for worker in workers:
-            worker.join(timeout=self.timeout_seconds + 1.0)
+            worker.join(timeout=2.0)
+        self._accept_thread = None
