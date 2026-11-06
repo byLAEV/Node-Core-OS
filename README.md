@@ -7,7 +7,7 @@ Node Core OS is an infrastructure project designed to give people and entities a
 - **Repository:** https://github.com/byLAEV/Node-Core-OS/
 - **Repository version (`VERSION`):** 1.5.6
 - **Canonical installer:** `bash installer/install.sh` (GNU/Linux and native Termux ARM64)
-- **Release/tag note:** tag `1.5.6` is an earlier source snapshot; `main` contains 41 commits after that tag at the 2026-11-04 audit. The tag does not contain all current `main` changes.
+- **Release/tag note:** the previously published 1.5.6 Release was removed for correction. The Git tag `1.5.6` still points to an older source snapshot and does not contain the current `main` code. Do not use that historical tag as the final 1.5.6 package source; the release candidate must be revalidated and the tag reconciled to the approved final commit before publication.
 - **Primary environment:** GNU/Linux terminal
 - **Project status:** Active development; individual capabilities have different implementation and verification states.
 
