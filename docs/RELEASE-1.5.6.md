@@ -47,6 +47,13 @@ The current main-line 1.5.6 candidate contains the following work:
 - GitHub operator credential lifecycle hardening, including refresh-token rotation, access-token refresh, account revalidation, and BIOS/API refresh controls.
 - Identity profile timestamp test correction after node association.
 
+### CDD intent-lobby gateway correction
+
+- Separate the 1 KiB JSON ticket-consume request limit from the signed protected-origin upload body policy.
+- Require `application/json` and reject duplicate JSON keys before ticket consumption.
+- Validate operator-configured destination paths and generate only fixed public IPFS path-gateway links for the configured CID.
+- Preserve explicit boundaries: the lobby uses in-memory single-process ticket state, does not provide cross-gateway replay prevention, does not retrieve lobby HTML through local Kubo, and is not a production anti-bot or human-identity system.
+
 ## 3. Platform and compatibility statements
 
 - Automated release packaging targets Ubuntu 24.04 x86_64 GNU/Linux.
@@ -58,15 +65,15 @@ The current main-line 1.5.6 candidate contains the following work:
 
 ## 4. Explicit exclusions and limitations
 
-- PR #206 is a draft architecture record and is not included in the current main release candidate.
-- PR #207 is draft implementation work for restricted identity/status sessions. It is not part of this release until independently reviewed, integrated, and accepted.
+- PR #206's restricted-session ADR is documentation only; it does not add restricted-session runtime behavior to this release.
+- PR #207's restricted identity/status implementation is excluded pending review of inbound TLS handshake timeouts, listener lifecycle coverage, and separate physical LAN acceptance.
 - PR #184 is an older divergent branch with failed checks; it must not be merged as a separate release change.
 - HashPaper and P2P Contracts workflows marked suspended are excluded from release claims. A skipped workflow is terminal, but it is not a successful test.
 - This release does not claim production-grade global P2P rendezvous, worldwide native peer discovery, a public stable API/SDK, human identity verification, a production anti-bot service, a marketplace, or zero-knowledge proof deployment.
 
-## 5. Candidate changes awaiting validation
+## 5. Reviewed CDD change included in the candidate
 
-PR #205 proposes a CDD intent-lobby gateway correction:
+PR #205 adds the following CDD intent-lobby gateway correction:
 
 - It separates the small ticket-envelope request limit from the signed protected-origin upload limit.
 - It adds an independent 1 KiB limit for the consume-ticket request.
@@ -74,7 +81,7 @@ PR #205 proposes a CDD intent-lobby gateway correction:
 - It adds regression tests for oversized ticket bodies, duplicate JSON keys, replay protection, and content-type validation.
 - It corrects the documentation so it does not claim that the lobby HTML is retrieved through local Kubo when the implementation only generates fixed public gateway links.
 
-PR #205 must be reviewed and all active checks for its final head SHA must complete successfully before it can be included. The two suspended P2P Contracts workflows remain skipped and must be identified as such in the release report.
+The exact PR #205 head completed all active workflows successfully. Its two suspended P2P Contracts workflows remain `skipped`, not passed, and must be identified as such in the release report.
 
 ## 6. Required pre-publication validation
 
@@ -89,7 +96,7 @@ All checks below must be attached to the exact final release commit, not to an e
 7. Identity/security: Ed25519 proof, peer authentication, malformed input, replay, certificate adversarial, and relevant network-domain checks pass.
 8. Kubo: user-only integration and byte-for-byte content retrieval checks pass.
 9. BIOS: package generation and menu regression tests pass.
-10. CDD: signed policy, body limits, ticket size, duplicate JSON keys, content type, ticket replay, and gateway integration tests pass if PR #205 is included.
+10. CDD: signed policy, protected-origin body limits, the separate ticket size limit, duplicate JSON keys, content type, ticket replay, destination-path validation, and gateway integration tests pass for the included PR #205 change.
 11. Suspended workflows: list each skipped workflow by name and state why it is suspended. Never relabel skipped as passed.
 12. Package build: generate installer and updater archives from the exact release commit, verify the updater offline E2E, and verify each SHA-512 file.
 13. Archive inspection: inspect package contents and ensure suspended application files are excluded as configured.
@@ -121,4 +128,4 @@ The exact asset list must be confirmed from the completed workflow and Release p
 
 **Not yet approved for publication.**
 
-The main baseline has a substantial body of successful Linux and security CI evidence, but the old version tag is stale, the release assets must be regenerated, the final release-scope PR #205 has new checks in progress, and a physical Termux smoke test remains separate from CI. Publication approval requires the exact final commit and downloadable assets to be verified.
+The release-scope PR #205 completed its exact-head active CI successfully, while PR #206 is documentation-only and PR #207's restricted-session implementation remains excluded. The historical version tag is stale, release assets must be regenerated from the final approved commit, and a physical Termux smoke test remains separate from CI. Publication approval requires the exact final commit and downloadable assets to be verified.
