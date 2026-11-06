@@ -1,6 +1,6 @@
 # Node Core OS byLAEV — 1.5.6 Release Notes
 
-<badge>Draft — not yet published</badge>
+**Draft — not yet published**
 
 **Version:** 1.5.6  
 **Project:** Node Core OS byLAEV  
