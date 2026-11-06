@@ -18,11 +18,12 @@
 - The dedicated CDD CI workflow checks `id -u` before other steps and runs the tests as an ordinary non-root user.
 - The HTTP gateway can generate fixed public path-gateway URLs for an operator-configured CID: `https://ipfs.io/ipfs/<CID>` and `https://dweb.link/ipfs/<CID>`. The CID is used only for gateway links; this flow does not resolve it through the local Kubo manager or expose it in opaque intent tickets.
 - The local lobby page lists only those two fixed HTTPS gateways, with a restrictive Content Security Policy and `X-Content-Type-Options: nosniff`.
+- The consume endpoint requires `application/json` and rejects duplicate JSON object keys.
 - CIDv1 Base32 is validated before URL construction. Caller-supplied gateway hosts and full URLs are rejected.
 
 ## Important limitations
 
-- The HTTP lobby and ticket issue/consume endpoints are wired into the local CDD gateway. The consume endpoint uses a separate 1 KiB request-body ceiling for its opaque ticket envelope; protected-origin uploads remain subject to the signed policy body limit. The gateway can retrieve the configured lobby HTML CID through Kubo, but a production Kubo-backed deployment still needs an isolated real-daemon acceptance test.
+- The HTTP lobby and ticket issue/consume endpoints are wired into the local CDD gateway. The consume endpoint uses a separate 1 KiB request-body ceiling for its opaque ticket envelope; protected-origin uploads remain subject to the signed policy body limit. The lobby renders fixed public gateway links for the operator-configured CID; it does not retrieve the lobby HTML through the local Kubo adapter. The CDD signed-policy adapter is separately tested with a fake Kubo, while a real-daemon deployment acceptance test remains outstanding.
 - Tickets are stored in one process. A multi-gateway deployment needs an authenticated shared consume-once store or a protocol that safely handles replay across nodes; independent in-memory tables are insufficient.
 - The configured CID is a content reference, not a human identity or a proof of authorization. The operator must verify content integrity and authorize the issuer separately.
 - Minimum wait is only a friction signal. Bots can wait, and legitimate users can be fast. Do not classify all fast requests as malicious.
