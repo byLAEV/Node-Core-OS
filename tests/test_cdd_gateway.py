@@ -1,5 +1,6 @@
 """Local integration tests for the CDD HTTP gateway and Kubo policy adapter."""
 from datetime import datetime, timedelta, timezone
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
 import json
@@ -12,13 +13,19 @@ from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
 from node_core.security.cdd import create_signed_policy
+from node_core.security.cdd_intent import CDDIntentLobby, IntentRoute
 from node_core.security.cdd_gateway import (
     CDDGatewayConfig,
     CDDGatewayError,
     create_cdd_server,
     load_policy_from_kubo,
     publish_policy_to_kubo,
+    public_ipfs_gateway_urls,
+    validate_cidv1_base32,
 )
+
+
+LOBBY_CID = "bafkreiaxdnroomawrvz7jqhrlqz4jbt2xrozzaf4dh73v6j7kmypm7m4my"
 
 
 class FakeKubo:
@@ -76,6 +83,28 @@ class OriginHandler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
 
+class TestPublicIPFSGatewayLinks(unittest.TestCase):
+    def test_cid_generates_exact_approved_path_gateway_urls(self):
+        self.assertEqual(
+            public_ipfs_gateway_urls(LOBBY_CID),
+            (
+                f"https://ipfs.io/ipfs/{LOBBY_CID}",
+                f"https://dweb.link/ipfs/{LOBBY_CID}",
+            ),
+        )
+
+    def test_cid_is_validated_as_cidv1_base32(self):
+        codec, hash_code = validate_cidv1_base32(LOBBY_CID)
+        self.assertEqual(codec, 0x55)
+        self.assertEqual(hash_code, 0x12)
+
+    def test_rejects_caller_supplied_hosts_and_invalid_cids(self):
+        for invalid in ("https://attacker.example/ipfs/" + LOBBY_CID, "not-a-cid", "Qm" + "a" * 44):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises((ValueError, CDDGatewayError)):
+                    public_ipfs_gateway_urls(invalid)
+
+
 class CDDGatewayIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="cdd-gateway-test-")
@@ -102,6 +131,11 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
         self.addCleanup(self.origin.shutdown)
         self.addCleanup(self.origin.server_close)
         self.addCleanup(self.origin_thread.join, 2)
+        self.intent_now = [100.0]
+        self.intent_lobby = CDDIntentLobby(
+            {"read-document": IntentRoute(destination_id="web2:docs", content_cid="bafybeigdyrzt5sfp7udm7hu76uh4d3g5q4m3f4j2q")},
+            clock=lambda: self.intent_now[0],
+        )
         self.config = CDDGatewayConfig(
             origin_url=f"http://127.0.0.1:{self.origin.server_port}",
             service_id="web2:lab.test",
@@ -111,6 +145,11 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             last_sequence=0,
             timeout_seconds=2,
             origin_auth_token=OriginHandler.token,
+            intent_lobby=self.intent_lobby,
+            intent_destination_paths={"web2:docs": "/intent-document"},
+            intent_ttl_seconds=120,
+            intent_min_wait_seconds=3,
+            lobby_gateway_cid=LOBBY_CID,
         )
         self.gateway = create_cdd_server(("127.0.0.1", 0), self.config)
         self.gateway_thread = threading.Thread(target=self.gateway.serve_forever, daemon=True)
@@ -126,6 +165,92 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             return urlopen(req, timeout=3)
         except urllib.error.HTTPError as exc:
             return exc
+
+    def test_gateway_lobby_offers_only_fixed_public_gateway_links(self):
+        response = self.request("/_cdd/lobby")
+        self.assertEqual(response.status, 200)
+        body = response.read().decode("utf-8")
+        self.assertIn(f"https://ipfs.io/ipfs/{LOBBY_CID}", body)
+        self.assertIn(f"https://dweb.link/ipfs/{LOBBY_CID}", body)
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertIn("default-src 'none'", response.headers.get("Content-Security-Policy", ""))
+        self.assertNotIn("127.0.0.1", body)
+        self.assertNotIn("localhost", body)
+
+    def test_lobby_issues_opaque_ticket_without_exposing_cid(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        self.assertEqual(response.status, 200)
+        payload = json.loads(response.read().decode("utf-8"))
+        self.assertIn("ticket", payload)
+        self.assertEqual(payload["consume_endpoint"], "/_cdd/consume")
+        self.assertNotIn("bafy", json.dumps(payload))
+        self.assertNotIn("intent-document", json.dumps(payload))
+
+    def test_lobby_rejects_unregistered_intent(self):
+        response = self.request("/_cdd/lobby?intent=https%3A%2F%2Fevil.example")
+        self.assertEqual(response.status, 400)
+
+    def test_consume_requires_wait_and_routes_only_to_configured_destination(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        ticket = json.loads(response.read().decode("utf-8"))["ticket"]
+        body = json.dumps({"ticket": ticket}).encode("utf-8")
+        early = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(early.status, 403)
+        self.intent_now[0] += 3
+        accepted = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(accepted.status, 200)
+        self.assertEqual(accepted.read(), b"origin:/intent-document")
+
+    def test_consume_endpoint_has_a_separate_bounded_body_limit(self):
+        oversized = b'{"ticket":"' + (b"x" * 1100) + b'"}'
+        response = self.request(
+            "/_cdd/consume",
+            method="POST",
+            data=oversized,
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 413)
+        self.assertEqual(response.read(), b"request body too large")
+
+    def test_consume_rejects_duplicate_json_ticket_fields_without_consuming_ticket(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        ticket = json.loads(response.read().decode("utf-8"))["ticket"]
+        self.intent_now[0] += 3
+        encoded_ticket = ticket.encode("ascii")
+        duplicate = b'{"ticket":"' + encoded_ticket + b'","ticket":"' + encoded_ticket + b'"}'
+        rejected = self.request(
+            "/_cdd/consume", method="POST", data=duplicate,
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(rejected.status, 400)
+        self.assertEqual(rejected.read(), b"invalid ticket JSON")
+        self.assertEqual(self.intent_lobby.active_ticket_count, 1)
+        accepted = self.request(
+            "/_cdd/consume", method="POST",
+            data=json.dumps({"ticket": ticket}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(accepted.status, 200)
+        self.assertEqual(accepted.read(), b"origin:/intent-document")
+
+    def test_consume_requires_json_content_type(self):
+        response = self.request(
+            "/_cdd/consume", method="POST", data=b'{"ticket":"not-a-ticket"}',
+            headers={"Content-Type": "text/plain"},
+        )
+        self.assertEqual(response.status, 415)
+        self.assertEqual(response.read(), b"consume requires application/json")
+
+    def test_consumed_ticket_cannot_be_replayed(self):
+        response = self.request("/_cdd/lobby?intent=read-document")
+        ticket = json.loads(response.read().decode("utf-8"))["ticket"]
+        self.intent_now[0] += 3
+        body = json.dumps({"ticket": ticket}).encode("utf-8")
+        accepted = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(accepted.status, 200)
+        replay = self.request("/_cdd/consume", method="POST", data=body, headers={"Content-Type": "application/json"})
+        self.assertEqual(replay.status, 403)
+
 
     def test_gateway_forwards_allowed_request_to_configured_origin(self):
         response = self.request("/page?x=1")
@@ -160,6 +285,22 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             response = exc
         self.assertEqual(response.status, 403)
         self.assertEqual(response.read(), b"origin access denied")
+
+    def test_intent_destination_paths_reject_untrusted_or_ambiguous_paths(self):
+        for invalid_path in (
+            "https://attacker.example/path",
+            "//attacker.example/path",
+            "/../admin",
+            "/docs?next=/admin",
+            "relative/path",
+        ):
+            with self.subTest(invalid_path=invalid_path):
+                invalid_config = replace(
+                    self.config,
+                    intent_destination_paths={"web2:docs": invalid_path},
+                )
+                with self.assertRaises(CDDGatewayError):
+                    create_cdd_server(("127.0.0.1", 0), invalid_config)
 
     def test_mismatched_origin_policy_fails_before_server_starts(self):
         wrong = CDDGatewayConfig(
