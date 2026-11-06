@@ -37,19 +37,28 @@ class RestrictedSessionError(RuntimeError):
     """Raised when a restricted identity/status session is invalid."""
 
 
-def _perform_tls_handshake(tls_socket: ssl.SSLSocket, timeout_seconds: float) -> None:
+def _perform_tls_handshake(
+    tls_socket: ssl.SSLSocket,
+    timeout_seconds: float,
+    *,
+    stop_event: threading.Event | None = None,
+) -> None:
     """Complete TLS without blocking a worker past one absolute deadline.
 
     A non-blocking handshake lets shutdown interrupt clients that never send a
     ClientHello. The deadline is independent of socket idle timeouts used after
     the handshake, so slow but progressing connections receive a configurable
-    window instead of an arbitrary short per-read timeout.
+    window instead of an arbitrary short per-read timeout. Server workers also
+    poll the service stop event so shutdown does not depend on cross-thread
+    socket-close behavior to wake a selector.
     """
     if timeout_seconds <= 0:
         raise ValueError("TLS handshake timeout must be positive.")
     deadline = time.monotonic() + timeout_seconds
     tls_socket.setblocking(False)
     while True:
+        if stop_event is not None and stop_event.is_set():
+            raise ConnectionAbortedError("TLS handshake cancelled by service shutdown.")
         try:
             tls_socket.do_handshake()
             return
@@ -61,10 +70,11 @@ def _perform_tls_handshake(tls_socket: ssl.SSLSocket, timeout_seconds: float) ->
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError("TLS handshake exceeded its configured deadline.")
+        wait_seconds = remaining if stop_event is None else min(remaining, 0.1)
         with selectors.DefaultSelector() as selector:
             selector.register(tls_socket, event)
-            ready = selector.select(remaining)
-        if not ready:
+            ready = selector.select(wait_seconds)
+        if not ready and stop_event is None:
             raise TimeoutError("TLS handshake exceeded its configured deadline.")
 
 
@@ -392,7 +402,11 @@ class RestrictedPeerService:
                 self._connections.discard(raw)
                 self._connections.add(tls_socket)
                 raw = None
-            _perform_tls_handshake(tls_socket, self.handshake_timeout_seconds)
+            _perform_tls_handshake(
+                tls_socket,
+                self.handshake_timeout_seconds,
+                stop_event=self._stop,
+            )
             tls_socket.settimeout(self.timeout_seconds)
             peer = self.tls_transport.verify_peer_identity(tls_socket)
             peer_node_id = peer["node_id"]
