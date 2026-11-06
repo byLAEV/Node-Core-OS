@@ -54,6 +54,13 @@ A discovered peer is not automatically trusted or authorized. A technical node i
 
 - Improves the GitHub operator credential lifecycle, including refresh-token rotation, access-token refresh, account revalidation, and BIOS/API refresh controls.
 
+### CDD intent-lobby gateway hardening
+
+- Separates the small 1 KiB ticket-consume JSON body limit from the signed protected-origin upload policy.
+- Requires `application/json` and rejects duplicate JSON keys before consuming a ticket.
+- Validates operator-configured destination paths and generates only fixed public IPFS path-gateway links for the configured CID.
+- The lobby remains a single-process in-memory MVP. It does not claim distributed replay prevention, local-Kubo retrieval of the lobby HTML, production anti-bot protection, or proof of human identity.
+
 ## Storage and networking
 
 - Local storage remains under the user's Node Core OS data area.
@@ -71,9 +78,10 @@ A discovered peer is not automatically trusted or authorized. A technical node i
 
 ## Not included or not claimed
 
-- PR #206 and PR #207 remain separate draft P2P restricted-session work and are not included in this release candidate.
+- PR #206's restricted-session ADR is documentation only; no restricted identity/status runtime is included in this release.
+- PR #207's restricted-session runtime implementation remains outside this release candidate pending additional security and listener lifecycle validation.
 - PR #184 is an older divergent branch and is not part of this release.
-- PR #205's CDD intent-lobby changes are pending final CI/review and are not described as shipped here. If that PR is integrated before the release freeze, these notes and the final changelog must be updated to describe its exact shipped scope and limitations.
+- PR #205's CDD intent-lobby correction is included with the single-process and non-production limitations described above.
 - No production-grade global rendezvous network, public stable API/SDK, verified human identity service, service marketplace, participant income guarantee, production anti-bot protection, or deployed zero-knowledge-proof system is claimed.
 
 ## Installation
