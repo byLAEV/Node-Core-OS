@@ -1,5 +1,6 @@
 """Local integration tests for the CDD HTTP gateway and Kubo policy adapter."""
 from datetime import datetime, timedelta, timezone
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import hmac
 import json
@@ -284,6 +285,22 @@ class CDDGatewayIntegrationTests(unittest.TestCase):
             response = exc
         self.assertEqual(response.status, 403)
         self.assertEqual(response.read(), b"origin access denied")
+
+    def test_intent_destination_paths_reject_untrusted_or_ambiguous_paths(self):
+        for invalid_path in (
+            "https://attacker.example/path",
+            "//attacker.example/path",
+            "/../admin",
+            "/docs?next=/admin",
+            "relative/path",
+        ):
+            with self.subTest(invalid_path=invalid_path):
+                invalid_config = replace(
+                    self.config,
+                    intent_destination_paths={"web2:docs": invalid_path},
+                )
+                with self.assertRaises(CDDGatewayError):
+                    create_cdd_server(("127.0.0.1", 0), invalid_config)
 
     def test_mismatched_origin_policy_fails_before_server_starts(self):
         wrong = CDDGatewayConfig(
