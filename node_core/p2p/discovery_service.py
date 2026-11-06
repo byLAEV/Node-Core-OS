@@ -155,6 +155,14 @@ class NodeDiscoveryService:
                 self._peers.values(), key=lambda item: item[1]
             ))
 
+    def certificate_candidates(self) -> dict[str, bytes]:
+        """Return current discovery-scoped TLS pins; never persist them as trusted peers."""
+        return {
+            peer.node_id: peer.tls_certificate_pem
+            for peer in self.snapshot()
+            if peer.tls_certificate_pem is not None
+        }
+
     def _current_p2p_port(self) -> int:
         """Return the current advertised port, or 0 when no endpoint is available."""
         try:

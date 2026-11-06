@@ -41,12 +41,22 @@ def _send_message(sock: socket.socket, message: dict[str, Any]) -> None:
     sock.sendall(struct.pack("!I", len(payload)) + payload)
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate object keys so signed protocol fields cannot be shadowed."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise PeerSessionError("Duplicate JSON fields are forbidden.")
+        result[key] = value
+    return result
+
+
 def _receive_message(sock: socket.socket) -> dict[str, Any]:
     size = struct.unpack("!I", _receive_exact(sock, 4))[0]
     if size < 1 or size > MAX_MESSAGE_BYTES:
         raise PeerSessionError("Peer message length is invalid or too large.")
     try:
-        message = json.loads(_receive_exact(sock, size).decode("utf-8"))
+        message = json.loads(_receive_exact(sock, size).decode("utf-8"), object_pairs_hook=_unique_json_object)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise PeerSessionError("Peer message is not valid UTF-8 JSON.") from exc
     if not isinstance(message, dict):
