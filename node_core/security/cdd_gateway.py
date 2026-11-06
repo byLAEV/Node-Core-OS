@@ -20,16 +20,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-
-def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    """Reject duplicate JSON object keys in internal gateway protocols."""
-    result: dict[str, Any] = {}
-    for key, value in pairs:
-        if key in result:
-            raise ValueError("Duplicate JSON fields are forbidden.")
-        result[key] = value
-    return result
-
 from node_core.ipfs import KuboManager
 from node_core.security.cdd_intent import CDDIntentError, CDDIntentLobby
 from node_core.security.cdd import (
@@ -61,6 +51,16 @@ _HOP_BY_HOP = {
 
 class CDDGatewayError(RuntimeError):
     """Raised when a CDD policy or gateway configuration is invalid."""
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate JSON object keys in internal gateway protocols."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON fields are forbidden.")
+        result[key] = value
+    return result
 
 
 def _read_uvarint(data: bytes, offset: int) -> tuple[int, int]:
