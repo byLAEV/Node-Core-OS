@@ -2,6 +2,17 @@
 
 All notable changes to Node Core OS are documented here.
 
+## 1.5.6 release candidate preparation — 2026-11-06
+
+- The previously published GitHub Release was removed for correction. The Git tag `1.5.6` still points to an older source snapshot; it is not the approved final release commit.
+- The release candidate is based on the current `main` history only after all release-scope pull requests are reviewed, merged, and validated against their exact final commits.
+- The current main-line changes since the historical tag include the unified GNU/Linux and native Termux ARM64 installer path, platform-specific Python dependency handling and environment migration, release tag/manifest consistency checks, and stricter native LAN identity-proof and mutual-authentication validation.
+- The package workflow builds a source installer archive and a self-contained updater archive, generates SHA-512 files, verifies the offline updater package, and uploads assets to a version-tag Release.
+- GNU/Linux release automation targets Ubuntu 24.04 x86_64. Termux uses its Android ARM64 native package path; physical-device smoke testing remains a separate acceptance requirement.
+- P2P Contracts and HashPaper workflows explicitly suspended by repository policy remain excluded from release claims; skipped checks are not reported as passing.
+- PRs #206 and #207 remain separate draft work and are not part of the current release candidate unless separately approved and integrated.
+- Final publication is blocked until the exact release commit passes the required CI, package generation and checksum verification, the historical tag is reconciled, and all expected assets are visible on the Release page.
+
 ## Repository coherence audit — 2026-11-04 (maintenance correction for 1.5.6)
 
 - Align the README, dependency contract, installer specification, architecture and development guide with executable 1.5.6 behavior.
