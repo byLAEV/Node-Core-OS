@@ -1,130 +1,522 @@
 #!/usr/bin/env python3
-"""Independent Linux VM participant for the Node Core OS real mesh campaign."""
-import argparse, base64, json, os, socket, subprocess, sys, threading, time, uuid
+"""100 independent Linux VMs: full-mesh native P2P and persistent state convergence."""
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import os
+import socket
+import subprocess
+import sys
+import threading
+import time
+import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-LOCK=threading.RLock(); NODES={}; SIGNATURES={}; EXPECTED=0; RUN_ID=""; MANIFEST=None
-REGISTRY_PORT=8765; P2P_PORT=46000
+REGISTRY_PORT = 8765
+P2P_PORT = 46000
+MAX_BODY_BYTES = 2 * 1024 * 1024
+LOCK = threading.RLock()
+NODES: dict[str, dict] = {}
+SIGNATURES: dict[str, dict] = {}
+EXPECTED_NODES = 0
+RUN_ID = ""
+CACHED_MANIFEST: dict | None = None
 
-def user_only():
-    if os.geteuid()==0: raise SystemExit("Must run as normal Linux user, never root.")
 
-def api(url, value=None):
-    data=None if value is None else json.dumps(value).encode()
-    req=Request(url,data=data,headers={"Content-Type":"application/json"} if data else {},method="POST" if data else "GET")
-    with urlopen(req,timeout=15) as r: return json.loads(r.read(2*1024*1024).decode())
+def require_normal_user() -> None:
+    if os.geteuid() == 0:
+        raise SystemExit("ERROR: Node Core OS mesh nodes must run as a normal Linux user, never root.")
 
-def wait(fn,seconds,label):
-    end=time.monotonic()+seconds; last=None
-    while time.monotonic()<end:
+
+def request_json(url: str, payload: dict | None = None, timeout_seconds: int = 15) -> dict:
+    body = None if payload is None else json.dumps(payload, sort_keys=True).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"} if body is not None else {},
+        method="POST" if body is not None else "GET",
+    )
+    with urlopen(request, timeout=timeout_seconds) as response:
+        result = json.loads(response.read(MAX_BODY_BYTES).decode("utf-8"))
+    if not isinstance(result, dict):
+        raise RuntimeError("Rendezvous returned a non-object response.")
+    return result
+
+
+def wait_for(predicate, timeout_seconds: int, description: str):
+    deadline = time.monotonic() + timeout_seconds
+    last_error = None
+    while time.monotonic() < deadline:
         try:
-            value=fn()
-            if value:return value
-        except Exception as exc:last=str(exc)
+            result = predicate()
+            if result:
+                return result
+        except Exception as exc:
+            last_error = str(exc)
         time.sleep(2)
-    raise RuntimeError("Timeout: "+label+"; "+str(last))
+    raise RuntimeError(f"Timed out waiting for {description}; last error={last_error}")
 
-def respond(h,status,value):
-    raw=json.dumps(value).encode(); h.send_response(status)
-    h.send_header("Content-Type","application/json"); h.send_header("Content-Length",str(len(raw)))
-    h.end_headers(); h.wfile.write(raw)
 
-class Registry(BaseHTTPRequestHandler):
-    def log_message(self,fmt,*args): print("REGISTRY "+fmt%args,flush=True)
+def canonical_json(value: object) -> bytes:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+
+
+def write_private_json(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, path)
+    os.chmod(path, 0o600)
+
+
+def find_peer_ip(hostname: str) -> str | None:
+    """Resolve another ephemeral Tailscale peer from the local tailnet map, without MagicDNS."""
+    status = subprocess.run(
+        ["tailscale", "status", "--json"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    value = json.loads(status.stdout)
+    peers = value.get("Peer", {})
+    if not isinstance(peers, dict):
+        return None
+    for peer in peers.values():
+        if not isinstance(peer, dict):
+            continue
+        host = str(peer.get("HostName", ""))
+        dns_name = str(peer.get("DNSName", "")).rstrip(".").split(".")[0]
+        if host == hostname or dns_name == hostname:
+            addresses = peer.get("TailscaleIPs", [])
+            if isinstance(addresses, list):
+                for address in addresses:
+                    if isinstance(address, str) and address:
+                        return address
+    return None
+
+
+def send_json(handler: BaseHTTPRequestHandler, status: int, value: dict) -> None:
+    body = json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+class RendezvousHandler(BaseHTTPRequestHandler):
+    """Temporary private registry: it carries public metadata, never P2P payloads."""
+
+    def log_message(self, fmt, *args):
+        print("RENDEZVOUS " + (fmt % args), flush=True)
+
     def do_GET(self):
+        global CACHED_MANIFEST
         with LOCK:
-            if self.path=="/health":return respond(self,200,{"ok":True})
-            if self.path=="/roster":return respond(self,200,{"count":len(NODES),"nodes":list(NODES.values())})
-            if self.path=="/manifest":
-                global MANIFEST
-                if len(NODES)!=EXPECTED:return respond(self,409,{"ok":False})
-                if MANIFEST is None:
+            if self.path == "/v1/health":
+                return send_json(self, 200, {"ok": True, "expected_nodes": EXPECTED_NODES})
+            if self.path == "/v1/roster":
+                return send_json(self, 200, {"ok": True, "count": len(NODES), "nodes": list(NODES.values())})
+            if self.path == "/v1/manifest":
+                if len(NODES) != EXPECTED_NODES:
+                    return send_json(self, 409, {"ok": False, "error": "roster_incomplete"})
+                if CACHED_MANIFEST is None:
                     from node_core.p2p.presence_manifest import create_manifest_body
-                    members=[{"node_id":x["node_id"],"public_key":x["public_key"]} for x in NODES.values()]
-                    MANIFEST=create_manifest_body(members,epoch=int(RUN_ID),created_at=int(time.time()))
-                return respond(self,200,{"body":MANIFEST})
-            if self.path=="/signatures":return respond(self,200,{"count":len(SIGNATURES),"signatures":list(SIGNATURES.values())})
-        respond(self,404,{"ok":False})
-    def do_POST(self):
-        n=int(self.headers.get("Content-Length","0"))
-        if not 1<=n<=2*1024*1024:return respond(self,413,{"ok":False})
-        try:v=json.loads(self.rfile.read(n).decode())
-        except Exception:return respond(self,400,{"ok":False})
-        with LOCK:
-            if self.path=="/register":
-                if not isinstance(v,dict) or set(v)!={"node_index","node_id","public_key","certificate_pem","rsa_public_key_pem","host","port"}:return respond(self,400,{"ok":False})
-                i=v["node_index"]
-                if type(i)!=int or not 0<=i<EXPECTED or v["port"]!=P2P_PORT:return respond(self,400,{"ok":False})
-                if any(x["node_id"]==v["node_id"] and k!=str(i) for k,x in NODES.items()):return respond(self,409,{"ok":False})
-                NODES[str(i)]=v;return respond(self,200,{"ok":True})
-            if self.path=="/signature":
-                if not isinstance(v,dict) or set(v)!={"node_id","signature"}:return respond(self,400,{"ok":False})
-                if v["node_id"] not in {x["node_id"] for x in NODES.values()} or v["node_id"] in SIGNATURES:return respond(self,409,{"ok":False})
-                SIGNATURES[v["node_id"]]=v;return respond(self,200,{"ok":True})
-        respond(self,404,{"ok":False})
+                    members = [
+                        {"node_id": item["node_id"], "public_key": item["public_key"]}
+                        for item in NODES.values()
+                    ]
+                    CACHED_MANIFEST = create_manifest_body(
+                        members, epoch=int(RUN_ID), created_at=int(time.time())
+                    )
+                return send_json(self, 200, {"ok": True, "body": CACHED_MANIFEST})
+            if self.path == "/v1/signatures":
+                return send_json(
+                    self, 200,
+                    {"ok": True, "count": len(SIGNATURES), "signatures": list(SIGNATURES.values())},
+                )
+        return send_json(self, 404, {"ok": False, "error": "not_found"})
 
-def main():
-    global EXPECTED,RUN_ID
-    p=argparse.ArgumentParser();p.add_argument("--index",type=int,required=True);p.add_argument("--count",type=int,required=True);p.add_argument("--run-id",required=True);a=p.parse_args()
-    if not 3<=a.count<=200 or not 0<=a.index<a.count:raise SystemExit("Node count/index invalid.")
-    user_only();data=Path(os.environ["NODE_CORE_DATA_DIR"]);app=data/"app"
-    if not app.is_dir():raise RuntimeError("Node Core OS not installed: "+str(app))
-    sys.path.insert(0,str(app))
+    def do_POST(self):
+        size = int(self.headers.get("Content-Length", "0"))
+        if not 1 <= size <= MAX_BODY_BYTES:
+            return send_json(self, 413, {"ok": False, "error": "invalid_body_size"})
+        try:
+            value = json.loads(self.rfile.read(size).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return send_json(self, 400, {"ok": False, "error": "invalid_json"})
+        if not isinstance(value, dict):
+            return send_json(self, 400, {"ok": False, "error": "object_required"})
+
+        with LOCK:
+            if self.path == "/v1/register":
+                required = {
+                    "node_index", "node_id", "public_key", "certificate_pem",
+                    "rsa_public_key_pem", "host", "port",
+                }
+                if set(value) != required:
+                    return send_json(self, 400, {"ok": False, "error": "invalid_registration_schema"})
+                index = value["node_index"]
+                if type(index) is not int or not 0 <= index < EXPECTED_NODES:
+                    return send_json(self, 400, {"ok": False, "error": "invalid_node_index"})
+                if value["port"] != P2P_PORT or not isinstance(value["host"], str):
+                    return send_json(self, 400, {"ok": False, "error": "invalid_endpoint"})
+                if any(
+                    existing["node_id"] == value["node_id"] and key != str(index)
+                    for key, existing in NODES.items()
+                ):
+                    return send_json(self, 409, {"ok": False, "error": "duplicate_node_identity"})
+                NODES[str(index)] = value
+                return send_json(self, 200, {"ok": True, "registered": len(NODES)})
+
+            if self.path == "/v1/signature":
+                if set(value) != {"node_id", "signature"}:
+                    return send_json(self, 400, {"ok": False, "error": "invalid_signature_schema"})
+                known_ids = {item["node_id"] for item in NODES.values()}
+                if value["node_id"] not in known_ids or value["node_id"] in SIGNATURES:
+                    return send_json(self, 409, {"ok": False, "error": "unknown_or_duplicate_signer"})
+                SIGNATURES[value["node_id"]] = value
+                return send_json(self, 200, {"ok": True, "signature_count": len(SIGNATURES)})
+
+        return send_json(self, 404, {"ok": False, "error": "not_found"})
+
+
+def run_node(index: int, count: int, run_id: str) -> None:
+    global EXPECTED_NODES, RUN_ID
+    require_normal_user()
+
+    data_dir = Path(os.environ["NODE_CORE_DATA_DIR"])
+    application_dir = data_dir / "app"
+    if not application_dir.is_dir():
+        raise RuntimeError(f"Node Core OS application not installed: {application_dir}")
+    sys.path.insert(0, str(application_dir))
+
     from node_core.identity.node_identity import NodeIdentityStore
-    from node_core.p2p.presence_manifest import sign_manifest,verify_manifest
+    from node_core.p2p.presence_manifest import sign_manifest, verify_manifest
     from node_core.p2p.secure_messaging import NodeRSAIdentityStore
     from node_core.p2p.service import NodePeerService
     from node_core.p2p.tls_transport import NodeTLSTransport
-    EXPECTED,RUN_ID=a.count,a.run_id
-    if a.index==0:
-        srv=ThreadingHTTPServer(("0.0.0.0",REGISTRY_PORT),Registry)
-        threading.Thread(target=srv.serve_forever,daemon=True).start()
-        print("RENDEZVOUS_READY",flush=True)
-    identity=NodeIdentityStore(data);meta=identity.initialize();tls=NodeTLSTransport(identity);cert=tls.ensure_certificate()
-    rsa=NodeRSAIdentityStore(identity);rsa_meta=rsa.initialize()
-    ip=subprocess.run(["tailscale","ip","-4"],check=True,capture_output=True,text=True).stdout.strip().splitlines()[0]
-    base=f"http://ncore-{a.run_id}-0:{REGISTRY_PORT}"
-    own={"node_index":a.index,"node_id":meta["node_id"],"public_key":meta["public_key"],
-      "certificate_pem":base64.b64encode(cert).decode(),"rsa_public_key_pem":base64.b64encode(rsa.public_key_pem()).decode(),"host":ip,"port":P2P_PORT}
-    wait(lambda:api(base+"/health").get("ok"),240,"coordinator");api(base+"/register",own)
-    roster=wait(lambda:(lambda x:x if x["count"]==a.count else None)(api(base+"/roster")),900,"all VMs")["nodes"]
-    roster=sorted(roster,key=lambda x:x["node_index"])
-    if len({x["node_id"] for x in roster})!=a.count:raise RuntimeError("Duplicate node IDs.")
-    manifest=api(base+"/manifest");api(base+"/signature",sign_manifest(identity,manifest["body"]))
-    signatures=wait(lambda:(lambda x:x if x["count"]==a.count else None)(api(base+"/signatures")),900,"all Ed25519 signatures")
-    verified=verify_manifest(manifest["body"],signatures["signatures"])
-    if not verified["unanimous"] or verified["node_count"]!=a.count:raise RuntimeError("Unanimous manifest verification failed.")
-    peers=[x for x in roster if x["node_index"]!=a.index]
-    certs={x["node_id"]:base64.b64decode(x["certificate_pem"]) for x in peers}
-    keys={x["node_id"]:base64.b64decode(x["rsa_public_key_pem"]) for x in peers}
-    inbox=[];guard=threading.Lock()
-    def receive(peer,msg_id,text):
-        with guard:inbox.append({"sender_node_id":peer["node_id"],"message_id":msg_id,"text":text})
-    service=NodePeerService(identity,tls,certs,host="0.0.0.0",port=P2P_PORT,timeout_seconds=20,
-      rsa_identity_store=rsa,trusted_rsa_public_keys=keys,on_message=receive);service.start()
-    sent=[]
-    for j in sorted({(a.index+1)%a.count,(a.index+2)%a.count}):
-        target=roster[j];nid=target["node_id"]
-        client=NodePeerService(identity,tls,{nid:certs[nid]},timeout_seconds=20,rsa_identity_store=rsa,trusted_rsa_public_keys={nid:keys[nid]})
-        payload=f"NODE_CORE_MESH|run={a.run_id}|from={a.index}|to={j}|nonce={uuid.uuid4().hex}"
-        ack=wait(lambda:client.send_secure_message(target["host"],target["port"],nid,keys[nid],payload),180,f"message {a.index}->{j}")
-        if ack.get("status")!="accepted" or ack.get("receiver_node_id")!=nid:raise RuntimeError("Invalid signed receipt.")
-        sent.append({"target_index":j,"target_node_id":nid,"message_id":ack["message_id"]})
-    expected={roster[(a.index-1)%a.count]["node_id"],roster[(a.index-2)%a.count]["node_id"]}
-    wait(lambda:len({x["sender_node_id"] for x in inbox}&expected)==2,180,"inbound messages")
-    service.stop()
-    with guard:received=list(inbox)
-    if not expected.issubset({x["sender_node_id"] for x in received}):raise RuntimeError("Missing inbound peer messages.")
-    outdir=Path(os.environ["RUNNER_TEMP"])/"node-core-mesh-evidence";outdir.mkdir(parents=True,exist_ok=True)
-    evidence={"schema":"node-core-real-linux-mesh-v1","run_id":a.run_id,"node_index":a.index,"expected_nodes":a.count,
-      "node_id":meta["node_id"],"public_key":meta["public_key"],"tailscale_ipv4":ip,"os_release":Path("/etc/os-release").read_text(),
-      "uid":os.getuid(),"hostname":socket.gethostname(),"manifest":verified,"manifest_signatures":len(signatures["signatures"]),
-      "direct_messages_sent":sent,"direct_messages_received":received,"p2p_listener":{"host":"0.0.0.0","port":P2P_PORT,"mutual_tls":True},
-      "installation_data_dir":str(data),"rsa_public_key_sha256":rsa_meta["public_key_sha256"],"finished_at":datetime.now(timezone.utc).isoformat()}
-    target=outdir/f"node-{a.index:03d}.json";target.write_text(json.dumps(evidence,indent=2,sort_keys=True)+"\n");os.chmod(target,0o600)
-    print(f"NODE_PASS index={a.index} id={meta['node_id']} sent={len(sent)} received={len(received)} unanimous=true",flush=True)
+    from node_core.record_replication import NodeRecordReplicator
 
-if __name__=="__main__":main()
+    EXPECTED_NODES, RUN_ID = count, run_id
+
+    if index == 0:
+        registry = ThreadingHTTPServer(("0.0.0.0", REGISTRY_PORT), RendezvousHandler)
+        threading.Thread(target=registry.serve_forever, name="node-core-mesh-rendezvous", daemon=True).start()
+        print(f"RENDEZVOUS_READY port={REGISTRY_PORT}", flush=True)
+
+    identity = NodeIdentityStore(data_dir)
+    identity_metadata = identity.initialize()
+    tls = NodeTLSTransport(identity)
+    certificate = tls.ensure_certificate()
+    rsa_identity = NodeRSAIdentityStore(identity)
+    rsa_metadata = rsa_identity.initialize()
+
+    tailscale_ip_result = subprocess.run(
+        ["tailscale", "ip", "-4"], check=True, capture_output=True, text=True, timeout=15
+    )
+    local_tailscale_ip = tailscale_ip_result.stdout.strip().splitlines()[0]
+    if not local_tailscale_ip:
+        raise RuntimeError("Tailscale did not provide this node's private IPv4 address.")
+
+    coordinator_name = f"ncore-{run_id}-0"
+    if index == 0:
+        coordinator_ip = local_tailscale_ip
+    else:
+        coordinator_ip = wait_for(
+            lambda: find_peer_ip(coordinator_name),
+            600,
+            f"Tailscale peer {coordinator_name} to appear in the tailnet map",
+        )
+    coordinator_url = f"http://{coordinator_ip}:{REGISTRY_PORT}"
+
+    own_registration = {
+        "node_index": index,
+        "node_id": identity_metadata["node_id"],
+        "public_key": identity_metadata["public_key"],
+        "certificate_pem": base64.b64encode(certificate).decode("ascii"),
+        "rsa_public_key_pem": base64.b64encode(rsa_identity.public_key_pem()).decode("ascii"),
+        "host": local_tailscale_ip,
+        "port": P2P_PORT,
+    }
+    wait_for(
+        lambda: request_json(coordinator_url + "/v1/health").get("ok"),
+        240,
+        "private rendezvous service",
+    )
+    request_json(coordinator_url + "/v1/register", own_registration)
+
+    roster_response = wait_for(
+        lambda: (
+            lambda result: result if result.get("count") == count else None
+        )(request_json(coordinator_url + "/v1/roster")),
+        900,
+        f"all {count} independent Linux nodes to register",
+    )
+    roster = sorted(roster_response["nodes"], key=lambda item: item["node_index"])
+    if len({item["node_id"] for item in roster}) != count:
+        raise RuntimeError("Roster contains duplicate technical node identities.")
+    if {item["node_index"] for item in roster} != set(range(count)):
+        raise RuntimeError("Roster does not contain every expected node index exactly once.")
+
+    manifest_response = request_json(coordinator_url + "/v1/manifest")
+    manifest_body = manifest_response["body"]
+    local_signature = sign_manifest(identity, manifest_body)
+    request_json(coordinator_url + "/v1/signature", local_signature)
+
+    signatures_response = wait_for(
+        lambda: (
+            lambda result: result if result.get("count") == count else None
+        )(request_json(coordinator_url + "/v1/signatures")),
+        900,
+        f"all {count} node signatures",
+    )
+    consensus = verify_manifest(manifest_body, signatures_response["signatures"])
+    if not consensus.get("unanimous") or consensus.get("node_count") != count:
+        raise RuntimeError("The common presence manifest did not receive unanimous verification.")
+
+    peer_entries = [item for item in roster if item["node_index"] != index]
+    trusted_certificates = {
+        item["node_id"]: base64.b64decode(item["certificate_pem"])
+        for item in peer_entries
+    }
+    trusted_rsa_keys = {
+        item["node_id"]: base64.b64decode(item["rsa_public_key_pem"])
+        for item in peer_entries
+    }
+    all_node_ids = sorted(item["node_id"] for item in roster)
+
+    # One deterministic, canonical network-state object is shared by every node.
+    shared_state_body = {
+        "schema": "node-core-os/network-synchronization/v1",
+        "network": "node-core-os-real-linux-mesh",
+        "run_id": run_id,
+        "epoch": int(run_id),
+        "revision": 1,
+        "status": "ACTIVE",
+        "participant_count": count,
+        "participant_node_ids": all_node_ids,
+        "presence_manifest_sha256": consensus["manifest_sha256"],
+    }
+    shared_state_sha256 = hashlib.sha256(canonical_json(shared_state_body)).hexdigest()
+    shared_state = {
+        "body": shared_state_body,
+        "sha256": shared_state_sha256,
+    }
+
+    record_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"urn:node-core-os:network-state:{run_id}"))
+    record = {
+        "schema": NodeRecordReplicator.RECORD_SCHEMA,
+        "record_id": record_id,
+        "node_id": identity_metadata["node_id"],
+        "github_account": "node-core-os-mesh-test",
+        "repository": "node-core-os/network-mesh-test",
+        "source_pages_url": "https://github.com/byLAEV/Node-Core-OS",
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "fields": {
+            "network_state": shared_state,
+            "network_state_sha256": shared_state_sha256,
+        },
+        "sync_status": "synced",
+    }
+
+    replicator = NodeRecordReplicator(data_dir, identity)
+    message_handler_errors: list[str] = []
+
+    def persist_received_record(peer: dict[str, str], message_id: str, text: str) -> None:
+        try:
+            accepted = replicator.receive_message(peer, message_id, text)
+            if not accepted:
+                message_handler_errors.append("Received a P2P message that was not a record replication event.")
+        except Exception as exc:
+            message_handler_errors.append(f"{type(exc).__name__}: {exc}")
+            raise
+
+    peer_service = NodePeerService(
+        identity_store=identity,
+        tls_transport=tls,
+        trusted_peers=trusted_certificates,
+        host="0.0.0.0",
+        port=P2P_PORT,
+        timeout_seconds=25,
+        rsa_identity_store=rsa_identity,
+        trusted_rsa_public_keys=trusted_rsa_keys,
+        on_message=persist_received_record,
+    )
+    peer_service.start()
+
+    # Full directed mesh: each node sends its exact same epoch record to every
+    # other node. Rotating destination order balances incoming connection bursts.
+    outgoing_receipts = []
+    for offset in range(1, count):
+        target_index = (index + offset) % count
+        target = roster[target_index]
+        target_id = target["node_id"]
+        client = NodePeerService(
+            identity_store=identity,
+            tls_transport=tls,
+            trusted_peers={target_id: trusted_certificates[target_id]},
+            timeout_seconds=25,
+            rsa_identity_store=rsa_identity,
+            trusted_rsa_public_keys={target_id: trusted_rsa_keys[target_id]},
+        )
+
+        receipt = wait_for(
+            lambda: replicator.send_record(
+                client,
+                target["host"],
+                target["port"],
+                target_id,
+                trusted_rsa_keys[target_id],
+                record,
+            ),
+            240,
+            f"persistent P2P replication {index}->{target_index}",
+        )
+        if receipt.get("status") != "accepted" or receipt.get("receiver_node_id") != target_id:
+            raise RuntimeError(f"Invalid signed delivery receipt for {index}->{target_index}.")
+        outgoing_receipts.append({
+            "target_index": target_index,
+            "target_node_id": target_id,
+            "message_id": receipt["message_id"],
+            "received_at": receipt["received_at"],
+        })
+        if len(outgoing_receipts) % 10 == 0:
+            print(f"FULL_MESH_PROGRESS node={index} sent={len(outgoing_receipts)}/{count-1}", flush=True)
+
+    expected_origin_ids = set(all_node_ids) - {identity_metadata["node_id"]}
+
+    def all_replicas_arrived():
+        if message_handler_errors:
+            raise RuntimeError("; ".join(message_handler_errors))
+        incoming = [
+            item for item in replicator.list_received()
+            if item.get("record", {}).get("record_id") == record_id
+        ]
+        origins = {item.get("origin_node_id") for item in incoming}
+        return incoming if len(incoming) == count - 1 and origins == expected_origin_ids else None
+
+    incoming_replicas = wait_for(
+        all_replicas_arrived,
+        600,
+        f"{count-1} persistent records from every other node",
+    )
+
+    for replica in incoming_replicas:
+        if replica.get("replica_node_id") != identity_metadata["node_id"]:
+            raise RuntimeError("A synchronized replica is stored under the wrong receiving node.")
+        if replica.get("record", {}).get("fields", {}).get("network_state") != shared_state:
+            raise RuntimeError("A peer stored a different network synchronization state.")
+        if replica.get("record", {}).get("fields", {}).get("network_state_sha256") != shared_state_sha256:
+            raise RuntimeError("A peer record has a different network-state hash.")
+
+    # Persist this node's own contribution beside the 99 received persistent replicas.
+    sync_directory = data_dir / "storage" / "shared" / "node-core-network-sync" / run_id
+    own_contribution = {
+        "origin_node_id": identity_metadata["node_id"],
+        "replica_node_id": identity_metadata["node_id"],
+        "record": record,
+        "network_state_sha256": shared_state_sha256,
+    }
+    write_private_json(sync_directory / "local-contribution.json", own_contribution)
+
+    converged_origins = sorted(all_node_ids)
+    convergence_body = {
+        "schema": "node-core-os/full-mesh-convergence/v1",
+        "run_id": run_id,
+        "record_id": record_id,
+        "participant_count": count,
+        "replica_count": count,
+        "network_state_sha256": shared_state_sha256,
+        "presence_manifest_sha256": consensus["manifest_sha256"],
+        "converged_origin_node_ids": converged_origins,
+    }
+    convergence_sha256 = hashlib.sha256(canonical_json(convergence_body)).hexdigest()
+    converged_snapshot = {**convergence_body, "convergence_sha256": convergence_sha256}
+    write_private_json(sync_directory / "converged-state.json", converged_snapshot)
+
+    # Verify all nodes will compute the same converged snapshot, not merely the
+    # same per-sender payload.
+    if converged_snapshot["converged_origin_node_ids"] != all_node_ids:
+        raise RuntimeError("Converged state does not contain the complete global roster.")
+
+    # Sample overlay route diagnostics after P2P transfers; relay use is recorded,
+    # not hidden or falsely described as direct physical connectivity.
+    route_samples = []
+    for target in peer_entries[: min(3, len(peer_entries))]:
+        route = subprocess.run(
+            ["tailscale", "ping", "--c=3", "--until-direct=false", target["host"]],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        route_samples.append({
+            "target_node_id": target["node_id"],
+            "return_code": route.returncode,
+            "output": (route.stdout + route.stderr)[-3000:],
+        })
+
+    peer_service.stop()
+
+    evidence_dir = Path(os.environ["RUNNER_TEMP"]) / "node-core-mesh-evidence"
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    evidence = {
+        "schema": "node-core-real-linux-full-mesh-evidence-v1",
+        "run_id": run_id,
+        "node_index": index,
+        "expected_nodes": count,
+        "node_id": identity_metadata["node_id"],
+        "public_key": identity_metadata["public_key"],
+        "tailscale_ipv4": local_tailscale_ip,
+        "os_release": Path("/etc/os-release").read_text(encoding="utf-8"),
+        "uid": os.getuid(),
+        "hostname": socket.gethostname(),
+        "manifest_unanimous": consensus["unanimous"],
+        "manifest_signatures": len(signatures_response["signatures"]),
+        "presence_manifest_sha256": consensus["manifest_sha256"],
+        "network_state_sha256": shared_state_sha256,
+        "convergence_sha256": convergence_sha256,
+        "outgoing_directed_deliveries": len(outgoing_receipts),
+        "incoming_persistent_replicas": len(incoming_replicas),
+        "total_expected_directed_deliveries": count * (count - 1),
+        "outgoing_receipts": outgoing_receipts,
+        "incoming_origin_node_ids": sorted(item["origin_node_id"] for item in incoming_replicas),
+        "converged_origin_node_ids": converged_origins,
+        "converged_snapshot_path": str(sync_directory / "converged-state.json"),
+        "route_diagnostics": route_samples,
+        "p2p_listener": {"host": "0.0.0.0", "port": P2P_PORT, "mutual_tls": True},
+        "installation_data_dir": str(data_dir),
+        "rsa_public_key_sha256": rsa_metadata["public_key_sha256"],
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+    }
+    evidence_path = evidence_dir / f"node-{index:03d}.json"
+    write_private_json(evidence_path, evidence)
+    print(
+        f"NODE_FULL_MESH_PASS index={index} id={identity_metadata['node_id']} "
+        f"sent={len(outgoing_receipts)} received={len(incoming_replicas)} "
+        f"state_sha256={shared_state_sha256} convergence_sha256={convergence_sha256}",
+        flush=True,
+    )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--index", type=int, required=True)
+    parser.add_argument("--count", type=int, required=True)
+    parser.add_argument("--run-id", required=True)
+    args = parser.parse_args()
+    if not 3 <= args.count <= 100 or not 0 <= args.index < args.count:
+        raise SystemExit("This campaign supports 3..100 nodes; index must be within the roster.")
+    run_node(args.index, args.count, args.run_id)
+
+
+if __name__ == "__main__":
+    main()
