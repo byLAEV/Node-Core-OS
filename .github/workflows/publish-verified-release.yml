@@ -122,9 +122,11 @@ jobs:
           update_archive="dist/$update_asset"
           gzip -t "$install_archive"
           gzip -t "$update_archive"
-          tar -tzf "$install_archive" | grep -Fqx "node-core-os-install-$version/node_core/bios.py"
-          tar -tzf "$update_archive" | grep -Fqx "node-core-os-update-$version/SOURCE_COMMIT"
-          tar -tzf "$update_archive" | grep -Fqx "node-core-os-update-$version/source-package.tar.gz"
+          install_listing="$(tar -tzf "$install_archive")"
+          update_listing="$(tar -tzf "$update_archive")"
+          grep -Fxq "node-core-os-install-$version/node_core/bios.py" <<< "$install_listing"
+          grep -Fxq "node-core-os-update-$version/SOURCE_COMMIT" <<< "$update_listing"
+          grep -Fxq "node-core-os-update-$version/source-package.tar.gz" <<< "$update_listing"
           bundled_commit="$(tar -xOf "$update_archive" "node-core-os-update-$version/SOURCE_COMMIT" | tr -d '\r\n')"
           [[ "$bundled_commit" == "$SOURCE_COMMIT" ]]
 
