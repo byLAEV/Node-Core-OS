@@ -12,7 +12,7 @@ The current baseline contains **248 M49 country-or-area records**. This is not a
 
 | Navigation ID | Continent / geographic scope | M49 records | Mapping notes | Geographic inventory status | Issuer research status |
 |---|---|---:|---|---|---|
-| GEO-AF | Africa | 60 | M49 region 002. | POPULATED | PARTIALLY_RESEARCHED (12 of 60 M49 records) |
+| GEO-AF | Africa | 60 | M49 region 002. | POPULATED | PARTIALLY_RESEARCHED (13 of 60 M49 records) |
 | GEO-AS | Asia | 50 | M49 region 142. | POPULATED | NOT_RESEARCHED |
 | GEO-EU | Europe | 51 | M49 region 150. | POPULATED | NOT_RESEARCHED |
 | GEO-NA | North America | 41 | Includes M49 Northern America, Central America, and the Caribbean. | POPULATED | NOT_RESEARCHED |
