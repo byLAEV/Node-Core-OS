@@ -11,7 +11,7 @@ REPOSITORY_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
 PYTHON="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
 
-: "${NODE_INDEX:?Set NODE_INDEX to this machine's unique index (0..N-1).}"
+: "${NODE_INDEX:?Set NODE_INDEX to this machine unique index (0..N-1).}"
 : "${NODE_COUNT:?Set NODE_COUNT to the total number of Linux machines.}"
 : "${MESH_RUN_ID:?Set MESH_RUN_ID to the same numeric campaign ID on every machine.}"
 
@@ -57,7 +57,7 @@ ARGS=(
 )
 
 if [[ "$NODE_INDEX" != "0" ]]; then
-  : "${MESH_COORDINATOR_IP:?Set MESH_COORDINATOR_IP to node 0's Tailscale IPv4 address.}"
+  : "${MESH_COORDINATOR_IP:?Set MESH_COORDINATOR_IP to Tailscale IPv4 address of node 0.}"
   ARGS+=(--coordinator-ip "$MESH_COORDINATOR_IP")
 fi
 
