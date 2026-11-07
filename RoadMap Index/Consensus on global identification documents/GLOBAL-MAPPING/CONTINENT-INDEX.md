@@ -1,37 +1,41 @@
 # Continental and Geographic Region Index
 
-This index is the top-level navigation layer for the global issuer map.
+This index is the navigation layer for the worldwide identity-document and passport issuer directory.
 
-## Geographic organization
+## Geographic baseline
 
-The project uses a seven-continent navigation model and preserves the standardized region, subregion, M49 country-or-area code, and ISO identifiers from the United Nations Statistics Division M49 classification.
+The project uses a seven-continent navigation model and preserves the UN Statistics Division M49 region, subregion, country/area code and ISO identifiers. The baseline contains **248 records**: 247 country/area jurisdictions and Antarctica as a geographic reference only.
 
 Reference: https://unstats.un.org/unsd/methodology/m49/overview/
 
-The current baseline contains **248 M49 country-or-area records**. This is not a count of 248 sovereign states: M49 includes countries, territories, and other areas. Antarctica is included as a geographic reference only and is not treated as a national identity-document issuing jurisdiction.
+| Navigation ID | Continent / geographic scope | M49 records | Jurisdictions with both issuer categories identified | Notes |
+|---|---|---:|---:|---|
+| GEO-AF | Africa | 60 | 14 | 14 African jurisdictions currently have identity and passport issuer records. |
+| GEO-AS | Asia | 50 | 2 | Includes the separately administered Hong Kong and Macao SAR issuer authorities. |
+| GEO-EU | Europe | 51 | 0 | Issuer research remains pending across the M49 country/area baseline. |
+| GEO-NA | North America | 41 | 0 | Includes Northern America, Central America and the Caribbean in the project's navigation grouping. |
+| GEO-SA | South America | 16 | 0 | M49 South America grouping. |
+| GEO-OC | Oceania | 29 | 0 | M49 Oceania grouping. |
+| GEO-AN | Antarctica | 1 | Not applicable | Geographic reference only; not treated as a national issuer jurisdiction. |
+| **TOTAL** | **World inventory** | **248** | **16** | The denominator for issuer coverage excludes the Antarctica reference: 247 applicable jurisdictions. |
 
-| Navigation ID | Continent / geographic scope | M49 records | Mapping notes | Geographic inventory status | Issuer research status |
-|---|---|---:|---|---|---|
-| GEO-AF | Africa | 60 | M49 region 002. | POPULATED | PARTIALLY_RESEARCHED (13 of 60 M49 records) |
-| GEO-AS | Asia | 50 | M49 region 142. | POPULATED | NOT_RESEARCHED |
-| GEO-EU | Europe | 51 | M49 region 150. | POPULATED | NOT_RESEARCHED |
-| GEO-NA | North America | 41 | Includes M49 Northern America, Central America, and the Caribbean. | POPULATED | NOT_RESEARCHED |
-| GEO-SA | South America | 16 | M49 South America subregion. | POPULATED | NOT_RESEARCHED |
-| GEO-OC | Oceania | 29 | M49 region 009. | POPULATED | NOT_RESEARCHED |
-| GEO-AN | Antarctica | 1 | Geographic reference only; not an identity-document issuer jurisdiction. | POPULATED | NOT_APPLICABLE |
-| **TOTAL** | **World inventory** | **248** | M49 country-or-area records. | **POPULATED** | **PENDING** |
+## Navigation and source registers
 
-## Country and area lists
+- [Readable country and area list by continent](COUNTRIES-AND-AREAS-BY-CONTINENT.md)
+- [Country and jurisdiction register](COUNTRY-AND-JURISDICTION-REGISTER.csv)
+- [Global identity and passport issuer master register](GLOBAL-IDENTITY-AND-PASSPORT-ISSUER-MASTER-REGISTER.csv)
+- [Extra-continental and regional document issuers](EXTRACONTINENTAL-AND-REGIONAL-DOCUMENT-ISSUERS.csv)
 
-- [Complete readable list by continent](COUNTRIES-AND-AREAS-BY-CONTINENT.md)
-- [Structured country and jurisdiction CSV register](COUNTRY-AND-JURISDICTION-REGISTER.csv)
+## Classification rules
 
-## Classification notes
+M49 is a statistical geographic classification. It is not a legal determination of sovereignty, borders, nationality or institutional competence. A M49 country/area row can represent a territory or special administrative area rather than a sovereign State.
 
-The seven-continent navigation model does not map one-to-one to M49 macro-geographical regions. M49 groups North America, Central America, the Caribbean, and South America under the Americas region with separate subregions. For this project's navigation, Central America and the Caribbean are grouped under North America while the original M49 codes and names remain stored in the register.
+Special administrative regions and other areas with distinct issuing authorities must be represented separately and linked to their legal/geographic parent. Do not combine the Hong Kong SAR or Macao SAR issuing services with the PRC mainland issuer row.
 
-M49 is a statistical geographic classification. It is not a legal determination of sovereignty, borders, citizenship, or the competence of an issuing institution. The register must preserve the distinction between sovereign states, territories, dependencies, and other areas wherever relevant.
+Global, regional and non-territorial organizations that issue restricted official travel documents are recorded separately. They are not additional countries and must not be included in the 247-jurisdiction coverage denominator.
 
-## Next step
+## Coverage interpretation
 
-The geographic enumeration baseline is now populated. Institutional research has begun in 12 African jurisdictions. The next phase is to continue by jurisdiction, map each functional authority and subnational unit, and maintain explicit coverage statuses before any API or connector design. Do not mark an issuer as confirmed until its mandate is supported by official sources.
+A jurisdiction counts as mapped for the core objective only when **both** an identity-document issuer and a passport issuer have been identified and linked to official sources. One mapped category does not complete the jurisdiction. `NOT_RESEARCHED` means that research is not yet recorded; it does not mean an authority does not exist.
+
+The detailed scope and status definitions are in [ISSUER-MAPPING-SCOPE-AND-COVERAGE.md](ISSUER-MAPPING-SCOPE-AND-COVERAGE.md).
