@@ -1,0 +1,237 @@
+name: Publish verified Node Core OS release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-verified-release.yml
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag (for example v1.5.6)
+        required: true
+        default: v1.5.6
+        type: string
+      source_commit:
+        description: Exact commit whose package was validated
+        required: true
+        default: 08d994574775a0ec3d9dcc4b2e88862152d1ea3b
+        type: string
+      source_run_id:
+        description: Successful package workflow run ID
+        required: true
+        default: "42316059879"
+        type: string
+      artifact_name:
+        description: Exact package artifact name from that run
+        required: true
+        default: node-core-bios-packages-1.5.6
+        type: string
+      artifact_digest:
+        description: SHA-256 digest reported by GitHub for the artifact
+        required: true
+        default: sha256:e08b5d2521ba00d3902f6e3cf2170602aac56e0cdd4df82f9cc4dc9dbd7deb4e
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Validate artifact, create tag, and publish release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.inputs.release_tag || 'v1.5.6' }}
+      SOURCE_COMMIT: ${{ github.event.inputs.source_commit || '08d994574775a0ec3d9dcc4b2e88862152d1ea3b' }}
+      SOURCE_RUN_ID: ${{ github.event.inputs.source_run_id || '42316059879' }}
+      SOURCE_ARTIFACT: ${{ github.event.inputs.artifact_name || 'node-core-bios-packages-1.5.6' }}
+      SOURCE_ARTIFACT_DIGEST: ${{ github.event.inputs.artifact_digest || 'sha256:e08b5d2521ba00d3902f6e3cf2170602aac56e0cdd4df82f9cc4dc9dbd7deb4e' }}
+    steps:
+      - name: Checkout complete repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate the successful source run and artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${RELEASE_TAG#v}"
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$SOURCE_ARTIFACT" == "node-core-bios-packages-$version" ]]
+          [[ "$SOURCE_ARTIFACT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          git cat-file -e "$SOURCE_COMMIT^{commit}"
+          source_version="$(git show "$SOURCE_COMMIT:VERSION" | tr -d '\r\n')"
+          [[ "$source_version" == "$version" ]]
+
+          run_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID")"
+          jq -e \
+            --arg sha "$SOURCE_COMMIT" \
+            '.status == "completed" and
+             .conclusion == "success" and
+             .event == "push" and
+             .head_branch == "main" and
+             .head_sha == $sha and
+             .path == ".github/workflows/bios-release-packages.yml"' \
+            <<< "$run_json" >/dev/null
+
+          artifacts_json="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID/artifacts")"
+          jq -e \
+            --arg name "$SOURCE_ARTIFACT" \
+            --arg digest "$SOURCE_ARTIFACT_DIGEST" \
+            --arg run_id "$SOURCE_RUN_ID" \
+            '[.artifacts[] | select(.name == $name and
+                                    .digest == $digest and
+                                    .expired == false and
+                                    (.workflow_run.id | tostring) == $run_id)] | length == 1' \
+            <<< "$artifacts_json" >/dev/null
+
+      - name: Download the exact validated artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download "$SOURCE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$SOURCE_ARTIFACT" \
+            --dir dist
+
+      - name: Verify both release archives and their source commit
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          install_asset="node-core-os-install-$version.tar.gz"
+          update_asset="node-core-os-update-$version.tar.gz"
+          mapfile -t actual_files < <(find dist -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | sort)
+          [[ "${#actual_files[@]}" -eq 2 ]]
+          [[ "${actual_files[0]}" == "$install_asset" ]]
+          [[ "${actual_files[1]}" == "$update_asset" ]]
+
+          install_archive="dist/$install_asset"
+          update_archive="dist/$update_asset"
+          gzip -t "$install_archive"
+          gzip -t "$update_archive"
+          tar -tzf "$install_archive" | grep -Fqx "node-core-os-install-$version/node_core/bios.py"
+          tar -tzf "$update_archive" | grep -Fqx "node-core-os-update-$version/SOURCE_COMMIT"
+          tar -tzf "$update_archive" | grep -Fqx "node-core-os-update-$version/source-package.tar.gz"
+          bundled_commit="$(tar -xOf "$update_archive" "node-core-os-update-$version/SOURCE_COMMIT" | tr -d '\r\n')"
+          [[ "$bundled_commit" == "$SOURCE_COMMIT" ]]
+
+          install_sha256="$(sha256sum "$install_archive" | awk '{print $1}')"
+          update_sha256="$(sha256sum "$update_archive" | awk '{print $1}')"
+          install_sha512="$(sha512sum "$install_archive" | awk '{print $1}')"
+          update_sha512="$(sha512sum "$update_archive" | awk '{print $1}')"
+          {
+            echo "install_sha256=$install_sha256"
+            echo "update_sha256=$update_sha256"
+            echo "install_sha512=$install_sha512"
+            echo "update_sha512=$update_sha512"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create or verify the exact annotated release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            existing_commit="$(git rev-parse "$RELEASE_TAG^{commit}")"
+            [[ "$existing_commit" == "$SOURCE_COMMIT" ]] || {
+              echo "Refusing to use $RELEASE_TAG: it points to $existing_commit, not $SOURCE_COMMIT." >&2
+              exit 1
+            }
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$RELEASE_TAG" "$SOURCE_COMMIT" -m "Node Core OS byLAEV $RELEASE_TAG"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+
+      - name: Publish exactly the installer and updater
+        shell: bash
+        env:
+          INSTALL_SHA256: ${{ steps.verify.outputs.install_sha256 }}
+          UPDATE_SHA256: ${{ steps.verify.outputs.update_sha256 }}
+          INSTALL_SHA512: ${{ steps.verify.outputs.install_sha512 }}
+          UPDATE_SHA512: ${{ steps.verify.outputs.update_sha512 }}
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          install_asset="node-core-os-install-$version.tar.gz"
+          update_asset="node-core-os-update-$version.tar.gz"
+          notes_file="$(mktemp)"
+          trap 'rm -f "$notes_file"' EXIT
+          cat > "$notes_file" <<EOF
+          Node Core OS byLAEV $version
+
+          This release contains exactly two downloadable archives: one installer and one updater.
+          Run installation and updates as the normal user; never use root or sudo.
+          Automated GNU/Linux packaging targets Ubuntu 24.04 x86_64.
+          Termux uses native Android ARM64 dependencies; physical-device smoke testing remains separate from CI.
+
+          Source commit: $SOURCE_COMMIT
+
+          Installer: $install_asset
+          SHA-256: $INSTALL_SHA256
+          SHA-512: $INSTALL_SHA512
+
+          Updater: $update_asset
+          SHA-256: $UPDATE_SHA256
+          SHA-512: $UPDATE_SHA512
+          EOF
+
+          if release_json="$(gh release view "$RELEASE_TAG" --json tagName,isDraft,isPrerelease,url,assets 2>/dev/null)"; then
+            mapfile -t existing_assets < <(jq -r '.assets[].name' <<< "$release_json" | sort)
+            for name in "${existing_assets[@]}"; do
+              [[ "$name" == "$install_asset" || "$name" == "$update_asset" ]] || {
+                echo "Refusing to modify a Release containing an unexpected asset: $name" >&2
+                exit 1
+              }
+              expected_digest="sha256:$INSTALL_SHA256"
+              [[ "$name" == "$install_asset" ]] || expected_digest="sha256:$UPDATE_SHA256"
+              actual_digest="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .digest // ""' <<< "$release_json")"
+              [[ "$actual_digest" == "$expected_digest" ]] || {
+                echo "Refusing to overwrite an existing asset with an unverified digest: $name" >&2
+                exit 1
+              }
+            done
+            gh release edit "$RELEASE_TAG" --title "Node Core OS $version" --notes-file "$notes_file"
+            missing_assets=()
+            for name in "$install_asset" "$update_asset"; do
+              if ! printf '%s\n' "${existing_assets[@]}" | grep -Fxq "$name"; then
+                missing_assets+=("dist/$name")
+              fi
+            done
+            if [[ "${#missing_assets[@]}" -gt 0 ]]; then
+              gh release upload "$RELEASE_TAG" "${missing_assets[@]}"
+            fi
+          else
+            gh release create "$RELEASE_TAG" \
+              "dist/$install_asset" "dist/$update_asset" \
+              --target "$SOURCE_COMMIT" \
+              --title "Node Core OS $version" \
+              --notes-file "$notes_file"
+          fi
+
+          final_release="$(gh release view "$RELEASE_TAG" --json tagName,isDraft,isPrerelease,url,assets)"
+          jq -e \
+            --arg tag "$RELEASE_TAG" \
+            --arg installer "$install_asset" \
+            --arg updater "$update_asset" \
+            '.tagName == $tag and
+             .isDraft == false and
+             .isPrerelease == false and
+             ([.assets[].name] | sort) == ([$installer, $updater] | sort)' \
+            <<< "$final_release" >/dev/null
+          echo "Published release: $(jq -r '.url' <<< "$final_release")"
+          echo "Verified assets: $install_asset and $update_asset"
