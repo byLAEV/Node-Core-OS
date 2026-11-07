@@ -265,3 +265,6 @@ This is a country-specific state pathway, not a global identity document and not
 
 The [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) contains 248 geographic rows. It marks the twelve researched African jurisdictions as partially mapped and keeps all other unresearched jurisdictions explicitly open. Functional categories with no mapped record are marked NOT_RESEARCHED, not presumed nonexistent. The API/connector layer remains deferred.
 
+
+
+**Senegal operational note:** the Ministry announced on 24 September 2026 that renewal operations for CEDEAO biometric identity cards issued from 4 October to 31 December 2016 would start on 25 September 2026. This is a limited renewal cohort and does not prove that all issuance services are fully restored. Source: https://interieur.gouv.sn/actualites/communiques/renouvellement-cartes-identite-biometriques-cedeao-demarrage-25-septembre-2026
