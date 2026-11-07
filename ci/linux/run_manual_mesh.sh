@@ -15,12 +15,18 @@ PYTHON="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
 : "${NODE_COUNT:?Set NODE_COUNT to the total number of Linux machines.}"
 : "${MESH_RUN_ID:?Set MESH_RUN_ID to the same numeric campaign ID on every machine.}"
 
-case "$NODE_INDEX:$NODE_COUNT:$MESH_RUN_ID" in
-  *[!0-9:]*|:*|*::*|*:)
-    printf '%s\\n' "ERROR: NODE_INDEX, NODE_COUNT and MESH_RUN_ID must be numeric." >&2
-    exit 1
-    ;;
-esac
+python3 - <<'PY'
+import os
+import re
+for name in ("NODE_INDEX", "NODE_COUNT", "MESH_RUN_ID"):
+    value = os.environ[name]
+    if re.fullmatch(r"[0-9]+", value) is None:
+        raise SystemExit(f"ERROR: {name} must contain only digits.")
+index = int(os.environ["NODE_INDEX"])
+count = int(os.environ["NODE_COUNT"])
+if count < 3 or count > 100 or index < 0 or index >= count:
+    raise SystemExit("ERROR: NODE_COUNT must be 3..100 and NODE_INDEX must be within the roster.")
+PY
 
 if [[ ! -x "$PYTHON" ]]; then
   printf 'ERROR: Node Core OS virtual environment not found: %s\n' "$PYTHON" >&2
