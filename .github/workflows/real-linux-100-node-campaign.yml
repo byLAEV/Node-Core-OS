@@ -40,7 +40,7 @@ jobs:
         run: python3 -m py_compile ci/linux/real_multi_node_mesh.py
 
   prepare:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-100-node-campaign]'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -73,7 +73,7 @@ jobs:
           PY
 
   nodes:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-100-node-campaign]'))
     needs: prepare
     name: "Linux node ${{ matrix.node }} / 100"
     runs-on: ubuntu-24.04
