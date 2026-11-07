@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#15191f"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>NODE CORE OS Lobby</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101419;color:#edf2f7}
+body{margin:0;padding:24px;max-width:760px;margin-inline:auto}
+header{padding:24px 0;border-bottom:1px solid #35404b}
+h1{font-size:2rem;letter-spacing:.08em;margin:0} .sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}
+p{line-height:1.55;color:#c6d0d9}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
+article{border:1px solid #35404b;border-radius:14px;padding:16px;background:#171e25}
+h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2}
+.status{margin-top:20px;padding:14px;border-radius:12px;background:#192b25;color:#9ce2b8}
+footer{margin-top:30px;color:#8795a1;font-size:.8rem}
+</style></head>
+<body>
+<header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
+<p>Local administration lobby for Node Core OS on Termux. This first implementation provides environment recognition and a safe entry point; installation, repair and update actions remain disabled until their Termux workflows are implemented and tested.</p>
+<div class="grid">
+<article><h2>01 · System diagnosis</h2><small>Inspect Android, Termux, architecture and Python runtime.</small></article>
+<article><h2>02 · Prepare environment</h2><small>Review prerequisites before changing packages or configuration.</small></article>
+<article><h2>03 · Install Node Core OS</h2><small>Installation workflow: not yet connected.</small></article>
+<article><h2>04 · Update Node Core OS</h2><small>Update workflow: not yet connected.</small></article>
+<article><h2>05 · Repair configuration</h2><small>Repair workflow: not yet connected.</small></article>
+<article><h2>06 · Node status</h2><small>Read-only local environment report.</small></article>
+</div>
+<div id="status" class="status">Checking local Lobby service…</div>
+<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only</footer>
+<script>
+(async()=>{const el=document.getElementById('status');try{
+const r=await fetch('/health',{cache:'no-store'});const j=await r.json();
+el.textContent='Lobby service: ONLINE · Transport: '+j.transport.toUpperCase()+' · Local device only.';
+}catch(e){el.textContent='Lobby status unavailable. Return to Termux and run the Lobby launcher.';}})();
+</script>
+</body></html>
