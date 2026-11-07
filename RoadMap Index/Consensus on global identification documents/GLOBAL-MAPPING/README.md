@@ -224,3 +224,29 @@ This is a partial research batch, not full African or global coverage. Some role
 3. Identify competent statelessness determination or protection procedures where they exist; do not infer them from the existence of a refugee agency.
 4. Extend the same institutional categories to Asia, Europe, the Americas, and Oceania.
 5. Only after the institutional roles and procedures are reliably mapped, define the corresponding Node Core OS data schemas, APIs, and authorized connectors.
+
+
+## Versioned data model and validation
+
+The mapping now has a versioned normalized target model and an initial lawful-procedure register. These files establish the structure for future database/API work; they do not claim that Node Core OS has deployed an identity case-management service or connected to a government API.
+
+- [Global Identity Data Model v1.0](GLOBAL-IDENTITY-DATA-MODEL-v1.md) — entity relationships, stable identifiers, legal distinctions, privacy boundaries, and versioning policy.
+- [JSON Schema](global-identity-data-model.schema.json) — normalized target contract for jurisdiction, institution, issuer, procedure, and evidence-source records.
+- [Lawful Identity Pathway Register](LAWFUL-IDENTITY-PATHWAY-REGISTER.csv) — first six procedure research records, with unresolved legal questions explicitly marked.
+- [Mapping validator](validate_global_mapping.py) — dependency-free CSV structure, jurisdiction reference, source URL, date, and foreign-key checks.
+- [Validator tests](test_validate_global_mapping.py) — unit tests for URL handling and quoted CSV parsing.
+
+### Cross-references and current coverage
+
+The 22 existing national-ID/passport issuer rows now each link to an `institution_record_id`. The institution register has 36 records across the same 11 initial African jurisdictions. Three additional institution records close issuer-directory gaps for Ghana's Passport Office, Ethiopia's National ID Program, and Tanzania's National Identification Authority.
+
+The lawful-procedure register currently contains six researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
+
+### Controlled implementation sequence
+
+1. Keep the public CSV mapping free of personal data.
+2. Validate structural and referential integrity before every research batch.
+3. Normalize legacy status values to the controlled vocabulary in the JSON Schema; preserve raw source values and review notes.
+4. Expand institution and procedure coverage across all African M49 records.
+5. Specify Node Core OS APIs and connectors only after the institution's role, procedure, legal basis, access conditions, and technical interface are confirmed.
+6. Test with synthetic records, including low-bandwidth, timeout, retry, idempotency, and manual fallback scenarios.
