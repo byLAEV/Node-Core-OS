@@ -1,0 +1,24 @@
+{
+  "profile_id": "termux-native-aarch64",
+  "contract": "NCTCL-TERMUX-1",
+  "platform": "android-termux",
+  "architectures": ["aarch64"],
+  "status": "experimental",
+  "package_manager": "pkg",
+  "shells": ["bash"],
+  "lobby": {
+    "implementation": "python-stdlib-http-server",
+    "bind": "127.0.0.1",
+    "port": 8765,
+    "transport_preference": ["https", "http-loopback"],
+    "home_screen_entry": "Termux:Widget"
+  },
+  "verification_required": [
+    "real-device-install",
+    "server-start-stop",
+    "https-browser-warning",
+    "http-loopback-fallback",
+    "widget-launch",
+    "android-background-lifecycle"
+  ]
+}
