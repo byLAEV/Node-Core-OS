@@ -28,6 +28,8 @@ The map is intentionally partial. The current pass does not yet complete the loc
 
 ## Critical transition: national asylum system
 
+Prime Minister Decree No. 1568 of 2026 was published on 21 May 2026 and provides that its executive regulations take effect after three months. It requires the Permanent Committee to coordinate with UNHCR to receive the data of asylum seekers and persons already recognized by UNHCR within six months from commencement. The decree allows those transition periods to be extended by a further equal period by Prime Minister decision. The decree also preserves existing UNHCR refugee and asylum-seeker cards until their expiry or until the Committee issues replacement documents, whichever occurs first. These provisions establish a transition schedule, not proof that transfer is complete.
+
 Egypt enacted Asylum Law No. 164 of 2024, establishing a Permanent Committee for Refugee Affairs under the Prime Minister's authority. The executive regulations were published in May 2026. However, the legal creation of the Committee and publication of regulations must not be confused with a fully operational transfer of casework.
 
 UNHCR's current Egypt country page states that, under the 1954 Memorandum of Understanding, UNHCR continues registration, asylum documentation, refugee status determination, resettlement, voluntary repatriation and related protection functions until the national asylum system is fully operational. The mapping therefore records both the statutory Committee and the current UNHCR operational role, with an explicit transition warning.
@@ -54,6 +56,8 @@ No statelessness determination procedure has been confirmed in this batch. That 
 This batch records official administrative services and legal/operational responsibilities only. It does not claim that any government or UNHCR API is public, that Node Core OS has a connection, or that third-party access to case records is permitted. Digital or consular portals are not automatically APIs. API and connector work remains deferred until institutional mapping is sufficiently complete.
 
 ## Sources
+
+- Official Printing Authority — Prime Minister Decree No. 1568 of 2026 and executive regulations: https://www.alamiria.com/Sec/TashTxt?id=N17IHOSPH%2F8%3D
 
 - [Egypt PENA official portal]( https://www.moi.gov.eg/Passportsen_fr/home/Index )
 - [PENA nationality services]( https://moi.gov.eg/passportsen_fr/nationality/index/7 )
