@@ -1,5 +1,10 @@
 name: Node Core OS — Real Linux 20–200 node P2P mesh
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/real-linux-multi-node-mesh.yml"
+      - "ci/linux/real_multi_node_mesh.py"
+      - "docs/REAL-LINUX-MULTI-NODE-MESH.md"
   workflow_dispatch:
     inputs:
       node_count:
@@ -11,7 +16,16 @@ on:
 permissions:
   contents: read
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate mesh participant Python syntax
+        run: python3 -m py_compile ci/linux/real_multi_node_mesh.py
+
   prepare:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.matrix.outputs.nodes }}
@@ -30,6 +44,7 @@ jobs:
           print("count="+str(n))
           PY
   nodes:
+    if: github.event_name == 'workflow_dispatch'
     needs: prepare
     name: Independent Linux node ${{ matrix.node }} / ${{ needs.prepare.outputs.count }}
     runs-on: ubuntu-24.04
