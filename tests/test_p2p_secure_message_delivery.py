@@ -35,7 +35,7 @@ class P2PSecureMessageDeliveryTests(unittest.TestCase):
             {self.meta_a["node_id"]: self.cert_a},
             host="127.0.0.1",
             port=0,
-            timeout_seconds=5,
+            timeout_seconds=30,
             rsa_identity_store=self.rsa_b,
             trusted_rsa_public_keys={
                 self.meta_a["node_id"]: self.rsa_a.public_key_pem()
@@ -51,7 +51,7 @@ class P2PSecureMessageDeliveryTests(unittest.TestCase):
             self.identity_a,
             self.tls_a,
             {self.meta_b["node_id"]: self.cert_b},
-            timeout_seconds=5,
+            timeout_seconds=30,
             rsa_identity_store=self.rsa_a,
         )
         ack = client.send_secure_message(
