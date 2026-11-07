@@ -288,3 +288,8 @@ The purpose, person-centred use cases, institutional hierarchy, evidence-to-inst
 Algeria (M49 012) has been added as a partially mapped jurisdiction. This batch records five institutional roles, two document-issuer records and three procedural pathways. It identifies the Ministry of Interior's civil-status and biometric identity services, the Ministry of Justice and court route for nationality certificates, the Ministry of Foreign Affairs' consular civil-status transcription service, the statutory BAPRA framework, and UNHCR's current refugee registration and status-determination role. See [Africa Institutional Mapping Batch 03 — Algeria](AFRICA-INSTITUTIONAL-MAPPING-BATCH-03-ALGERIA.md).
 
 The mapping deliberately distinguishes nationality certificates from nationality acquisition, and UNHCR refugee status from Algerian nationality or State-issued statelessness status. BAPRA's current operational status and any active state statelessness determination procedure remain unconfirmed. Official online services are not treated as public APIs; API and connector work remains deferred.
+
+
+## Algeria coverage update
+
+Algeria (M49 012) is now recorded as **PARTIALLY_MAPPED** in the [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv). The register contains 248 geographic rows; the presence of records does not mean a jurisdiction is complete. Missing functional categories remain NOT_RESEARCHED unless a source establishes that they do not apply. Algeria's current batch documents five institutional roles, two issuer/document records and three procedures; the BAPRA operational status and any state-led statelessness determination procedure remain open research items.
