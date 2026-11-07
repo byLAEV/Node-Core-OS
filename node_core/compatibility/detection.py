@@ -84,7 +84,9 @@ def detect_environment(
     # Termux reports either Linux or Android depending on the Python build.
     # Require both Termux markers and its native package manager; plain Android
     # must remain unsupported.
-    is_termux = active_system in {"Linux", "Android"} and termux_marker and termux_pkg
+    is_termux = termux_marker and (
+        active_system == "Linux" or (active_system == "Android" and termux_pkg)
+    )
     family = "termux" if is_termux else ("gnu_linux" if active_system == "Linux" else "unsupported")
     architecture = normalize_architecture(active_machine)
 
