@@ -273,3 +273,8 @@ The [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) contains 248 geog
 ### Egypt — institutional mapping update
 
 Egypt has five institution records covering the Civil Status Sector, PENA, the Ministry of Foreign Affairs, the statutory Permanent Committee for Refugee Affairs and UNHCR Egypt's current transitional operation. The issuer register adds Egyptian national ID, ordinary passport and refugee documentation records; the procedure register adds nationality service routes and the asylum transition. The Committee's statutory authority is established by Asylum Law No. 164/2024, but UNHCR reports that it continues refugee registration, documentation and status determination until the national system is fully operational. The handover therefore remains an explicit verification item, not an assumed completed transition. See [Egypt Batch 03](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-03-EGYPT.md).
+
+
+## Mission and completion requirements
+
+The purpose, person-centred use cases, institutional hierarchy, evidence-to-institution pathway, trust boundaries, source policy, API sequencing and completion criteria for this work are defined in [Global Mapping Mission and Requirements](GLOBAL-MAPPING-MISSION-AND-REQUIREMENTS.md). This document governs the mapping phase: institutional and legal cartography first; API and connector implementation later.
