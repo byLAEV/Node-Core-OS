@@ -232,7 +232,7 @@ The mapping now has a versioned normalized target model and an initial lawful-pr
 
 - [Global Identity Data Model v1.0](GLOBAL-IDENTITY-DATA-MODEL-v1.md) — entity relationships, stable identifiers, legal distinctions, privacy boundaries, and versioning policy.
 - [JSON Schema](global-identity-data-model.schema.json) — normalized target contract for jurisdiction, institution, issuer, procedure, and evidence-source records.
-- [Lawful Identity Pathway Register](LAWFUL-IDENTITY-PATHWAY-REGISTER.csv) — first six procedure research records, with unresolved legal questions explicitly marked.
+- [Lawful Identity Pathway Register](LAWFUL-IDENTITY-PATHWAY-REGISTER.csv) — first seven procedure research records, with unresolved legal questions explicitly marked.
 - [Mapping validator](validate_global_mapping.py) — dependency-free CSV structure, jurisdiction reference, source URL, date, and foreign-key checks.
 - [Validator tests](test_validate_global_mapping.py) — unit tests for URL handling and quoted CSV parsing.
 
@@ -240,7 +240,7 @@ The mapping now has a versioned normalized target model and an initial lawful-pr
 
 The 22 existing national-ID/passport issuer rows now each link to an `institution_record_id`. The institution register has 36 records across the same 11 initial African jurisdictions. Three additional institution records close issuer-directory gaps for Ghana's Passport Office, Ethiopia's National ID Program, and Tanzania's National Identification Authority.
 
-The lawful-procedure register currently contains six researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
+The lawful-procedure register currently contains seven researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
 
 ### Controlled implementation sequence
 
