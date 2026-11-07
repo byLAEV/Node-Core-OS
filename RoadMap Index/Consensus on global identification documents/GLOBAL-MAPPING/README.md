@@ -263,7 +263,7 @@ The key legal finding is that Senegal has a statutory admission procedure for bo
 
 This is a country-specific state pathway, not a global identity document and not a mechanism for Node Core OS to grant citizenship. It is an institutional pathway that the future NC-GID may reference, subject to consent and lawful access. The public mapping contains no personal case data.
 
-The [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) contains 248 geographic rows. It marks the twelve researched African jurisdictions as partially mapped and keeps all other unresearched jurisdictions explicitly open. Functional categories with no mapped record are marked NOT_RESEARCHED, not presumed nonexistent. The API/connector layer remains deferred.
+The [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) contains 248 geographic rows. It marks the thirteen researched African jurisdictions as partially mapped and keeps all other unresearched jurisdictions explicitly open. Functional categories with no mapped record are marked NOT_RESEARCHED, not presumed nonexistent. The API/connector layer remains deferred.
 
 
 
