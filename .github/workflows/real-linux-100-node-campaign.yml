@@ -83,9 +83,6 @@ jobs:
       max-parallel: 100
       matrix:
         node: ${{ fromJSON(needs.prepare.outputs.matrix) }}
-    env:
-      NODE_CORE_HOME: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}
-      NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}/.node-core
     steps:
       - name: Verify independent Ubuntu 24.04 runner
         shell: bash
@@ -96,7 +93,7 @@ jobs:
           test "$VERSION_ID" = "24.04"
           test "$(uname -s)" = Linux
           test "$(id -u)" -ne 0
-          mkdir -p "$NODE_CORE_HOME"
+          mkdir -p "$RUNNER_TEMP/node-core-${{ github.run_id }}-${{ matrix.node }}"
           printf 'node_index=%s\nrunner=%s\nuid=%s\nos=%s\nhostname=%s\n' \
             "${{ matrix.node }}" "$RUNNER_NAME" "$(id -u)" "$PRETTY_NAME" "$(hostname)" \
             | tee "$RUNNER_TEMP/linux-node-identity.txt"
@@ -117,6 +114,9 @@ jobs:
           tailscale status
           test -n "$(tailscale ip -4)"
       - name: Install Node Core OS as non-root user
+        env:
+          NODE_CORE_HOME: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}/.node-core
         shell: bash
         run: |
           set -euo pipefail
@@ -129,6 +129,8 @@ jobs:
           test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
       - name: Execute this independent participant in the 100-node mesh
         env:
+          NODE_CORE_HOME: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}/.node-core
           NODE_INDEX: ${{ matrix.node }}
           NODE_COUNT: "100"
           MESH_RUN_ID: ${{ github.run_id }}
