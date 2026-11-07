@@ -1,5 +1,12 @@
 name: Node Core OS — Real Linux 20–100 node full-mesh synchronization
 on:
+  push:
+    branches:
+      - "feat/real-linux-100-200-node-mesh"
+    paths:
+      - ".github/workflows/real-linux-multi-node-mesh.yml"
+      - "ci/linux/real_multi_node_mesh.py"
+      - "docs/REAL-LINUX-MULTI-NODE-MESH.md"
   pull_request:
     paths:
       - ".github/workflows/real-linux-multi-node-mesh.yml"
@@ -17,7 +24,7 @@ permissions:
   contents: read
 jobs:
   validate:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
