@@ -197,7 +197,7 @@ The original `ISSUER-AND-API-REGISTER.csv` remains the source of truth for ident
 ### New working files
 
 - [Institution and Lawful Pathway Register](INSTITUTION-AND-PATHWAY-REGISTER.csv) — one record per institution or legally distinct institutional role, including mandate, authority level, jurisdiction, official service, API status, source evidence, and review notes.
-- [Institution Relationship Register](INSTITUTION-RELATIONSHIP-REGISTER.csv) — explicit parent/child links for mapped institutional hierarchies.
+- [Institution Relationship Register](INSTITUTION-RELATIONSHIP-REGISTER.csv) — explicit institutional hierarchy, referral, and transition relationships.
 - [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) — one row for each of the 248 geographic records, with function-by-function mapping status.
 - [Africa Institution and Pathway Research — Batch 02 (Senegal)](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-02-SENEGAL.md) — legal and institutional map for refugee/stateless recognition and related documents.
 - [Institution and Pathway Research Template](INSTITUTION-AND-PATHWAY-RESEARCH-TEMPLATE.md) — reusable research record with mandatory distinctions and safeguards.
@@ -278,3 +278,6 @@ Egypt has five institution records covering the Civil Status Sector, PENA, the M
 ## Mission and completion requirements
 
 The purpose, person-centred use cases, institutional hierarchy, evidence-to-institution pathway, trust boundaries, source policy, API sequencing and completion criteria for this work are defined in [Global Mapping Mission and Requirements](GLOBAL-MAPPING-MISSION-AND-REQUIREMENTS.md). This document governs the mapping phase: institutional and legal cartography first; API and connector implementation later.
+
+
+**Egypt classification correction:** all five Egyptian institution records use the Africa navigation group, consistent with the M49 geographic register (region 002). The 2026 asylum executive regulations provide a staged UNHCR-to-government transition; the handover is not treated as complete. See the official regulation text in Egypt Batch 03.
