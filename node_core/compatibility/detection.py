@@ -132,7 +132,7 @@ def detect_environment(
     commands = {name: bool(lookup(name)) for name in command_names}
     commands.update({
         "curl": bool(lookup("curl")), "wget": bool(lookup("wget")),
-        "pkg": bool(lookup("pkg") or termux_pkg), "ipfs": bool(lookup("ipfs")),
+        "pkg": bool(lookup("pkg")), "ipfs": bool(lookup("ipfs")),
     })
     package_managers = {
         name: bool(lookup(name))
