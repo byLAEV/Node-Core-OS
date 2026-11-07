@@ -322,5 +322,6 @@ The operational mapping structure and reusable templates are maintained in the [
 - [Country and Jurisdiction Register](GLOBAL-MAPPING/COUNTRY-AND-JURISDICTION-REGISTER.csv)
 - [Issuer and API Register](GLOBAL-MAPPING/ISSUER-AND-API-REGISTER.csv)
 - [Institution Research Template](GLOBAL-MAPPING/INSTITUTION-RESEARCH-TEMPLATE.md)
+- [Node Core OS API Capability Catalogue](GLOBAL-MAPPING/NODE-CORE-OS-API-CATALOG.md)
 
 These files establish the structure for collecting verified information. They are not a completed worldwide issuer inventory. Country and institution records must be populated through documented research.
