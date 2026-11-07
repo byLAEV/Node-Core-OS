@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
-URL_RE = re.compile(r"^https?://[^\\s]+$", re.IGNORECASE)
+URL_RE = re.compile(r"^https?://[^ \t\r\n]+$", re.IGNORECASE)
 
 def read_csv(path):
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
