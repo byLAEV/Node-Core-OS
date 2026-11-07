@@ -21,6 +21,13 @@ It is the Node Core OS side of the global mapping. It must be linked to institut
 | NCOS-ID-009 | Expose connector health and integration status. | Connector ID and authorized diagnostic request. | Operational status without exposing personal data. | NOT_SPECIFIED |
 | NCOS-ID-010 | Publish auditable consensus evidence for identity-association records. | Validated claim, verification provenance, consensus protocol data. | Consensus record that preserves issuer attestation boundaries. | NOT_SPECIFIED |
 
+
+| NCOS-ID-011 | Discover civil-registration institutions and procedures. | Jurisdiction, event type, institution record ID. | Official procedure metadata, source provenance, and limitations. | NOT_SPECIFIED |
+| NCOS-ID-012 | Record and track a nationality or citizenship procedure. | Subject reference, jurisdiction, legal route, consent/authority context, evidence references. | Case workflow state and competent-authority routing; no automated eligibility decision. | NOT_SPECIFIED |
+| NCOS-ID-013 | Discover asylum, refugee-protection, and statelessness procedures. | Jurisdiction, protection procedure category, institution record ID. | Official process metadata, decision-maker boundaries, appeal/referral information. | NOT_SPECIFIED |
+| NCOS-ID-014 | Maintain institution, issuer, procedure, and evidence-source relationships. | Stable record IDs, source URLs, research status, change provenance. | Referentially consistent mapping record and audit history. | NOT_SPECIFIED |
+| NCOS-ID-015 | Record consent, legal basis, and permitted-purpose restrictions for a future case workflow. | Subject reference, relying party, purpose, legal basis, scope, expiry. | Authorization evidence or structured rejection; no personal data in public mapping. | NOT_SPECIFIED |
+
 ## API contract requirements
 
 Before implementation, each capability must define:
@@ -41,3 +48,7 @@ Before implementation, each capability must define:
 The Node Core OS API is not the same as an institution's API. The institution controls its own service, access policy, data, and authoritative response. Node Core OS controls its own network interface, connector behavior, records, and consensus rules.
 
 A Node Core OS endpoint must not be entered into the global issuer register as operational until its specification and implementation are verified. A connector must not be marked production-ready without the institution's required authorization.
+
+## Expanded identity and lawful-pathway scope
+
+The API catalogue now covers discovery and tracking of civil-registration, nationality/citizenship, asylum/refugee-protection, and statelessness procedures in addition to identity-document verification. These are **future capabilities only**: every entry remains `NOT_SPECIFIED` until request/response contracts, authorization, error handling, low-bandwidth behavior, and tests are designed. No legal eligibility decision may be automated from incomplete mapping data, and no authority's legal decision may be represented as a Node Core OS decision.
