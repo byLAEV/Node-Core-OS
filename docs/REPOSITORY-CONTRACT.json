@@ -3,8 +3,8 @@
   "product": "Node Core OS byLAEV",
   "repository": "byLAEV/Node-Core-OS",
   "version_file": "VERSION",
-  "version": "1.5.6",
-  "canonical_installer": "installer/install.sh",
+  "version": "1.5.7",
+  "canonical_installer": "update.sh",
   "legacy_installer_alias": "installer/termux-install.sh",
   "platforms": [
     {
@@ -130,5 +130,11 @@
     "systemd_user": "optional_manual_service_fallback",
     "preflight_mutates_host": false,
     "compatibility_match_is_installation_evidence": false
+  },
+  "release_candidate": {
+    "version": "1.5.7",
+    "status": "pending_ci_and_publication",
+    "bootstrap": "bash update.sh",
+    "termux_detection": "Linux kernel plus TERMUX_VERSION and PREFIX"
   }
 }

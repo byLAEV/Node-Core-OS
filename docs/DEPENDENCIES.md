@@ -1,8 +1,8 @@
 # Node Core OS — Dependency Contract
 
-**Contract version:** 1.5.6  
+**Contract version:** 1.5.7  
 **Machine-readable contract:** [REPOSITORY-CONTRACT.json](REPOSITORY-CONTRACT.json)  
-**Canonical installer:** `bash installer/install.sh`
+**Canonical installer/updater:** `bash update.sh` (delegates to the unified installer and protected updater)
 
 This document describes dependencies required by executable code and installer behavior in this repository revision.
 
@@ -63,7 +63,7 @@ See [Cryptographic Runtime Contract and Recovery](CRYPTOGRAPHY-OPERATIONS.md) fo
 - Git is used for development and repository operations, not by the installed runtime.
 - `systemd --user` is optional service integration. Kubo can use the Node Core-managed manual lifecycle when unavailable.
 - Termux `pkg` is used only after native Termux detection to install missing user-space packages. GNU/Linux package managers are not invoked.
-- OpenTimestamps tooling and HashPaper source are separate/optional paths, not Node Core core-runtime Python requirements in the 1.5.6 installed application. The installer removes the suspended HashPaper application source from the installed application tree.
+- OpenTimestamps tooling and HashPaper source are separate/optional paths, not Node Core core-runtime Python requirements in the 1.5.7 installed application. The installer removes the suspended HashPaper application source from the installed application tree.
 
 ## Kubo version and integrity
 

@@ -61,6 +61,15 @@ class TerminalCompatibilityTests(unittest.TestCase):
             command_lookup=lookup_from(names),current_uid=10000,libc_info=("bionic","unknown"))
         self.assertEqual(env["target"]["family"],"termux")
         self.assertEqual(evaluate_environment(env,self.manifest)["status"],"ready")
+    def test_termux_android_python_system_uses_linux_kernel_profile(self):
+        names=BASE_COMMANDS|{"pkg","ipfs"}
+        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"googleplay.2026.10.09","PREFIX":"/mock/termux","TERM":"xterm-256color"},
+            system="Android",kernel_system="Linux",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,os_release_text="",
+            command_lookup=lookup_from(names),current_uid=10000,libc_info=("libc",""))
+        self.assertEqual(env["os"]["system"],"Linux")
+        self.assertEqual(env["target"]["family"],"termux")
+        self.assertEqual(env["target"]["architecture"],"aarch64")
+        self.assertEqual(evaluate_environment(env,self.manifest,mode="install")["status"],"ready")
     def test_termux_markers_without_pkg_are_not_misclassified_as_gnu_linux(self):
         env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
             system="Linux",machine="aarch64",python_version=(3,12,4),terminal_isatty=True,os_release_text="",

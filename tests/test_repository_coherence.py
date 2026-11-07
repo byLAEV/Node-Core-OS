@@ -19,6 +19,8 @@ class RepositoryCoherenceTests(unittest.TestCase):
         cls.install = (ROOT / "installer/install.sh").read_text()
         cls.verify = (ROOT / "installer/lib/verify.sh").read_text()
         cls.update = (ROOT / "installer/update.sh").read_text()
+        cls.bootstrap = (ROOT / "update.sh").read_text()
+        cls.package_init = (ROOT / "node_core/__init__.py").read_text()
         cls.ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text()
         cls.compatibility_manifest = json.loads((ROOT / "compatibility/manifest.json").read_text())
         cls.compatibility_docs = (ROOT / "docs/TERMINAL-COMPATIBILITY.md").read_text()
@@ -29,8 +31,10 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertIn(f"Repository version (`VERSION`):** {version}", self.readme)
 
     def test_one_canonical_installer_and_legacy_alias(self):
-        self.assertEqual(self.contract["canonical_installer"], "installer/install.sh")
-        self.assertIn("bash installer/install.sh", self.readme)
+        self.assertEqual(self.contract["canonical_installer"], "update.sh")
+        self.assertIn("bash update.sh", self.readme)
+        self.assertIn('bash "$SOURCE_DIR/installer/install.sh"', self.bootstrap)
+        self.assertIn("installer/update.sh", self.bootstrap)
         alias = (ROOT / self.contract["legacy_installer_alias"]).read_text()
         self.assertIn('exec bash "$INSTALLER_DIR/install.sh" "$@"', alias)
 
@@ -89,10 +93,19 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertIn("node_core.compatibility", self.compatibility_docs)
         self.assertTrue((ROOT / "schemas/compatibility-manifest.schema.json").is_file())
 
-    def test_release_tag_snapshot_is_not_misrepresented(self):
-        coherence = (ROOT / "docs/REPOSITORY-COHERENCE.md").read_text()
-        self.assertIn("41 commits ahead", coherence)
-        self.assertIn("Do not claim that tag 1.5.6 contains all changes", coherence)
+    def test_1_5_7_version_and_bootstrap_are_coherent(self):
+        version = (ROOT / "VERSION").read_text().strip()
+        self.assertEqual(version, "1.5.7")
+        self.assertEqual(self.contract["version"], "1.5.7")
+        self.assertIn('__version__ = "1.5.7"', self.package_init)
+        self.assertIn("TERMUX_VERSION", self.bootstrap)
+        self.assertIn("tar -tzf", self.bootstrap)
+
+    def test_termux_android_kernel_detection_does_not_reference_undefined_package_variable(self):
+        detection = (ROOT / "node_core/compatibility/detection.py").read_text()
+        self.assertIn('active_kernel_system == "Linux" and termux_marker', detection)
+        self.assertIn('"pkg": bool(lookup("pkg"))', detection)
+        self.assertNotIn("termux_pkg", detection)
 
 
 if __name__ == "__main__":

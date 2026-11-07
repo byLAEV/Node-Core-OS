@@ -5,9 +5,9 @@
 Node Core OS is an infrastructure project designed to give people and entities a digital core from which to manage resources, records, identity-related data, and applications. It combines local storage with integration for Kubo/IPFS and provides a foundation on which additional protocols and applications can be developed.
 
 - **Repository:** https://github.com/byLAEV/Node-Core-OS/
-- **Repository version (`VERSION`):** 1.5.6
-- **Canonical installer:** `bash installer/install.sh` (GNU/Linux and native Termux ARM64)
-- **Release/tag note:** the previously published 1.5.6 Release was removed for correction. The Git tag `1.5.6` still points to an older source snapshot and does not contain the current `main` code. Do not use that historical tag as the final 1.5.6 package source; the release candidate must be revalidated and the tag reconciled to the approved final commit before publication.
+- **Repository version (`VERSION`):** 1.5.7
+- **Canonical installer/updater:** `bash update.sh` (GNU/Linux and native Termux ARM64; performs environment preparation and delegates to the protected installer/updater)
+- **1.5.7 status:** adds the unified one-command bootstrap and corrects Android/Termux compatibility detection. Termux physical-device validation is tracked separately from GNU/Linux CI.
 - **Primary environment:** GNU/Linux terminal
 - **Project status:** Active development; individual capabilities have different implementation and verification states.
 
