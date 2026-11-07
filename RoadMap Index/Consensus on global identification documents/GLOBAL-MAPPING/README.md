@@ -107,3 +107,25 @@ Do not confuse these states. An institution may be confirmed while its API remai
 ## Completion principle
 
 The global map is complete only when its coverage is explicit, each jurisdiction has a documented research status, each identified issuer has source-backed records, and API availability and access conditions are classified honestly. Global coverage does not require every institution to expose an API; it requires the project to document what is actually available and what lawful integration path, if any, exists.
+
+
+## Current geographic inventory baseline
+
+The initial geographic register has been populated with **248 M49 country-or-area records**, grouped into the project's seven-continent navigation structure. This includes territories and other areas, not only sovereign states. Antarctica is retained as a geographic reference and is excluded from issuer research as a national jurisdiction.
+
+| Continent navigation group | M49 records |
+|---|---:|
+| Africa | 60 |
+| Asia | 50 |
+| Europe | 51 |
+| North America (including Central America and the Caribbean) | 41 |
+| South America | 16 |
+| Oceania | 29 |
+| Antarctica (geographic reference only) | 1 |
+| **Total** | **248** |
+
+Read the [complete country and area list by continent](COUNTRIES-AND-AREAS-BY-CONTINENT.md), the [continent index](CONTINENT-INDEX.md), and the [structured CSV register](COUNTRY-AND-JURISDICTION-REGISTER.csv).
+
+The country/area names, M49 codes, and ISO codes are based on the [UN Statistics Division M49 overview](https://unstats.un.org/unsd/methodology/m49/overview/). The CSV records the source and review date. The seven-continent navigation grouping is a project presentation layer; the original M49 region and subregion identifiers are preserved.
+
+**Important status distinction:** geographic enumeration is populated, but identity issuer and passport issuer research remains `NOT_RESEARCHED` for the listed records. The 248 entries do not mean 248 institutions have been identified, nor that 248 API connections exist. The next phase is institution-by-institution research using official sources.
