@@ -24,6 +24,7 @@ MAX_BODY_BYTES = 2 * 1024 * 1024
 LOCK = threading.RLock()
 NODES: dict[str, dict] = {}
 SIGNATURES: dict[str, dict] = {}
+CONVERGENCE_REPORTS: dict[str, dict] = {}
 EXPECTED_NODES = 0
 RUN_ID = ""
 CACHED_MANIFEST: dict | None = None
@@ -143,6 +144,20 @@ class RendezvousHandler(BaseHTTPRequestHandler):
                     self, 200,
                     {"ok": True, "count": len(SIGNATURES), "signatures": list(SIGNATURES.values())},
                 )
+            if self.path == "/v1/convergence":
+                reports = list(CONVERGENCE_REPORTS.values())
+                hashes = {item["convergence_sha256"] for item in reports}
+                state_hashes = {item["network_state_sha256"] for item in reports}
+                return send_json(self, 200, {
+                    "ok": True,
+                    "count": len(reports),
+                    "reports": reports,
+                    "all_converged": (
+                        len(reports) == EXPECTED_NODES
+                        and len(hashes) == 1
+                        and len(state_hashes) == 1
+                    ),
+                })
         return send_json(self, 404, {"ok": False, "error": "not_found"})
 
     def do_POST(self):
@@ -185,6 +200,30 @@ class RendezvousHandler(BaseHTTPRequestHandler):
                     return send_json(self, 409, {"ok": False, "error": "unknown_or_duplicate_signer"})
                 SIGNATURES[value["node_id"]] = value
                 return send_json(self, 200, {"ok": True, "signature_count": len(SIGNATURES)})
+
+            if self.path == "/v1/convergence":
+                required = {"node_id", "network_state_sha256", "convergence_sha256"}
+                if set(value) != required:
+                    return send_json(self, 400, {"ok": False, "error": "invalid_convergence_schema"})
+                known_ids = {item["node_id"] for item in NODES.values()}
+                node_id = value["node_id"]
+                if node_id not in known_ids or node_id in CONVERGENCE_REPORTS:
+                    return send_json(self, 409, {"ok": False, "error": "unknown_or_duplicate_convergence_report"})
+                for field in ("network_state_sha256", "convergence_sha256"):
+                    digest = value[field]
+                    if not isinstance(digest, str) or len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+                        return send_json(self, 400, {"ok": False, "error": "invalid_convergence_hash"})
+                CONVERGENCE_REPORTS[node_id] = value
+                reports = list(CONVERGENCE_REPORTS.values())
+                same_hashes = (
+                    len({item["network_state_sha256"] for item in reports}) == 1
+                    and len({item["convergence_sha256"] for item in reports}) == 1
+                )
+                return send_json(self, 200, {
+                    "ok": True,
+                    "report_count": len(reports),
+                    "hashes_match_so_far": same_hashes,
+                })
 
         return send_json(self, 404, {"ok": False, "error": "not_found"})
 
@@ -446,6 +485,30 @@ def run_node(index: int, count: int, run_id: str) -> None:
     convergence_sha256 = hashlib.sha256(canonical_json(convergence_body)).hexdigest()
     converged_snapshot = {**convergence_body, "convergence_sha256": convergence_sha256}
     write_private_json(sync_directory / "converged-state.json", converged_snapshot)
+
+    # Publish this node's independently computed hashes. The rendezvous service
+    # compares reports from every participant; a local calculation alone is
+    # not accepted as proof of network-wide convergence.
+    request_json(coordinator_url + "/v1/convergence", {
+        "node_id": identity_metadata["node_id"],
+        "network_state_sha256": shared_state_sha256,
+        "convergence_sha256": convergence_sha256,
+    })
+    convergence_result = wait_for(
+        lambda: (
+            lambda result: result if result.get("count") == count else None
+        )(request_json(coordinator_url + "/v1/convergence")),
+        600,
+        f"all {count} nodes to publish convergence hashes",
+    )
+    if not convergence_result.get("all_converged"):
+        raise RuntimeError("Network-wide convergence hashes differ between participants.")
+    if any(
+        item.get("network_state_sha256") != shared_state_sha256
+        or item.get("convergence_sha256") != convergence_sha256
+        for item in convergence_result.get("reports", [])
+    ):
+        raise RuntimeError("At least one participant reported a different convergence hash.")
 
     # Verify all nodes will compute the same converged snapshot, not merely the
     # same per-sender payload.
