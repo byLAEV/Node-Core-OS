@@ -222,3 +222,105 @@ Node Core OS byLAEV is intended to provide the decentralized infrastructure, API
 The issuing institution remains the authority on its own documents. Node Core OS provides the interoperable technical framework for requesting, validating, recording, and sharing authorized verification evidence across its network.
 
 **The goal is not to replace national identity systems. The goal is to make authorized identity verification interoperable across the Node Core OS network.**
+
+
+## 14. Global mapping strategy: from macro to micro
+
+The global network cannot be mapped reliably by starting with individual institutions at random. The research must proceed from the largest geographic scope to the smallest operational unit. This creates a consistent inventory and makes it possible to identify coverage gaps before designing and implementing integrations.
+
+The mapping sequence is:
+
+1. **World:** define the complete global scope of the future network of identity-document associations linked to Node Core OS nodes.
+2. **Continents and geographic regions:** divide the world into a consistent geographic structure.
+3. **Countries and areas:** enumerate every country or area included in the selected geographic reference system.
+4. **Subnational jurisdictions:** add states, provinces, territories, autonomous regions, or other administrative divisions when identity or passport responsibilities are decentralized.
+5. **Issuing institutions:** identify the government agencies and legally authorized institutions responsible for issuing or granting each document category.
+6. **Documents and services:** identify the specific identity documents, passports, credentials, and official verification services within each institution's mandate.
+7. **API and connector mapping:** record both the official interface offered by the institution and the corresponding Node Core OS API, connector, or integration specification that will eventually communicate with it.
+
+The mapping must be completed progressively. A country should not be marked as fully mapped merely because one institution has been found. Separate authorities may issue national identity cards, passports, civil registry records, residence permits, or digital identity credentials.
+
+### 14.1 World-level scope
+
+At the macro level, the target is a worldwide network in which participating Node Core OS nodes can hold documented associations between a node, a person, an identification document, and the institution responsible for issuing that document.
+
+The world map is an inventory and planning structure. It does not imply that every country or institution has agreed to connect, provides an API, or permits external verification.
+
+### 14.2 Geographic hierarchy
+
+Use a recognized and maintainable geographic classification as the baseline. The United Nations Statistics Division M49 standard is a suitable reference because it organizes countries or areas under geographic regions and subregions.
+
+Reference: https://unstats.un.org/unsd/methodology/m49/
+
+M49 is used here for consistent geographic indexing. It is not a legal determination of sovereignty, statehood, borders, citizenship, or the authority of an institution. Additional jurisdictions and administrative levels must be recorded where they are necessary to identify the competent issuer.
+
+### 14.3 Country-by-country research
+
+For each country or area, research and record at least:
+
+- The authority or authorities responsible for personal national identification documents.
+- The authority responsible for issuing passports.
+- Civil registry or population registry institutions where relevant.
+- Digital identity authorities or credential providers where they have an official role.
+- State, provincial, territorial, or regional authorities where responsibilities are not centralized.
+- Official institutional websites and primary legal or administrative sources.
+- The institution's available verification method and the conditions for using it.
+
+Where a document category does not exist, or responsibility cannot be confirmed, record that finding explicitly with its source and research status. Do not infer an issuer from a document manufacturer, service contractor, or unrelated government department.
+
+### 14.4 Institution and API mapping
+
+Each issuing institution must have an identifiable record. The record must connect the geographic hierarchy to the institution, its document responsibilities, and the integration information.
+
+Two API sides must be documented separately:
+
+**A. Institution-provided interface**
+- Official API or service name.
+- API base URL and documentation URL, when publicly available.
+- Sandbox or test environment.
+- Authentication and authorization requirements.
+- Required legal basis, agreements, credentials, and permissions.
+- Supported verification operations and response fields.
+- Availability, usage limits, costs, restrictions, and technical limitations.
+
+**B. Node Core OS interface**
+- The Node Core OS API capability intended to communicate with the institution.
+- The applicable endpoint or connector identifier, once specified.
+- The Node Core OS API specification or connector documentation link.
+- The implementation and validation status.
+
+The Node Core OS API links must remain marked as pending until the relevant API or connector is actually specified, implemented, and published. A placeholder must never be presented as a working endpoint.
+
+### 14.5 Research and implementation sequence
+
+The work must follow this order:
+
+1. Establish the global geographic index.
+2. Enumerate countries and areas under each region.
+3. Research the identity-document and passport issuer institutions in each country or area.
+4. Confirm each institution's official mandate using primary sources.
+5. Discover and classify official APIs and alternative verification mechanisms.
+6. Record access rules, permissions, and legal or contractual requirements.
+7. Identify the Node Core OS API capability required for each institution.
+8. Design common schemas and connector interfaces without assuming all institutions use the same technology.
+9. Implement and test connectors with fictitious data or authorized sandbox environments.
+10. Establish real institutional integrations only after the required authorization has been obtained.
+11. Update the mapping as institutions, APIs, requirements, and integration status change.
+
+### 14.6 Mapping status and evidence
+
+Every record must have a status, source references, and a last-reviewed date. At minimum, distinguish: not researched, institution identified, authority confirmed, API or mechanism researched, access requirements confirmed, connector specified, sandbox tested, and authorized integration validated.
+
+An absent API, an inaccessible API, a private API, and an API whose existence has not been confirmed are different findings and must not be merged into one status.
+
+### 14.7 Working files
+
+The operational mapping structure and reusable templates are maintained in the [GLOBAL-MAPPING](GLOBAL-MAPPING/README.md) directory:
+
+- [Global Mapping Strategy](GLOBAL-MAPPING/README.md)
+- [Continental and Geographic Region Index](GLOBAL-MAPPING/CONTINENT-INDEX.md)
+- [Country and Jurisdiction Register](GLOBAL-MAPPING/COUNTRY-AND-JURISDICTION-REGISTER.csv)
+- [Issuer and API Register](GLOBAL-MAPPING/ISSUER-AND-API-REGISTER.csv)
+- [Institution Research Template](GLOBAL-MAPPING/INSTITUTION-RESEARCH-TEMPLATE.md)
+
+These files establish the structure for collecting verified information. They are not a completed worldwide issuer inventory. Country and institution records must be populated through documented research.
