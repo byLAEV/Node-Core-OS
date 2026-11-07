@@ -37,6 +37,9 @@ class PeerServiceError(RuntimeError):
 PeerHandler = Callable[[dict[str, str], Any], None]
 MessageHandler = Callable[[dict[str, str], str, str], None]
 
+# Receipt generation includes RSA-3072 signing and may be slow on mobile CPUs.
+MESSAGE_RECEIPT_TIMEOUT_SECONDS = 30.0
+
 
 class NodePeerService:
     """Threaded TCP listener/client for pinned TLS and authenticated P2P sessions."""
@@ -493,6 +496,9 @@ class NodePeerService:
                     self.identity_store, self.tls_transport, expected_peer_node_id,
                     timeout_seconds=self.timeout_seconds,
                 ).establish(tls_socket, "initiator")
+                # Keep the TLS/authentication timeout unchanged, but allow the
+                # receiving node enough time to decrypt, persist, and sign its ACK.
+                tls_socket.settimeout(max(self.timeout_seconds, MESSAGE_RECEIPT_TIMEOUT_SECONDS))
                 send_application_message(tls_socket, envelope)
                 ack = receive_application_message(tls_socket)
                 if not verify_ack(
