@@ -12,7 +12,7 @@ The current baseline contains **248 M49 country-or-area records**. This is not a
 
 | Navigation ID | Continent / geographic scope | M49 records | Mapping notes | Geographic inventory status | Issuer research status |
 |---|---|---:|---|---|---|
-| GEO-AF | Africa | 60 | M49 region 002. | POPULATED | PARTIALLY_RESEARCHED (11 of 60 M49 records) |
+| GEO-AF | Africa | 60 | M49 region 002. | POPULATED | PARTIALLY_RESEARCHED (12 of 60 M49 records) |
 | GEO-AS | Asia | 50 | M49 region 142. | POPULATED | NOT_RESEARCHED |
 | GEO-EU | Europe | 51 | M49 region 150. | POPULATED | NOT_RESEARCHED |
 | GEO-NA | North America | 41 | Includes M49 Northern America, Central America, and the Caribbean. | POPULATED | NOT_RESEARCHED |
@@ -34,4 +34,4 @@ M49 is a statistical geographic classification. It is not a legal determination 
 
 ## Next step
 
-The geographic enumeration baseline is now populated. The next phase is to research the competent national and subnational authorities for personal identity documents and passports in each applicable country or area. Do not mark an issuer as confirmed until its mandate is supported by official sources.
+The geographic enumeration baseline is now populated. Institutional research has begun in 12 African jurisdictions. The next phase is to continue by jurisdiction, map each functional authority and subnational unit, and maintain explicit coverage statuses before any API or connector design. Do not mark an issuer as confirmed until its mandate is supported by official sources.
