@@ -138,3 +138,41 @@ The worldwide mapping phase is complete only when:
 A person should be able to begin preserving their identity history and evidence without first possessing a state-issued identity document. Node Core OS can help preserve that history and identify possible routes toward legal recognition. The worldwide institutional map connects that evidence to the laws, institutions and procedures that may be able to act on it.
 
 **The purpose is not to replace public authorities. It is to make the world's identity-related institutional infrastructure navigable, traceable and usable by people who otherwise may not know where to begin.**
+
+
+## 2. Global functional infrastructure
+
+The worldwide map is not limited to personal identity and nationality. It is a reusable knowledge infrastructure through which Node Core OS nodes can discover the official information, institutions, services, eligibility rules and procedures relevant to a person's needs in any mapped jurisdiction.
+
+The map is organized into functional domains that share the same geographic and institutional backbone:
+
+1. **Identity, civil status and nationality** — birth registration, civil records, identity documents, nationality by descent or birth, naturalization, statelessness safeguards and legal remedies.
+2. **International travel** — entry conditions, visa and transit rules, passport validity, travel-document recognition, permitted stay, border requirements and official consular guidance. Requirements must be evaluated against the traveler's nationality, document type, residence, purpose, route and travel dates.
+3. **Residence and migration** — visas, residence permits, work authorization, family reunification, study routes, permanent residence, renewals, regularization and appeal procedures.
+4. **Education** — admission authorities, accreditation, recognition of prior qualifications, credential equivalency, student visas, scholarships and public education access requirements.
+5. **Work and professional access** — work permits, regulated-profession licensing, qualification recognition, labor registration, social-security enrollment and official employment services.
+6. **Public and essential services** — the competent authorities and access rules for services that are relevant to a person's legal and practical situation, mapped only where an authoritative source and a clear use case exist.
+7. **Institutional and digital access** — official portals, documented APIs, authentication methods, eligibility, consent, legal basis, access agreements, service availability and technical limitations. This is a later integration layer, not permission to access restricted systems.
+
+For each domain, the map must distinguish the rule-making authority, legal decision-maker, service operator, local office, appeal body and information-only source. An online form or portal must never be labelled an API unless a technical interface and authorized access conditions are documented.
+
+## 3. Shared data model and domain-specific extensions
+
+All domain records must reference the same canonical geography and jurisdiction identifiers. Institution records must use stable institution IDs; procedures must reference the competent institution and, where known, the actual decision-maker. Domain-specific registers may be added without duplicating the geographic baseline.
+
+A domain record should capture, as applicable: jurisdiction, scope, responsible authority, service/procedure, eligible persons, required evidence, fees, deadlines, exceptions, appeal/review route, official source, date last checked, evidence confidence, language/accessibility, online/offline channel, and unresolved questions. Travel and migration records additionally require effective dates and nationality/document-specific conditions. Education and work records require qualification, occupation, accreditation or licensing context where relevant.
+
+Unknown information must remain explicitly unknown (for example, NOT_RESEARCHED or SOURCE_REVIEW_REQUIRED). It must not be inferred from the absence of a record.
+
+## 4. Mapping sequence and API boundary
+
+The work proceeds in this order:
+
+1. Complete the geographic and jurisdiction baseline.
+2. Map the institutional hierarchy and legal competences.
+3. Map procedures and services by functional domain, beginning with identity and nationality while expanding to travel, migration, education and work.
+4. Record official sources, effective dates, evidence quality and unresolved gaps.
+5. Review coverage and validate cross-jurisdiction relationships.
+6. Only after the relevant domain and institution are mapped, assess APIs and digital integrations individually for documented technical capability, lawful purpose, authorization, consent and security.
+
+The API catalogue is therefore a planning inventory until each interface is independently documented and approved for use. No public API, third-party access right or government recognition may be inferred from a website, portal, document or institutional listing.
