@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-LOCK=threading.RLock(); NODES={}; SIGNATURES={}; EXPECTED=0; RUN_ID=""
+LOCK=threading.RLock(); NODES={}; SIGNATURES={}; EXPECTED=0; RUN_ID=""; MANIFEST=None
 REGISTRY_PORT=8765; P2P_PORT=46000
 
 def user_only():
@@ -39,10 +39,13 @@ class Registry(BaseHTTPRequestHandler):
             if self.path=="/health":return respond(self,200,{"ok":True})
             if self.path=="/roster":return respond(self,200,{"count":len(NODES),"nodes":list(NODES.values())})
             if self.path=="/manifest":
+                global MANIFEST
                 if len(NODES)!=EXPECTED:return respond(self,409,{"ok":False})
-                from node_core.p2p.presence_manifest import create_manifest_body
-                members=[{"node_id":x["node_id"],"public_key":x["public_key"]} for x in NODES.values()]
-                return respond(self,200,{"body":create_manifest_body(members,epoch=int(RUN_ID),created_at=int(time.time()))})
+                if MANIFEST is None:
+                    from node_core.p2p.presence_manifest import create_manifest_body
+                    members=[{"node_id":x["node_id"],"public_key":x["public_key"]} for x in NODES.values()]
+                    MANIFEST=create_manifest_body(members,epoch=int(RUN_ID),created_at=int(time.time()))
+                return respond(self,200,{"body":MANIFEST})
             if self.path=="/signatures":return respond(self,200,{"count":len(SIGNATURES),"signatures":list(SIGNATURES.values())})
         respond(self,404,{"ok":False})
     def do_POST(self):
