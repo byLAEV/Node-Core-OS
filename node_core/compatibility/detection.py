@@ -64,6 +64,7 @@ def detect_environment(
     *,
     env: Mapping[str, str] | None = None,
     system: str | None = None,
+    kernel_system: str | None = None,
     machine: str | None = None,
     python_version: tuple[int, int, int] | None = None,
     terminal_isatty: bool | None = None,
@@ -74,15 +75,26 @@ def detect_environment(
 ) -> dict:
     env_values = dict(os.environ if env is None else env)
     active_system = system if system is not None else platform.system()
+    if kernel_system is not None:
+        active_kernel_system = kernel_system
+    else:
+        try:
+            active_kernel_system = os.uname().sysname
+        except (AttributeError, OSError):
+            active_kernel_system = active_system
     active_machine = machine if machine is not None else platform.machine()
     active_python = python_version if python_version is not None else tuple(sys.version_info[:3])
     lookup = command_lookup or (lambda name: shutil.which(name, path=env_values.get("PATH")))
     os_release = parse_os_release(os_release_text) if os_release_text is not None else _read_os_release()
     prefix = env_values.get("PREFIX", "")
     termux_marker = bool(env_values.get("TERMUX_VERSION") and prefix)
-    termux_pkg = bool(lookup("pkg") or (prefix and (Path(prefix) / "bin" / "pkg").is_file()))
-    is_termux = active_system == "Linux" and termux_marker
-    family = "termux" if is_termux else ("gnu_linux" if active_system == "Linux" else "unsupported")
+    # Android Python may report platform.system() == "Android" even though
+    # Termux runs on the Linux kernel. Detect the kernel independently and
+    # require Termux-specific markers; pkg remains a separately checked
+    # capability so a missing package manager is reported as preparation.
+    is_termux = active_kernel_system == "Linux" and termux_marker
+    effective_system = "Linux" if is_termux else active_system
+    family = "termux" if is_termux else ("gnu_linux" if effective_system == "Linux" else "unsupported")
     architecture = normalize_architecture(active_machine)
 
     term = env_values.get("TERM", "")
@@ -135,7 +147,7 @@ def detect_environment(
     )
     return {
         "os": {
-            "system": active_system, "name": os_release.get("NAME", "unknown"),
+            "system": effective_system, "name": os_release.get("NAME", "unknown"),
             "id": distro_id or ("termux" if is_termux else "unknown"),
             "id_like": os_release.get("ID_LIKE", "").lower().split(),
             "version_id": os_release.get("VERSION_ID", "unknown"),
