@@ -179,7 +179,7 @@ The country/area names, M49 codes, and ISO codes are based on the [UN Statistics
 
 The first African issuer research batch is recorded in [AFRICA-ISSUER-RESEARCH.md](AFRICA-ISSUER-RESEARCH.md). It covers 11 jurisdictions and adds 22 issuer records (one identity-document authority record and one passport-authority record per jurisdiction) to the master [ISSUER-AND-API-REGISTER.csv](ISSUER-AND-API-REGISTER.csv).
 
-Africa has 60 M49 country-or-area records in the geographic baseline. Eleven have received this first issuer-research pass; 49 remain to be researched. This is research coverage only, not API or integration coverage.
+Africa has 60 M49 country-or-area records in the geographic baseline. Twelve have received an institutional research pass; 48 remain to be researched. This is research coverage only, not API or integration coverage.
 
 The strongest integration leads identified so far are:
 - Ethiopia's Fayda authentication API, with OAuth 2.0/OIDC and organization partner onboarding.
@@ -197,6 +197,9 @@ The original `ISSUER-AND-API-REGISTER.csv` remains the source of truth for ident
 ### New working files
 
 - [Institution and Lawful Pathway Register](INSTITUTION-AND-PATHWAY-REGISTER.csv) — one record per institution or legally distinct institutional role, including mandate, authority level, jurisdiction, official service, API status, source evidence, and review notes.
+- [Institution Relationship Register](INSTITUTION-RELATIONSHIP-REGISTER.csv) — explicit parent/child links for mapped institutional hierarchies.
+- [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) — one row for each of the 248 geographic records, with function-by-function mapping status.
+- [Africa Institution and Pathway Research — Batch 02 (Senegal)](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-02-SENEGAL.md) — legal and institutional map for refugee/stateless recognition and related documents.
 - [Institution and Pathway Research Template](INSTITUTION-AND-PATHWAY-RESEARCH-TEMPLATE.md) — reusable research record with mandatory distinctions and safeguards.
 - [Africa Institution and Pathway Research — Batch 01](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-01.md) — first expanded institutional batch across 11 African jurisdictions.
 
@@ -238,9 +241,9 @@ The mapping now has a versioned normalized target model and an initial lawful-pr
 
 ### Cross-references and current coverage
 
-The 22 existing national-ID/passport issuer rows now each link to an `institution_record_id`. The institution register has 36 records across the same 11 initial African jurisdictions. Three additional institution records close issuer-directory gaps for Ghana's Passport Office, Ethiopia's National ID Program, and Tanzania's National Identification Authority.
+The 26 national-ID, passport, and stateless-person document issuer rows now each link to an `institution_record_id`. The institution register now has 42 records across 12 African jurisdictions. Three additional institution records close issuer-directory gaps for Ghana's Passport Office, Ethiopia's National ID Program, and Tanzania's National Identification Authority.
 
-The lawful-procedure register currently contains seven researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
+The lawful-procedure register currently contains eleven researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
 
 ### Controlled implementation sequence
 
@@ -250,3 +253,15 @@ The lawful-procedure register currently contains seven researched starting point
 4. Expand institution and procedure coverage across all African M49 records.
 5. Specify Node Core OS APIs and connectors only after the institution's role, procedure, legal basis, access conditions, and technical interface are confirmed.
 6. Test with synthetic records, including low-bandwidth, timeout, retry, idempotency, and manual fallback scenarios.
+
+
+## Institutional mapping progress — Senegal (Africa Batch 02)
+
+The Africa institutional map has expanded to **12 of 60 M49 country-or-area records**. Senegal is the twelfth jurisdiction and adds six institutional roles, four state-issued document records, and four lawful pathway records. The Senegal research is documented in [Africa Batch 02 — Senegal](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-02-SENEGAL.md).
+
+The key legal finding is that Senegal has a statutory admission procedure for both refugee and stateless-person status. Decree No. 2025-1559 defines the procedure, places intake and review with the CNGRA, provides an appeal route, and states that status is granted by decree. Decree No. 2025-1560 assigns issuance of biometric identity and travel documents for recognized refugees and stateless persons to the Ministry of the Interior and Public Security, under CNGRA coordination.
+
+This is a country-specific state pathway, not a global identity document and not a mechanism for Node Core OS to grant citizenship. It is an institutional pathway that the future NC-GID may reference, subject to consent and lawful access. The public mapping contains no personal case data.
+
+The [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) contains 248 geographic rows. It marks the twelve researched African jurisdictions as partially mapped and keeps all other unresearched jurisdictions explicitly open. Functional categories with no mapped record are marked NOT_RESEARCHED, not presumed nonexistent. The API/connector layer remains deferred.
+
