@@ -1,0 +1,157 @@
+name: Node Core OS — 100 independent Linux nodes
+
+run-name: "Node Core OS 100-node mesh — ${{ github.event_name }} — ${{ github.run_id }}"
+
+on:
+  push:
+    branches:
+      - "feat/real-linux-100-200-node-mesh"
+    paths:
+      - ".github/workflows/real-linux-100-node-campaign.yml"
+      - "ci/linux/real_multi_node_mesh.py"
+  pull_request:
+    paths:
+      - ".github/workflows/real-linux-100-node-campaign.yml"
+      - "ci/linux/real_multi_node_mesh.py"
+  workflow_dispatch:
+    inputs:
+      confirm_100_nodes:
+        description: "Confirm launching 100 independent Ubuntu Linux VMs"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node-core-real-linux-100-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: bash -n ci/linux/run_manual_mesh.sh
+      - name: Validate Python syntax
+        run: python3 -m py_compile ci/linux/real_multi_node_mesh.py
+
+  prepare:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-100-node-campaign]'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.nodes }}
+      count: ${{ steps.matrix.outputs.count }}
+    steps:
+      - name: Require Tailscale credentials
+        env:
+          TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+          EVENT_NAME: ${{ github.event_name }}
+          CONFIRM_100_NODES: ${{ inputs.confirm_100_nodes }}
+        run: |
+          set -euo pipefail
+          test -n "$TS_OAUTH_CLIENT_ID" || { echo "::error::Missing repository secret TS_OAUTH_CLIENT_ID"; exit 1; }
+          test -n "$TS_OAUTH_SECRET" || { echo "::error::Missing repository secret TS_OAUTH_SECRET"; exit 1; }
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$CONFIRM_100_NODES" != "true" ]]; then
+            echo "::error::Set confirm_100_nodes=true to launch this 100-VM campaign."
+            exit 1
+          fi
+      - id: matrix
+        name: Build exactly 100 participant jobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          print("nodes=" + json.dumps(list(range(100))))
+          print("count=100")
+          PY
+
+  nodes:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[run-100-node-campaign]'))
+    needs: prepare
+    name: "Linux node ${{ matrix.node }} / 100"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 100
+      matrix:
+        node: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Verify independent Ubuntu 24.04 runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID" = ubuntu
+          test "$VERSION_ID" = "24.04"
+          test "$(uname -s)" = Linux
+          test "$(id -u)" -ne 0
+          mkdir -p "$RUNNER_TEMP/node-core-${{ github.run_id }}-${{ matrix.node }}"
+          printf 'node_index=%s\nrunner=%s\nuid=%s\nos=%s\nhostname=%s\n' \
+            "${{ matrix.node }}" "$RUNNER_NAME" "$(id -u)" "$PRETTY_NAME" "$(hostname)" \
+            | tee "$RUNNER_TEMP/linux-node-identity.txt"
+      - name: Checkout Node Core OS
+        uses: actions/checkout@v4
+      - name: Join private ephemeral Tailscale network
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:node-core-ci
+          hostname: ncore-${{ github.run_id }}-${{ matrix.node }}
+          version: "1.104.5"
+      - name: Verify Tailscale connectivity
+        shell: bash
+        run: |
+          set -euo pipefail
+          tailscale status
+          test -n "$(tailscale ip -4)"
+      - name: Install Node Core OS as non-root user
+        env:
+          NODE_CORE_HOME: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}/.node-core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          chmod +x installer/install.sh installer/uninstall.sh installer/lib/*.sh
+          bash installer/install.sh
+          test -d "$NODE_CORE_DATA_DIR/app"
+          test -x "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+          test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
+          test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
+      - name: Execute this independent participant in the 100-node mesh
+        env:
+          NODE_CORE_HOME: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}
+          NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}/.node-core
+          NODE_INDEX: ${{ matrix.node }}
+          NODE_COUNT: "100"
+          MESH_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          export PYTHONPATH="$NODE_CORE_DATA_DIR/app"
+          "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m py_compile ci/linux/real_multi_node_mesh.py
+          "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" \
+            ci/linux/real_multi_node_mesh.py \
+            --index "$NODE_INDEX" --count "$NODE_COUNT" --run-id "$MESH_RUN_ID"
+      - name: Upload independent node evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-100-node-evidence-${{ matrix.node }}
+          path: |
+            ${{ runner.temp }}/node-core-mesh-evidence/
+            ${{ runner.temp }}/linux-node-identity.txt
+          if-no-files-found: warn
+          retention-days: 30
