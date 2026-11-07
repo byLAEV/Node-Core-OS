@@ -228,9 +228,16 @@ class RendezvousHandler(BaseHTTPRequestHandler):
         return send_json(self, 404, {"ok": False, "error": "not_found"})
 
 
-def run_node(index: int, count: int, run_id: str) -> None:
+def run_node(index: int, count: int, run_id: str, coordinator_ip: str | None = None) -> None:
     global EXPECTED_NODES, RUN_ID
     require_normal_user()
+    if not run_id.isdigit():
+        raise RuntimeError("Campaign run ID must contain digits only.")
+    if coordinator_ip is not None:
+        try:
+            socket.inet_aton(coordinator_ip)
+        except OSError as exc:
+            raise RuntimeError("Coordinator address must be a valid IPv4 address.") from exc
 
     data_dir = Path(os.environ["NODE_CORE_DATA_DIR"])
     application_dir = data_dir / "app"
@@ -266,10 +273,10 @@ def run_node(index: int, count: int, run_id: str) -> None:
     if not local_tailscale_ip:
         raise RuntimeError("Tailscale did not provide this node's private IPv4 address.")
 
-    coordinator_name = f"ncore-{run_id}-0"
     if index == 0:
         coordinator_ip = local_tailscale_ip
-    else:
+    elif coordinator_ip is None:
+        coordinator_name = f"ncore-{run_id}-0"
         coordinator_ip = wait_for(
             lambda: find_peer_ip(coordinator_name),
             600,
@@ -533,7 +540,8 @@ def run_node(index: int, count: int, run_id: str) -> None:
 
     peer_service.stop()
 
-    evidence_dir = Path(os.environ["RUNNER_TEMP"]) / "node-core-mesh-evidence"
+    evidence_root = Path(os.environ.get("RUNNER_TEMP", str(data_dir / "logs")))
+    evidence_dir = evidence_root / "node-core-mesh-evidence"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence = {
         "schema": "node-core-real-linux-full-mesh-evidence-v1",
@@ -579,10 +587,18 @@ def main() -> None:
     parser.add_argument("--index", type=int, required=True)
     parser.add_argument("--count", type=int, required=True)
     parser.add_argument("--run-id", required=True)
+    parser.add_argument(
+        "--coordinator-ip",
+        help="Tailscale IPv4 address of node 0; required on manually operated nodes 1..N-1.",
+    )
     args = parser.parse_args()
     if not 3 <= args.count <= 100 or not 0 <= args.index < args.count:
         raise SystemExit("This campaign supports 3..100 nodes; index must be within the roster.")
-    run_node(args.index, args.count, args.run_id)
+    if args.index == 0 and args.coordinator_ip:
+        raise SystemExit("Node 0 is the coordinator; do not pass --coordinator-ip.")
+    if args.index != 0 and not args.coordinator_ip and not os.environ.get("GITHUB_ACTIONS"):
+        raise SystemExit("Manual nodes 1..N-1 must pass --coordinator-ip with node 0's Tailscale IPv4.")
+    run_node(args.index, args.count, args.run_id, args.coordinator_ip)
 
 
 if __name__ == "__main__":
