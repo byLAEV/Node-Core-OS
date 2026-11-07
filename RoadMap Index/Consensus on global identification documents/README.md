@@ -2,11 +2,16 @@
 
 ## 1. Purpose
 
-This folder documents a fundamental future requirement for Node Core OS byLAEV: providing the APIs, protocols, institutional connectors, and interoperability rules needed to allow government entities and other legally authorized institutions that issue personal identification documents to connect to Node Core OS.
+This roadmap defines a worldwide identity and institutional-interoperability objective for Node Core OS byLAEV. It has two connected dimensions:
 
-The objective is to establish a globally extensible framework through which participating institutions can communicate with the Node Core OS network, and through which nodes can associate a person with an identification document and associate that document with the institution that officially issued and delivered it to its holder.
+1. **A global identity layer:** design a persistent Node Core OS identity credential for a person and its associated network node, including people who lack official identity documents or whose nationality is unknown, undetermined, or not recognized.
+2. **A lawful institutional pathway layer:** map and, where authorized, connect the competent public authorities and legally authorized organizations that can verify civil identity, issue documents, determine nationality, address statelessness, or process relevant residence and protection procedures.
 
-This is a roadmap requirement and a subject for research, specification, implementation, and validation. Its presence in this directory does not mean that global institutional connectivity or document verification is already implemented.
+The working name for the proposed network credential is **Node Core Global Identity Document (NC-GID)**. It would identify a person within the Node Core OS network. It would not, by itself, be a passport, a national identity card, proof of citizenship, or a grant of nationality. Only competent states and legally authorized institutions can make those determinations under applicable law.
+
+The global mapping work is therefore broader than a directory of identity-card and passport issuers. It must establish a consistent path from the worldwide identity layer, through continents and jurisdictions, to the institutions and procedures that may lawfully help a person obtain recognition or documentation.
+
+This is a roadmap requirement and a subject for research, specification, implementation, and validation. Its presence in this directory does not mean that NC-GID, global institutional connectivity, nationality pathways, or document verification are already implemented.
 
 ## 2. The minimum international requirement
 
@@ -217,105 +222,158 @@ This roadmap item can only be considered complete when:
 
 ## 13. Guiding principle
 
-Node Core OS byLAEV is intended to provide the decentralized infrastructure, APIs, protocols, and consensus mechanisms through which nodes can establish verifiable associations between a node, a person, a personal identification document, and the institution that issued that document.
+Node Core OS byLAEV aims to provide a decentralized technical infrastructure through which a person can maintain a persistent global identity within the network, associate that identity with a Node Core OS node, preserve verifiable evidence, and connect with competent institutions through lawful and authorized procedures.
 
-The issuing institution remains the authority on its own documents. Node Core OS provides the interoperable technical framework for requesting, validating, recording, and sharing authorized verification evidence across its network.
+The proposed NC-GID is a network-issued identity credential. It can support continuity of identity and evidence management, including for people who do not currently possess official identity documents. It must clearly distinguish self-declared information, submitted evidence, corroborated information, issuer-verified data, and legal status determined by a competent authority.
 
-**The goal is not to replace national identity systems. The goal is to make authorized identity verification interoperable across the Node Core OS network.**
+Node Core OS cannot grant citizenship, assign a nationality, issue a government identity document, or compel a state to recognize a credential. Its role is to help organize evidence, identify potentially relevant jurisdictions and institutions, support authorized verification, and facilitate lawful referral and application pathways. A state authority retains responsibility for decisions about nationality, civil status, and its own documents.
 
+**The goal is not to replace national identity systems. The goal is to provide a global identity layer that can connect people and their evidence to the competent national and institutional systems, while respecting each institution's legal authority.**
 
 ## 14. Global mapping strategy: from macro to micro
 
-The global network cannot be mapped reliably by starting with individual institutions at random. The research must proceed from the largest geographic scope to the smallest operational unit. This creates a consistent inventory and makes it possible to identify coverage gaps before designing and implementing integrations.
+“Macro to micro” describes the complete identity and recognition pathway that Node Core OS intends to support. It is not only a geographic directory of document issuers. The global database must make it possible to start from a worldwide identity framework, locate the relevant continental and national structures, identify the institutions with legal competence, and connect an individual and their node to the appropriate lawful procedures.
 
-The mapping sequence is:
+The mapping must support two complementary directions:
 
-1. **World:** define the complete global scope of the future network of identity-document associations linked to Node Core OS nodes.
-2. **Continents and geographic regions:** divide the world into a consistent geographic structure.
-3. **Countries and areas:** enumerate every country or area included in the selected geographic reference system.
-4. **Subnational jurisdictions:** add states, provinces, territories, autonomous regions, or other administrative divisions when identity or passport responsibilities are decentralized.
-5. **Issuing institutions:** identify the government agencies and legally authorized institutions responsible for issuing or granting each document category.
-6. **Documents and services:** identify the specific identity documents, passports, credentials, and official verification services within each institution's mandate.
-7. **API and connector mapping:** record both the official interface offered by the institution and the corresponding Node Core OS API, connector, or integration specification that will eventually communicate with it.
+- **Global to individual:** define the worldwide network, its regions, jurisdictions, institutions, APIs, and procedures so that a person can be routed to the relevant authority.
+- **Individual to institution:** start from a person and their Node Core OS node, organize available evidence, identify possible jurisdictional links, and determine which competent institutions may assess identity, nationality, documentation, or protection claims.
 
-The mapping must be completed progressively. A country should not be marked as fully mapped merely because one institution has been found. Separate authorities may issue national identity cards, passports, civil registry records, residence permits, or digital identity credentials.
+### 14.1 The macro-to-micro hierarchy
 
-### 14.1 World-level scope
+1. **World — global identity layer:** define the worldwide NC-GID framework, the common identity model, network-wide rules, and the directory of jurisdictions and institutions. The global credential is intended to provide persistent identity within Node Core OS without assuming that a person already has a nationality or government document.
+2. **Continents and geographic regions:** organize the global structure into consistent regional groupings. This layer supports coverage planning, regional interoperability, research, and future cooperation between institutions.
+3. **Countries and jurisdictions:** map countries, territories, and relevant subnational jurisdictions. For each one, research the legal framework and official procedures concerning civil registration, nationality, identity documents, passports, residence, immigration, asylum, refugee protection, and statelessness, where applicable.
+4. **Competent institutions and authorized organizations:** identify, by legal mandate, the institutions that can issue or verify identity documents, register births and civil events, determine or confirm nationality, process immigration or protection matters, assess statelessness where such a procedure exists, and provide legally authorized support or referrals. Record their official services, APIs, access rules, and contact or application channels.
+5. **Person and Node Core OS node — individual level:** associate a person with a persistent NC-GID and a technical node identity; record claims and evidence with explicit provenance and protection; map possible links to countries or jurisdictions; and support referrals or applications to the competent institutions. A node identifier is not, by itself, proof of civil identity or nationality.
 
-At the macro level, the target is a worldwide network in which participating Node Core OS nodes can hold documented associations between a node, a person, an identification document, and the institution responsible for issuing that document.
+The institutional levels and the individual level must remain distinct. A person is not assigned a nationality by the network. The system helps identify and document a possible lawful pathway; the competent authority evaluates the case and makes the decision.
 
-The world map is an inventory and planning structure. It does not imply that every country or institution has agreed to connect, provides an API, or permits external verification.
+### 14.2 Global identity credential and its limits
 
-### 14.2 Geographic hierarchy
+The proposed **Node Core Global Identity Document (NC-GID)** is a credential issued by the Node Core OS network for identity continuity inside that network. Its design should address:
+
+- A unique, opaque global identity reference that does not expose a government identifier.
+- A verifiable link between the person, the NC-GID, and one or more Node Core OS nodes, with recovery and transfer rules defined separately.
+- Clear provenance for information: self-declared, evidence-submitted, independently corroborated, institution-verified, or legally determined.
+- Evidence references, verification history, consent or other lawful authorization, validity, suspension, and revocation.
+- A way to link official national documents or institutional credentials when they are later obtained or verified.
+- Protection against duplicate identities, impersonation, coercion, unauthorized correlation, and harmful disclosure.
+
+NC-GID must never be represented as a government-issued identity document, passport, proof of citizenship, travel authorization, or guarantee of recognition by a state. Any external recognition would require a separate legal basis or agreement with the competent institution.
+
+### 14.3 Distinguishing identity and nationality situations
+
+The database and protocol must not collapse different legal and documentary situations into one category. At minimum, distinguish:
+
+- **Undocumented person:** a person who lacks documents or cannot currently produce evidence of identity or nationality. This fact alone does not establish statelessness.
+- **Nationality not yet determined:** available information is insufficient to establish whether a person holds a nationality.
+- **Nationality claimed or potentially supported:** a person declares a nationality or presents evidence that may support a claim, but the competent authority has not confirmed it.
+- **Nationality confirmed:** a competent state authority or legally recognized source has confirmed the relevant nationality.
+- **Statelessness formally recognized:** stateless status has been determined by a competent authority under the applicable legal procedure.
+- **Statelessness suspected or under assessment:** a concern is being examined, but there has been no formal determination.
+
+These are not interchangeable labels. Node Core OS must record who made a determination, under which procedure, on what date, and with what evidence. The network must not independently declare a person stateless or assign a nationality.
+
+### 14.4 Jurisdiction and lawful pathway research
+
+For each country or jurisdiction, the global database should gradually identify the authorities and procedures relevant to a person's circumstances, including where they exist:
+
+- Civil registration and birth registration authorities.
+- Nationality, citizenship, and naturalization authorities.
+- National identity-document issuing authorities.
+- Passport issuing authorities.
+- Immigration, residence, and migration-status authorities.
+- Asylum and refugee-protection authorities.
+- Statelessness determination bodies or procedures.
+- Courts, ombuds institutions, or administrative review bodies where they have a relevant legal role.
+- UN agencies, humanitarian organizations, legal-aid providers, and civil-society organizations, but only with their role and authority accurately classified.
+
+For every institution, the database must state its actual mandate. An organization that provides assistance or referrals must not be described as having authority to grant nationality or issue a state document unless that authority is established by law.
+
+Research should identify official procedures and potential legal routes, not promise that a person qualifies for a status or that a state will accept an application. Possible links may include birth on a territory, parentage, previous nationality, residence, family ties, or other grounds recognized by the relevant country's law. These are research indicators, not automatic legal conclusions.
+
+### 14.5 Geographic baseline and institutional database
 
 Use a recognized and maintainable geographic classification as the baseline. The United Nations Statistics Division M49 standard is a suitable reference because it organizes countries or areas under geographic regions and subregions.
 
 Reference: https://unstats.un.org/unsd/methodology/m49/
 
-M49 is used here for consistent geographic indexing. It is not a legal determination of sovereignty, statehood, borders, citizenship, or the authority of an institution. Additional jurisdictions and administrative levels must be recorded where they are necessary to identify the competent issuer.
+M49 is used for consistent geographic indexing. It is not a legal determination of sovereignty, statehood, borders, citizenship, or institutional authority. Preserve the distinction between sovereign states, territories, and other areas, and add subnational jurisdictions when they are necessary to identify the competent institution.
 
-### 14.3 Country-by-country research
+The existing 248-record country-and-area geographic register remains the foundation of the worldwide database. The existing identity-document and passport issuer register also remains useful and must continue to be researched. It is the first institutional dataset, not the full scope of the project.
 
-For each country or area, research and record at least:
+As the database develops, expand it to include the additional institution categories in Section 14.4. Each institution should have its own record and a clear relationship to its jurisdiction, legal mandate, service or procedure, and API or other access channel. Where one institution performs several roles, record each role separately rather than assuming that all functions are identical.
 
-- The authority or authorities responsible for personal national identification documents.
-- The authority responsible for issuing passports.
-- Civil registry or population registry institutions where relevant.
-- Digital identity authorities or credential providers where they have an official role.
-- State, provincial, territorial, or regional authorities where responsibilities are not centralized.
-- Official institutional websites and primary legal or administrative sources.
-- The institution's available verification method and the conditions for using it.
+### 14.6 Institution and API mapping
 
-Where a document category does not exist, or responsibility cannot be confirmed, record that finding explicitly with its source and research status. Do not infer an issuer from a document manufacturer, service contractor, or unrelated government department.
+For each institution or authorized service, document two sides separately.
 
-### 14.4 Institution and API mapping
-
-Each issuing institution must have an identifiable record. The record must connect the geographic hierarchy to the institution, its document responsibilities, and the integration information.
-
-Two API sides must be documented separately:
-
-**A. Institution-provided interface**
-- Official API or service name.
-- API base URL and documentation URL, when publicly available.
-- Sandbox or test environment.
-- Authentication and authorization requirements.
-- Required legal basis, agreements, credentials, and permissions.
-- Supported verification operations and response fields.
-- Availability, usage limits, costs, restrictions, and technical limitations.
+**A. Official institution-provided service**
+- Official name and responsible institution.
+- Legal mandate and jurisdiction.
+- Service, procedure, or document category.
+- Official API or service name and documentation URL, if available.
+- Sandbox or test environment, if available.
+- Authentication, eligibility, consent, and authorization requirements.
+- Legal agreements, fees, usage limits, and data-access restrictions.
+- Alternative official methods where no API exists, such as an application portal, formal request, or in-person process.
+- Source references and date last checked.
 
 **B. Node Core OS interface**
-- The Node Core OS API capability intended to communicate with the institution.
-- The applicable endpoint or connector identifier, once specified.
-- The Node Core OS API specification or connector documentation link.
-- The implementation and validation status.
+- The Node Core OS API capability required for the connection.
+- The planned endpoint, connector, or protocol identifier once specified.
+- The Node Core OS specification link.
+- Implementation, testing, and authorization status.
 
-The Node Core OS API links must remain marked as pending until the relevant API or connector is actually specified, implemented, and published. A placeholder must never be presented as a working endpoint.
+Never invent an institutional URL or Node Core OS endpoint. Keep planned Node Core OS interfaces marked as pending until they have actually been specified and implemented. A public website, contact form, or citizen application portal is not automatically an API.
 
-### 14.5 Research and implementation sequence
+### 14.7 Individual-to-institution workflow
 
-The work must follow this order:
+The intended workflow for a person who lacks official documents or whose nationality is unresolved is:
 
-1. Establish the global geographic index.
-2. Enumerate countries and areas under each region.
-3. Research the identity-document and passport issuer institutions in each country or area.
-4. Confirm each institution's official mandate using primary sources.
-5. Discover and classify official APIs and alternative verification mechanisms.
-6. Record access rules, permissions, and legal or contractual requirements.
-7. Identify the Node Core OS API capability required for each institution.
-8. Design common schemas and connector interfaces without assuming all institutions use the same technology.
-9. Implement and test connectors with fictitious data or authorized sandbox environments.
-10. Establish real institutional integrations only after the required authorization has been obtained.
-11. Update the mapping as institutions, APIs, requirements, and integration status change.
+1. Create or associate a persistent NC-GID with the person's Node Core OS identity and node, without presuming nationality.
+2. Record the person's declarations and available evidence with explicit source, date, consent or other legal authorization, and confidence status.
+3. Identify potential jurisdictional links from evidence such as birth, parentage, residence, family records, or prior documents. Treat these as leads for review, not as legal determinations.
+4. Identify the competent civil-registration, nationality, immigration, protection, or statelessness institutions for the relevant jurisdictions.
+5. Present the person with the official procedure and authorized contact or application path, or connect through an institutional API only where permitted.
+6. Record submissions, institutional responses, pending steps, and decisions with verifiable provenance.
+7. When an authority confirms a nationality or issues a government document, associate that verified result with the NC-GID without replacing the original institutional record.
 
-### 14.6 Mapping status and evidence
+Network consensus may validate the integrity and provenance of records according to the protocol. It cannot replace an authority's legal evaluation or convert an unverified claim into a government determination.
 
-Every record must have a status, source references, and a last-reviewed date. At minimum, distinguish: not researched, institution identified, authority confirmed, API or mechanism researched, access requirements confirmed, connector specified, sandbox tested, and authorized integration validated.
+### 14.8 Evidence, privacy, and storage
 
-An absent API, an inaccessible API, a private API, and an API whose existence has not been confirmed are different findings and must not be merged into one status.
+The worldwide public mapping database should contain institutional and procedural information, not personal case files. Real identity documents, biometric data, personal identifiers, and sensitive evidence must not be placed in public repositories, public IPFS gateways, or public ledgers.
 
-### 14.7 Working files
+Personal evidence, where the project is legally permitted to process it, requires data minimization, encryption, access control, clear retention rules, and a lawful basis. Public hashes of predictable personal identifiers are not an adequate privacy measure. The storage architecture must distinguish public institutional metadata from protected personal records and cryptographic proofs.
 
-The operational mapping structure and reusable templates are maintained in the [GLOBAL-MAPPING](GLOBAL-MAPPING/README.md) directory:
+The project should begin with transparent, synthetic test data while the data model and access controls are validated. Real-person processing must be introduced only after privacy, legal, and security requirements are established.
+
+### 14.9 Research and implementation sequence
+
+1. Maintain the global geographic index and its source references.
+2. Continue country-by-country research into national identity and passport issuers already represented in the database.
+3. Add civil-registration and birth-registration authorities.
+4. Add nationality and naturalization authorities and document official procedures.
+5. Add immigration, asylum, refugee-protection, and statelessness-related authorities or procedures where applicable.
+6. Identify authorized support organizations separately from government decision-makers.
+7. Record official APIs, restricted services, portals, application channels, and non-digital procedures accurately.
+8. Specify the NC-GID data model and the distinction between claims, evidence, verification, and legal determinations.
+9. Specify institutional APIs, connector interfaces, permissions, and auditable response formats.
+10. Test with synthetic data and authorized sandbox environments, including slow, unreliable, and interrupted network conditions.
+11. Establish real integrations only after the required authorization and legal basis are obtained.
+12. Review sources, statuses, and institutional changes periodically.
+
+### 14.10 Mapping status and evidence
+
+Every record must have a research status, source references, and a last-reviewed date. At minimum, distinguish: not researched, research in progress, institution identified, legal mandate confirmed, procedure researched, API or mechanism researched, access requirements confirmed, connector specified, sandbox tested, and authorized integration validated.
+
+Also distinguish a confirmed institution with no known API, an API that is restricted, an unavailable service, and a service whose existence has not been confirmed. These conditions must never be presented as equivalent.
+
+### 14.11 Working files
+
+The operational geographic and institutional mapping files are maintained in the [GLOBAL-MAPPING](GLOBAL-MAPPING/README.md) directory:
 
 - [Global Mapping Strategy](GLOBAL-MAPPING/README.md)
 - [Continental and Geographic Region Index](GLOBAL-MAPPING/CONTINENT-INDEX.md)
@@ -325,4 +383,5 @@ The operational mapping structure and reusable templates are maintained in the [
 - [Institution Research Template](GLOBAL-MAPPING/INSTITUTION-RESEARCH-TEMPLATE.md)
 - [Node Core OS API Capability Catalogue](GLOBAL-MAPPING/NODE-CORE-OS-API-CATALOG.md)
 
-These files establish the structure for collecting verified information. They are not a completed worldwide issuer inventory. Country and institution records must be populated through documented research.
+These files establish the structure for collecting verified information. The geographic inventory is populated, but the institutional and legal-pathway database remains a work in progress. Country and institution records must be expanded through documented research.
+
