@@ -7,32 +7,67 @@
 <title>NODE CORE OS Lobby</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101419;color:#edf2f7}
-body{margin:0;padding:24px;max-width:760px;margin-inline:auto}
-header{padding:24px 0;border-bottom:1px solid #35404b}
-h1{font-size:2rem;letter-spacing:.08em;margin:0} .sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}
+*{box-sizing:border-box}body{margin:0;padding:24px;max-width:760px;margin-inline:auto}
+header{padding:12px 0 24px;border-bottom:1px solid #35404b}
+h1{font-size:2rem;letter-spacing:.08em;margin:0}.sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}
 p{line-height:1.55;color:#c6d0d9}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
-article{border:1px solid #35404b;border-radius:14px;padding:16px;background:#171e25}
-h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2}
+.card{display:block;width:100%;text-align:left;border:1px solid #35404b;border-radius:14px;padding:16px;background:#171e25;color:inherit;cursor:pointer}
+.card:active{transform:scale(.99);background:#202b35}.card:focus-visible,button:focus-visible{outline:2px solid #8dceff;outline-offset:3px}
+h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2;font-size:.9rem}
 .status{margin-top:20px;padding:14px;border-radius:12px;background:#192b25;color:#9ce2b8}
-footer{margin-top:30px;color:#8795a1;font-size:.8rem}
+.panel{display:none;margin-top:18px;padding:18px;border:1px solid #35404b;border-radius:14px;background:#151c23}
+.panel.open{display:block}.panel h2{font-size:1.2rem}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button.action{border:1px solid #52718a;border-radius:9px;padding:10px 14px;background:#203345;color:#eaf5ff;font-weight:650}
+button.secondary{background:#20262d;border-color:#414b55}
+.result{padding:10px;border-bottom:1px solid #303b45}.ok{color:#8fe0aa}.bad{color:#ffb38f}
+.muted{color:#9aa9b5}footer{margin-top:30px;color:#8795a1;font-size:.8rem}
 </style></head>
 <body>
 <header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
-<p>Local administration lobby for Node Core OS on Termux. This first implementation provides environment recognition and a safe entry point; installation, repair and update actions remain disabled until their Termux workflows are implemented and tested.</p>
+<p>Local administration lobby for Node Core OS on Termux. Select a module to open its controls. Read-only diagnostics are available now; installation, update and repair will be enabled only after their workflows are implemented and tested.</p>
 <div class="grid">
-<article><h2>01 · System diagnosis</h2><small>Inspect Android, Termux, architecture and Python runtime.</small></article>
-<article><h2>02 · Prepare environment</h2><small>Review prerequisites before changing packages or configuration.</small></article>
-<article><h2>03 · Install Node Core OS</h2><small>Installation workflow: not yet connected.</small></article>
-<article><h2>04 · Update Node Core OS</h2><small>Update workflow: not yet connected.</small></article>
-<article><h2>05 · Repair configuration</h2><small>Repair workflow: not yet connected.</small></article>
-<article><h2>06 · Node status</h2><small>Read-only local environment report.</small></article>
+<button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Run real checks on Android, Termux, architecture and Python.</small></button>
+<button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites and see exactly what is missing.</small></button>
+<button class="card" data-panel="install"><h2>03 · Install Node Core OS</h2><small>View installation readiness and requirements.</small></button>
+<button class="card" data-panel="update"><h2>04 · Update Node Core OS</h2><small>Check whether an existing installation is detected.</small></button>
+<button class="card" data-panel="repair"><h2>05 · Repair configuration</h2><small>Inspect known configuration paths without changing files.</small></button>
+<button class="card" data-panel="status"><h2>06 · Node status</h2><small>View the live local runtime and node status.</small></button>
 </div>
-<div id="status" class="status">Checking local Lobby service…</div>
-<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only</footer>
+<section id="panel" class="panel" aria-live="polite">
+<h2 id="panel-title">Module</h2><div id="panel-content" class="muted">Select an action.</div>
+<div class="actions"><button id="run" class="action">Run check</button><button id="close" class="action secondary">Close</button></div>
+</section>
+<div id="status" class="status">Connecting to local Lobby service…</div>
+<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only preview</footer>
 <script>
-(async()=>{const el=document.getElementById('status');try{
-const r=await fetch('/health',{cache:'no-store'});const j=await r.json();
-el.textContent='Lobby service: ONLINE · Transport: '+j.transport.toUpperCase()+' · Local device only.';
-}catch(e){el.textContent='Lobby status unavailable. Return to Termux and run the Lobby launcher.';}})();
-</script>
-</body></html>
+const panel=document.getElementById('panel'), title=document.getElementById('panel-title'), content=document.getElementById('panel-content'), statusEl=document.getElementById('status'), runBtn=document.getElementById('run');
+let selected='diagnosis';
+const labels={diagnosis:'System diagnosis',prepare:'Prepare environment',install:'Install Node Core OS',update:'Update Node Core OS',repair:'Repair configuration',status:'Node status'};
+function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to run this module.';runBtn.textContent=(name==='install'||name==='update'||name==='repair')?'Check readiness':'Run check';panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
+document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
+function renderChecks(data){let out='<p><b>Checks:</b> '+data.summary.passed+' passed · '+data.summary.failed+' required failures · '+data.summary.total+' total</p>';
+out+='<p><b>Environment:</b> '+escapeHtml(data.environment.platform)+' · '+escapeHtml(data.environment.architecture)+' · Python '+escapeHtml(data.environment.python)+'</p>';
+for(const c of data.checks){out+='<div class="result"><b class="'+(c.ok?'ok':(c.severity==='required'?'bad':'muted'))+'">'+(c.ok?'PASS':'CHECK')+' · '+escapeHtml(c.name)+'</b><br><small>'+escapeHtml(c.detail)+'</small></div>';}
+return out;}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function runSelected(){runBtn.disabled=true;runBtn.textContent='Working…';content.textContent='Running local checks…';
+try{
+if(['diagnosis','prepare','install','update','repair'].includes(selected)){
+const r=await fetch('/api/diagnostics',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();content.innerHTML=renderChecks(d);
+if(selected==='install')content.innerHTML+='<p class="muted">Installation is not enabled yet. This check does not install packages or modify files.</p>';
+if(selected==='update')content.innerHTML+='<p class="muted">Update is not enabled yet. No repository files have been changed.</p>';
+if(selected==='repair')content.innerHTML+='<p class="muted">Repair is not enabled yet. This inspection is read-only and made no changes.</p>';
+if(selected==='prepare')content.innerHTML+='<p class="muted">Preparation report only. No packages or configuration were changed.</p>';
+}else{
+const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();
+content.innerHTML='<div class="result"><b class="ok">SERVICE ONLINE</b><br><small>Transport: '+escapeHtml(d.transport.toUpperCase())+'</small></div>'+
+'<div class="result"><b>Platform</b><br><small>'+escapeHtml(d.environment.platform)+'</small></div>'+
+'<div class="result"><b>Architecture</b><br><small>'+escapeHtml(d.environment.architecture)+'</small></div>'+
+'<div class="result"><b>Node Core installed</b><br><small>'+(d.environment.node_core_installed?'Yes':'No')+'</small></div>';
+}
+}catch(e){content.textContent='Unable to run check: '+e.message;}
+finally{runBtn.disabled=false;runBtn.textContent=(selected==='install'||selected==='update'||selected==='repair')?'Check readiness':'Run check';}}
+runBtn.addEventListener('click',runSelected);
+(async()=>{try{const r=await fetch('/health',{cache:'no-store'});const j=await r.json();statusEl.textContent='Lobby service: ONLINE · Transport: '+j.transport.toUpperCase()+' · Local device only.';}catch(e){statusEl.textContent='Lobby service unavailable. Return to Termux and run the Lobby launcher.';}})();
+</script></body></html>
