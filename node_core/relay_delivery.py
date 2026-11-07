@@ -106,10 +106,13 @@ def persist_and_sign_receipt(
                 handle.write(encoded)
                 handle.flush()
                 os.fsync(handle.fileno())
-            # A hard link publishes the fully-written file atomically without
-            # replacing a file created concurrently for the same run ID.
+            # O_EXCL publishes a fully written file without replacing a
+            # file created concurrently. Unlike os.link(), this also works on
+            # Python builds where hard-link support is unavailable.
             try:
-                os.link(temporary, target)
+                file_descriptor = os.open(
+                    target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+                )
             except FileExistsError:
                 try:
                     existing = json.loads(target.read_text(encoding="utf-8"))
@@ -122,14 +125,22 @@ def persist_and_sign_receipt(
                 stored = existing
             else:
                 try:
-                    os.chmod(target, 0o600)
-                except OSError:
-                    pass
-                directory_fd = os.open(inbox, os.O_RDONLY)
-                try:
-                    os.fsync(directory_fd)
-                finally:
-                    os.close(directory_fd)
+                    os.fchmod(file_descriptor, 0o600)
+                    with os.fdopen(file_descriptor, "wb") as handle:
+                        handle.write(encoded)
+                        handle.flush()
+                        os.fsync(handle.fileno())
+                    directory_fd = os.open(inbox, os.O_RDONLY)
+                    try:
+                        os.fsync(directory_fd)
+                    finally:
+                        os.close(directory_fd)
+                except BaseException:
+                    try:
+                        target.unlink()
+                    except OSError:
+                        pass
+                    raise
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
