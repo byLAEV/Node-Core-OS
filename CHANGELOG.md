@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.5.7] - 2026-11-07
+
+### Added
+- Add a root-level one-command bootstrap installer/updater that downloads and validates the official source archive before delegating to the unified installer.
+- Route the installed `node-core-update` command through the bootstrap so subsequent updates use the same simple entry point.
+
+### Fixed
+- Detect Termux on Android Python builds by distinguishing the Linux kernel from `platform.system() == "Android"`.
+- Correct the compatibility detector's package-manager capability lookup so GNU/Linux preflight does not raise `NameError`.
+
+### Safety and validation
+- Preserve user-level execution; root and sudo remain forbidden.
+- Keep the protected updater's backup, verification, and rollback behavior; retain Kubo/IPFS repository and local storage.
+- Add regression coverage for Android Python on Linux aarch64 Termux. Physical-device validation remains required before declaring Termux installation fully verified.
+
 All notable changes to Node Core OS are documented here.
 
 ## 1.5.6 release candidate preparation — 2026-11-06
