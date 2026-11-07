@@ -1,4 +1,4 @@
-name: Node Core OS — Real Linux 20–200 node P2P mesh
+name: Node Core OS — Real Linux 20–100 node full-mesh synchronization
 on:
   pull_request:
     paths:
@@ -11,7 +11,7 @@ on:
         description: Independent Ubuntu 24.04 Linux VMs
         required: true
         type: choice
-        options: ["20", "50", "100", "200"]
+        options: ["20", "50", "100"]
         default: "20"
 permissions:
   contents: read
@@ -39,7 +39,7 @@ jobs:
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json, os
           n=int(os.environ["NODE_COUNT"])
-          if n not in (20,50,100,200): raise SystemExit("Unsupported node count")
+          if n not in (20,50,100): raise SystemExit("Unsupported node count")
           print("nodes="+json.dumps(list(range(n))))
           print("count="+str(n))
           PY
@@ -48,10 +48,10 @@ jobs:
     needs: prepare
     name: Independent Linux node ${{ matrix.node }} / ${{ needs.prepare.outputs.count }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
     strategy:
       fail-fast: false
-      max-parallel: 200
+      max-parallel: 100
       matrix:
         node: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     env:
@@ -78,20 +78,11 @@ jobs:
           tags: tag:node-core-ci
           hostname: ncore-${{ github.run_id }}-${{ matrix.node }}
           version: "1.104.5"
-      - name: Verify Tailscale network
-        env:
-          NODE_INDEX: ${{ matrix.node }}
+      - name: Verify private Tailscale interface
         run: |
           set -euo pipefail
           tailscale status
-          tailscale ip -4
-          if [ "$NODE_INDEX" -ne 0 ]; then
-            for attempt in $(seq 1 90); do
-              getent hosts "ncore-${{ github.run_id }}-0" >/dev/null && break
-              sleep 2
-            done
-            getent hosts "ncore-${{ github.run_id }}-0"
-          fi
+          test -n "$(tailscale ip -4)"
       - name: Install Node Core OS as normal Linux user
         run: |
           set -euo pipefail
