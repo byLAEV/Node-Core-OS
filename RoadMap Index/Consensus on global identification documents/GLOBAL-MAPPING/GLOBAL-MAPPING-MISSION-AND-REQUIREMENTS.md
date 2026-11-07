@@ -8,6 +8,16 @@ The core problem is that people without identity documents, people whose nationa
 
 Node Core OS must therefore map the institutional environment before it can responsibly guide a person through it.
 
+## Immediate mapping priority — identity and passport issuers
+
+The current foundational mapping phase has a narrower and measurable objective: for every applicable country, territory or jurisdiction in the geographic baseline, identify the institution that issues identity documents and the institution that issues passports or state travel documents, together with each institution's official website or direct official service page.
+
+This phase includes all continental groups, special administrative regions and territories with distinct issuing authorities. It also maintains a separate register for global, regional and non-territorial organizations that issue restricted official travel documents. Those documents must not be counted as ordinary national passports.
+
+The broader research domains below remain future layers. They do not replace or delay completion of the issuer directory. API discovery and connector implementation are explicitly deferred until the issuer directory is established.
+
+See [Issuer Mapping Scope and Coverage Rules](ISSUER-MAPPING-SCOPE-AND-COVERAGE.md) and the [Global Identity and Passport Issuer Master Register](GLOBAL-IDENTITY-AND-PASSPORT-ISSUER-MASTER-REGISTER.csv).
+
 ## 2. Scope of the problem
 
 A person may:
