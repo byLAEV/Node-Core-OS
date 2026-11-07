@@ -179,7 +179,7 @@ The country/area names, M49 codes, and ISO codes are based on the [UN Statistics
 
 The first African issuer research batch is recorded in [AFRICA-ISSUER-RESEARCH.md](AFRICA-ISSUER-RESEARCH.md). It covers 11 jurisdictions and adds 22 issuer records (one identity-document authority record and one passport-authority record per jurisdiction) to the master [ISSUER-AND-API-REGISTER.csv](ISSUER-AND-API-REGISTER.csv).
 
-Africa has 60 M49 country-or-area records in the geographic baseline. Twelve have received an institutional research pass; 48 remain to be researched. This is research coverage only, not API or integration coverage.
+Africa has 60 M49 country-or-area records in the geographic baseline. Thirteen have received an institutional research pass; 47 remain to be researched. This is research coverage only, not API or integration coverage.
 
 The strongest integration leads identified so far are:
 - Ethiopia's Fayda authentication API, with OAuth 2.0/OIDC and organization partner onboarding.
@@ -257,7 +257,7 @@ The lawful-procedure register currently contains eleven researched starting poin
 
 ## Institutional mapping progress — Senegal (Africa Batch 02)
 
-The Africa institutional map has expanded to **12 of 60 M49 country-or-area records**. Senegal is the twelfth jurisdiction and adds six institutional roles, four state-issued document records, and four lawful pathway records. The Senegal research is documented in [Africa Batch 02 — Senegal](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-02-SENEGAL.md).
+The Africa institutional map has expanded to **13 of 60 M49 country-or-area records**. Senegal and Egypt extend the institutional map beyond the initial eleven-country batch. Senegal adds six institutional roles, four document records and four legal pathways; Egypt adds five institutional roles, three document records and two procedure records. See [Africa Batch 02 — Senegal](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-02-SENEGAL.md) and [Africa Batch 03 — Egypt](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-03-EGYPT.md).
 
 The key legal finding is that Senegal has a statutory admission procedure for both refugee and stateless-person status. Decree No. 2025-1559 defines the procedure, places intake and review with the CNGRA, provides an appeal route, and states that status is granted by decree. Decree No. 2025-1560 assigns issuance of biometric identity and travel documents for recognized refugees and stateless persons to the Ministry of the Interior and Public Security, under CNGRA coordination.
 
@@ -268,3 +268,8 @@ The [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv) contains 248 geog
 
 
 **Senegal operational note:** the Ministry announced on 24 September 2026 that renewal operations for CEDEAO biometric identity cards issued from 4 October to 31 December 2016 would start on 25 September 2026. This is a limited renewal cohort and does not prove that all issuance services are fully restored. Source: https://interieur.gouv.sn/actualites/communiques/renouvellement-cartes-identite-biometriques-cedeao-demarrage-25-septembre-2026
+
+
+### Egypt — institutional mapping update
+
+Egypt has five institution records covering the Civil Status Sector, PENA, the Ministry of Foreign Affairs, the statutory Permanent Committee for Refugee Affairs and UNHCR Egypt's current transitional operation. The issuer register adds Egyptian national ID, ordinary passport and refugee documentation records; the procedure register adds nationality service routes and the asylum transition. The Committee's statutory authority is established by Asylum Law No. 164/2024, but UNHCR reports that it continues refugee registration, documentation and status determination until the national system is fully operational. The handover therefore remains an explicit verification item, not an assumed completed transition. See [Egypt Batch 03](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-03-EGYPT.md).
