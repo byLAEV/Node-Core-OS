@@ -58,17 +58,20 @@ def prepare(label: str) -> None:
 
 
 def load_nodes(shared: Path) -> dict[str, dict[str, object]]:
-    nodes = {}
-    for label in ("a", "b", "c"):
-        path = shared / f"{label}.json"
-        if not path.is_file():
-            raise RuntimeError(f"Missing node metadata: {path}")
+    """Load the complete prepared roster; every JSON file is one independent node."""
+    nodes: dict[str, dict[str, object]] = {}
+    for path in sorted(shared.glob("*.json")):
         value = json.loads(path.read_text(encoding="utf-8"))
+        label = str(value.get("label", ""))
+        if not label or label in nodes:
+            raise RuntimeError(f"Missing or duplicate node label in metadata: {path}")
         value["certificate"] = base64.b64decode(value.pop("certificate_pem"))
         value["rsa_public_key"] = base64.b64decode(value.pop("rsa_public_key_pem"))
         nodes[label] = value
-    if len({value["node_id"] for value in nodes.values()}) != 3:
-        raise RuntimeError("The three Linux containers must have distinct Node IDs.")
+    if len(nodes) < 3:
+        raise RuntimeError(f"At least three prepared Linux nodes are required; found {len(nodes)}.")
+    if len({value["node_id"] for value in nodes.values()}) != len(nodes):
+        raise RuntimeError("Every Linux container must have a distinct Node Core OS identity.")
     return nodes
 
 
