@@ -270,7 +270,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: node-core-scaled-p2p-${{ inputs.node_count }}-nodes
+          name: node-core-scaled-p2p-${{ env.NODE_COUNT }}-nodes
           path: ${{ runner.temp }}/scaled-nodes/evidence/
           if-no-files-found: warn
           retention-days: 30
