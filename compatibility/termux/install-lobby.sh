@@ -12,17 +12,14 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 DEST="$HOME/.node-core/lobby"
 SHORTCUTS="$HOME/.shortcuts"
 mkdir -p "$DEST/web" "$SHORTCUTS"
-cp "$ROOT/compatibility/termux/lobby/server.py" "$DEST/server.py"
-cp "$ROOT/compatibility/termux/lobby/web/"* "$DEST/web/"
-chmod 700 "$DEST"
-chmod 600 "$DEST/server.py" "$DEST/web/"*
-cp "$ROOT/compatibility/termux/lobby/launcher.sh" "$SHORTCUTS/node-core-lobby"
-chmod 700 "$SHORTCUTS/node-core-lobby"
 if ! command -v python >/dev/null 2>&1; then
   printf 'Python is missing. Install it with: pkg install python\n' >&2
   exit 1
 fi
-python "$DEST/server.py" --check
-printf '\nLobby prototype installed.\n'
-printf 'Start it with: bash "$HOME/.shortcuts/node-core-lobby"\n'
-printf 'For a home-screen shortcut, install Termux:Widget and add the node-core-lobby script.\n'
+cp "$ROOT/compatibility/termux/lobby/server.py" "$DEST/server.py"
+cp "$ROOT/compatibility/termux/lobby/web/"* "$DEST/web/"
+cp "$ROOT/compatibility/termux/lobby/launcher.sh" "$SHORTCUTS/node-core-lobby"
+chmod 700 "$DEST" "$SHORTCUTS/node-core-lobby"
+chmod 600 "$DEST/server.py" "$DEST/web/"*
+printf '\nInstalled Lobby files. Restarting server with the updated version...\n'
+bash "$SHORTCUTS/node-core-lobby"
