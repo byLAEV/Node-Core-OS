@@ -30,12 +30,14 @@ concurrency:
 
 jobs:
   validate:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: bash -n ci/linux/run_manual_mesh.sh
       - name: Validate Python syntax
         run: python3 -m py_compile ci/linux/real_multi_node_mesh.py
 
