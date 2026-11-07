@@ -3,14 +3,13 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#15191f"><link rel="manifest" href="/manifest.webmanifest">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
-<title>NODE CORE OS Lobby</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml"><title>NODE CORE OS Lobby</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101419;color:#edf2f7}
-*{box-sizing:border-box}body{margin:0;padding:24px;max-width:760px;margin-inline:auto}
-header{padding:12px 0 24px;border-bottom:1px solid #35404b}
-h1{font-size:2rem;letter-spacing:.08em;margin:0}.sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}
-p{line-height:1.55;color:#c6d0d9}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
+*{box-sizing:border-box}body{margin:0;padding:24px;max-width:900px;margin-inline:auto}
+header{padding:12px 0 24px;border-bottom:1px solid #35404b}h1{font-size:2rem;letter-spacing:.08em;margin:0}
+.sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}p{line-height:1.55;color:#c6d0d9}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
 .card{display:block;width:100%;text-align:left;border:1px solid #35404b;border-radius:14px;padding:16px;background:#171e25;color:inherit;cursor:pointer}
 .card:active{transform:scale(.99);background:#202b35}.card:focus-visible,button:focus-visible{outline:2px solid #8dceff;outline-offset:3px}
 h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2;font-size:.9rem}
@@ -18,56 +17,76 @@ h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2;font-size:.9r
 .panel{display:none;margin-top:18px;padding:18px;border:1px solid #35404b;border-radius:14px;background:#151c23}
 .panel.open{display:block}.panel h2{font-size:1.2rem}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 button.action{border:1px solid #52718a;border-radius:9px;padding:10px 14px;background:#203345;color:#eaf5ff;font-weight:650}
-button.secondary{background:#20262d;border-color:#414b55}
-.result{padding:10px;border-bottom:1px solid #303b45}.ok{color:#8fe0aa}.bad{color:#ffb38f}
-.muted{color:#9aa9b5}footer{margin-top:30px;color:#8795a1;font-size:.8rem}
+button.secondary{background:#20262d;border-color:#414b55}.result{padding:10px;border-bottom:1px solid #303b45}
+.ok{color:#8fe0aa}.bad{color:#ffb38f}.warn{color:#f4cc78}.muted{color:#9aa9b5}
+footer{margin-top:30px;color:#8795a1;font-size:.8rem}details{border:1px solid #35404b;border-radius:10px;margin:10px 0;padding:10px;background:#11171d}
+summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;color:#c9d5df;max-height:420px;overflow:auto}
 </style></head>
 <body>
 <header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
-<p>Local administration lobby for Node Core OS on Termux. Select a module to open its controls. Read-only diagnostics are available now; installation, update and repair will be enabled only after their workflows are implemented and tested.</p>
+<p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device.</p>
 <div class="grid">
-<button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Run real checks on Android, Termux, architecture and Python.</small></button>
-<button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites and see exactly what is missing.</small></button>
-<button class="card" data-panel="install"><h2>03 · Install Node Core OS</h2><small>View installation readiness and requirements.</small></button>
-<button class="card" data-panel="update"><h2>04 · Update Node Core OS</h2><small>Check whether an existing installation is detected.</small></button>
-<button class="card" data-panel="repair"><h2>05 · Repair configuration</h2><small>Inspect known configuration paths without changing files.</small></button>
-<button class="card" data-panel="status"><h2>06 · Node status</h2><small>View the live local runtime and node status.</small></button>
+<button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Full report: environment, installation, packages, network and directories.</small></button>
+<button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites, missing tools and possible blockers.</small></button>
+<button class="card" data-panel="install"><h2>03 · Install Node Core OS</h2><small>Detect existing installation and review installation readiness.</small></button>
+<button class="card" data-panel="update"><h2>04 · Update Node Core OS</h2><small>Detect installed version and repository checkouts.</small></button>
+<button class="card" data-panel="repair"><h2>05 · Repair configuration</h2><small>Inspect known directories and environment risks without changes.</small></button>
+<button class="card" data-panel="status"><h2>06 · Node status</h2><small>View Lobby service and detected Node Core OS state.</small></button>
 </div>
-<section id="panel" class="panel" aria-live="polite">
-<h2 id="panel-title">Module</h2><div id="panel-content" class="muted">Select an action.</div>
-<div class="actions"><button id="run" class="action">Run check</button><button id="close" class="action secondary">Close</button></div>
-</section>
+<section id="panel" class="panel" aria-live="polite"><h2 id="panel-title">Module</h2><div id="panel-content" class="muted">Select an action.</div>
+<div class="actions"><button id="run" class="action">Generate report</button><button id="close" class="action secondary">Close</button></div></section>
 <div id="status" class="status">Connecting to local Lobby service…</div>
-<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only preview</footer>
+<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only inventory</footer>
 <script>
-const panel=document.getElementById('panel'), title=document.getElementById('panel-title'), content=document.getElementById('panel-content'), statusEl=document.getElementById('status'), runBtn=document.getElementById('run');
+const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
-const labels={diagnosis:'System diagnosis',prepare:'Prepare environment',install:'Install Node Core OS',update:'Update Node Core OS',repair:'Repair configuration',status:'Node status'};
-function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to run this module.';runBtn.textContent=(name==='install'||name==='update'||name==='repair')?'Check readiness':'Run check';panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+const labels={diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status'};
+function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='status'?'Refresh status':'Generate report';panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
-function renderChecks(data){let out='<p><b>Checks:</b> '+data.summary.passed+' passed · '+data.summary.failed+' required failures · '+data.summary.total+' total</p>';
-out+='<p><b>Environment:</b> '+escapeHtml(data.environment.platform)+' · '+escapeHtml(data.environment.architecture)+' · Python '+escapeHtml(data.environment.python)+'</p>';
-for(const c of data.checks){out+='<div class="result"><b class="'+(c.ok?'ok':(c.severity==='required'?'bad':'muted'))+'">'+(c.ok?'PASS':'CHECK')+' · '+escapeHtml(c.name)+'</b><br><small>'+escapeHtml(c.detail)+'</small></div>';}
-return out;}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-async function runSelected(){runBtn.disabled=true;runBtn.textContent='Working…';content.textContent='Running local checks…';
-try{
-if(['diagnosis','prepare','install','update','repair'].includes(selected)){
-const r=await fetch('/api/diagnostics',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();content.innerHTML=renderChecks(d);
-if(selected==='install')content.innerHTML+='<p class="muted">Installation is not enabled yet. This check does not install packages or modify files.</p>';
-if(selected==='update')content.innerHTML+='<p class="muted">Update is not enabled yet. No repository files have been changed.</p>';
-if(selected==='repair')content.innerHTML+='<p class="muted">Repair is not enabled yet. This inspection is read-only and made no changes.</p>';
-if(selected==='prepare')content.innerHTML+='<p class="muted">Preparation report only. No packages or configuration were changed.</p>';
-}else{
-const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();
-content.innerHTML='<div class="result"><b class="ok">SERVICE ONLINE</b><br><small>Transport: '+escapeHtml(d.transport.toUpperCase())+'</small></div>'+
-'<div class="result"><b>Platform</b><br><small>'+escapeHtml(d.environment.platform)+'</small></div>'+
-'<div class="result"><b>Architecture</b><br><small>'+escapeHtml(d.environment.architecture)+'</small></div>'+
-'<div class="result"><b>Node Core installed</b><br><small>'+(d.environment.node_core_installed?'Yes':'No')+'</small></div>';
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function section(name,body){return '<details open><summary>'+esc(name)+'</summary>'+body+'</details>';}
+function renderTree(node,depth=0){
+if(!node)return '';
+let out='<div class="result" style="padding-left:'+(depth*12)+'px">'+(node.type==='file'?'📄 ':'📁 ')+esc(node.name);
+if(node.note)out+=' <small>('+esc(node.note)+')</small>';
+if(node.error)out+=' <small class="warn">'+esc(node.error)+'</small>';
+out+='</div>';
+for(const child of (node.children||[]))out+=renderTree(child,depth+1);
+return out;
 }
-}catch(e){content.textContent='Unable to run check: '+e.message;}
-finally{runBtn.disabled=false;runBtn.textContent=(selected==='install'||selected==='update'||selected==='repair')?'Check readiness':'Run check';}}
+function renderReport(d){
+let out='<p><b>Generated:</b> '+esc(d.generated_at)+'</p><p><b>Summary:</b> <span class="ok">'+d.summary.passed+' passed</span> · <span class="bad">'+d.summary.failed_required+' required failures</span> · <span class="warn">'+d.summary.warnings+' warnings</span> · '+d.summary.total+' checks</p>';
+let checks='';for(const c of d.checks)checks+='<div class="result"><b class="'+(c.ok?'ok':c.severity==='required'?'bad':'warn')+'">'+(c.ok?'PASS':c.severity.toUpperCase())+' · '+esc(c.name)+'</b><br><small>'+esc(c.detail)+'</small></div>';
+out+=section('Compatibility checks',checks);
+out+=section('Terminal and Android environment','<pre>'+esc(JSON.stringify(d.environment,null,2))+'</pre>');
+let n=d.node_core;let nc='<p><b>Status:</b> '+esc(n.status.toUpperCase())+'</p><p><b>Version:</b> '+esc(n.version||'Not detected')+'</p><p><b>Data directory:</b> '+esc(n.data_directory)+'</p><pre>'+esc(JSON.stringify(n.layout,null,2))+'</pre>';
+if(n.repository_checkouts.length)nc+='<p><b>Repository checkouts:</b></p><pre>'+esc(JSON.stringify(n.repository_checkouts,null,2))+'</pre>';
+out+=section('Node Core OS installation detection',nc);
+let tools='';for(const [name,t] of Object.entries(d.tools))tools+='<div class="result"><b class="'+(t.available?'ok':'warn')+'">'+esc(name)+'</b><br><small>'+(t.available?esc(t.path)+' · '+esc(t.version||'version not queried'):'Not available')+'</small></div>';
+out+=section('Command-line tools',tools);
+let p=d.packages;let pkg='<p><b>'+p.total_detected+'</b> installed packages detected using '+esc(p.source)+'.'+(p.truncated?' Display limited to '+p.limit+'.':'')+'</p><pre>'+esc(p.packages.map(x=>x.name+'  '+x.version).join('\n'))+'</pre>';
+if(p.error)pkg+='<p class="warn">'+esc(p.error)+'</p>';out+=section('Installed packages',pkg);
+out+=section('Network and local services','<pre>'+esc(JSON.stringify(d.network,null,2))+'</pre>');
+let dirs='';for(const t of d.directories.targets){dirs+='<h3>'+esc(t.label)+' — '+(t.exists?'present':'not found')+'</h3>';dirs+=t.tree?renderTree(t.tree):'<small>'+esc(t.path)+'</small>';}
+dirs+='<p class="muted">'+esc(d.directories.policy)+'</p>';out+=section('Directory structure',dirs);
+out+=section('Privacy and scan limits','<pre>'+esc(JSON.stringify(d.privacy,null,2))+'</pre>');
+return out;
+}
+async function runSelected(){
+runBtn.disabled=true;runBtn.textContent='Scanning…';content.textContent='Collecting local inventory. Network checks have short timeouts; no device changes are made.';
+try{
+const r=await fetch(selected==='status'?'/api/status':'/api/report',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+if(selected==='status')content.innerHTML='<pre>'+esc(JSON.stringify(d,null,2))+'</pre>';
+else {content.innerHTML=renderReport(d);
+if(selected==='prepare')content.insertAdjacentHTML('afterbegin','<p class="muted">Preparation report only: no packages or configuration were changed.</p>');
+if(selected==='install')content.insertAdjacentHTML('afterbegin','<p class="muted">Readiness inspection only: installation is not executed.</p>');
+if(selected==='update')content.insertAdjacentHTML('afterbegin','<p class="muted">Version and checkout inspection only: no update is executed.</p>');
+if(selected==='repair')content.insertAdjacentHTML('afterbegin','<p class="muted">Read-only inspection only: no files or settings were repaired.</p>');}
+}catch(e){content.textContent='Unable to generate report: '+e.message;}
+finally{runBtn.disabled=false;runBtn.textContent=selected==='status'?'Refresh status':'Generate report';}
+}
 runBtn.addEventListener('click',runSelected);
-(async()=>{try{const r=await fetch('/health',{cache:'no-store'});const j=await r.json();statusEl.textContent='Lobby service: ONLINE · Transport: '+j.transport.toUpperCase()+' · Local device only.';}catch(e){statusEl.textContent='Lobby service unavailable. Return to Termux and run the Lobby launcher.';}})();
+(async()=>{try{const r=await fetch('/health',{cache:'no-store'});const j=await r.json();statusEl.textContent='Lobby service: ONLINE · Transport: '+j.transport.toUpperCase()+' · 127.0.0.1 only.';}catch(e){statusEl.textContent='Lobby service unavailable. Return to Termux and run the Lobby launcher.';}})();
 </script></body></html>
