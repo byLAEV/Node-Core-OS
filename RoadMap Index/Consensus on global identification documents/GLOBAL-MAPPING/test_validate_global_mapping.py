@@ -17,7 +17,7 @@ class GlobalMappingValidatorTests(unittest.TestCase):
     def test_csv_reader_preserves_quoted_commas(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "sample.csv"
-            path.write_text('id,description\\n1,"civil registration, identity"\\n', encoding="utf-8")
+            path.write_text("id,description" + chr(10) + "1,\"civil registration, identity\"" + chr(10), encoding="utf-8")
             _, rows = read_csv(path)
             self.assertEqual(rows[0]["description"], "civil registration, identity")
 
