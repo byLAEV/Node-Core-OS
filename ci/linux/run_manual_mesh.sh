@@ -15,10 +15,12 @@ PYTHON="$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
 : "${NODE_COUNT:?Set NODE_COUNT to the total number of Linux machines.}"
 : "${MESH_RUN_ID:?Set MESH_RUN_ID to the same numeric campaign ID on every machine.}"
 
-if [[ ! "$NODE_INDEX" =~ ^[0-9]+$ || ! "$NODE_COUNT" =~ ^[0-9]+$ || ! "$MESH_RUN_ID" =~ ^[0-9]+$ ]]; then
-  printf '%s\n' "ERROR: NODE_INDEX, NODE_COUNT and MESH_RUN_ID must be numeric." >&2
-  exit 1
-fi
+case "$NODE_INDEX:$NODE_COUNT:$MESH_RUN_ID" in
+  *[!0-9:]*|:*|*::*|*:)
+    printf '%s\\n' "ERROR: NODE_INDEX, NODE_COUNT and MESH_RUN_ID must be numeric." >&2
+    exit 1
+    ;;
+esac
 
 if [[ ! -x "$PYTHON" ]]; then
   printf 'ERROR: Node Core OS virtual environment not found: %s\n' "$PYTHON" >&2
