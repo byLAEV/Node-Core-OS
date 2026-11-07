@@ -129,3 +129,17 @@ Read the [complete country and area list by continent](COUNTRIES-AND-AREAS-BY-CO
 The country/area names, M49 codes, and ISO codes are based on the [UN Statistics Division M49 overview](https://unstats.un.org/unsd/methodology/m49/overview/). The CSV records the source and review date. The seven-continent navigation grouping is a project presentation layer; the original M49 region and subregion identifiers are preserved.
 
 **Important status distinction:** geographic enumeration is populated, but identity issuer and passport issuer research remains `NOT_RESEARCHED` for the listed records. The 248 entries do not mean 248 institutions have been identified, nor that 248 API connections exist. The next phase is institution-by-institution research using official sources.
+
+
+## Institutional research progress — Africa
+
+The first African issuer research batch is recorded in [AFRICA-ISSUER-RESEARCH.md](AFRICA-ISSUER-RESEARCH.md). It covers 11 jurisdictions and adds 22 issuer records (one identity-document authority record and one passport-authority record per jurisdiction) to the master [ISSUER-AND-API-REGISTER.csv](ISSUER-AND-API-REGISTER.csv).
+
+Africa has 60 M49 country-or-area records in the geographic baseline. Eleven have received this first issuer-research pass; 49 remain to be researched. This is research coverage only, not API or integration coverage.
+
+The strongest integration leads identified so far are:
+- Ethiopia's Fayda authentication API, with OAuth 2.0/OIDC and organization partner onboarding.
+- Ghana's NIA institutional identity-verification service, which requires formal onboarding and a service contract.
+- South Africa's DHA National Population Register verification service for government and private-sector clients; public API details still require confirmation.
+
+Continue country by country and preserve the difference between a public API, a restricted institutional service, a citizen application portal, and a contact channel.
