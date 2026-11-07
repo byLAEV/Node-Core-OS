@@ -187,3 +187,40 @@ The strongest integration leads identified so far are:
 - South Africa's DHA National Population Register verification service for government and private-sector clients; public API details still require confirmation.
 
 Continue country by country and preserve the difference between a public API, a restricted institutional service, a citizen application portal, and a contact channel.
+
+
+
+## Expanded institutional and lawful-pathway database
+
+The original `ISSUER-AND-API-REGISTER.csv` remains the source of truth for identity-document and passport issuer records. A second, broader register has now been added so the worldwide mapping can include institutions that register civil events, administer nationality and citizenship procedures, or provide asylum, refugee protection, and related services.
+
+### New working files
+
+- [Institution and Lawful Pathway Register](INSTITUTION-AND-PATHWAY-REGISTER.csv) — one record per institution or legally distinct institutional role, including mandate, authority level, jurisdiction, official service, API status, source evidence, and review notes.
+- [Institution and Pathway Research Template](INSTITUTION-AND-PATHWAY-RESEARCH-TEMPLATE.md) — reusable research record with mandatory distinctions and safeguards.
+- [Africa Institution and Pathway Research — Batch 01](AFRICA-INSTITUTION-AND-PATHWAY-RESEARCH-BATCH-01.md) — first expanded institutional batch across 11 African jurisdictions.
+
+### First expanded research batch
+
+The first batch contains **33 institution/role records across 11 African jurisdictions**: South Africa, Ghana, Nigeria, Kenya, Uganda, Rwanda, Ethiopia, Botswana, Zambia, Namibia, and the United Republic of Tanzania.
+
+It supplements the existing identity-document and passport research. The new records cover civil registration, nationality/citizenship administration, identity registration, immigration, asylum and refugee protection, and selected subnational civil-registration functions.
+
+This is a partial research batch, not full African or global coverage. Some roles are explicitly marked as pending primary-source confirmation or further legal review. The database must preserve those statuses instead of upgrading uncertain findings to confirmed facts.
+
+### Mandatory data distinctions
+
+- Civil/birth registration records a vital event; it does not automatically grant nationality.
+- A person without identity documents is not automatically stateless.
+- Nationality, immigration/residence status, refugee status, and possession of an identity document are separate legal concepts.
+- A protection agency, secretariat, or support organization is not automatically the legal decision-maker for nationality or refugee status.
+- An online application portal or certificate-verification form is not automatically an API.
+- No public personal case data, identity documents, biometrics, or personal identifiers belong in these mapping files or public distributed storage.
+
+### Next research priorities
+
+1. Continue the African country/area inventory beyond the first 11 jurisdictions.
+2. Resolve every record marked as pending primary-source confirmation or legal review.
+3. Identify competent statelessness determination or protection procedures where they exist; do not infer them from the existence of a refugee agency.
+4. Extend the same institutional categories to Asia, Europe, the Americas, and Oceania.
+5. Only after the institutional roles and procedures are reliably mapped, define the corresponding Node Core OS data schemas, APIs, and authorized connectors.
