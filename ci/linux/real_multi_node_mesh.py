@@ -426,7 +426,11 @@ def run_node(index: int, count: int, run_id: str) -> None:
         "record": record,
         "network_state_sha256": shared_state_sha256,
     }
-    write_private_json(sync_directory / "local-contribution.json", own_contribution)
+    local_contribution_path = sync_directory / "local-contribution.json"
+    write_private_json(local_contribution_path, own_contribution)
+    persisted_local = json.loads(local_contribution_path.read_text(encoding="utf-8"))
+    if persisted_local != own_contribution:
+        raise RuntimeError("This node's own contribution did not survive local persistence.")
 
     converged_origins = sorted(all_node_ids)
     convergence_body = {
