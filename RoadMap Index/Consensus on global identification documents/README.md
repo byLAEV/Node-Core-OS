@@ -319,6 +319,7 @@ The operational mapping structure and reusable templates are maintained in the [
 
 - [Global Mapping Strategy](GLOBAL-MAPPING/README.md)
 - [Continental and Geographic Region Index](GLOBAL-MAPPING/CONTINENT-INDEX.md)
+- [Complete Countries and Areas by Continent](GLOBAL-MAPPING/COUNTRIES-AND-AREAS-BY-CONTINENT.md)
 - [Country and Jurisdiction Register](GLOBAL-MAPPING/COUNTRY-AND-JURISDICTION-REGISTER.csv)
 - [Issuer and API Register](GLOBAL-MAPPING/ISSUER-AND-API-REGISTER.csv)
 - [Institution Research Template](GLOBAL-MAPPING/INSTITUTION-RESEARCH-TEMPLATE.md)
