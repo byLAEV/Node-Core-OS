@@ -293,3 +293,13 @@ The mapping deliberately distinguishes nationality certificates from nationality
 ## Algeria coverage update
 
 Algeria (M49 012) is now recorded as **PARTIALLY_MAPPED** in the [Mapping Coverage Register](MAPPING-COVERAGE-REGISTER.csv). The register contains 248 geographic rows; the presence of records does not mean a jurisdiction is complete. Missing functional categories remain NOT_RESEARCHED unless a source establishes that they do not apply. Algeria's current batch documents five institutional roles, two issuer/document records and three procedures; the BAPRA operational status and any state-led statelessness determination procedure remain open research items.
+
+## Global functional scope
+
+The map is designed as a shared worldwide knowledge infrastructure for multiple Node Core OS application domains, not only identity-document discovery. In addition to civil status and nationality, the scope includes international travel, residence and migration, education, work/professional access, relevant public services, and institutional/digital service discovery. Each domain uses the same geographic, jurisdictional and institutional identifiers while retaining its own legal rules, evidence requirements, dates and procedures.
+
+The map must answer practical questions for a node: which authority is competent, which procedure applies, what eligibility and evidence are required, what deadlines and appeals exist, and which official sources support the answer. Travel requirements are contextual and must be evaluated using nationality, travel-document type, residence, purpose, route and travel dates. Education and work requirements must account for qualification recognition, accreditation and regulated-profession rules where relevant.
+
+**Sequencing rule:** map jurisdictions, institutions, competences, procedures and authoritative sources first. Evaluate APIs and connectors only after the relevant institution and service have been mapped and lawful access conditions have been documented. A public portal is not automatically an API.
+
+See [Global Functional Domain Map](GLOBAL-FUNCTIONAL-DOMAIN-MAP.md) and [Global Mapping Mission and Requirements](GLOBAL-MAPPING-MISSION-AND-REQUIREMENTS.md).
