@@ -54,6 +54,12 @@ Decree No. 2025-1560 of 17 September 2025 sets the form, duration and issuance p
 
 These are refugee/stateless identity and travel documents. They are not Senegalese nationality, a Senegalese national identity card for citizens, or an ordinary Senegalese passport.
 
+## National ID service operational update (24 September 2026)
+
+The Ministry announced that renewal operations for CEDEAO biometric national identity cards issued between 4 October and 31 December 2016 would start on 25 September 2026. This follows its 5 February 2026 notice that national-ID production was temporarily suspended after a system incident. The September notice confirms a limited renewal cohort only; it does not establish that every new-card, replacement or correction service is fully restored. The current institutional record preserves this distinction.
+
+Source: https://interieur.gouv.sn/actualites/communiques/renouvellement-cartes-identite-biometriques-cedeao-demarrage-25-septembre-2026
+
 ## National ID and ordinary passport routes
 
 The Ministry's biometric national identity-card page says the national card is available to Senegalese citizens from age five. It identifies DAF as the service contact and says that a person whose nationality is in doubt must provide a certificate of nationality.
