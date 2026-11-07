@@ -132,6 +132,9 @@ EOF
   cat > "$NODE_CORE_DATA_DIR/bin/node-core-update" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
+if [[ -f "$NODE_CORE_DATA_DIR/app/update.sh" ]]; then
+  exec bash "$NODE_CORE_DATA_DIR/app/update.sh" "$@"
+fi
 exec bash "$NODE_CORE_DATA_DIR/app/installer/update.sh" "$@"
 EOF
   chmod +x "$NODE_CORE_DATA_DIR/bin/node-core-update"
