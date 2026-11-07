@@ -241,9 +241,9 @@ The mapping now has a versioned normalized target model and an initial lawful-pr
 
 ### Cross-references and current coverage
 
-The 26 national-ID, passport, and stateless-person document issuer rows now each link to an `institution_record_id`. The institution register now has 42 records across 12 African jurisdictions. Three additional institution records close issuer-directory gaps for Ghana's Passport Office, Ethiopia's National ID Program, and Tanzania's National Identification Authority.
+The 29 national-ID, passport, refugee and stateless-person document issuer rows now each link to an `institution_record_id`. The institution register now has 47 records across 13 African jurisdictions. Three additional institution records close issuer-directory gaps for Ghana's Passport Office, Ethiopia's National ID Program, and Tanzania's National Identification Authority.
 
-The lawful-procedure register currently contains eleven researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
+The lawful-procedure register currently contains thirteen researched starting points. It is intentionally incomplete: the decision-maker, appeals route, eligibility rules, and supporting evidence must be confirmed from current primary law before any case-routing logic is built.
 
 ### Controlled implementation sequence
 
