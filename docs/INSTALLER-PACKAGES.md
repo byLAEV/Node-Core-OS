@@ -1,37 +1,42 @@
-# Downloadable Node Core OS installer packages
+# Node Core OS byLAEV — single installer and updater contract
 
-The package workflow reads the semantic version from `VERSION` and builds archives from the exact checked-out commit. Every archive is accompanied by a SHA-512 checksum file.
+Every release publishes exactly two downloadable archives:
 
-## Package types
+1. `node-core-os-install-VERSION.tar.gz` — the only fresh installer.
+2. `node-core-os-update-VERSION.tar.gz` — the only self-contained updater.
 
-- **Fresh-install source package**: Node Core OS source and installer files for a clean installation.
-- **Existing-install updater package**: the protected updater plus the exact source archive and commit marker. It is for an existing installation and is not a fresh installer.
+No distribution/architecture variants, duplicate BIOS packages or separate checksum files are published. SHA-256 and SHA-512 digests are embedded in the GitHub Release notes.
 
-HashPaper and P2P Contracts are suspended and excluded from the installable Node Core OS package.
+## One installer
 
-## Release tags and assets
-
-The release workflow accepts both version tag forms: `vMAJOR.MINOR.PATCH` and `MAJOR.MINOR.PATCH`. The `VERSION` file must match the numeric version in the tag. Release publication attaches the source installer, updater, and their SHA-512 files to the GitHub Release.
-
-The Actions artifact is a temporary workflow artifact; it is not a substitute for the downloadable assets attached to the Release.
-
-## Verify and install
-
-Download the installer archive and its matching checksum from the [official releases page](https://github.com/byLAEV/Node-Core-OS/releases), then verify it before extraction:
+Extract the installer archive and run as the ordinary user:
 
 ```bash
-sha512sum --check node-core-os-installer-VERSION.tar.gz.sha512
-tar -xzf node-core-os-installer-VERSION.tar.gz
-cd node-core-os-installer-VERSION
+bash installer/install.sh
 ```
 
-From any supported Linux terminal, including native Termux, run the same command: `bash installer/install.sh`. The legacy `bash installer/termux-install.sh` remains a compatibility alias only. Run every installation and update command as the normal user, never as root or with `sudo`.
+This entry point detects GNU/Linux or native Termux and selects compatible dependencies internally. The legacy `installer/termux-install.sh` is a compatibility alias, not a separate download.
 
-## Platform and dependency boundaries
+## One updater
 
-- The GNU/Linux package workflow currently builds the bundled Kubo archive for Ubuntu 24.04 x86_64. Other supported GNU/Linux architectures may download their matching Kubo release during installation.
-- Python wheels in the package are built for the GNU/Linux packaging runner. They must not be installed into Termux/Android.
-- The unified installer detects native Termux and uses its native `python-cryptography` and `kubo` packages with a Python virtual environment that can access Termux system packages. This is environment-specific dependency selection inside the same Linux terminal installer.
-- Automated Termux compatibility tests run on GNU/Linux fixtures. They do not prove successful execution on a physical Android device; a real-device smoke test is still required.
+Extract the updater archive and run as the ordinary user:
 
-A successful package build proves packaging and the tests that ran in CI. It does not, by itself, prove installation on every operating system, architecture, or Android device.
+```bash
+bash update.sh
+```
+
+It contains the protected updater and exact matching source snapshot; application source download is not required.
+
+## Platform boundaries
+
+The same two archives are used across supported environments. Environment-specific dependency selection occurs inside the installer. The current bundled GNU/Linux Kubo and Python wheelhouse target Ubuntu 24.04 x86_64. Other supported GNU/Linux architectures may obtain matching Kubo dependencies from official upstream sources. Termux uses native Android ARM64 packages and must not install GNU/Linux wheels.
+
+CI does not replace a physical Termux/Android smoke test. Do not claim every distribution, architecture, shell or Android device has been individually tested.
+
+## Publication ownership
+
+Only `.github/workflows/bios-release-packages.yml` may package and publish a release. `.github/workflows/package-installers.yml` is validation-only and does not respond to version tags, upload artifacts or publish releases.
+
+The publishing workflow uploads exactly the two `.tar.gz` archives and verifies the Release contains exactly two assets. Checksums are in the Release notes, not separate downloadable files.
+
+HashPaper and P2P Contracts remain excluded from installable packages while suspended.
