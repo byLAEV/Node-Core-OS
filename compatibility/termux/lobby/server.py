@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only system inventory and local Lobby server for native Termux."""
+"""Native Termux Lobby with read-only diagnostics and verified package staging."""
 from __future__ import annotations
 import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -669,6 +669,8 @@ class Handler(BaseHTTPRequestHandler):
             })
 
     def require_local_authorization(self):
+        if not getattr(self.server, "is_https", False):
+            raise PermissionError("Package staging requires HTTPS on the local Lobby connection")
         expected_token = self.server.config.get("token", "")
         supplied_token = self.headers.get("X-Node-Core-Lobby-Token", "")
         if not isinstance(expected_token, str) or not expected_token or not hmac.compare_digest(
