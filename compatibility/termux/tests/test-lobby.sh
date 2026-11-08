@@ -50,6 +50,9 @@ assert "layout-manifest.json" in installer
 filesystem = (profile.parent.parent / "installer" / "lib" / "filesystem.sh").read_text(encoding="utf-8")
 assert "layout-manifest.json" in filesystem and "prepare_filesystem" in filesystem
 assert "NODE_CORE_LOBBY_REF" in bootstrap
+assert "/api/packages/execute" in server and "/api/packages/output" in server
+assert "start_official_installer" in server and "_verified_installer_root" in server
+assert "EJECUTAR INSTALADOR" in html and "pollInstallerJob" in html
 assert "installer/install.sh" not in bootstrap
 print("Python syntax, manifest and bootstrap contract: PASS")
 PY
