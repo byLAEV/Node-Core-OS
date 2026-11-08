@@ -136,6 +136,46 @@ def main() -> int:
                     assert authorized_result["status"] == "forbidden", authorized_result
                     assert "requires HTTPS" in authorized_result["message"], authorized_result
                 print("Session token injection, security headers and HTTPS-only package API authorization: PASS")
+
+                catalog_response = request_json(base_url + "/api/certificates", tls_expected)
+                assert catalog_response["catalog_version"] == "1.0.0", catalog_response
+                assert len(catalog_response["security_profiles"]) == 8, catalog_response
+                assert all(not item["installable_certificate"] for item in catalog_response["security_profiles"])
+                print("Read-only certificate catalog endpoint: PASS")
+
+                if tls_expected:
+                    renew = urllib.request.Request(
+                        base_url + "/api/certificates/action",
+                        data=json.dumps({"action": "tls_renew"}).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": base_url,
+                            "X-Node-Core-Lobby-Token": config["token"],
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(renew, timeout=15.0, context=context) as response:
+                        renewed = json.loads(response.read().decode("utf-8"))
+                    assert renewed["status"] == "success", renewed
+                    assert renewed["result"]["restart_required"] is True, renewed
+                    assert renewed["result"]["after"]["status"] in ("valid", "valid_self_signed"), renewed
+                    print("Authenticated Lobby TLS renewal and post-install validation: PASS")
+
+                    recover = urllib.request.Request(
+                        base_url + "/api/certificates/action",
+                        data=json.dumps({"action": "tls_recover"}).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": base_url,
+                            "X-Node-Core-Lobby-Token": config["token"],
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(recover, timeout=15.0, context=context) as response:
+                        recovered = json.loads(response.read().decode("utf-8"))
+                    assert recovered["status"] == "success", recovered
+                    assert recovered["result"]["after"]["status"] in ("valid", "valid_self_signed"), recovered
+                    print("Authenticated Lobby TLS backup recovery: PASS")
             finally:
                 stop(process)
 
