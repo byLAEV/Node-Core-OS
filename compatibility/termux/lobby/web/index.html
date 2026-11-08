@@ -30,6 +30,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <div class="grid">
 <button class="card" data-panel="termux"><h2>00 · Termux Commands</h2><small>Reveal approved Termux commands and execute them in a live local terminal window.</small></button>
 <button class="card" data-panel="report"><h2>Generate Report</h2><small>Generate, copy, download or share the official Termux status report in TXT or JSON.</small></button>
+<button class="card" data-panel="layout"><h2>Node Core OS Directory Manifest</h2><small>View the canonical directory structure that every standard installation must follow.</small></button>
 <button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Full report: environment, installation, packages, network and directories.</small></button>
 <button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites, missing tools and possible blockers.</small></button>
 <button class="card" data-panel="install"><h2>03 · Install Node Core OS</h2><small>Detect existing installation and review installation readiness.</small></button>
@@ -46,12 +47,23 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <script>
 const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
-const labels={termux:'00 · Termux Commands',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager'};
+const labels={termux:'00 · Termux Commands',layout:'Node Core OS · Canonical directory manifest',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager'};
 function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':'Generate report')));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function section(name,body){return '<details open><summary>'+esc(name)+'</summary>'+body+'</details>';}
+function renderLayoutManifest(d){
+let out="<p><b>Layout:</b> "+esc(d.layout_id)+" · <b>Schema:</b> "+esc(d.schema_version)+"</p>";
+out+="<p><b>Canonical root:</b> <code>"+esc(d.root.default)+"</code><br>"+esc(d.root.policy)+"</p>";
+out+="<h3>Directories</h3>";
+for(const item of d.directories||[])out+='<div class="result"><b>~/.node-core/'+esc(item.path)+'/</b><p>'+esc(item.purpose)+'</p><small>Owner: '+esc(item.provisioner)+' · Persistence: '+esc(item.persistence)+'</small></div>';
+out+="<h3>Managed files</h3>";for(const item of d.files||[])out+='<div class="result"><b>~/.node-core/'+esc(item.path)+'</b><p>'+esc(item.purpose)+'</p></div>';
+out+="<h3>External platform paths</h3>";for(const item of d.external_paths||[])out+='<div class="result"><b>'+esc(item.path)+'</b><p>'+esc(item.purpose)+'</p></div>';
+out+="<h3>Installation invariants</h3><ul>";for(const item of d.invariants||[])out+="<li>"+esc(item)+"</li>";out+="</ul>";
+out+='<p class="muted">This manifest is descriptive and versioned. The canonical installer creates directories from this file; updates must preserve persistent storage and IPFS data.</p>';
+return out;
+}
 function renderTree(node,depth=0){
 if(!node)return '';
 let out='<div class="result" style="padding-left:'+(depth*12)+'px">'+(node.type==='file'?'📄 ':'📁 ')+esc(node.name);
@@ -311,7 +323,9 @@ async function runSelected(){
 runBtn.disabled=true;runBtn.textContent='Checking…';
 content.textContent='Collecting fresh local and official release information. No device changes are made.';
 try{
-if(selected==='termux'){
+if(selected==='layout'){
+const r=await fetch('/api/layout/manifest',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d.status==='unavailable')throw new Error(d.message);content.innerHTML=renderLayoutManifest(d);
+}else if(selected==='termux'){
 const r=await fetch('/api/termux/commands',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
