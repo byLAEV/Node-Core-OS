@@ -64,8 +64,8 @@ assert "/api/terminal/start" in html and "/api/terminal/input" in html
 assert "/api/terminal/output" in html and "/api/terminal/close" in html
 assert "pty.openpty()" in server and "NODE_CORE_SERVER" in server
 assert 'NODE_CORE_SERVER = NODE_CORE_LOBBY_DIR / "server.py"' in server
-assert 'cd "$HOME/Node-Core-OS-Lobby" && python server.py' in server
-assert 'cd "$HOME/Node-Core-OS-Lobby" && python server.py' in html
+assert 'cd "$HOME/Node-Core-OS" && python main.py' in server
+assert 'cd "$HOME/Node-Core-OS" && python main.py' in html
 assert 'shell=False' in server and 'start_new_session=True' in server
 assert "newer than the latest official stable release" in server and "verified as " in server
 assert "installer/install.sh" not in bootstrap
