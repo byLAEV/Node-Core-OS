@@ -52,14 +52,6 @@ class CertificateManagerTests(unittest.TestCase):
         ).stdout
         raw = der[-32:]
         node_id = "sha256:" + hashlib.sha256(raw).hexdigest()
-        subprocess.run(
-            [
-                OPENSSL, "x509", "-in", str(cert), "-out", str(cert) + ".new",
-                "-signkey", str(private), "-days", "30",
-                "-extfile", "/dev/null",
-            ],
-            capture_output=True, text=True,
-        )
         # Re-issue with the exact NODE ID SAN using a minimal OpenSSL config.
         config = self.home / "peer.cnf"
         config.write_text(
@@ -113,7 +105,11 @@ class CertificateManagerTests(unittest.TestCase):
         self.assertEqual(inspected["node_id"], node_id)
         self.assertNotIn("PRIVATE KEY", inspected["certificate_pem"])
 
-        trusted = self.manager.trust_peer_certificate(pem, "test peer")
+        with self.assertRaisesRegex(CertificateManagerError, "fingerprint"):
+            self.manager.trust_peer_certificate(pem, "test peer", expected_fingerprint_sha256="0" * 64)
+        trusted = self.manager.trust_peer_certificate(
+            pem, "test peer", expected_fingerprint_sha256=inspected["fingerprint_sha256"]
+        )
         self.assertEqual(trusted["status"], "trusted")
         self.assertEqual(self.manager.list_trusted_peers()[0]["node_id"], node_id)
 
