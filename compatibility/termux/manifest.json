@@ -70,6 +70,11 @@
   },
   "verification_required": [
     "real-device-install",
+    "official-installer-execution",
+    "official-updater-execution",
+    "persistent-identity-storage-preservation",
+    "storage-and-kubo-ipfs-preservation",
+    "updater-rollback",
     "server-start-stop",
     "https-browser-warning",
     "http-loopback-fallback",
