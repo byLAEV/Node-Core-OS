@@ -6,7 +6,7 @@ import importlib.util
 import pathlib
 import unittest
 
-SERVER = pathlib.Path(__file__).with_name("server.py")
+SERVER = pathlib.Path(__file__).resolve().parents[1] / "lobby" / "server.py"
 SPEC = importlib.util.spec_from_file_location("node_core_lobby_server", SERVER)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
