@@ -13,4 +13,4 @@ Use JDK 17 and Android SDK 35:
 `gradle :app:assembleDebug`
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-The launcher pins source commit `87fde3334fffcf552996c857691fa6852e7dfc76`. Update that pin deliberately when publishing a new Lobby release. Verify downloaded artifacts and test on physical Android/Termux before distributing.
+The launcher pins source commit `31d0669886adc9c5858d24ca304d94188459fa85`. Update that pin deliberately when publishing a new Lobby release. Verify downloaded artifacts and test on physical Android/Termux before distributing.

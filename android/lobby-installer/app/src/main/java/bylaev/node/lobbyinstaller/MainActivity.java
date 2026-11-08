@@ -44,9 +44,9 @@ public final class MainActivity extends Activity {
             "if [ ! -f \"$HOME/.node-core/lobby/server.py\" ]; then " +
             "pkg install -y curl tar python; " +
             "tmp=\"$TMPDIR/node-core-lobby.tar.gz\"; " +
-            "curl -fL --retry 3 'https://github.com/byLAEV/Node-Core-OS/archive/87fde3334fffcf552996c857691fa6852e7dfc76.tar.gz' -o \"$tmp\"; " +
+            "curl -fL --retry 3 'https://github.com/byLAEV/Node-Core-OS/archive/31d0669886adc9c5858d24ca304d94188459fa85.tar.gz' -o \"$tmp\"; " +
             "mkdir -p \"$TMPDIR/node-core-lobby-src\"; tar -xzf \"$tmp\" -C \"$TMPDIR/node-core-lobby-src\"; " +
-            "src=\"$TMPDIR/node-core-lobby-src/Node-Core-OS-87fde3334fffcf552996c857691fa6852e7dfc76/termux-lobby\"; " +
+            "src=\"$TMPDIR/node-core-lobby-src/Node-Core-OS-31d0669886adc9c5858d24ca304d94188459fa85/termux-lobby\"; " +
             "bash \"$src/install.sh\"; " +
             "else node-lobby; fi"});
         intent.putExtra("com.termux.RUN_COMMAND_WORKDIR", "/data/data/com.termux/files/home");
