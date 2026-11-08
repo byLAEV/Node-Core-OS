@@ -11,8 +11,14 @@ import tarfile
 import json
 import unittest
 from unittest import mock
+import sys
 
-SERVER = pathlib.Path(__file__).resolve().parents[1] / "lobby" / "server.py"
+LOBBY_DIR = pathlib.Path(__file__).resolve().parents[1] / "lobby"
+# server.py imports certificate_manager as a sibling module. When loading
+# server.py via importlib from this test, Python does not automatically add
+# the sibling directory to sys.path as it does when launching server.py.
+sys.path.insert(0, str(LOBBY_DIR))
+SERVER = LOBBY_DIR / "server.py"
 SPEC = importlib.util.spec_from_file_location("node_core_lobby_server", SERVER)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
