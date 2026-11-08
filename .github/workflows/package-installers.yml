@@ -1,6 +1,7 @@
 name: Package Node Core OS installers
 
 on:
+  workflow_call:
   workflow_dispatch:
   pull_request:
     branches:
