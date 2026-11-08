@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Native Termux Lobby with read-only diagnostics and verified package staging."""
 from __future__ import annotations
-import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request, selectors, threading, time, tarfile
+import argparse, datetime as dt, hashlib, hmac, json, os, platform, pty, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request, selectors, threading, time, tarfile, fcntl, termios, struct, signal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from certificate_manager import CertificateManager, CertificateManagerError
 from pathlib import Path
@@ -672,6 +672,112 @@ COMMAND_OUTPUT_LIMIT = 65536
 COMMAND_TIMEOUT_SECONDS = 30
 COMMAND_JOB_LIMIT = 8
 
+# Interactive Node Core OS shell sessions. The executable is fixed; the user
+# receives a real PTY and can type in the shell after the Node Core menu exits.
+TERMINAL_SESSIONS = {}
+TERMINAL_LOCK = threading.Lock()
+TERMINAL_OUTPUT_LIMIT = 256 * 1024
+TERMINAL_SESSION_LIMIT = 2
+TERMINAL_IDLE_SECONDS = 1800
+NODE_CORE_LAUNCHER = HOME / ".node-core" / "bin" / "node-core"
+
+def _terminal_reader(session_id, master_fd, process):
+    try:
+        while True:
+            try:
+                chunk = os.read(master_fd, 4096)
+            except OSError:
+                break
+            if not chunk:
+                break
+            with TERMINAL_LOCK:
+                session = TERMINAL_SESSIONS.get(session_id)
+                if session is None:
+                    break
+                remaining = TERMINAL_OUTPUT_LIMIT - len(session["output"].encode("utf-8", errors="replace"))
+                if remaining > 0:
+                    encoded = chunk[:remaining]
+                    session["output"] += encoded.decode("utf-8", errors="replace")
+                else:
+                    session["output_truncated"] = True
+                session["last_activity"] = time.monotonic()
+                if process.poll() is not None:
+                    session["status"] = "exited"
+                    session["returncode"] = process.returncode
+    finally:
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+
+def start_node_core_terminal():
+    if not NODE_CORE_LAUNCHER.is_file() or not os.access(NODE_CORE_LAUNCHER, os.X_OK):
+        raise ValueError("Node Core OS launcher is not installed or is not executable: " + str(NODE_CORE_LAUNCHER))
+    with TERMINAL_LOCK:
+        active = sum(1 for item in TERMINAL_SESSIONS.values() if item["status"] == "running")
+        if active >= TERMINAL_SESSION_LIMIT:
+            raise ValueError("The maximum number of interactive terminal sessions is already running")
+    master_fd, slave_fd = pty.openpty()
+    try:
+        env = os.environ.copy()
+        env["TERM"] = "xterm-256color"
+        env["HOME"] = str(HOME)
+        env["NODE_CORE_LOBBY_TERMINAL"] = "1"
+        process = subprocess.Popen(
+            [shutil.which("bash") or "/data/data/com.termux/files/usr/bin/bash", "--noprofile", "--norc", "-i"],
+            cwd=str(HOME), stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+            env=env, close_fds=True, start_new_session=True, shell=False
+        )
+    except Exception:
+        os.close(master_fd)
+        os.close(slave_fd)
+        raise
+    os.close(slave_fd)
+    os.set_blocking(master_fd, False)
+    session_id = secrets.token_urlsafe(24)
+    with TERMINAL_LOCK:
+        TERMINAL_SESSIONS[session_id] = {
+            "session_id": session_id, "process": process, "master_fd": master_fd,
+            "output": "", "output_truncated": False, "status": "running",
+            "returncode": None, "started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "last_activity": time.monotonic()
+        }
+    thread = threading.Thread(target=_terminal_reader, args=(session_id, master_fd, process),
+                              name="node-core-pty-" + session_id[:8], daemon=True)
+    thread.start()
+    command = '"' + str(NODE_CORE_LAUNCHER) + '"'
+    os.write(master_fd, (command + "\\n").encode("utf-8"))
+    return {"session_id": session_id, "command": command, "status": "running",
+            "message": "Interactive PTY started. Type commands in the terminal input."}
+
+def terminal_session_action(session_id, action, value=""):
+    with TERMINAL_LOCK:
+        session = TERMINAL_SESSIONS.get(session_id)
+        if session is None:
+            raise ValueError("Interactive terminal session not found or expired")
+        process = session["process"]
+        master_fd = session["master_fd"]
+        if action == "output":
+            session["last_activity"] = time.monotonic()
+            return {"session_id": session_id, "output": session["output"],
+                    "output_truncated": session["output_truncated"],
+                    "status": "running" if process.poll() is None else "exited",
+                    "returncode": process.poll()}
+        if action == "input":
+            if process.poll() is not None:
+                raise ValueError("The interactive shell has exited")
+            if not isinstance(value, str) or len(value.encode("utf-8")) > 4096:
+                raise ValueError("Terminal input must be text no larger than 4096 bytes")
+            os.write(master_fd, value.encode("utf-8"))
+            session["last_activity"] = time.monotonic()
+            return {"session_id": session_id, "status": "running"}
+        if action == "close":
+            if process.poll() is None:
+                process.terminate()
+            session["status"] = "closed"
+            return {"session_id": session_id, "status": "closed"}
+        raise ValueError("Unknown terminal action")
+
 def termux_command_catalog():
     items = []
     for command_id, spec in TERMUX_COMMANDS.items():
@@ -1120,7 +1226,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output"):
+            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -1128,7 +1234,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "message": "Invalid request length"})
                 return
             length = int(length_text)
-            maximum_body = 128 * 1024 if path == "/api/certificates/action" else 4096
+            maximum_body = 128 * 1024 if path == "/api/certificates/action" else 8192
             if length < 1 or length > maximum_body:
                 self.send_json({"status": "error", "message": "Request body size is invalid"})
                 return
@@ -1139,7 +1245,7 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(payload, dict):
                 self.send_json({"status": "error", "message": "Request body must be a JSON object"})
                 return
-            if path == "/api/packages/execute":
+            if path == "/api/terminal/start":\n                result = start_node_core_terminal()\n                self.send_json({"status": "started", "terminal": result})\n                return\n            if path == "/api/terminal/input":\n                result = terminal_session_action(payload.get("session_id"), "input", payload.get("input", ""))\n                self.send_json({"status": "ok", "terminal": result})\n                return\n            if path == "/api/terminal/output":\n                result = terminal_session_action(payload.get("session_id"), "output")\n                self.send_json({"status": "ok", "terminal": result})\n                return\n            if path == "/api/terminal/close":\n                result = terminal_session_action(payload.get("session_id"), "close")\n                self.send_json({"status": "ok", "terminal": result})\n                return\n            if path == "/api/packages/execute":
                 result = start_official_installer(payload.get("kind"))
                 self.send_json({"status":"started", "job":result})
                 return
