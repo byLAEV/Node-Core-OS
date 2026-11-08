@@ -129,9 +129,13 @@ def main() -> int:
                 )
                 with urllib.request.urlopen(authorized, timeout=2.0, context=context) as response:
                     authorized_result = json.loads(response.read().decode("utf-8"))
-                assert authorized_result["status"] == "error", authorized_result
-                assert "Package kind" in authorized_result["message"], authorized_result
-                print("Session token injection, security headers and package API authorization: PASS")
+                if tls_expected:
+                    assert authorized_result["status"] == "error", authorized_result
+                    assert "Package kind" in authorized_result["message"], authorized_result
+                else:
+                    assert authorized_result["status"] == "forbidden", authorized_result
+                    assert "requires HTTPS" in authorized_result["message"], authorized_result
+                print("Session token injection, security headers and HTTPS-only package API authorization: PASS")
             finally:
                 stop(process)
 
