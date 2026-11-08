@@ -165,6 +165,63 @@ The Lobby diagnostics API is read-only. It is not an authenticated administrativ
 API and must not be extended with mutating actions without a separate security
 design, explicit authorization, audit logging, rollback and tests.
 
+## Security certificate catalog and Lobby manager
+
+The Lobby includes an independent certificate manager and a bundled canonical
+catalog at:
+
+- Installed manager: `~/.node-core/lobby/certificate_manager.py`
+- Installed catalog: `~/.node-core/lobby/certificates/catalog.json`
+- Runtime inventory: `GET /api/certificates`
+- Authenticated local actions: `POST /api/certificates/action`
+
+The catalog separates technical certificates from the eight Node Core OS
+security-evaluation/product profiles. The eight profiles are not eight
+installable X.509 certificates and are not represented as completed security
+guarantees.
+
+### Managed by the Lobby
+
+- Its own loopback TLS certificate and key: inspect, first install, renew,
+  repair, local backup and recovery.
+- The Node Core OS explicit peer-trust allowlist: inspect, inspect a public
+  peer PEM certificate, trust after out-of-band SHA-256 fingerprint
+  confirmation, and revoke.
+- Public metadata only: issuer/subject, validity, SAN, SHA-256 fingerprint,
+  NODE ID and status. Private key contents are never returned or logged.
+
+### Read-only / owned by Node Core OS core or an external PKI
+
+- The Node Core OS P2P identity certificate is validated against the existing
+  Ed25519 identity metadata. Lobby never creates, replaces, exports or rotates
+  that certificate or its private key.
+- Compact JWS identity credentials are a separate project-defined Ed25519
+  format, not X.509.
+- Public web TLS certificates must be issued by a Web PKI or an explicitly
+  managed private CA. The Lobby does not issue public certificates or claim
+  that a self-signed certificate is trusted by Android/browser certificate
+  stores.
+
+Peer trust changes update the local trust store atomically with mode 0600 and
+are effective after the Node Core OS P2P service reloads. Before trusting a
+peer, inspect its certificate and verify the exact SHA-256 fingerprint through
+an independent channel. Revocation is recorded locally; distributed revocation
+synchronization is not claimed by this Lobby milestone.
+
+Lobby TLS changes create protected local backups and require a Lobby restart
+to activate the replacement. A recovery operation is offered only when the
+backup certificate/key pair passes validation. Android user-CA installation
+is not automated: Android/browser trust requires explicit user/platform action.
+
+All mutating endpoints require HTTPS, the local session token and matching
+local Origin/Host checks. The manager never touches Node Core OS identity
+private keys, local storage contents, or the Kubo/IPFS repository. The Lobby
+remains independent and can run before Node Core OS is installed.
+
+The local action audit is stored at
+`~/.node-core/lobby/certificates/actions.jsonl`; it contains action names,
+timestamps and public fingerprints only.
+
 ## Android home-screen entry
 
 The installed Termux:Widget script is `~/.shortcuts/node-core-lobby`.
