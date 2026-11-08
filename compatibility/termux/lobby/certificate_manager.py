@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -161,6 +162,10 @@ class CertificateManager:
         }
         if not cert_exists and not key_exists:
             result["detail"] = "No active Lobby TLS certificate pair is present."
+            return result
+        if self.cert_path.is_symlink() or self.key_path.is_symlink():
+            result["status"] = "invalid"
+            result["detail"] = "Refusing to inspect certificate paths that are symlinks."
             return result
         if cert_exists != key_exists:
             result["status"] = "incomplete"
@@ -644,10 +649,17 @@ class CertificateManager:
             Path(temporary).unlink(missing_ok=True)
             raise
 
-    def trust_peer_certificate(self, pem_text: str, label: str = "", replace: bool = False) -> dict[str, Any]:
+    def trust_peer_certificate(
+        self, pem_text: str, label: str = "", replace: bool = False,
+        expected_fingerprint_sha256: str = "",
+    ) -> dict[str, Any]:
         if not isinstance(label, str) or len(label) > 128 or any(ord(char) < 32 for char in label):
             raise CertificateManagerError("Peer label must contain at most 128 printable characters")
         inspected = self.inspect_peer_certificate(pem_text)
+        if not isinstance(expected_fingerprint_sha256, str) or re.fullmatch(r"[0-9a-f]{64}", expected_fingerprint_sha256) is None:
+            raise CertificateManagerError("Confirm the inspected 64-character SHA-256 fingerprint before trusting this peer")
+        if not hmac.compare_digest(inspected["fingerprint_sha256"], expected_fingerprint_sha256):
+            raise CertificateManagerError("The confirmed SHA-256 fingerprint does not match the inspected peer certificate")
         data = self._load_peer_store()
         peers = data["peers"]
         node_id = inspected["node_id"]
@@ -700,6 +712,7 @@ class CertificateManager:
                 values.get("certificate_pem", ""),
                 values.get("label", ""),
                 values.get("replace") is True,
+                values.get("expected_fingerprint_sha256", ""),
             )
         if action == "peer_revoke":
             return self.revoke_peer(values.get("node_id", ""))
