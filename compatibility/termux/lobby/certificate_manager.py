@@ -478,18 +478,22 @@ class CertificateManager:
         if action == "tls_renew":
             self._copy_atomic(self.cert_path, backup_cert)
             self._copy_atomic(self.key_path, backup_key)
-        elif action == "tls_repair":
-            self._ensure_owned_directory(self.quarantine_dir)
-            stamp = str(int(time.time()))
-            for source, suffix in ((self.cert_path, ".crt"), (self.key_path, ".key")):
-                if source.exists():
-                    if source.is_symlink() or not source.is_file():
-                        raise CertificateManagerError("Refusing to move an unsafe existing TLS file")
-                    os.replace(source, self.quarantine_dir / ("localhost-" + stamp + suffix))
 
         cert_tmp = key_tmp = None
+        quarantined: list[tuple[Path, Path]] = []
         try:
+            # Generate and validate the replacement before moving any active file.
             cert_tmp, key_tmp, generated = self._generate_lobby_pair()
+            if action == "tls_repair":
+                self._ensure_owned_directory(self.quarantine_dir)
+                stamp = str(int(time.time()))
+                for source, suffix in ((self.cert_path, ".crt"), (self.key_path, ".key")):
+                    if source.exists():
+                        if source.is_symlink() or not source.is_file():
+                            raise CertificateManagerError("Refusing to move an unsafe existing TLS file")
+                        destination = self.quarantine_dir / ("localhost-" + stamp + suffix)
+                        os.replace(source, destination)
+                        quarantined.append((destination, source))
             os.replace(key_tmp, self.key_path)
             os.replace(cert_tmp, self.cert_path)
             after = self.inspect_lobby_tls()
@@ -515,6 +519,12 @@ class CertificateManager:
             elif action == "tls_install":
                 self.cert_path.unlink(missing_ok=True)
                 self.key_path.unlink(missing_ok=True)
+            elif action == "tls_repair":
+                self.cert_path.unlink(missing_ok=True)
+                self.key_path.unlink(missing_ok=True)
+                for saved, original in reversed(quarantined):
+                    if saved.exists():
+                        os.replace(saved, original)
             raise
         finally:
             if cert_tmp:
