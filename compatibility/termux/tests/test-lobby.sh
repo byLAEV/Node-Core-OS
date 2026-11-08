@@ -5,8 +5,10 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 PROFILE="$ROOT/compatibility/termux"
 
 printf '[TEST] Bash syntax\n'
+bash -n "$PROFILE/bootstrap-lobby.sh"
 bash -n "$PROFILE/install-lobby.sh"
 bash -n "$PROFILE/lobby/launcher.sh"
+bash "$PROFILE/bootstrap-lobby.sh" --help >/dev/null
 
 printf '[TEST] Python syntax and manifest JSON\n'
 python - "$PROFILE" <<'PY'
@@ -21,7 +23,12 @@ manifest = json.loads((profile / "manifest.json").read_text(encoding="utf-8"))
 assert manifest["lobby"]["bind"] == "127.0.0.1"
 assert manifest["lobby"]["port"] == 8765
 assert manifest["lobby"]["transport_preference"] == ["https", "http-loopback"]
-print("Python syntax and manifest: PASS")
+bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
+assert "codeload.github.com" in bootstrap
+assert "compatibility/termux/install-lobby.sh" in bootstrap
+assert "NODE_CORE_LOBBY_REF" in bootstrap
+assert "installer/install.sh" not in bootstrap
+print("Python syntax, manifest and bootstrap contract: PASS")
 PY
 
 printf '[TEST] Local HTTPS/HTTP server integration\n'
