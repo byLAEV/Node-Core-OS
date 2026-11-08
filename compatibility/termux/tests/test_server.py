@@ -19,6 +19,8 @@ import urllib.error
 import urllib.request
 
 SERVER = pathlib.Path(sys.argv[1]).resolve()
+LOBBY_DIR = SERVER.parent
+sys.path.insert(0, str(LOBBY_DIR))
 PORT = 18765
 
 
