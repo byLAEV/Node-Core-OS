@@ -272,22 +272,53 @@ def load_config():
     return data
 
 def ensure_certificate():
-    if CERT.exists() and KEY.exists():
-        return True
+    """Return True only when a usable localhost certificate/key pair exists."""
     openssl = shutil.which("openssl")
     if not openssl:
         return False
-    result = subprocess.run([
-        openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
-        "-keyout", str(KEY), "-out", str(CERT), "-days", "365",
-        "-subj", "/CN=localhost",
-        "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
-    if result.returncode == 0:
-        KEY.chmod(0o600)
-        CERT.chmod(0o600)
+
+    if CERT.is_file() and KEY.is_file():
+        valid = subprocess.run(
+            [openssl, "x509", "-in", str(CERT), "-noout", "-checkend", "0"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
+        )
+        if valid.returncode == 0:
+            try:
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                context.load_cert_chain(str(CERT), str(KEY))
+                return True
+            except (OSError, ssl.SSLError):
+                pass
+
+    # Generate into temporary files first. Do not leave a partial certificate
+    # pair at the active paths if OpenSSL fails.
+    temp_cert = STATE / ("localhost.crt.new." + str(os.getpid()))
+    temp_key = STATE / ("localhost.key.new." + str(os.getpid()))
+    try:
+        result = subprocess.run([
+            openssl, "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+            "-keyout", str(temp_key), "-out", str(temp_cert), "-days", "365",
+            "-subj", "/CN=localhost",
+            "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+           check=False, timeout=45)
+        if result.returncode != 0 or not temp_cert.is_file() or not temp_key.is_file():
+            return False
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(str(temp_cert), str(temp_key))
+        temp_key.chmod(0o600)
+        temp_cert.chmod(0o600)
+        os.replace(temp_key, KEY)
+        os.replace(temp_cert, CERT)
         return True
-    return False
+    except (OSError, ssl.SSLError, subprocess.TimeoutExpired):
+        return False
+    finally:
+        for path in (temp_cert, temp_key):
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "NodeCoreLobby/0.3"
@@ -345,9 +376,13 @@ def main():
     httpd.daemon_threads = True
     use_https = bool(cfg.get("https")) and ensure_certificate()
     if use_https:
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(str(CERT), str(KEY))
-        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+        try:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(str(CERT), str(KEY))
+            httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+        except (OSError, ssl.SSLError) as exc:
+            print(f"TLS setup failed; using HTTP loopback fallback: {exc}", file=sys.stderr, flush=True)
+            use_https = False
     httpd.is_https = use_https
     scheme = "https" if use_https else "http"
     print(f"NODE CORE OS LOBBY listening on {scheme}://127.0.0.1:{cfg['port']}/", flush=True)
