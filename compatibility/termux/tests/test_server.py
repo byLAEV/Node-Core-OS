@@ -55,6 +55,20 @@ def main() -> int:
         home = pathlib.Path(temp)
         state = home / ".node-core" / "lobby"
         state.mkdir(parents=True)
+
+        # Mirror the official install-lobby.sh contract: the canonical layout
+        # manifest is copied into the private Lobby state directory. The
+        # server intentionally does not fall back to a source-tree path.
+        manifests = state / "manifests"
+        manifests.mkdir(mode=0o700)
+        repository_root = SERVER.parents[3]
+        canonical_layout = repository_root / "installer" / "layout-manifest.json"
+        if not canonical_layout.is_file():
+            raise SystemExit("Canonical installer layout manifest is missing: " + str(canonical_layout))
+        installed_layout = manifests / "layout-manifest.json"
+        shutil.copy2(canonical_layout, installed_layout)
+        installed_layout.chmod(0o600)
+
         config = {
             "bind": "127.0.0.1",
             "port": PORT,
