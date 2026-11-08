@@ -231,13 +231,23 @@ shows its exact invocation and an **EXECUTE** control. Executing a command
 opens an in-page terminal window that polls and displays the actual local
 Termux process output, exit status and timeout result.
 
-The first catalog is intentionally small and read-only:
+The starter catalog is grouped by environment area and contains only
+read-oriented commands:
 
-- `pwd` — current working directory.
-- `whoami` — effective Termux user.
-- `uname -a` — kernel and architecture.
-- The Lobby's Python interpreter with `--version`.
-- `pkg --version` — Termux package manager version.
+- **Basic identity:** `pwd`, `whoami`, `id`.
+- **Files and directories:** `ls -la` (home directory names and metadata only).
+- **System information:** `uname -a`, `date`, `ps -A`.
+- **Android information:** `getprop ro.build.version.release` and
+  `getprop ro.product.cpu.abi`.
+- **Storage:** `df -h`.
+- **Termux packages:** `pkg --version` and `pkg list-installed`.
+- **Runtime:** the Lobby's Python interpreter with `--version`.
+
+The catalog labels each command with a short explanation and groups it in the
+Lobby by category. Process and package listings may be truncated at the output
+limit. Commands such as `pkg install`, `apt upgrade`, `rm`, `chmod`,
+`mv`, `cp`, `termux-setup-storage` and `su` are intentionally excluded
+from this introductory read-only catalog.
 
 Security boundary:
 
