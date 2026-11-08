@@ -46,6 +46,11 @@ for endpoint in ("/api/termux/execute", "/api/termux/output"):
     assert endpoint in html, f"Lobby UI is missing endpoint call: {endpoint}"
     assert f'if path == "{endpoint}"' in server, f"Lobby server is missing endpoint handler: {endpoint}"
 assert "TERMUX_COMMANDS" in server and "shell=False" in server
+assert "BitcoinIdentityGate" in server
+assert "bitcoin_identity.py" in installer
+assert manifest["lobby"]["bitcoin_identity"]["enabled"] is True
+for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/cancel"):
+    assert endpoint in server, f"Missing Bitcoin identity endpoint: {endpoint}"
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
 assert "compatibility/termux/install-lobby.sh" in bootstrap
