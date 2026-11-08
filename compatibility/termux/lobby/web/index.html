@@ -62,14 +62,23 @@ return out;
 }
 
 function renderTermuxCommands(data){
-let out='<p>Reveal the available commands. Each operation below is a fixed, read-only command executed locally by Termux. No arbitrary shell input is accepted.</p>';
+const groups=new Map();
 for(const item of data.commands||[]){
+const category=item.category||'Basic commands';
+if(!groups.has(category))groups.set(category,[]);
+groups.get(category).push(item);
+}
+let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p>';
+for(const [category,items] of groups){
+out+='<h3>'+esc(category)+'</h3>';
+for(const item of items){
 out+='<div class="result"><b>'+esc(item.label)+'</b><p>'+esc(item.description)+'</p><pre><code>'+esc(item.command)+'</code></pre>';
 out+='<div class="actions"><button class="action" data-termux-execute="'+esc(item.id)+'" '+(item.available?'':'disabled')+'><span aria-hidden="true">▶</span> EXECUTE</button>';
 if(!item.available)out+='<small class="warn">Command unavailable in this Termux installation</small>';
 out+='</div></div>';
 }
-out+='<p class="muted">Execution limits: 30 seconds per command, 64 KiB output per command, maximum two simultaneous commands. No root privileges and no shell interpreter.</p>';
+}
+out+='<p class="muted">Execution limits: 30 seconds per command, 64 KiB output per command, maximum two simultaneous commands. No root privileges and no shell interpreter. Package listings and process lists may be truncated by the output limit.</p>';
 return out;
 }
 async function executeTermuxCommand(commandId,button){
