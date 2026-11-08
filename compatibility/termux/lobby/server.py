@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse, datetime as dt, hashlib, hmac, json, os, platform, pty, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request, selectors, threading, time, tarfile, fcntl, termios, struct, signal
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from certificate_manager import CertificateManager, CertificateManagerError
+from bitcoin_identity import BitcoinIdentityGate, BitcoinIdentityError
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -14,6 +15,7 @@ CERT = STATE / "localhost.crt"
 KEY = STATE / "localhost.key"
 WEB = Path(__file__).resolve().parent / "web"
 LAYOUT_MANIFEST = STATE / "manifests" / "layout-manifest.json"
+BITCOIN_IDENTITY = BitcoinIdentityGate(STATE)
 PACKAGE_LIMIT = 400
 TREE_LIMIT = 180
 SENSITIVE = re.compile(r"(?:^\.ssh$|^\.gnupg$|^keys?$|private|secret|credential|wallet|token|identity|keystore|\.pem$|\.key$|id_ed25519|id_rsa)", re.I)
@@ -1200,6 +1202,11 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/api/packages/status":
             self.send_json(package_receipts())
+        elif path == "/api/identity/bitcoin":
+            try:
+                self.send_json(BITCOIN_IDENTITY.public_status())
+            except BitcoinIdentityError as exc:
+                self.send_json({"status": "unavailable", "message": str(exc)[:240]})
         elif path == "/api/certificates":
             try:
                 self.send_json(CertificateManager().inventory())
@@ -1242,7 +1249,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close"):
+            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/cancel"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -1260,6 +1267,23 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 self.send_json({"status": "error", "message": "Request body must be a JSON object"})
+                return
+            if path == "/api/identity/bitcoin/challenge":
+                result = BITCOIN_IDENTITY.issue_challenge(payload.get("full_name"))
+                self.send_json({"status": "challenge_issued", "challenge": result})
+                return
+            if path == "/api/identity/bitcoin/verify":
+                result = BITCOIN_IDENTITY.verify_and_stage(
+                    challenge_id=payload.get("challenge_id"),
+                    public_key_hex=payload.get("public_key_hex"),
+                    address=payload.get("address"),
+                    signature_hex=payload.get("signature_hex"),
+                )
+                self.send_json({"status": "verified", "identity": result})
+                return
+            if path == "/api/identity/bitcoin/cancel":
+                BITCOIN_IDENTITY.cancel_pending()
+                self.send_json({"status": "cancelled"})
                 return
             if path == "/api/terminal/start":
                 result = start_node_core_terminal()
