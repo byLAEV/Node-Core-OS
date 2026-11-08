@@ -14,6 +14,10 @@ header{padding:12px 0 24px;border-bottom:1px solid #35404b}h1{font-size:2rem;let
 .card:active{transform:scale(.99);background:#202b35}.card:focus-visible,button:focus-visible{outline:2px solid #8dceff;outline-offset:3px}
 h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2;font-size:.9rem}
 .status{margin-top:20px;padding:14px;border-radius:12px;background:#192b25;color:#9ce2b8}
+.launch-area{margin:18px 0 8px;padding:16px;border:1px solid #52718a;border-radius:14px;background:#16222c}
+.launch-button{display:block;width:100%;border:1px solid #8dceff;border-radius:12px;padding:16px 18px;background:#203d52;color:#eff8ff;font-size:1rem;font-weight:800;letter-spacing:.04em;cursor:pointer}
+.launch-button:disabled{opacity:.65;cursor:wait}
+.launch-note{margin:8px 2px 0;color:#aab7c2;font-size:.88rem}
 .panel{display:none;margin-top:18px;padding:18px;border:1px solid #35404b;border-radius:14px;background:#151c23}
 .panel.open{display:block}.panel h2{font-size:1.2rem}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 button.action{border:1px solid #52718a;border-radius:9px;padding:10px 14px;background:#203345;color:#eaf5ff;font-weight:650}
@@ -26,6 +30,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 </style></head>
 <body>
 <header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
+<div class="launch-area"><button id="open-node-core-top" class="launch-button" type="button" aria-label="Open Node Core OS in an interactive terminal">▶ OPEN NODE CORE OS</button><p class="launch-note">Start Node Core OS directly in a live Termux terminal. Output is displayed here and keyboard input remains available.</p></div>
 <p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels can stage, verify and explicitly execute the official Node Core OS installer or updater.</p>
 <div class="grid">
 <button class="card" data-panel="termux"><h2>00 · Termux Commands</h2><small>Reveal approved Termux commands and execute them in a live local terminal window.</small></button>
@@ -51,6 +56,8 @@ const labels={termux:'00 · Termux Commands',layout:'Node Core OS · Canonical d
 function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':'Generate report')));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
+const openNodeCoreTopButton=document.getElementById('open-node-core-top');
+if(openNodeCoreTopButton)openNodeCoreTopButton.addEventListener('click',()=>openNodeCoreTerminal(openNodeCoreTopButton));
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function section(name,body){return '<details open><summary>'+esc(name)+'</summary>'+body+'</details>';}
 function renderLayoutManifest(d){
@@ -81,7 +88,7 @@ const category=item.category||'Basic commands';
 if(!groups.has(category))groups.set(category,[]);
 groups.get(category).push(item);
 }
-let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Open Node Core OS using the Termux command in an interactive terminal with live output and keyboard input.</p><pre><code>cd "$HOME/Node-Core-OS" && python main.py</code></pre><div class="actions"><button class="action" id="open-node-core"><span aria-hidden="true">▶</span> OPEN NODE CORE OS</button></div></div>';
+let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Launch it with the OPEN NODE CORE OS button at the top of this interface. The command runs in an interactive local PTY.</p><pre><code>cd "$HOME/Node-Core-OS" && python main.py</code></pre></div>';
 for(const [category,items] of groups){
 out+='<h3>'+esc(category)+'</h3>';
 for(const item of items){
@@ -120,12 +127,22 @@ button.disabled=false;
 }
 }
 async function openNodeCoreTerminal(button){
-if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token unavailable. Reload the Lobby.</p>');return;}
+const panelActions=runBtn.parentElement;
+selected='terminal';title.textContent='NODE CORE OS · INTERACTIVE TERMINAL';content.replaceChildren();panel.classList.add('open');
+if(panelActions)panelActions.style.display='none';
+if(!window.NODE_CORE_LOBBY_SESSION){
+const message=document.createElement('p');message.className='bad';message.textContent='Local session token unavailable. Reload the Lobby.';content.appendChild(message);
+if(panelActions)panelActions.style.display='';
+return;
+}
 button.disabled=true;
+const notice=document.createElement('p');notice.className='muted';notice.textContent='Connecting to the Node Core OS interactive terminal…';content.appendChild(notice);
+panel.scrollIntoView({behavior:'smooth',block:'start'});
 try{
 const response=await fetch('/api/terminal/start',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({}),cache:'no-store'});
 const data=await response.json();
 if(!response.ok||data.status!=='started')throw new Error(data.message||'Unable to open Node Core OS terminal');
+content.replaceChildren();
 const terminal=document.createElement('section');
 terminal.className='panel open';terminal.style.display='block';
 terminal.innerHTML='<h2>NODE CORE OS · INTERACTIVE TERMINAL</h2><p class="muted">Starting interactive shell and Node Core OS…</p><pre class="termux-output" style="background:#080d11;padding:14px;border:1px solid #35404b;border-radius:8px;min-height:180px;max-height:55vh;overflow:auto;white-space:pre-wrap"></pre><form class="terminal-form"><label for="node-core-terminal-input">Terminal input</label><input id="node-core-terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a command and press Enter"><div class="actions"><button class="action" type="submit">SEND / ENTER</button><button class="action secondary terminal-close" type="button">CLOSE TERMINAL</button></div></form><p class="muted">This is a real local PTY session. The requested command runs in the Termux environment.</p>';
@@ -140,7 +157,7 @@ catch(error){state.textContent='Input error: '+error.message;state.className='ba
 });
 terminal.querySelector('.terminal-close').addEventListener('click',async()=>{
 closed=true;try{await fetch('/api/terminal/close',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id}),cache:'no-store'});}catch(_){}
-terminal.remove();button.disabled=false;
+terminal.remove();panel.classList.remove('open');if(panelActions)panelActions.style.display='';button.disabled=false;
 });
 async function poll(){
 if(closed||!terminal.isConnected)return;
@@ -155,7 +172,7 @@ else {input.disabled=true;terminal.querySelector('button[type=submit]').disabled
 }catch(error){state.textContent='Terminal connection error: '+error.message;state.className='bad';button.disabled=false;}
 }
 input.focus();poll();
-}catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Unable to open Node Core OS: '+esc(error.message)+'</p>');button.disabled=false;}
+}catch(error){content.replaceChildren();const errorNotice=document.createElement('p');errorNotice.className='bad';errorNotice.textContent='Unable to open Node Core OS: '+error.message;content.appendChild(errorNotice);if(panelActions)panelActions.style.display='';button.disabled=false;}
 }
 async function pollTermuxJob(jobId,terminal,state,output){
 try{
@@ -417,7 +434,6 @@ if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 content.innerHTML=renderTermuxCommands(d);
 content.querySelectorAll('[data-termux-execute]').forEach(button=>button.addEventListener('click',()=>executeTermuxCommand(button.dataset.termuxExecute,button)));
-const openNodeButton=content.querySelector('#open-node-core');if(openNodeButton)openNodeButton.addEventListener('click',()=>openNodeCoreTerminal(openNodeButton));
 }else if(selected==='certificates'){
 const r=await fetch('/api/certificates',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
