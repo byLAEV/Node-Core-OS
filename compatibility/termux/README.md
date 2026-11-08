@@ -80,6 +80,12 @@ server reports and uses HTTP on loopback only.
 - Diagnostics: `/api/diagnostics`
 - Full read-only report: `/api/report`
 
+## Canonical Node Core OS directory manifest
+
+The canonical source is `installer/layout-manifest.json`. It defines the relative directory and file layout rooted at `~/.node-core/`, the component responsible for each directory, persistence rules and invariants. The standard installer reads this manifest to create the runtime directories; the Lobby installer copies the same file to `~/.node-core/lobby/manifests/layout-manifest.json` and exposes it at `GET /api/layout/manifest`. The Lobby home screen includes **Node Core OS Directory Manifest** to display the exact contract.
+
+The manifest is descriptive and versioned; it does not claim that every listed directory already exists. The installer creates the declared directories. The Lobby has its own independently managed subtree and may be installed before Node Core OS. The updater must preserve `storage/`, `ipfs/`, `config.json`, identity and persistent runtime data. The optional systemd user service unit is outside `~/.node-core` as specified in the manifest.
+
 ## Generate Report — official TXT / JSON export
 
 The Lobby home screen provides a dedicated **Generate Report** action. It requests a fresh snapshot from the read-only `/api/report` endpoint and presents compatibility checks, Termux/Android environment, Node Core OS detection, tools, installed packages, network/local services, directory structure and privacy limits.
