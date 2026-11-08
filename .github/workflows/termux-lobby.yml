@@ -1,0 +1,36 @@
+name: Termux Lobby validation
+
+on:
+  pull_request:
+    paths:
+      - "compatibility/termux/**"
+      - ".github/workflows/termux-lobby.yml"
+  push:
+    branches:
+      - "feature/termux-lobby-installer-v1"
+    paths:
+      - "compatibility/termux/**"
+      - ".github/workflows/termux-lobby.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lobby-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependency
+        run: sudo apt-get update && sudo apt-get install -y openssl
+
+      - name: Run Termux Lobby static and server integration tests
+        run: bash compatibility/termux/tests/test-lobby.sh
