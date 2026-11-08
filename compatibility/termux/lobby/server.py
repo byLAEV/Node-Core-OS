@@ -1248,15 +1248,19 @@ class Handler(BaseHTTPRequestHandler):
                 result = start_node_core_terminal()
                 self.send_json({"status": "started", "terminal": result})
                 return
-            if path == "/api/terminal/input":\n                result = terminal_session_action(payload.get("session_id"), "input", payload.get("input", ""))
+            if path == "/api/terminal/input":
+                result = terminal_session_action(payload.get("session_id"), "input", payload.get("input", ""))
                 self.send_json({"status": "ok", "terminal": result})
                 return
-            if path == "/api/terminal/output":\n                result = terminal_session_action(payload.get("session_id"), "output")
+            if path == "/api/terminal/output":
+                result = terminal_session_action(payload.get("session_id"), "output")
                 self.send_json({"status": "ok", "terminal": result})
                 return
-            if path == "/api/terminal/close":\n                result = terminal_session_action(payload.get("session_id"), "close")
+            if path == "/api/terminal/close":
+                result = terminal_session_action(payload.get("session_id"), "close")
                 self.send_json({"status": "ok", "terminal": result})
-                return\n            if path == "/api/packages/execute":
+                return
+            if path == "/api/packages/execute":
                 result = start_official_installer(payload.get("kind"))
                 self.send_json({"status":"started", "job":result})
                 return
