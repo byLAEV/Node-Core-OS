@@ -843,24 +843,33 @@ def _append_install_output(job_id, chunk):
         job["output"] += encoded.decode("utf-8", errors="replace")
 
 def _verified_installer_root(kind):
+    release = latest_stable_release()
+    if release.get("status") != "verified_metadata":
+        raise ValueError("The current official stable release could not be verified; refusing installer execution.")
+    expected_name = "node-core-os-" + kind + "-" + release["version"] + ".tar.gz"
     receipt_data = package_receipts().get("packages", [])
-    expected_prefix = "node-core-os-" + kind + "-"
-    matches = [item for item in receipt_data if item.get("asset_name", "").startswith(expected_prefix)]
-    if not matches:
-        raise ValueError("No SHA-256-verified official package is staged. Download and verify it first.")
-    receipt = matches[-1]
+    matches = [item for item in receipt_data if item.get("asset_name") == expected_name and item.get("kind") == kind and item.get("version") == release["version"]]
+    if len(matches) != 1:
+        raise ValueError("The current official stable package is not staged. Download and verify it first.")
+    receipt = matches[0]
     package_dir = ensure_package_directory()
-    archive_path = package_dir / receipt["asset_name"]
-    receipt_path = package_dir / (receipt["asset_name"] + ".json")
+    archive_path = package_dir / expected_name
+    receipt_path = package_dir / (expected_name + ".json")
     if archive_path.is_symlink() or receipt_path.is_symlink() or not archive_path.is_file() or not receipt_path.is_file():
         raise ValueError("Verified package or receipt is missing or unsafe.")
     receipt_json = json.loads(receipt_path.read_text(encoding="utf-8"))
     expected = receipt_json.get("actual_sha256")
+    official_digest = release.get("assets", {}).get(kind, {}).get("sha256")
+    if (receipt_json.get("tag") != release.get("tag") or
+            receipt_json.get("version") != release.get("version") or
+            receipt_json.get("expected_sha256") != official_digest or
+            not isinstance(official_digest, str)):
+        raise ValueError("Staged package receipt does not match the current official stable release.")
     digest = hashlib.sha256()
     with archive_path.open("rb") as stream:
         for chunk in iter(lambda: stream.read(PACKAGE_CHUNK_BYTES), b""):
             digest.update(chunk)
-    if not isinstance(expected, str) or not hmac.compare_digest(digest.hexdigest(), expected):
+    if not isinstance(expected, str) or not hmac.compare_digest(digest.hexdigest(), expected) or not hmac.compare_digest(expected, official_digest):
         raise ValueError("Staged official package changed after verification; download it again.")
     extract_base = STATE / "installer-work"
     if extract_base.is_symlink():
