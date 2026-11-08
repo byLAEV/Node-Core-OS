@@ -202,6 +202,7 @@ return false;
 runBtn.addEventListener('click',runSelected);
 window.addEventListener('pageshow',()=>{checkLobbyConnection();});
 window.addEventListener('online',()=>{checkLobbyConnection();});
+checkLobbyConnection();
 async function runSelected(){
 runBtn.disabled=true;runBtn.textContent='Checking…';
 content.textContent='Collecting fresh local and official release information. No device changes are made.';
