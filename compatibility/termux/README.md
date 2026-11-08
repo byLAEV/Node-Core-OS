@@ -84,6 +84,29 @@ A self-signed certificate encrypts the local connection but is not automatically
 trusted by Android browsers. A browser warning may appear. The `curl -k` option
 is for controlled local testing only; it does not establish certificate trust.
 
+## Stable Release discovery in the Lobby
+
+The Lobby exposes a read-only `GET /api/releases/latest` endpoint. It queries
+GitHub's canonical latest-release API and validates:
+
+- the release is published, not a draft and not a prerelease;
+- the tag is a stable `vMAJOR.MINOR.PATCH` version;
+- both official release archives are present;
+- each asset has a valid GitHub SHA-256 digest and the exact canonical
+  `byLAEV/Node-Core-OS` download URL;
+- the SHA-256 values in the release notes match GitHub's asset digest metadata;
+- the release page URL is the canonical official GitHub URL.
+
+The install and update dashboard panels show this release information and the
+installed version, if detected. If GitHub is unavailable or metadata is invalid,
+the Lobby reports that verification is unavailable and does not infer a version.
+
+**This stage validates release metadata only.** It does not download archives,
+re-hash package bytes, execute an installer, update Node Core OS, or ask for
+private keys. Those actions require a separately reviewed local operation API,
+explicit user authorization, archive staging, SHA-256 verification against the
+release metadata, compatibility checks, rollback, and end-to-end tests.
+
 ## Node Core OS installation and update boundary
 
 The Lobby installer installs only the Lobby. It is separate from the canonical
