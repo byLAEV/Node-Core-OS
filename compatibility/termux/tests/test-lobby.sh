@@ -37,5 +37,6 @@ PY
 printf '[TEST] Local HTTPS/HTTP server integration\n'
 python "$PROFILE/tests/test_server.py" "$PROFILE/lobby/server.py"
 python "$PROFILE/tests/test_release_metadata.py"
+python "$PROFILE/tests/test_certificate_manager.py"
 
 printf '\nAll Termux Lobby checks passed.\n'
