@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only system inventory and local Lobby server for native Termux."""
 from __future__ import annotations
-import argparse, datetime as dt, json, os, platform, re, shutil, socket, ssl, subprocess, sys
+import argparse, datetime as dt, json, os, platform, re, shutil, socket, ssl, subprocess, sys, urllib.error, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -258,6 +258,96 @@ def diagnostics():
         }
     }
 
+GITHUB_RELEASE_API = "https://api.github.com/repos/byLAEV/Node-Core-OS/releases/latest"
+RELEASE_TIMEOUT = 12.0
+RELEASE_MAX_BYTES = 1024 * 1024
+
+def parse_latest_stable_release(payload):
+    """Validate the canonical latest stable release and its two package digests."""
+    if not isinstance(payload, dict):
+        raise ValueError("GitHub release response must be an object")
+    if payload.get("draft") is not False or payload.get("prerelease") is not False:
+        raise ValueError("GitHub latest release is not a published stable release")
+    tag = payload.get("tag_name")
+    match = re.fullmatch(r"v([0-9]+\.[0-9]+\.[0-9]+)", tag or "")
+    if not match:
+        raise ValueError("Release tag is not a stable semantic version")
+    version = match.group(1)
+    assets_payload = payload.get("assets")
+    if not isinstance(assets_payload, list):
+        raise ValueError("Release assets are missing")
+    expected = {
+        f"node-core-os-install-{version}.tar.gz": "install",
+        f"node-core-os-update-{version}.tar.gz": "update",
+    }
+    assets = {}
+    for item in assets_payload:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if name not in expected:
+            continue
+        digest = item.get("digest")
+        digest_match = re.fullmatch(r"sha256:([0-9a-f]{64})", digest or "")
+        url = item.get("browser_download_url")
+        size = item.get("size")
+        if not digest_match or not isinstance(url, str) or not url.startswith(
+            "https://github.com/byLAEV/Node-Core-OS/releases/download/"
+        ):
+            raise ValueError(f"Release asset metadata is invalid: {name}")
+        if not isinstance(size, int) or size <= 0:
+            raise ValueError(f"Release asset size is invalid: {name}")
+        assets[expected[name]] = {
+            "name": name, "url": url, "sha256": digest_match.group(1),
+            "size_bytes": size
+        }
+    if set(assets) != {"install", "update"}:
+        raise ValueError("Release must contain exactly the official install and update packages")
+    body = payload.get("body") or ""
+    for kind in ("install", "update"):
+        asset = assets[kind]
+        section = body[body.find(asset["name"]):] if asset["name"] in body else ""
+        checksum_line = re.search(r"(?m)^SHA-256:\s*([0-9a-f]{64})\s*$", section)
+        if not checksum_line or checksum_line.group(1) != asset["sha256"]:
+            raise ValueError(f"Published SHA-256 notes do not match the asset digest: {asset['name']}")
+    published = payload.get("published_at")
+    if not isinstance(published, str) or not published:
+        raise ValueError("Release publication timestamp is missing")
+    return {
+        "status": "verified_metadata",
+        "version": version,
+        "tag": tag,
+        "name": payload.get("name") or f"Node Core OS {version}",
+        "published_at": published,
+        "release_url": payload.get("html_url"),
+        "assets": assets,
+        "verification": {
+            "stable_release": True,
+            "expected_assets_present": True,
+            "asset_digest_format": "GitHub SHA-256 digest",
+            "release_notes_checksums_match_asset_digests": True,
+            "archive_bytes_downloaded_and_rehashed": False
+        }
+    }
+
+def latest_stable_release():
+    request = urllib.request.Request(
+        GITHUB_RELEASE_API,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "Node-Core-OS-Lobby",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+    )
+    with urllib.request.urlopen(request, timeout=RELEASE_TIMEOUT) as response:
+        raw = response.read(RELEASE_MAX_BYTES + 1)
+    if len(raw) > RELEASE_MAX_BYTES:
+        raise ValueError("GitHub release metadata exceeds the allowed response size")
+    payload = json.loads(raw.decode("utf-8"))
+    result = parse_latest_stable_release(payload)
+    result["source_commit"] = payload.get("target_commitish")
+    return result
+
 def load_config():
     STATE.mkdir(parents=True, exist_ok=True)
     if CONFIG.exists():
@@ -333,6 +423,22 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "running", "transport": "https" if self.server.is_https else "http",
                 "environment": termux_info(), "node_core": detect_node_core()
             })
+        elif path == "/api/releases/latest":
+            try:
+                release = latest_stable_release()
+                node = detect_node_core()
+                installed = node.get("version")
+                release["installed_version"] = installed
+                release["installation_detected"] = node.get("installed", False)
+                release["update_available"] = bool(installed and installed != release["version"])
+                self.send_json(release)
+            except (OSError, urllib.error.URLError, urllib.error.HTTPError,
+                    ValueError, json.JSONDecodeError, TimeoutError) as exc:
+                self.send_json({
+                    "status": "unavailable",
+                    "error": str(exc)[:240],
+                    "message": "The latest stable release could not be verified. No installation or update was started."
+                })
         elif path in ("/", "/index.html"):
             self.send_file(WEB / "index.html", "text/html; charset=utf-8")
         elif path == "/manifest.webmanifest":
