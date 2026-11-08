@@ -95,8 +95,7 @@ async function preparePackage(kind,button){
 if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token is unavailable. Reload the Lobby.</p>');return;}
 const promptText=kind==='install'
 ?'Download the official new-install archive? This will only save and verify the package; it will not install Node Core OS or ask for identity keys.'
-?'Download the official update archive? This will only save and verify the package; it will not update Node Core OS or request identity keys.'
-:'';
+:'Download the official update archive? This will only save and verify the package; it will not update Node Core OS or request identity keys.';
 if(!window.confirm(promptText))return;
 button.disabled=true;button.textContent='Downloading and verifying…';
 try{
