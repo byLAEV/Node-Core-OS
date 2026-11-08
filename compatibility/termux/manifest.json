@@ -10,6 +10,14 @@
   "shells": [
     "bash"
   ],
+  "node_core_runtime_layout": {
+    "canonical_manifest": "installer/layout-manifest.json",
+    "installed_copy": "~/.node-core/lobby/manifests/layout-manifest.json",
+    "lobby_api": "GET /api/layout/manifest",
+    "runtime_root": "~/.node-core",
+    "installer_consumes_manifest": true,
+    "updates_preserve_persistent_directories": ["storage", "ipfs"]
+  },
   "lobby": {
     "implementation": "python-stdlib-http-server",
     "bind": "127.0.0.1",
