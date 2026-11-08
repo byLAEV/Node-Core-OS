@@ -517,7 +517,11 @@ def download_and_verify_release_package(kind, release=None):
         raise
 
 def load_config():
-    STATE.mkdir(parents=True, exist_ok=True)
+    base_state = HOME / ".node-core"
+    if base_state.is_symlink() or STATE.is_symlink():
+        raise RuntimeError("Refusing to use a symlink as Node Core OS Lobby state")
+    base_state.mkdir(mode=0o700, parents=True, exist_ok=True)
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
     if CONFIG.is_symlink():
         raise RuntimeError("Refusing to load Lobby configuration through a symlink")
     if CONFIG.exists():
