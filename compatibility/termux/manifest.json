@@ -16,7 +16,10 @@
     "lobby_api": "GET /api/layout/manifest",
     "runtime_root": "~/.node-core",
     "installer_consumes_manifest": true,
-    "updates_preserve_persistent_directories": ["storage", "ipfs"]
+    "updates_preserve_persistent_directories": [
+      "storage",
+      "ipfs"
+    ]
   },
   "lobby": {
     "implementation": "python-stdlib-http-server",
@@ -32,9 +35,25 @@
       "storage": "~/.node-core/lobby/packages",
       "max_package_size_bytes": 314572800,
       "integrity": "SHA-256 against official GitHub Release asset digest",
-      "extracts_archives": false,
-      "executes_installers": false,
-      "requires_local_session_token": true
+      "extracts_archives": true,
+      "executes_installers": true,
+      "requires_local_session_token": true,
+      "execution": {
+        "canonical_scripts": {
+          "install": "installer/install.sh",
+          "update": "installer/update.sh"
+        },
+        "start_endpoint": "POST /api/packages/execute",
+        "output_endpoint": "POST /api/packages/output",
+        "confirmation": "explicit browser confirmation after official release SHA-256 verification",
+        "latest_release_revalidation": true,
+        "archive_safety": "reject absolute paths, parent traversal, symlinks and special files; enforce file-count and expanded-size limits",
+        "max_expanded_bytes": 1073741824,
+        "max_files": 12000,
+        "max_runtime_seconds": 1800,
+        "max_output_bytes": 262144,
+        "arbitrary_shell_commands": false
+      }
     },
     "certificate_manager": {
       "enabled": true,
