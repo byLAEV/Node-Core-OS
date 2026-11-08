@@ -104,6 +104,11 @@ def main() -> int:
                     page = response.read().decode("utf-8")
                     headers = response.headers
                 assert "window.NODE_CORE_LOBBY_SESSION" in page
+                assert "async function checkLobbyConnection()" in page
+                assert "checkLobbyConnection();" in page
+                assert "runBtn.addEventListener('click',runSelected)" in page
+                assert "fetch('/health'" in page
+                assert headers.get("Cache-Control") == "no-store"
                 assert headers.get("Content-Security-Policy")
                 assert headers.get("X-Frame-Options") == "DENY"
 
