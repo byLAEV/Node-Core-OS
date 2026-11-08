@@ -44,6 +44,8 @@ PORT=8765
 
 for file in \
   "$SOURCE/lobby/server.py" \
+  "$SOURCE/lobby/certificate_manager.py" \
+  "$SOURCE/lobby/certificates/catalog.json" \
   "$SOURCE/lobby/launcher.sh" \
   "$SOURCE/lobby/web/index.html" \
   "$SOURCE/lobby/web/manifest.webmanifest" \
@@ -83,7 +85,7 @@ fi
 
 command -v openssl >/dev/null 2>&1 || warn "OpenSSL is still unavailable; HTTPS will not be available until it is installed."
 
-mkdir -p "$HOME/.node-core" "$DEST/web" "$SHORTCUTS"
+mkdir -p "$HOME/.node-core" "$DEST/web" "$DEST/certificates" "$SHORTCUTS"
 STAGE="$(mktemp -d "$HOME/.node-core-lobby-stage.XXXXXX")"
 BACKUP="$STAGE/backup"
 mkdir -p "$BACKUP"
@@ -150,8 +152,8 @@ for i in "${!TARGETS[@]}"; do
   fi
   mv -f "$temp" "$target"
 done
-chmod 700 "$DEST" "$DEST/web"
-chmod 600 "$DEST/server.py" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
+chmod 700 "$DEST" "$DEST/web" "$DEST/certificates"
+chmod 600 "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
 
 info "Validating the installed server configuration."
 python "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
