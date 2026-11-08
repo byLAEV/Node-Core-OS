@@ -29,6 +29,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels check official stable-release metadata only; no changes are executed.</p>
 <div class="grid">
 <button class="card" data-panel="termux"><h2>00 · Termux Commands</h2><small>Reveal approved Termux commands and execute them in a live local terminal window.</small></button>
+<button class="card" data-panel="report"><h2>Generate Report</h2><small>Generate, copy, download or share the official Termux status report in TXT or JSON.</small></button>
 <button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Full report: environment, installation, packages, network and directories.</small></button>
 <button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites, missing tools and possible blockers.</small></button>
 <button class="card" data-panel="install"><h2>03 · Install Node Core OS</h2><small>Detect existing installation and review installation readiness.</small></button>
@@ -45,7 +46,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <script>
 const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
-const labels={termux:'00 · Termux Commands',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager'};
+const labels={termux:'00 · Termux Commands',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager'};
 function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':'Generate report')));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
@@ -128,7 +129,41 @@ state.className='bad';
 }
 }
 
+
+function formatReportText(d){
+const lines=[];
+const add=(label,value)=>lines.push(label+': '+String(value??'NOT_CHECKED'));
+lines.push('NODE CORE OS byLAEV — OFFICIAL TERMUX ENVIRONMENT REPORT');
+lines.push('=====================================================');
+add('Generated (UTC)',d.generated_at);add('Report schema',d.report_schema||'1.0.0');
+lines.push('');lines.push('SUMMARY');add('Checks passed',d.summary.passed);add('Required failures',d.summary.failed_required);add('Warnings',d.summary.warnings);add('Total checks',d.summary.total);
+lines.push('');lines.push('COMPATIBILITY CHECKS');for(const c of d.checks)lines.push((c.ok?'PASS':(c.severity==='required'?'FAIL':'WARN'))+' | '+c.name+' | '+c.detail);
+lines.push('');lines.push('TERMUX / ANDROID ENVIRONMENT');lines.push(JSON.stringify(d.environment,null,2));
+lines.push('');lines.push('NODE CORE OS DETECTION');lines.push(JSON.stringify(d.node_core,null,2));
+lines.push('');lines.push('COMMAND-LINE TOOLS');lines.push(JSON.stringify(d.tools,null,2));
+lines.push('');lines.push('INSTALLED PACKAGES');add('Inventory source',d.packages.source);add('Detected',d.packages.total_detected);add('Truncated',d.packages.truncated);lines.push(JSON.stringify(d.packages.packages,null,2));if(d.packages.error)add('Inventory error',d.packages.error);
+lines.push('');lines.push('NETWORK AND LOCAL SERVICES');lines.push(JSON.stringify(d.network,null,2));
+lines.push('');lines.push('DIRECTORY STRUCTURE');lines.push(JSON.stringify(d.directories,null,2));
+lines.push('');lines.push('PRIVACY / SCAN LIMITS');lines.push(JSON.stringify(d.privacy,null,2));
+lines.push('');lines.push('RESULT INTERPRETATION');lines.push('PASS = verified condition met. FAIL = required condition not met. WARN = recommended condition not met. NOT_CHECKED = not verified.');
+lines.push('This is a read-only local inventory. It is not a security certification or proof that every application component works.');
+return lines.join('\n')+'\n';
+}
+function wireReportExports(d){
+const txt=formatReportText(d),json=JSON.stringify(d,null,2);
+const copy=async value=>{if(!navigator.clipboard||!navigator.clipboard.writeText)throw new Error('Clipboard API unavailable; use Download.');await navigator.clipboard.writeText(value);};
+const download=(name,type,value)=>{const blob=new Blob([value],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
+const bind=(id,fn)=>{const el=content.querySelector('#'+id);if(el)el.addEventListener('click',async()=>{el.disabled=true;try{await fn();statusEl.textContent='Report action completed: '+id;}catch(e){statusEl.textContent='Report action unavailable: '+e.message;}finally{el.disabled=false;}});};
+const actions=document.createElement('div');actions.className='actions';actions.dataset.reportExport='true';
+actions.innerHTML='<button id="copy-report-txt" class="action">Copy TXT</button><button id="copy-report-json" class="action">Copy JSON</button><button id="download-report-txt" class="action">Download TXT</button><button id="download-report-json" class="action">Download JSON</button><button id="share-report" class="action secondary">Share report</button>';
+content.insertBefore(actions,content.firstChild);
+bind('copy-report-txt',()=>copy(txt));bind('copy-report-json',()=>copy(json));
+bind('download-report-txt',()=>download('node-core-termux-report.txt','text/plain;charset=utf-8',txt));
+bind('download-report-json',()=>download('node-core-termux-report.json','application/json;charset=utf-8',json));
+bind('share-report',async()=>{const shareFiles=[new File([txt],'node-core-termux-report.txt',{type:'text/plain'}),new File([json],'node-core-termux-report.json',{type:'application/json'})];if(navigator.share&&navigator.canShare&&navigator.canShare({files:shareFiles})){await navigator.share({title:'Node Core OS — Termux report',text:'Official read-only Termux environment report.',files:shareFiles});}else if(navigator.share){await navigator.share({title:'Node Core OS — Termux report',text:txt});}else{await copy(txt);statusEl.textContent='Native sharing unavailable. TXT report copied to clipboard.';}});
+}
 function renderReport(d){
+window.NODE_CORE_LAST_REPORT=d;
 let out='<p><b>Generated:</b> '+esc(d.generated_at)+'</p><p><b>Summary:</b> <span class="ok">'+d.summary.passed+' passed</span> · <span class="bad">'+d.summary.failed_required+' required failures</span> · <span class="warn">'+d.summary.warnings+' warnings</span> · '+d.summary.total+' checks</p>';
 let checks='';for(const c of d.checks)checks+='<div class="result"><b class="'+(c.ok?'ok':c.severity==='required'?'bad':'warn')+'">'+(c.ok?'PASS':c.severity.toUpperCase())+' · '+esc(c.name)+'</b><br><small>'+esc(c.detail)+'</small></div>';
 out+=section('Compatibility checks',checks);
@@ -299,7 +334,7 @@ if(prepareButton)prepareButton.addEventListener('click',()=>preparePackage(selec
 const r=await fetch(selected==='status'?'/api/status':'/api/report',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 if(selected==='status')content.innerHTML='<pre>'+esc(JSON.stringify(d,null,2))+'</pre>';
-else {content.innerHTML=renderReport(d);
+else {content.innerHTML=renderReport(d);wireReportExports(d);
 if(selected==='prepare')content.insertAdjacentHTML('afterbegin','<p class="muted">Preparation report only: no packages or configuration were changed.</p>');
 if(selected==='repair')content.insertAdjacentHTML('afterbegin','<p class="muted">Read-only inspection only: no files or settings were repaired.</p>');}
 }
