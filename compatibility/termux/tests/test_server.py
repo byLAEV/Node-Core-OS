@@ -160,8 +160,8 @@ def main() -> int:
                 commands = request_json(base_url + "/api/termux/commands", tls_expected)
                 command_ids = {item["id"] for item in commands["commands"]}
                 assert "working-directory" in command_ids, commands
-assert {"user-id", "home-files", "current-date", "storage-space", "running-processes", "android-release", "android-abi", "installed-packages"}.issubset(command_ids), command_ids
-assert all(item.get("category") for item in commands["commands"]), commands
+                assert {"user-id", "home-files", "current-date", "storage-space", "running-processes", "android-release", "android-abi", "installed-packages"}.issubset(command_ids), command_ids
+                assert all(item.get("category") for item in commands["commands"]), commands
                 assert commands["execution_policy"]["allowlist_only"] is True
                 assert commands["execution_policy"]["shell_interpretation"] is False
                 print("Read-only Termux command catalog and execution policy: PASS")
