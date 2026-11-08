@@ -32,8 +32,9 @@ assert manifest["lobby"]["bind"] == "127.0.0.1"
 assert manifest["lobby"]["port"] == 8765
 assert manifest["lobby"]["transport_preference"] == ["https", "http-loopback"]
 assert manifest["lobby"]["release_package_staging"]["enabled"] is True
-assert manifest["lobby"]["release_package_staging"]["extracts_archives"] is False
-assert manifest["lobby"]["release_package_staging"]["executes_installers"] is False
+assert manifest["lobby"]["release_package_staging"]["extracts_archives"] is True
+assert manifest["lobby"]["release_package_staging"]["executes_installers"] is True
+assert manifest["lobby"]["release_package_staging"]["execution"]["start_endpoint"] == "POST /api/packages/execute"
 assert manifest["lobby"]["certificate_manager"]["enabled"] is True
 assert manifest["lobby"]["certificate_manager"]["manages_core_p2p_identity_certificate"] is False
 html = (profile / "lobby" / "web" / "index.html").read_text(encoding="utf-8")
