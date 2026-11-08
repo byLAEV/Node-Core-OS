@@ -603,7 +603,15 @@ class Handler(BaseHTTPRequestHandler):
                 installed = node.get("version")
                 release["installed_version"] = installed
                 release["installation_detected"] = node.get("installed", False)
-                release["update_available"] = bool(installed and installed != release["version"])
+                release["partial_installation"] = node.get("partial_or_residual", False)
+                release["installation_status"] = node.get("status", "unknown")
+                try:
+                    release["update_available"] = bool(
+                        installed and tuple(map(int, release["version"].split("."))) >
+                        tuple(map(int, installed.split(".")))
+                    )
+                except (AttributeError, TypeError, ValueError):
+                    release["update_available"] = False
                 self.send_json(release)
             except (OSError, urllib.error.URLError, urllib.error.HTTPError,
                     ValueError, json.JSONDecodeError, TimeoutError) as exc:
