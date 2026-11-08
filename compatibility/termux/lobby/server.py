@@ -1027,8 +1027,14 @@ def _verified_installer_root(kind):
                         shutil.copyfileobj(source, output, length=1024 * 1024)
                     target.chmod(0o700 if member.mode & 0o111 else 0o600)
         script_name = kind + ".sh"
-        candidates = [p.parent for p in work.rglob(script_name) if p.name == script_name and p.parent.name == "installer"]
-        roots = [p.parent for p in candidates if (p / "installer" / script_name).is_file()]
+        # The archive stores <release-root>/installer/<script>. The release
+        # root is therefore the parent of the "installer" directory.
+        candidates = [
+            script.parent.parent
+            for script in work.rglob(script_name)
+            if script.name == script_name and script.parent.name == "installer"
+        ]
+        roots = [root for root in candidates if (root / "installer" / script_name).is_file()]
         if len(roots) != 1:
             raise ValueError("The verified archive does not contain exactly one canonical installer/{}. ".format(script_name))
         root = roots[0]
