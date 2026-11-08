@@ -745,7 +745,7 @@ def start_node_core_terminal():
                               name="node-core-pty-" + session_id[:8], daemon=True)
     thread.start()
     command = '"' + str(NODE_CORE_LAUNCHER) + '"'
-    os.write(master_fd, (command + "\\n").encode("utf-8"))
+    os.write(master_fd, (command + "\n").encode("utf-8"))
     return {"session_id": session_id, "command": command, "status": "running",
             "message": "Interactive PTY started. Type commands in the terminal input."}
 
@@ -1244,7 +1244,19 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(payload, dict):
                 self.send_json({"status": "error", "message": "Request body must be a JSON object"})
                 return
-            if path == "/api/terminal/start":\n                result = start_node_core_terminal()\n                self.send_json({"status": "started", "terminal": result})\n                return\n            if path == "/api/terminal/input":\n                result = terminal_session_action(payload.get("session_id"), "input", payload.get("input", ""))\n                self.send_json({"status": "ok", "terminal": result})\n                return\n            if path == "/api/terminal/output":\n                result = terminal_session_action(payload.get("session_id"), "output")\n                self.send_json({"status": "ok", "terminal": result})\n                return\n            if path == "/api/terminal/close":\n                result = terminal_session_action(payload.get("session_id"), "close")\n                self.send_json({"status": "ok", "terminal": result})\n                return\n            if path == "/api/packages/execute":
+            if path == "/api/terminal/start":
+                result = start_node_core_terminal()
+                self.send_json({"status": "started", "terminal": result})
+                return
+            if path == "/api/terminal/input":\n                result = terminal_session_action(payload.get("session_id"), "input", payload.get("input", ""))
+                self.send_json({"status": "ok", "terminal": result})
+                return
+            if path == "/api/terminal/output":\n                result = terminal_session_action(payload.get("session_id"), "output")
+                self.send_json({"status": "ok", "terminal": result})
+                return
+            if path == "/api/terminal/close":\n                result = terminal_session_action(payload.get("session_id"), "close")
+                self.send_json({"status": "ok", "terminal": result})
+                return\n            if path == "/api/packages/execute":
                 result = start_official_installer(payload.get("kind"))
                 self.send_json({"status":"started", "job":result})
                 return
