@@ -7,7 +7,7 @@ on:
       - ".github/workflows/termux-lobby.yml"
   push:
     branches:
-      - "feature/termux-lobby-installer-v1"
+      - "feature/termux-local-lobby"
     paths:
       - "compatibility/termux/**"
       - ".github/workflows/termux-lobby.yml"
@@ -32,5 +32,5 @@ jobs:
       - name: Install test dependency
         run: sudo apt-get update && sudo apt-get install -y openssl
 
-      - name: Run Termux Lobby static and server integration tests
+      - name: Run Termux Lobby bootstrap, static and server integration tests
         run: bash compatibility/termux/tests/test-lobby.sh
