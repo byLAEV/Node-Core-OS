@@ -88,7 +88,11 @@ for(const kind of ['install','update']){
 const item=a[kind];if(!item)continue;
 out+='<div class="result"><b>'+esc(kind==='install'?'New installation package':'Update package')+'</b><br><small>'+esc(item.name)+'</small><br><small>SHA-256: <code>'+esc(item.sha256)+'</code></small><br><small>Size: '+esc(item.size_bytes)+' bytes</small></div>';
 }
-const eligible=mode==='install'?!r.installation_detected&&!r.partial_installation:!!r.installation_detected&&r.update_available;\nif(eligible)out+='<div class="actions"><button class="action" id="prepare-package">Download and verify '+(mode==='install'?'installation':'update')+' package</button></div>';\nelse out+='<p class="warn">This operation is not available for the detected installation state or version.</p>';\nout+='<p class="warn">This step only downloads and verifies the archive. It does not extract or execute it. New-install identity capture (Bitcoin/Ethereum reference keys) is not yet implemented; update never asks for identity keys.</p>';
+const eligible=r.local_transport==='https'&&(mode==='install'?!r.installation_detected&&!r.partial_installation:!!r.installation_detected&&r.update_available);
+if(r.local_transport!=='https')out+='<p class="warn">Package staging requires HTTPS on the local Lobby connection. Current transport: '+esc(r.local_transport||'unknown')+'.</p>';
+else if(eligible)out+='<div class="actions"><button class="action" id="prepare-package">Download and verify '+(mode==='install'?'installation':'update')+' package</button></div>';
+else out+='<p class="warn">This operation is not available for the detected installation state or version.</p>';
+out+='<p class="warn">This step only downloads and verifies the archive. It does not extract or execute it. New-install identity capture (Bitcoin/Ethereum reference keys) is not yet implemented; update never asks for identity keys.</p>';
 return out;
 }
 async function preparePackage(kind,button){
