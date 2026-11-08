@@ -293,7 +293,7 @@ const result=await response.json();
 if(!response.ok||result.status!=='verified')throw new Error(result.message||'Package preparation failed');
 const r=result.receipt;
 content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Official package downloaded and SHA-256 verified</b><p>'+esc(r.asset_name)+'</p><p>Version: '+esc(r.version)+'</p><p>Size: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Stored locally in ~/.node-core/lobby/packages with private file permissions. Not extracted or executed.</p></div>');
-const execute=document.createElement('button');execute.className='action';execute.textContent='EJECUTAR INSTALADOR OFICIAL';execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));content.insertBefore(execute,content.firstChild);
+const execute=document.createElement('button');execute.className='action';execute.textContent='EJECUTAR INSTALADOR / ACTUALIZADOR OFICIAL';execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));content.insertBefore(execute,content.firstChild);
 }catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Package preparation failed: '+esc(error.message)+'</p>');}
 finally{button.disabled=false;button.textContent='Download and verify '+(kind==='install'?'installation':'update')+' package';}
 }
@@ -319,7 +319,7 @@ state.className=job.status==='completed'?'ok':(job.status==='failed'||job.status
 async function executeOfficialInstaller(kind,button){
 const promptText=kind==='install'
 ?'¿Ejecutar el instalador oficial de Node Core OS? Se creará la identidad Ed25519 durante la primera instalación. No introduzcas claves privadas Bitcoin/Ethereum aquí.'
-:'¿Ejecutar el instalador oficial? Detectará la instalación existente y delegará en installer/update.sh. Se conservarán los datos persistentes según las garantías del actualizador.';
+:'¿Ejecutar el instalador oficial? Ejecutará directamente installer/update.sh del paquete oficial verificado. Se conservarán los datos persistentes según las garantías del actualizador.';
 if(!window.confirm(promptText))return;
 button.disabled=true;button.textContent='INICIANDO INSTALADOR…';
 const terminal=document.createElement('details');terminal.open=true;
