@@ -192,14 +192,14 @@ class ReleaseMetadataTests(unittest.TestCase):
                 archive.addfile(info)
         digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
         receipt_path = package_dir / (name + ".json")
-        receipt_path.write_text(json.dumps({"status":"sha256_verified","kind":kind,"asset_name":name,"actual_sha256":digest}), encoding="utf-8")
-        return old_home, old_state, name
+        receipt_path.write_text(json.dumps({"status":"sha256_verified","kind":kind,"asset_name":name,"actual_sha256":digest,"expected_sha256":digest,"tag":"v9.9.9","version":"9.9.9"}), encoding="utf-8")
+        return old_home, old_state, name, digest
 
     def test_extracts_only_canonical_install_script_from_verified_package(self):
         with tempfile.TemporaryDirectory() as temp:
-            old_home, old_state, name = self._stage_installer_fixture(temp, "install")
+            old_home, old_state, name, digest = self._stage_installer_fixture(temp, "install")
             try:
-                with mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install"}]}):
+                with mock.patch.object(MODULE, "latest_stable_release", return_value={"status":"verified_metadata","version":"9.9.9","tag":"v9.9.9","assets":{"install":{"sha256":digest}}}), mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install","version":"9.9.9"}]}):
                     root, work = MODULE._verified_installer_root("install")
                 self.assertTrue((root / "installer" / "install.sh").is_file())
                 self.assertTrue((root / "installer" / "lib" / "filesystem.sh").is_file())
@@ -211,9 +211,9 @@ class ReleaseMetadataTests(unittest.TestCase):
 
     def test_selects_official_update_script_not_install_script(self):
         with tempfile.TemporaryDirectory() as temp:
-            old_home, old_state, name = self._stage_installer_fixture(temp, "update")
+            old_home, old_state, name, digest = self._stage_installer_fixture(temp, "update")
             try:
-                with mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"update"}]}):
+                with mock.patch.object(MODULE, "latest_stable_release", return_value={"status":"verified_metadata","version":"9.9.9","tag":"v9.9.9","assets":{"update":{"sha256":digest}}}), mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"update","version":"9.9.9"}]}):
                     root, work = MODULE._verified_installer_root("update")
                 self.assertTrue((root / "installer" / "update.sh").is_file())
                 self.assertFalse((root / "installer" / "install.sh").exists())
@@ -224,9 +224,9 @@ class ReleaseMetadataTests(unittest.TestCase):
 
     def test_rejects_symlink_members_in_official_package(self):
         with tempfile.TemporaryDirectory() as temp:
-            old_home, old_state, name = self._stage_installer_fixture(temp, "install", unsafe=True)
+            old_home, old_state, name, digest = self._stage_installer_fixture(temp, "install", unsafe=True)
             try:
-                with mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install"}]}):
+                with mock.patch.object(MODULE, "latest_stable_release", return_value={"status":"verified_metadata","version":"9.9.9","tag":"v9.9.9","assets":{"install":{"sha256":digest}}}), mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install","version":"9.9.9"}]}):
                     with self.assertRaisesRegex(ValueError, "unsafe path|unsupported link"):
                         MODULE._verified_installer_root("install")
             finally:
