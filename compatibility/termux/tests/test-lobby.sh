@@ -41,7 +41,9 @@ html = (profile / "lobby" / "web" / "index.html").read_text(encoding="utf-8")
 server = (profile / "lobby" / "server.py").read_text(encoding="utf-8")
 assert 'data-panel="termux"' in html
 assert "REVEAL COMMANDS" in html
-assert "/api/termux/execute" in html and "/api/termux/output" in html
+for endpoint in ("/api/termux/execute", "/api/termux/output"):
+    assert endpoint in html, f"Lobby UI is missing endpoint call: {endpoint}"
+    assert f'if path == "{endpoint}"' in server, f"Lobby server is missing endpoint handler: {endpoint}"
 assert "TERMUX_COMMANDS" in server and "shell=False" in server
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
