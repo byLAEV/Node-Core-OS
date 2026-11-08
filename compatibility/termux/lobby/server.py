@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Native Termux Lobby with read-only diagnostics and verified package staging."""
 from __future__ import annotations
-import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request
+import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request, selectors, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from certificate_manager import CertificateManager, CertificateManagerError
 from pathlib import Path
@@ -586,11 +586,194 @@ def ensure_certificate():
             except FileNotFoundError:
                 pass
 
+
+# The browser can request only these fixed, read-only Termux commands.
+# No user-supplied shell text is ever passed to a shell interpreter.
+TERMUX_COMMANDS = {
+    "working-directory": {
+        "label": "Print working directory",
+        "description": "Show the current Termux working directory.",
+        "binary": "pwd", "args": []
+    },
+    "current-user": {
+        "label": "Current Termux user",
+        "description": "Show the effective unprivileged Termux username.",
+        "binary": "whoami", "args": []
+    },
+    "system-kernel": {
+        "label": "System and kernel",
+        "description": "Show Android device kernel and architecture information.",
+        "binary": "uname", "args": ["-a"]
+    },
+    "python-version": {
+        "label": "Python version",
+        "description": "Show the Python interpreter version used by the Lobby.",
+        "binary": sys.executable, "args": ["--version"]
+    },
+    "pkg-version": {
+        "label": "Termux package manager version",
+        "description": "Show the installed Termux pkg version, if available.",
+        "binary": "pkg", "args": ["--version"]
+    },
+}
+COMMAND_JOBS = {}
+COMMAND_LOCK = threading.Lock()
+COMMAND_OUTPUT_LIMIT = 65536
+COMMAND_TIMEOUT_SECONDS = 30
+COMMAND_JOB_LIMIT = 8
+
+def termux_command_catalog():
+    items = []
+    for command_id, spec in TERMUX_COMMANDS.items():
+        executable = spec["binary"] if os.path.isabs(spec["binary"]) else shutil.which(spec["binary"])
+        items.append({
+            "id": command_id, "label": spec["label"],
+            "description": spec["description"],
+            "command": " ".join([spec["binary"], *spec["args"]]),
+            "available": bool(executable),
+        })
+    return {"commands": items, "execution_policy": {
+        "allowlist_only": True, "shell_interpretation": False,
+        "read_only_commands": True, "timeout_seconds": COMMAND_TIMEOUT_SECONDS,
+        "maximum_output_bytes": COMMAND_OUTPUT_LIMIT,
+    }}
+
+def _append_command_output(job_id, chunk):
+    with COMMAND_LOCK:
+        job = COMMAND_JOBS.get(job_id)
+        if job is None:
+            return
+        remaining = COMMAND_OUTPUT_LIMIT - len(job["output"].encode("utf-8", errors="replace"))
+        if remaining <= 0:
+            job["output_truncated"] = True
+            return
+        encoded = chunk.encode("utf-8", errors="replace")
+        if len(encoded) > remaining:
+            encoded = encoded[:remaining]
+            job["output_truncated"] = True
+        job["output"] += encoded.decode("utf-8", errors="replace")
+
+def _run_termux_command(job_id, argv):
+    process = None
+    try:
+        process = subprocess.Popen(
+            argv, cwd=str(HOME), stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            shell=False, close_fds=True, bufsize=0
+        )
+        with COMMAND_LOCK:
+            job = COMMAND_JOBS.get(job_id)
+            if job is not None:
+                job["pid"] = process.pid
+        deadline = time.monotonic() + COMMAND_TIMEOUT_SECONDS
+        selector = selectors.DefaultSelector()
+        selector.register(process.stdout, selectors.EVENT_READ)
+        timed_out = False
+        try:
+            while True:
+                if time.monotonic() >= deadline and process.poll() is None:
+                    timed_out = True
+                    process.terminate()
+                    try:
+                        process.wait(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    break
+                events = selector.select(timeout=0.2)
+                for key, _ in events:
+                    data = os.read(key.fileobj.fileno(), 4096)
+                    if data:
+                        _append_command_output(job_id, data.decode("utf-8", errors="replace"))
+                    else:
+                        selector.unregister(key.fileobj)
+                if process.poll() is not None and not selector.get_map():
+                    break
+                if process.poll() is not None and not events:
+                    # Drain any bytes still buffered by the pipe before exiting.
+                    try:
+                        data = os.read(process.stdout.fileno(), 4096)
+                    except OSError:
+                        data = b""
+                    if data:
+                        _append_command_output(job_id, data.decode("utf-8", errors="replace"))
+                    else:
+                        break
+        finally:
+            selector.close()
+        returncode = process.wait()
+        with COMMAND_LOCK:
+            job = COMMAND_JOBS.get(job_id)
+            if job is not None:
+                job.update({
+                    "status": "timed_out" if timed_out else ("completed" if returncode == 0 else "failed"),
+                    "returncode": returncode,
+                    "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "pid": None,
+                })
+    except Exception as exc:
+        with COMMAND_LOCK:
+            job = COMMAND_JOBS.get(job_id)
+            if job is not None:
+                job.update({
+                    "status": "failed", "returncode": 127,
+                    "error": str(exc)[:240],
+                    "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                    "pid": None,
+                })
+    finally:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait()
+
+def start_termux_command(command_id):
+    spec = TERMUX_COMMANDS.get(command_id)
+    if spec is None:
+        raise ValueError("Unknown Termux command identifier")
+    executable = spec["binary"] if os.path.isabs(spec["binary"]) else shutil.which(spec["binary"])
+    if not executable:
+        raise ValueError("Required executable is not available in this Termux installation")
+    with COMMAND_LOCK:
+        active = sum(1 for job in COMMAND_JOBS.values() if job["status"] == "running")
+        if active >= 2:
+            raise ValueError("At most two Termux commands may run at the same time")
+        if len(COMMAND_JOBS) >= COMMAND_JOB_LIMIT:
+            finished = [key for key, job in COMMAND_JOBS.items() if job["status"] != "running"]
+            for key in finished:
+                COMMAND_JOBS.pop(key, None)
+                if len(COMMAND_JOBS) < COMMAND_JOB_LIMIT:
+                    break
+        if len(COMMAND_JOBS) >= COMMAND_JOB_LIMIT:
+            raise ValueError("The local command history is full; reload the Lobby and try again")
+        job_id = secrets.token_urlsafe(18)
+        COMMAND_JOBS[job_id] = {
+            "job_id": job_id, "command_id": command_id,
+            "command": " ".join([spec["binary"], *spec["args"]]),
+            "status": "running", "output": "", "output_truncated": False,
+            "returncode": None, "started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "finished_at": None, "pid": None,
+        }
+    thread = threading.Thread(
+        target=_run_termux_command,
+        args=(job_id, [executable, *spec["args"]]),
+        name="termux-command-" + command_id, daemon=True
+    )
+    thread.start()
+    return {"job_id": job_id, "command": COMMAND_JOBS[job_id]["command"], "status": "running"}
+
+def get_termux_command_job(job_id):
+    with COMMAND_LOCK:
+        job = COMMAND_JOBS.get(job_id)
+        if job is None:
+            raise ValueError("Command session was not found or has expired")
+        return dict(job)
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "NodeCoreLobby/0.3"
     def do_GET(self):
         path = urlparse(self.path).path
-        if path == "/health":
+        if path == "/api/termux/commands":
+            self.send_json(termux_command_catalog())
+        elif path == "/health":
             self.send_json({"status": "ok", "transport": "https" if self.server.is_https else "http"})
         elif path in ("/api/diagnostics", "/api/report"):
             self.send_json(diagnostics())
@@ -643,7 +826,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path not in ("/api/packages/prepare", "/api/certificates/action"):
+            if path not in ("/api/packages/prepare", "/api/certificates/action", "/api/termux/execute", "/api/termux/output"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -661,6 +844,14 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 self.send_json({"status": "error", "message": "Request body must be a JSON object"})
+                return
+            if path == "/api/termux/execute":
+                result = start_termux_command(payload.get("command_id"))
+                self.send_json({"status": "started", "job": result})
+                return
+            if path == "/api/termux/output":
+                result = get_termux_command_job(payload.get("job_id"))
+                self.send_json({"status": "ok", "job": result})
                 return
             if path == "/api/certificates/action":
                 action = payload.get("action")
