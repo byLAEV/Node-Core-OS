@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Native Termux Lobby with read-only diagnostics and verified package staging."""
 from __future__ import annotations
-import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request, selectors, threading, time
+import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request, selectors, threading, time, tarfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from certificate_manager import CertificateManager, CertificateManagerError
 from pathlib import Path
@@ -817,6 +817,211 @@ def get_termux_command_job(job_id):
             raise ValueError("Command session was not found or has expired")
         return dict(job)
 
+
+INSTALL_JOBS = {}
+INSTALL_LOCK = threading.Lock()
+INSTALL_OUTPUT_LIMIT = 256 * 1024
+INSTALL_TIMEOUT_SECONDS = 1800
+INSTALL_JOB_LIMIT = 4
+INSTALL_MAX_FILES = 12000
+INSTALL_MAX_UNPACKED = 1024 * 1024 * 1024
+
+def _append_install_output(job_id, chunk):
+    with INSTALL_LOCK:
+        job = INSTALL_JOBS.get(job_id)
+        if job is None:
+            return
+        current = len(job["output"].encode("utf-8", errors="replace"))
+        remaining = INSTALL_OUTPUT_LIMIT - current
+        if remaining <= 0:
+            job["output_truncated"] = True
+            return
+        encoded = chunk.encode("utf-8", errors="replace")
+        if len(encoded) > remaining:
+            encoded = encoded[:remaining]
+            job["output_truncated"] = True
+        job["output"] += encoded.decode("utf-8", errors="replace")
+
+def _verified_installer_root(kind):
+    receipt_data = package_receipts().get("packages", [])
+    expected_prefix = "node-core-os-" + kind + "-"
+    matches = [item for item in receipt_data if item.get("asset_name", "").startswith(expected_prefix)]
+    if not matches:
+        raise ValueError("No SHA-256-verified official package is staged. Download and verify it first.")
+    receipt = matches[-1]
+    package_dir = ensure_package_directory()
+    archive_path = package_dir / receipt["asset_name"]
+    receipt_path = package_dir / (receipt["asset_name"] + ".json")
+    if archive_path.is_symlink() or receipt_path.is_symlink() or not archive_path.is_file() or not receipt_path.is_file():
+        raise ValueError("Verified package or receipt is missing or unsafe.")
+    receipt_json = json.loads(receipt_path.read_text(encoding="utf-8"))
+    expected = receipt_json.get("actual_sha256")
+    digest = hashlib.sha256()
+    with archive_path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(PACKAGE_CHUNK_BYTES), b""):
+            digest.update(chunk)
+    if not isinstance(expected, str) or not hmac.compare_digest(digest.hexdigest(), expected):
+        raise ValueError("Staged official package changed after verification; download it again.")
+    extract_base = STATE / "installer-work"
+    if extract_base.is_symlink():
+        raise ValueError("Refusing to extract through a symlink installer workspace.")
+    extract_base.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.stat(extract_base).st_uid != os.getuid():
+        raise ValueError("Installer workspace is not owned by the current user.")
+    work = extract_base / (kind + "-" + secrets.token_hex(8))
+    work.mkdir(mode=0o700)
+    total = 0
+    count = 0
+    try:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            members = archive.getmembers()
+            if not members or len(members) > INSTALL_MAX_FILES:
+                raise ValueError("Official package is empty or exceeds the file-count limit.")
+            for member in members:
+                name = member.name
+                path = Path(name)
+                if path.is_absolute() or not path.parts or ".." in path.parts or not (member.isdir() or member.isfile()):
+                    raise ValueError("Official package contains an unsafe path or unsupported link/special file.")
+                if member.size < 0:
+                    raise ValueError("Official package contains an invalid file size.")
+                total += member.size
+                count += 1
+                if total > INSTALL_MAX_UNPACKED:
+                    raise ValueError("Official package exceeds the extraction-size limit.")
+                target = work.joinpath(*path.parts)
+                if os.path.commonpath((str(work), str(target.resolve()))) != str(work):
+                    raise ValueError("Official package path escapes the private extraction directory.")
+                if member.isdir():
+                    target.mkdir(mode=0o700, parents=True, exist_ok=True)
+                else:
+                    target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+                    source = archive.extractfile(member)
+                    if source is None:
+                        raise ValueError("Could not read a file from the official package.")
+                    with source, target.open("xb") as output:
+                        shutil.copyfileobj(source, output, length=1024 * 1024)
+                    target.chmod(0o700 if member.mode & 0o111 else 0o600)
+        candidates = [p.parent for p in work.rglob("install.sh") if p.name == "install.sh" and p.parent.name == "installer"]
+        roots = [p.parent for p in candidates if (p / "installer" / "install.sh").is_file()]
+        if len(roots) != 1:
+            raise ValueError("The verified archive does not contain exactly one canonical installer/install.sh.")
+        root = roots[0]
+        if not (root / "installer" / "config" / "defaults").is_file() or not (root / "installer" / "lib" / "filesystem.sh").is_file():
+            raise ValueError("The official installer package is incomplete; refusing execution.")
+        return root, work
+    except BaseException:
+        shutil.rmtree(work, ignore_errors=True)
+        raise
+
+def _run_official_installer(job_id, kind, root, work):
+    process = None
+    try:
+        script = root / "installer" / "install.sh"
+        argv = [shutil.which("bash") or "bash", str(script)]
+        process = subprocess.Popen(argv, cwd=str(root), stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=False,
+            close_fds=True, bufsize=0, env={**os.environ, "TERM": "dumb",
+            "NODE_CORE_LOBBY_INSTALL_MODE": kind})
+        with INSTALL_LOCK:
+            if job_id in INSTALL_JOBS:
+                INSTALL_JOBS[job_id]["pid"] = process.pid
+        # The user explicitly approved this operation in the Lobby. The official
+        # installer delegates existing installations to its canonical updater,
+        # whose sole confirmation prompt accepts this affirmative response.
+        if process.stdin:
+            try:
+                process.stdin.write(b"y\\n")
+                process.stdin.flush()
+                process.stdin.close()
+            except OSError:
+                pass
+        deadline = time.monotonic() + INSTALL_TIMEOUT_SECONDS
+        selector = selectors.DefaultSelector()
+        selector.register(process.stdout, selectors.EVENT_READ)
+        timed_out = False
+        try:
+            while True:
+                if time.monotonic() >= deadline and process.poll() is None:
+                    timed_out = True
+                    process.terminate()
+                    try: process.wait(timeout=5)
+                    except subprocess.TimeoutExpired: process.kill()
+                    break
+                events = selector.select(timeout=0.25)
+                for key, _ in events:
+                    data = os.read(key.fileobj.fileno(), 8192)
+                    if data:
+                        _append_install_output(job_id, data.decode("utf-8", errors="replace"))
+                    else:
+                        selector.unregister(key.fileobj)
+                if process.poll() is not None and not selector.get_map():
+                    break
+                if process.poll() is not None and not events:
+                    try: data = os.read(process.stdout.fileno(), 8192)
+                    except OSError: data = b""
+                    if data: _append_install_output(job_id, data.decode("utf-8", errors="replace"))
+                    else: break
+        finally:
+            selector.close()
+        code = process.wait()
+        with INSTALL_LOCK:
+            job = INSTALL_JOBS.get(job_id)
+            if job is not None:
+                job.update({"status": "timed_out" if timed_out else ("completed" if code == 0 else "failed"),
+                    "returncode": code, "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(), "pid": None})
+    except Exception as exc:
+        with INSTALL_LOCK:
+            job = INSTALL_JOBS.get(job_id)
+            if job is not None:
+                job.update({"status": "failed", "returncode": 127, "error": str(exc)[:300],
+                    "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(), "pid": None})
+    finally:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait()
+        shutil.rmtree(work, ignore_errors=True)
+
+def start_official_installer(kind):
+    if kind not in ("install", "update"):
+        raise ValueError("Installer operation must be install or update.")
+    if not os.environ.get("TERMUX_VERSION") or not os.environ.get("PREFIX", "").startswith("/data/data/com.termux"):
+        raise ValueError("The official Lobby installer runner is restricted to native Termux.")
+    if os.getuid() == 0:
+        raise ValueError("The official installer must run as the unprivileged Termux user.")
+    node = detect_node_core()
+    if kind == "install" and (node["installed"] or node["partial_or_residual"]):
+        raise ValueError("A complete or partial Node Core OS installation already exists. Use the updater or resolve the partial installation first.")
+    if kind == "update" and not node["installed"]:
+        raise ValueError("Update requires a complete detected Node Core OS installation.")
+    with INSTALL_LOCK:
+        active = sum(1 for job in INSTALL_JOBS.values() if job["status"] == "running")
+        if active:
+            raise ValueError("Another official installer operation is already running.")
+        if len(INSTALL_JOBS) >= INSTALL_JOB_LIMIT:
+            for key in [k for k,v in INSTALL_JOBS.items() if v["status"] != "running"]:
+                INSTALL_JOBS.pop(key, None)
+                if len(INSTALL_JOBS) < INSTALL_JOB_LIMIT: break
+        if len(INSTALL_JOBS) >= INSTALL_JOB_LIMIT:
+            raise ValueError("Installer job history is full; reload the Lobby.")
+    root, work = _verified_installer_root(kind)
+    job_id = secrets.token_urlsafe(18)
+    with INSTALL_LOCK:
+        INSTALL_JOBS[job_id] = {"job_id":job_id, "kind":kind, "status":"running",
+            "output":"[NODE CORE OS Lobby] Executing the verified official installer\\n",
+            "output_truncated":False, "returncode":None,
+            "started_at":dt.datetime.now(dt.timezone.utc).isoformat(), "finished_at":None, "pid":None}
+    thread = threading.Thread(target=_run_official_installer,
+        args=(job_id,kind,root,work), name="node-core-official-installer", daemon=True)
+    thread.start()
+    return {"job_id":job_id, "kind":kind, "status":"running"}
+
+def get_official_installer_job(job_id):
+    with INSTALL_LOCK:
+        job = INSTALL_JOBS.get(job_id)
+        if job is None: raise ValueError("Installer job was not found or has expired.")
+        return dict(job)
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "NodeCoreLobby/0.3"
     def do_GET(self):
@@ -882,7 +1087,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path not in ("/api/packages/prepare", "/api/certificates/action", "/api/termux/execute", "/api/termux/output"):
+            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -900,6 +1105,14 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 self.send_json({"status": "error", "message": "Request body must be a JSON object"})
+                return
+            if path == "/api/packages/execute":
+                result = start_official_installer(payload.get("kind"))
+                self.send_json({"status":"started", "job":result})
+                return
+            if path == "/api/packages/output":
+                result = get_official_installer_job(payload.get("job_id"))
+                self.send_json({"status":"ok", "job":result})
                 return
             if path == "/api/termux/execute":
                 result = start_termux_command(payload.get("command_id"))
