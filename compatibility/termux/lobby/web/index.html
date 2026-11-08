@@ -26,7 +26,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 </style></head>
 <body>
 <header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
-<p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels check official stable-release metadata only; no changes are executed.</p>
+<p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels can stage, verify and explicitly execute the official Node Core OS installer or updater.</p>
 <div class="grid">
 <button class="card" data-panel="termux"><h2>00 · Termux Commands</h2><small>Reveal approved Termux commands and execute them in a live local terminal window.</small></button>
 <button class="card" data-panel="report"><h2>Generate Report</h2><small>Generate, copy, download or share the official Termux status report in TXT or JSON.</small></button>
@@ -259,32 +259,35 @@ if(!/^[0-9a-f]{64}$/.test(payload.expected_fingerprint_sha256)){content.insertAd
 certificateAction('peer_trust',payload);
 });
 }
-function renderRelease(r, mode){
+function renderRelease(r, mode, packageStatus){
 if(r.status==='unavailable')return '<p class="bad"><b>Release verification unavailable.</b></p><p>'+esc(r.message||r.error||'No verified release metadata.')+'</p>';
 const a=r.assets||{};
 let out='<p><b>Latest stable release:</b> <span class="ok">'+esc(r.name)+' ('+esc(r.tag)+')</span></p>';
 out+='<p><b>Published:</b> '+esc(r.published_at)+'</p>';
 out+='<p><b>Official release:</b> <a href="'+esc(r.release_url)+'" target="_blank" rel="noopener noreferrer">Open GitHub Release</a></p>';
 out+='<p><b>Installed version:</b> '+esc(r.installed_version||'No complete installation detected')+'</p>';
-if(r.installation_detected)out+='<p class="warn">An existing Node Core OS installation was detected. The Lobby must use the updater, not the new-install path.</p>';
-else out+='<p class="muted">No complete Node Core OS installation was detected. This is only a status result, not authorization to install.</p>';
+if(r.installation_detected)out+='<p class="warn">An existing Node Core OS installation was detected. Only the official updater is available.</p>';
+else if(r.partial_installation)out+='<p class="bad">A partial or residual installation was detected. Neither installation nor update will run automatically; repair the installation state first.</p>';
+else out+='<p class="muted">No complete Node Core OS installation was detected. The official installer is available after package verification.</p>';
 out+='<p><b>SHA-256 metadata:</b> '+(r.verification?.release_notes_checksums_match_asset_digests?'<span class="ok">Release notes match GitHub asset digests</span>':'<span class="bad">Not verified</span>')+'</p>';
 for(const kind of ['install','update']){
 const item=a[kind];if(!item)continue;
 out+='<div class="result"><b>'+esc(kind==='install'?'New installation package':'Update package')+'</b><br><small>'+esc(item.name)+'</small><br><small>SHA-256: <code>'+esc(item.sha256)+'</code></small><br><small>Size: '+esc(item.size_bytes)+' bytes</small></div>';
 }
 const eligible=r.local_transport==='https'&&(mode==='install'?!r.installation_detected&&!r.partial_installation:!!r.installation_detected&&r.update_available);
-if(r.local_transport!=='https')out+='<p class="warn">Package staging requires HTTPS on the local Lobby connection. Current transport: '+esc(r.local_transport||'unknown')+'.</p>';
+const staged=(packageStatus?.packages||[]).find(p=>p.kind===mode&&p.version===r.version&&p.asset_name===a[mode]?.name&&p.actual_sha256===a[mode]?.sha256);
+if(r.local_transport!=='https')out+='<p class="warn">Installer execution requires HTTPS on the local Lobby connection. Current transport: '+esc(r.local_transport||'unknown')+'.</p>';
+else if(eligible&&staged)out+='<div class="result"><b class="ok">Official package already verified and staged</b><p>'+esc(staged.asset_name)+'</p><p>SHA-256: <code>'+esc(staged.actual_sha256)+'</code></p></div><div class="actions"><button class="action" id="execute-package">EJECUTAR '+(mode==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL</button><button class="action secondary" id="prepare-package">Download and verify again</button></div>';
 else if(eligible)out+='<div class="actions"><button class="action" id="prepare-package">Download and verify '+(mode==='install'?'installation':'update')+' package</button></div>';
 else out+='<p class="warn">This operation is not available for the detected installation state or version.</p>';
-out+='<p class="warn">This step only downloads and verifies the archive. It does not extract or execute it. New-install identity capture (Bitcoin/Ethereum reference keys) is not yet implemented; update never asks for identity keys.</p>';
+out+='<p class="muted">Execution is a separate confirmed action. The Lobby runs only the official release script and shows its real process output. The installer initializes the existing Ed25519 NODE ID; the Lobby does not collect Bitcoin/Ethereum private keys. Updates do not request identity keys.</p>';
 return out;
 }
 async function preparePackage(kind,button){
 if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token is unavailable. Reload the Lobby.</p>');return;}
 const promptText=kind==='install'
-?'Download the official new-install archive? This will only save and verify the package; it will not install Node Core OS or ask for identity keys.'
-:'Download the official update archive? This will only save and verify the package; it will not update Node Core OS or request identity keys.';
+?'Download the official new-install archive and verify its complete SHA-256? No installer will run until you separately confirm EJECUTAR.'
+:'Download the official update archive and verify its complete SHA-256? No updater will run until you separately confirm EJECUTAR.';
 if(!window.confirm(promptText))return;
 button.disabled=true;button.textContent='Downloading and verifying…';
 try{
@@ -292,8 +295,8 @@ const response=await fetch('/api/packages/prepare',{method:'POST',headers:{'Cont
 const result=await response.json();
 if(!response.ok||result.status!=='verified')throw new Error(result.message||'Package preparation failed');
 const r=result.receipt;
-content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Official package downloaded and SHA-256 verified</b><p>'+esc(r.asset_name)+'</p><p>Version: '+esc(r.version)+'</p><p>Size: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Stored locally in ~/.node-core/lobby/packages with private file permissions. Not extracted or executed.</p></div>');
-const execute=document.createElement('button');execute.className='action';execute.textContent='EJECUTAR INSTALADOR / ACTUALIZADOR OFICIAL';execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));content.insertBefore(execute,content.firstChild);
+content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Official package downloaded and SHA-256 verified</b><p>'+esc(r.asset_name)+'</p><p>Version: '+esc(r.version)+'</p><p>Size: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Stored locally in ~/.node-core/lobby/packages with private file permissions. The installer has not run yet.</p></div>');
+const execute=document.createElement('button');execute.className='action';execute.textContent='EJECUTAR '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL';execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));content.insertBefore(execute,content.firstChild);
 }catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Package preparation failed: '+esc(error.message)+'</p>');}
 finally{button.disabled=false;button.textContent='Download and verify '+(kind==='install'?'installation':'update')+' package';}
 }
@@ -333,7 +336,7 @@ if(!response.ok||result.status!=='started')throw new Error(result.message||'No s
 state.textContent='EJECUTANDO · trabajo '+result.job.job_id;
 pollInstallerJob(result.job.job_id,terminal,state,output);
 }catch(error){state.textContent='ERROR: '+error.message;state.className='bad';}
-finally{button.disabled=false;button.textContent='EJECUTAR INSTALADOR OFICIAL';}
+finally{button.disabled=false;button.textContent='EJECUTAR '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL';}
 }
 async function checkLobbyConnection(){
 statusEl.textContent='Checking local Lobby service…';
@@ -380,9 +383,14 @@ wireCertificateActions();
 const r=await fetch('/api/releases/latest',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
-content.innerHTML=renderRelease(d,selected);
+const packageResponse=await fetch('/api/packages/status',{cache:'no-store'});
+if(!packageResponse.ok)throw new Error('Unable to read verified package inventory');
+const packageStatus=await packageResponse.json();
+content.innerHTML=renderRelease(d,selected,packageStatus);
 const prepareButton=content.querySelector('#prepare-package');
 if(prepareButton)prepareButton.addEventListener('click',()=>preparePackage(selected==='install'?'install':'update',prepareButton));
+const executeButton=content.querySelector('#execute-package');
+if(executeButton)executeButton.addEventListener('click',()=>executeOfficialInstaller(selected==='install'?'install':'update',executeButton));
 }else{
 const r=await fetch(selected==='status'?'/api/status':'/api/report',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
