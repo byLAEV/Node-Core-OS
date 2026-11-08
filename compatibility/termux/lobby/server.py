@@ -609,6 +609,7 @@ class Handler(BaseHTTPRequestHandler):
                 release["installation_detected"] = node.get("installed", False)
                 release["partial_installation"] = node.get("partial_or_residual", False)
                 release["installation_status"] = node.get("status", "unknown")
+                release["local_transport"] = "https" if self.server.is_https else "http"
                 try:
                     release["update_available"] = bool(
                         installed and tuple(map(int, release["version"].split("."))) >
