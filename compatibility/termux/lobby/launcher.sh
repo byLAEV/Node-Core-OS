@@ -24,7 +24,7 @@ chmod 600 "$LOG"
 is_lobby_process() {
   local pid="$1"
   [[ -r "/proc/$pid/cmdline" ]] || return 1
-  tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | grep -Fxq -- "$SERVER"
+  tr '\0' '\n' < "/proc/$pid/cmdline" 2>/dev/null | grep -Fx -- "$SERVER" >/dev/null
 }
 
 stop_lobby_process() {
@@ -36,8 +36,8 @@ stop_lobby_process() {
       sleep 0.2
     done
     if is_lobby_process "$pid"; then
-      kill -TERM "$pid" 2>/dev/null || true
-      sleep 1
+      kill -KILL "$pid" 2>/dev/null || true
+      sleep 0.2
     fi
   fi
 }
