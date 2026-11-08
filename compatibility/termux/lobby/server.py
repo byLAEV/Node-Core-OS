@@ -681,6 +681,7 @@ TERMINAL_SESSION_LIMIT = 2
 TERMINAL_IDLE_SECONDS = 1800
 NODE_CORE_OS_DIR = HOME / "Node-Core-OS"
 NODE_CORE_MAIN = NODE_CORE_OS_DIR / "main.py"
+NODE_CORE_LAUNCHER = HOME / ".node-core" / "bin" / "node-core"
 
 def _terminal_reader(session_id, master_fd, process):
     try:
@@ -712,8 +713,18 @@ def _terminal_reader(session_id, master_fd, process):
             pass
 
 def start_node_core_terminal():
-    if not NODE_CORE_MAIN.is_file():
-        raise ValueError("Node Core OS main.py was not found: " + str(NODE_CORE_MAIN))
+    # A clean official installation lives under ~/.node-core and does not
+    # require a source checkout in ~/Node-Core-OS. Prefer its stable launcher.
+    # Keep the checkout command only as an explicit development fallback.
+    if NODE_CORE_LAUNCHER.is_file():
+        command = '"$HOME/.node-core/bin/node-core"'
+    elif NODE_CORE_MAIN.is_file():
+        command = 'cd "$HOME/Node-Core-OS" && python main.py'
+    else:
+        raise ValueError(
+            "Node Core OS is not installed and no development checkout was found. "
+            "Expected launcher: " + str(NODE_CORE_LAUNCHER)
+        )
     with TERMINAL_LOCK:
         active = sum(1 for item in TERMINAL_SESSIONS.values() if item["status"] == "running")
         if active >= TERMINAL_SESSION_LIMIT:
@@ -745,7 +756,6 @@ def start_node_core_terminal():
     thread = threading.Thread(target=_terminal_reader, args=(session_id, master_fd, process),
                               name="node-core-pty-" + session_id[:8], daemon=True)
     thread.start()
-    command = 'cd "$HOME/Node-Core-OS" && python main.py'
     os.write(master_fd, (command + "\n").encode("utf-8"))
     return {"session_id": session_id, "command": command, "status": "running",
             "message": "Interactive PTY started. Type commands in the terminal input."}
