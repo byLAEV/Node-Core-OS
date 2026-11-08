@@ -109,6 +109,13 @@ def main() -> int:
                 assert "runBtn.addEventListener('click',runSelected)" in page
                 assert "fetch('/health'" in page
                 assert "Generate Report" in page
+                assert "Node Core OS Directory Manifest" in page
+                assert "/api/layout/manifest" in page
+                layout = request_json(base_url + "/api/layout/manifest", tls_expected)
+                assert layout["layout_id"] == "node-core-os-user-runtime", layout
+                layout_paths = {item["path"] for item in layout["directories"]}
+                assert {"app", "bin", "storage", "ipfs", "logs", "runtime", "services", "lobby"} <= layout_paths, layout_paths
+                print("Canonical Node Core OS directory manifest endpoint: PASS")
                 assert "Copy TXT" in page and "Copy JSON" in page
                 assert "Download TXT" in page and "Download JSON" in page
                 assert "Share report" in page
