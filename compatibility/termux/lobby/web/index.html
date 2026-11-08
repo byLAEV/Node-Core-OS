@@ -276,11 +276,15 @@ out+='<div class="result"><b>'+esc(kind==='install'?'New installation package':'
 }
 const eligible=r.local_transport==='https'&&(mode==='install'?!r.installation_detected&&!r.partial_installation:!!r.installation_detected&&r.update_available);
 const staged=(packageStatus?.packages||[]).find(p=>p.kind===mode&&p.version===r.version&&p.asset_name===a[mode]?.name&&p.actual_sha256===a[mode]?.sha256);
-if(r.local_transport!=='https')out+='<p class="warn">Installer execution requires HTTPS on the local Lobby connection. Current transport: '+esc(r.local_transport||'unknown')+'.</p>';
-else if(eligible&&staged)out+='<div class="result"><b class="ok">Official package already verified and staged</b><p>'+esc(staged.asset_name)+'</p><p>SHA-256: <code>'+esc(staged.actual_sha256)+'</code></p></div><div class="actions"><button class="action" id="execute-package">EJECUTAR '+(mode==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL</button><button class="action secondary" id="prepare-package">Download and verify again</button></div>';
-else if(eligible)out+='<div class="actions"><button class="action" id="prepare-package">Download and verify '+(mode==='install'?'installation':'update')+' package</button></div>';
-else out+='<p class="warn">This operation is not available for the detected installation state or version.</p>';
-out+='<p class="muted">Execution is a separate confirmed action. The Lobby runs only the official release script and shows its real process output. The installer initializes the existing Ed25519 NODE ID; the Lobby does not collect Bitcoin/Ethereum private keys. Updates do not request identity keys.</p>';
+const actionName=mode==='install'?'INSTALADOR':'ACTUALIZADOR';
+if(!eligible)out+='<p class="warn">'+(mode==='install'?'La instalación nueva no está disponible porque ya existe una instalación o hay restos de una instalación anterior.':'La actualización requiere una instalación completa y una versión oficial compatible.')+'</p>';
+else if(r.local_transport!=='https')out+='<p class="warn">La ejecución requiere HTTPS en la conexión local del Lobby. Transporte actual: '+esc(r.local_transport||'unknown')+'.</p>';
+else{
+ if(staged)out+='<div class="result"><b class="ok">Paquete oficial verificado y preparado</b><p>'+esc(staged.asset_name)+'</p><p>SHA-256: <code>'+esc(staged.actual_sha256)+'</code></p></div>';
+ else out+='<p class="muted">Primero descarga y verifica el paquete oficial. El botón EJECUTAR estará disponible después de verificarlo.</p>';
+ out+='<div class="actions"><button class="action" id="execute-package" '+(staged?'':'disabled')+'>EJECUTAR '+actionName+' OFICIAL</button><button class="action secondary" id="prepare-package">'+(staged?'DESCARGAR Y VERIFICAR DE NUEVO':'DESCARGAR Y VERIFICAR PAQUETE')+'</button></div>';
+}
+out+='<p class="muted">La ejecución requiere una segunda confirmación. Se ejecuta únicamente el script oficial y se muestra la salida real. La instalación inicial crea la identidad Ed25519; no se solicitan claves privadas Bitcoin/Ethereum. La actualización no vuelve a solicitar claves de identidad.</p>';
 return out;
 }
 async function preparePackage(kind,button){
@@ -295,10 +299,12 @@ const response=await fetch('/api/packages/prepare',{method:'POST',headers:{'Cont
 const result=await response.json();
 if(!response.ok||result.status!=='verified')throw new Error(result.message||'Package preparation failed');
 const r=result.receipt;
-content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Official package downloaded and SHA-256 verified</b><p>'+esc(r.asset_name)+'</p><p>Version: '+esc(r.version)+'</p><p>Size: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Stored locally in ~/.node-core/lobby/packages with private file permissions. The installer has not run yet.</p></div>');
-const execute=document.createElement('button');execute.className='action';execute.textContent='EJECUTAR '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL';execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));content.insertBefore(execute,content.firstChild);
+content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Paquete oficial descargado y SHA-256 verificado</b><p>'+esc(r.asset_name)+'</p><p>Versión: '+esc(r.version)+'</p><p>Tamaño: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Guardado localmente con permisos privados. Todavía no se ha ejecutado.</p></div>');
+const execute=content.querySelector('#execute-package');
+if(execute){execute.disabled=false;execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));}
+button.disabled=false;
 }catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Package preparation failed: '+esc(error.message)+'</p>');}
-finally{button.disabled=false;button.textContent='Download and verify '+(kind==='install'?'installation':'update')+' package';}
+finally{button.disabled=false;button.textContent='DESCARGAR Y VERIFICAR PAQUETE';}
 }
 
 async function pollInstallerJob(jobId,terminal,state,output){
@@ -324,7 +330,7 @@ const promptText=kind==='install'
 ?'¿Ejecutar el instalador oficial de Node Core OS? Se creará la identidad Ed25519 durante la primera instalación. No introduzcas claves privadas Bitcoin/Ethereum aquí.'
 :'¿Ejecutar el instalador oficial? Ejecutará directamente installer/update.sh del paquete oficial verificado. Se conservarán los datos persistentes según las garantías del actualizador.';
 if(!window.confirm(promptText))return;
-button.disabled=true;button.textContent='INICIANDO INSTALADOR…';
+button.disabled=true;button.textContent='INICIANDO '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+'…';
 const terminal=document.createElement('details');terminal.open=true;
 terminal.innerHTML='<summary>Consola del instalador oficial</summary><p class="muted" data-installer-state>Preparando proceso…</p><pre data-installer-output></pre>';
 content.insertBefore(terminal,content.firstChild);
