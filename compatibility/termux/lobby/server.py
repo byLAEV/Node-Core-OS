@@ -733,7 +733,6 @@ def start_node_core_terminal():
         os.close(slave_fd)
         raise
     os.close(slave_fd)
-    os.set_blocking(master_fd, False)
     session_id = secrets.token_urlsafe(24)
     with TERMINAL_LOCK:
         TERMINAL_SESSIONS[session_id] = {
