@@ -24,6 +24,9 @@ catalog = json.loads((profile / "lobby" / "certificates" / "catalog.json").read_
 assert len(catalog["security_profiles"]) == 8
 assert catalog["policies"]["independent_from_core"] is True
 assert catalog["policies"]["node_identity_private_keys_are_never_managed_by_lobby"] is True
+layout = json.loads((profile.parent.parent / "installer" / "layout-manifest.json").read_text(encoding="utf-8"))
+assert layout["layout_id"] == "node-core-os-user-runtime"
+assert {"app", "bin", "storage", "ipfs", "logs", "runtime", "services", "lobby"} <= {item["path"] for item in layout["directories"]}
 manifest = json.loads((profile / "manifest.json").read_text(encoding="utf-8"))
 assert manifest["lobby"]["bind"] == "127.0.0.1"
 assert manifest["lobby"]["port"] == 8765
@@ -42,6 +45,10 @@ assert "TERMUX_COMMANDS" in server and "shell=False" in server
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
 assert "compatibility/termux/install-lobby.sh" in bootstrap
+installer = (profile / "install-lobby.sh").read_text(encoding="utf-8")
+assert "layout-manifest.json" in installer
+filesystem = (profile.parent.parent / "installer" / "lib" / "filesystem.sh").read_text(encoding="utf-8")
+assert "layout-manifest.json" in filesystem and "prepare_filesystem" in filesystem
 assert "NODE_CORE_LOBBY_REF" in bootstrap
 assert "installer/install.sh" not in bootstrap
 print("Python syntax, manifest and bootstrap contract: PASS")
