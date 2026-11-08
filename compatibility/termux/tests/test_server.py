@@ -11,6 +11,10 @@ import subprocess
 import sys
 import tempfile
 import time
+import hashlib
+
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 import urllib.error
 import urllib.request
 
@@ -185,6 +189,74 @@ def main() -> int:
                     assert authorized_result["status"] == "forbidden", authorized_result
                     assert "requires HTTPS" in authorized_result["message"], authorized_result
                 print("Session token injection, security headers and HTTPS-only package API authorization: PASS")
+
+                # Verify the public-only Bitcoin identity gate end-to-end.
+                if tls_expected:
+                    identity_status = request_json(base_url + "/api/identity/bitcoin", True)
+                    assert identity_status["status"] == "not_verified", identity_status
+
+                    def identity_post(path, payload):
+                        request = urllib.request.Request(
+                            base_url + path,
+                            data=json.dumps(payload).encode("utf-8"),
+                            headers={
+                                "Content-Type": "application/json",
+                                "Origin": base_url,
+                                "X-Node-Core-Lobby-Token": config["token"],
+                            },
+                            method="POST",
+                        )
+                        with urllib.request.urlopen(request, timeout=3.0, context=context) as response:
+                            return json.loads(response.read().decode("utf-8"))
+
+                    challenge_response = identity_post(
+                        "/api/identity/bitcoin/challenge",
+                        {"full_name": "Synthetic CI Identity"},
+                    )
+                    assert challenge_response["status"] == "challenge_issued", challenge_response
+                    challenge = challenge_response["challenge"]
+                    private_key = ec.derive_private_key(1, ec.SECP256K1())
+                    public_key = private_key.public_key().public_bytes(
+                        serialization.Encoding.X962,
+                        serialization.PublicFormat.CompressedPoint,
+                    )
+                    from bitcoin_identity import encode_p2wpkh_address
+                    address = encode_p2wpkh_address(public_key)
+                    message_hash = hashlib.sha256(challenge["message"].encode("utf-8")).digest()
+                    signature = private_key.sign(
+                        message_hash,
+                        ec.ECDSA(utils.Prehashed(hashes.SHA256())),
+                    )
+                    verified = identity_post(
+                        "/api/identity/bitcoin/verify",
+                        {
+                            "challenge_id": challenge["challenge_id"],
+                            "public_key_hex": public_key.hex(),
+                            "address": address,
+                            "signature_hex": signature.hex(),
+                        },
+                    )
+                    assert verified["status"] == "verified", verified
+                    assert verified["identity"]["status"] == "control_verified", verified
+                    assert verified["identity"]["address"] == address, verified
+                    assert verified["identity"]["full_name"] == "Synthetic CI Identity", verified
+                    pending_file = home / ".node-core" / "lobby" / "bitcoin-identity-pending.json"
+                    pending_text = pending_file.read_text(encoding="utf-8")
+                    assert private_key.private_numbers().private_value.to_bytes(32, "big").hex() not in pending_text
+                    assert oct(pending_file.stat().st_mode & 0o777) == "0o600"
+                    replay = identity_post(
+                        "/api/identity/bitcoin/verify",
+                        {
+                            "challenge_id": challenge["challenge_id"],
+                            "public_key_hex": public_key.hex(),
+                            "address": address,
+                            "signature_hex": signature.hex(),
+                        },
+                    )
+                    assert replay["status"] == "error", replay
+                    identity_post("/api/identity/bitcoin/cancel", {})
+                    assert request_json(base_url + "/api/identity/bitcoin", True)["status"] == "not_verified"
+                    print("Bitcoin P2WPKH address derivation, one-time ECDSA challenge, public-only persistence and replay rejection: PASS")
 
                 catalog_response = request_json(base_url + "/api/certificates", tls_expected)
                 assert catalog_response["catalog_version"] == "1.0.0", catalog_response
