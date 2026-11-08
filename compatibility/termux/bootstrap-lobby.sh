@@ -74,11 +74,11 @@ ENCODED_REF="$(python -c 'import sys, urllib.parse; print(urllib.parse.quote(sys
 BRANCH_URL="https://api.github.com/repos/$REPOSITORY_OWNER/$REPOSITORY_NAME/branches/$ENCODED_REF"
 
 info "Resolving the official source ref: $SOURCE_REF"
-curl --fail --location --silent --show-error \
-  --connect-timeout 15 --max-time 60 \
+curl --http1.1 --fail --location --silent --show-error \
+  --connect-timeout 15 --max-time 90 --retry 5 --retry-all-errors --retry-delay 2 \
   --header "Accept: application/vnd.github+json" \
   --header "User-Agent: Node-Core-OS-Lobby-Installer" \
-  --output "$BRANCH_JSON" "$BRANCH_URL" || fail "Could not resolve the source ref from GitHub."
+  --output "$BRANCH_JSON" "$BRANCH_URL" || fail "Could not resolve the source ref from GitHub after 5 retries. Check GitHub/network connectivity and retry."
 
 COMMIT="$(python - "$BRANCH_JSON" <<'PY'
 import json
@@ -99,9 +99,9 @@ PY
 
 ARCHIVE_URL="https://codeload.github.com/$REPOSITORY_OWNER/$REPOSITORY_NAME/tar.gz/$COMMIT"
 info "Downloading verified-ref snapshot at commit $COMMIT"
-curl --fail --location --silent --show-error \
-  --connect-timeout 15 --max-time 180 --retry 3 --retry-delay 2 \
-  --output "$ARCHIVE" "$ARCHIVE_URL" || fail "Could not download the official source snapshot."
+curl --http1.1 --fail --location --silent --show-error \
+  --connect-timeout 15 --max-time 240 --retry 5 --retry-all-errors --retry-delay 2 \
+  --output "$ARCHIVE" "$ARCHIVE_URL" || fail "Could not download the official source snapshot after 5 retries."
 
 info "Extracting the source snapshot into a private temporary directory."
 python - "$ARCHIVE" "$EXTRACT_DIR" <<'PY'
