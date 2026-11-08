@@ -104,31 +104,8 @@ jobs:
           python compatibility/termux/tests/test_certificate_manager.py
 
   installer-package-validation:
-    name: Installer package and offline update validation
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Run installer syntax and user-context tests
-        run: |
-          bash installer/tests/syntax.sh
-          bash installer/tests/user-context.sh
-      - name: Build and verify official installer and updater packages
-        run: |
-          bash .github/scripts/package-installers.sh
-      - name: Upload installer package test outputs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: termux-lobby-installer-validation
-          path: dist/
-          if-no-files-found: ignore
-          retention-days: 7
+    name: Official installer and updater package validation
+    uses: ./.github/workflows/package-installers.yml
 
   android-termux-device:
     name: Native Android Termux device validation
