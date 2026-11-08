@@ -20,6 +20,7 @@ import sys
 profile = pathlib.Path(sys.argv[1])
 ast.parse((profile / "lobby" / "server.py").read_text(encoding="utf-8"))
 ast.parse((profile / "lobby" / "certificate_manager.py").read_text(encoding="utf-8"))
+ast.parse((profile / "lobby" / "bitcoin_identity.py").read_text(encoding="utf-8"))
 catalog = json.loads((profile / "lobby" / "certificates" / "catalog.json").read_text(encoding="utf-8"))
 assert len(catalog["security_profiles"]) == 8
 assert catalog["policies"]["independent_from_core"] is True
