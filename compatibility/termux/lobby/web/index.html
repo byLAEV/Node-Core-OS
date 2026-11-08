@@ -81,7 +81,7 @@ const category=item.category||'Basic commands';
 if(!groups.has(category))groups.set(category,[]);
 groups.get(category).push(item);
 }
-let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Open the installed Node Core OS launcher in an interactive terminal with live output and keyboard input.</p><pre><code>"$HOME/.node-core/bin/node-core"</code></pre><div class="actions"><button class="action" id="open-node-core"><span aria-hidden="true">▶</span> OPEN NODE CORE OS</button></div></div>';
+let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Open Node Core OS using the Termux command in an interactive terminal with live output and keyboard input.</p><pre><code>cd "$HOME/Node-Core-OS-Lobby" && python server.py</code></pre><div class="actions"><button class="action" id="open-node-core"><span aria-hidden="true">▶</span> OPEN NODE CORE OS</button></div></div>';
 for(const [category,items] of groups){
 out+='<h3>'+esc(category)+'</h3>';
 for(const item of items){
@@ -128,7 +128,7 @@ const data=await response.json();
 if(!response.ok||data.status!=='started')throw new Error(data.message||'Unable to open Node Core OS terminal');
 const terminal=document.createElement('section');
 terminal.className='panel open';terminal.style.display='block';
-terminal.innerHTML='<h2>NODE CORE OS · INTERACTIVE TERMINAL</h2><p class="muted">Starting interactive shell and Node Core OS…</p><pre class="termux-output" style="background:#080d11;padding:14px;border:1px solid #35404b;border-radius:8px;min-height:180px;max-height:55vh;overflow:auto;white-space:pre-wrap"></pre><form class="terminal-form"><label for="node-core-terminal-input">Terminal input</label><input id="node-core-terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a command and press Enter"><div class="actions"><button class="action" type="submit">SEND / ENTER</button><button class="action secondary terminal-close" type="button">CLOSE TERMINAL</button></div></form><p class="muted">This is a real local PTY session. Input is sent to the shell running the official Node Core OS launcher.</p>';
+terminal.innerHTML='<h2>NODE CORE OS · INTERACTIVE TERMINAL</h2><p class="muted">Starting interactive shell and Node Core OS…</p><pre class="termux-output" style="background:#080d11;padding:14px;border:1px solid #35404b;border-radius:8px;min-height:180px;max-height:55vh;overflow:auto;white-space:pre-wrap"></pre><form class="terminal-form"><label for="node-core-terminal-input">Terminal input</label><input id="node-core-terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a command and press Enter"><div class="actions"><button class="action" type="submit">SEND / ENTER</button><button class="action secondary terminal-close" type="button">CLOSE TERMINAL</button></div></form><p class="muted">This is a real local PTY session. The requested command runs in the Termux environment.</p>';
 content.appendChild(terminal);terminal.scrollIntoView({behavior:'smooth',block:'start'});
 const output=terminal.querySelector('.termux-output'),state=terminal.querySelector('.muted'),form=terminal.querySelector('form'),input=terminal.querySelector('input');
 let closed=false,lastOutput='';
