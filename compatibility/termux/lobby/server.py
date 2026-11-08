@@ -1139,6 +1139,8 @@ def start_official_installer(kind):
     node = detect_node_core()
     if kind == "install" and (node["installed"] or node["partial_or_residual"]):
         raise ValueError("A complete or partial Node Core OS installation already exists. Use the updater or resolve the partial installation first.")
+    if kind == "install" and BITCOIN_IDENTITY.read_pending() is None:
+        raise ValueError("First installation is locked. Verify the Bitcoin mainnet P2WPKH key-control proof and declared full name in the Lobby first.")
     if kind == "update" and not node["installed"]:
         raise ValueError("Update requires a complete detected Node Core OS installation.")
     if kind == "update":
