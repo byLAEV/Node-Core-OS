@@ -45,6 +45,7 @@ PORT=8765
 for file in \
   "$SOURCE/lobby/server.py" \
   "$SOURCE/lobby/certificate_manager.py" \
+  "$SOURCE/lobby/bitcoin_identity.py" \
   "$SOURCE/lobby/certificates/catalog.json" \
   "$ROOT/installer/layout-manifest.json" \
   "$SOURCE/lobby/launcher.sh" \
@@ -94,6 +95,8 @@ COMMITTED=0
 TARGETS=(
   "$DEST/server.py"
   "$DEST/certificate_manager.py"
+  "$DEST/bitcoin_identity.py"
+  "$DEST/bitcoin_identity.py"
   "$DEST/certificates/catalog.json"
   "$DEST/manifests/layout-manifest.json"
   "$DEST/web/index.html"
@@ -104,6 +107,7 @@ TARGETS=(
 SOURCES=(
   "$SOURCE/lobby/server.py"
   "$SOURCE/lobby/certificate_manager.py"
+  "$SOURCE/lobby/bitcoin_identity.py"
   "$SOURCE/lobby/certificates/catalog.json"
   "$ROOT/installer/layout-manifest.json"
   "$SOURCE/lobby/web/index.html"
@@ -135,7 +139,7 @@ cleanup() {
 trap cleanup EXIT
 
 info "Checking Python syntax before installation."
-python -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); ast.parse((root/"server.py").read_text(encoding="utf-8")); ast.parse((root/"certificate_manager.py").read_text(encoding="utf-8")); json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager or certificate catalog validation failed."
+python -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); ast.parse((root/"server.py").read_text(encoding="utf-8")); ast.parse((root/"certificate_manager.py").read_text(encoding="utf-8")); ast.parse((root/"bitcoin_identity.py").read_text(encoding="utf-8")); json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager, Bitcoin identity module or certificate catalog validation failed."
 
 info "Staging Lobby files."
 for i in "${!TARGETS[@]}"; do
@@ -160,7 +164,7 @@ for i in "${!TARGETS[@]}"; do
   mv -f "$temp" "$target"
 done
 chmod 700 "$DEST" "$DEST/web" "$DEST/certificates" "$DEST/manifests"
-chmod 600 "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
+chmod 600 "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/bitcoin_identity.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
 
 info "Validating the installed server configuration."
 python "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
