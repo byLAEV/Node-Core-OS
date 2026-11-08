@@ -298,10 +298,21 @@ class CertificateManager:
                 raise CertificateManagerError("Peer trust record does not match its NODE ID key")
             if value.get("status") not in ("trusted", "revoked"):
                 raise CertificateManagerError("Peer trust record has an invalid status")
+            pem = value.get("certificate_pem")
+            if not isinstance(pem, str):
+                raise CertificateManagerError("Peer trust record is missing its public certificate")
+            inspected = self.inspect_peer_certificate(pem)
+            if inspected["node_id"] != node_id:
+                raise CertificateManagerError("Stored peer certificate does not match its NODE ID")
+            if inspected["fingerprint_sha256"] != value.get("fingerprint_sha256"):
+                raise CertificateManagerError("Stored peer certificate fingerprint does not match its record")
+            label = value.get("label", "")
+            if not isinstance(label, str) or len(label) > 128:
+                raise CertificateManagerError("Stored peer label is invalid")
             records.append({
                 "node_id": node_id,
-                "fingerprint_sha256": value.get("fingerprint_sha256", ""),
-                "label": value.get("label", ""),
+                "fingerprint_sha256": inspected["fingerprint_sha256"],
+                "label": label,
                 "status": value["status"],
                 "added_at": value.get("added_at", ""),
                 "revoked_at": value.get("revoked_at") or "",
@@ -616,6 +627,19 @@ class CertificateManager:
             data = {"schema_version": 1, "peers": {}}
         if not isinstance(data, dict) or data.get("schema_version") != 1 or not isinstance(data.get("peers"), dict):
             raise CertificateManagerError("Unsupported or malformed Node Core peer trust store")
+        # Validate every existing public certificate before writing a modified
+        # trust store; never preserve silently corrupted trust records.
+        for node_id, record in data["peers"].items():
+            if not isinstance(record, dict) or record.get("node_id") != node_id:
+                raise CertificateManagerError("Existing peer trust record is malformed")
+            if record.get("status") not in ("trusted", "revoked"):
+                raise CertificateManagerError("Existing peer trust status is invalid")
+            pem = record.get("certificate_pem")
+            if not isinstance(pem, str):
+                raise CertificateManagerError("Existing peer trust certificate is missing")
+            inspected = self.inspect_peer_certificate(pem)
+            if inspected["node_id"] != node_id or inspected["fingerprint_sha256"] != record.get("fingerprint_sha256"):
+                raise CertificateManagerError("Existing peer trust certificate failed identity or fingerprint validation")
         return data
 
     def _save_peer_store(self, data: dict[str, Any]) -> None:
