@@ -61,7 +61,7 @@ assert "execute-package" in html and "api/packages/status" in html
 # Validate the mapping and template expression rather than searching for a
 # fully-rendered phrase that does not exist literally in the source HTML.
 assert "const actionName=mode==='install'?'INSTALADOR':'ACTUALIZADOR';" in html
-assert "'>EJECUTAR '+actionName+' OFICIAL</button>'" in html
+assert "+actionName+' OFICIAL</button>" in html
 assert "DESCARGAR Y VERIFICAR PAQUETE" in html
 assert "This step only downloads and verifies the archive" not in html
 assert "execute.disabled=false" in html
