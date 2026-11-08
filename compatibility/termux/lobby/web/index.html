@@ -37,6 +37,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <div class="actions"><button id="run" class="action">Generate report</button><button id="close" class="action secondary">Close</button></div></section>
 <div id="status" class="status">Connecting to local Lobby service…</div>
 <footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only inventory · Release metadata verification</footer>
+<!-- NODE_CORE_LOBBY_SESSION -->
 <script>
 const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
@@ -87,8 +88,25 @@ for(const kind of ['install','update']){
 const item=a[kind];if(!item)continue;
 out+='<div class="result"><b>'+esc(kind==='install'?'New installation package':'Update package')+'</b><br><small>'+esc(item.name)+'</small><br><small>SHA-256: <code>'+esc(item.sha256)+'</code></small><br><small>Size: '+esc(item.size_bytes)+' bytes</small></div>';
 }
-out+='<p class="warn">The Lobby currently verifies release metadata only. It does not download, install, update, request private keys or change Node Core OS.</p>';
+const eligible=mode==='install'?!r.installation_detected&&!r.partial_installation:!!r.installation_detected&&r.update_available;\nif(eligible)out+='<div class="actions"><button class="action" id="prepare-package">Download and verify '+(mode==='install'?'installation':'update')+' package</button></div>';\nelse out+='<p class="warn">This operation is not available for the detected installation state or version.</p>';\nout+='<p class="warn">This step only downloads and verifies the archive. It does not extract or execute it. New-install identity capture (Bitcoin/Ethereum reference keys) is not yet implemented; update never asks for identity keys.</p>';
 return out;
+}
+async function preparePackage(kind,button){
+if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token is unavailable. Reload the Lobby.</p>');return;}
+const promptText=kind==='install'
+?'Download the official new-install archive? This will only save and verify the package; it will not install Node Core OS or ask for identity keys.'
+?'Download the official update archive? This will only save and verify the package; it will not update Node Core OS or request identity keys.'
+:'';
+if(!window.confirm(promptText))return;
+button.disabled=true;button.textContent='Downloading and verifying…';
+try{
+const response=await fetch('/api/packages/prepare',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({kind}),cache:'no-store'});
+const result=await response.json();
+if(!response.ok||result.status!=='verified')throw new Error(result.message||'Package preparation failed');
+const r=result.receipt;
+content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Official package downloaded and SHA-256 verified</b><p>'+esc(r.asset_name)+'</p><p>Version: '+esc(r.version)+'</p><p>Size: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Stored locally in ~/.node-core/lobby/packages with private file permissions. Not extracted or executed.</p></div>');
+}catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Package preparation failed: '+esc(error.message)+'</p>');}
+finally{button.disabled=false;button.textContent='Download and verify '+(kind==='install'?'installation':'update')+' package';}
 }
 async function runSelected(){
 runBtn.disabled=true;runBtn.textContent='Checking…';
@@ -99,6 +117,8 @@ const r=await fetch('/api/releases/latest',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 content.innerHTML=renderRelease(d,selected);
+const prepareButton=content.querySelector('#prepare-package');
+if(prepareButton)prepareButton.addEventListener('click',()=>preparePackage(selected==='install'?'install':'update',prepareButton));
 }else{
 const r=await fetch(selected==='status'?'/api/status':'/api/report',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
