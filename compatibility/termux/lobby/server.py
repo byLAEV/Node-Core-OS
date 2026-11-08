@@ -1336,7 +1336,7 @@ class Handler(BaseHTTPRequestHandler):
         except PermissionError as exc:
             self.send_json({"status": "forbidden", "message": str(exc)})
         except (OSError, urllib.error.URLError, urllib.error.HTTPError,
-                CertificateManagerError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
+                CertificateManagerError, BitcoinIdentityError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
             self.send_json({
                 "status": "error",
                 "message": str(exc)[:300],
