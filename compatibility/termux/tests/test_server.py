@@ -58,7 +58,7 @@ def main() -> int:
         config = {
             "bind": "127.0.0.1",
             "port": PORT,
-            "token": "integration-test-only",
+            "token": "integration-test-only-token-long-enough-for-local-tests",
             "https": True,
         }
         config_path = state / "server.json"
@@ -97,6 +97,41 @@ def main() -> int:
                 assert status["status"] == "running", status
                 print("HTTPS preferred startup and status API: PASS" if tls_expected
                       else "HTTP fallback startup and status API: PASS")
+
+                base_url = f"{'https' if tls_expected else 'http'}://127.0.0.1:{PORT}"
+                context = ssl._create_unverified_context() if tls_expected else None
+                with urllib.request.urlopen(base_url + "/", timeout=2.0, context=context) as response:
+                    page = response.read().decode("utf-8")
+                    headers = response.headers
+                assert "window.NODE_CORE_LOBBY_SESSION" in page
+                assert headers.get("Content-Security-Policy")
+                assert headers.get("X-Frame-Options") == "DENY"
+
+                denied = urllib.request.Request(
+                    base_url + "/api/packages/prepare",
+                    data=b'{"kind":"update"}',
+                    headers={"Content-Type": "application/json", "Origin": base_url},
+                    method="POST",
+                )
+                with urllib.request.urlopen(denied, timeout=2.0, context=context) as response:
+                    denied_result = json.loads(response.read().decode("utf-8"))
+                assert denied_result["status"] == "forbidden", denied_result
+
+                authorized = urllib.request.Request(
+                    base_url + "/api/packages/prepare",
+                    data=b'{"kind":"invalid"}',
+                    headers={
+                        "Content-Type": "application/json",
+                        "Origin": base_url,
+                        "X-Node-Core-Lobby-Token": config["token"],
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(authorized, timeout=2.0, context=context) as response:
+                    authorized_result = json.loads(response.read().decode("utf-8"))
+                assert authorized_result["status"] == "error", authorized_result
+                assert "Package kind" in authorized_result["message"], authorized_result
+                print("Session token injection, security headers and package API authorization: PASS")
             finally:
                 stop(process)
 
