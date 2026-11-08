@@ -66,10 +66,26 @@
       "manages_core_p2p_identity_certificate": false,
       "manages_lobby_loopback_tls": true,
       "manages_explicit_peer_trust": true
+    },
+    "bitcoin_identity": {
+      "enabled": true,
+      "module": "~/.node-core/lobby/bitcoin_identity.py",
+      "api_read": "GET /api/identity/bitcoin",
+      "challenge_endpoint": "POST /api/identity/bitcoin/challenge",
+      "verify_endpoint": "POST /api/identity/bitcoin/verify",
+      "cancel_endpoint": "POST /api/identity/bitcoin/cancel",
+      "network": "mainnet",
+      "address_type": "p2wpkh",
+      "challenge_ttl_seconds": 300,
+      "pending_ttl_seconds": 86400,
+      "private_key_storage": false,
+      "private_key_transmission": false,
+      "proof": "single-use ECDSA challenge verified against compressed secp256k1 public key and derived P2WPKH address",
+      "identity_assurance": "declared name plus proof of control of the supplied Bitcoin key; not civil-identity verification",
+      "first_install_gate": "proof API is implemented; installer enforcement and browser-side private-key signing UI remain pending"
     }
   },
   "verification_required": [
-    "real-device-install",
     "official-installer-execution",
     "official-updater-execution",
     "persistent-identity-storage-preservation",
@@ -79,6 +95,9 @@
     "https-browser-warning",
     "http-loopback-fallback",
     "widget-launch",
-    "android-background-lifecycle"
+    "android-background-lifecycle",
+    "browser-side-local-bitcoin-key-signing-ui",
+    "first-install-bitcoin-identity-gate-enforcement",
+    "lobby-bitcoin-identity-api-integration"
   ]
 }
