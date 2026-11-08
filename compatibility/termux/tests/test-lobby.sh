@@ -55,7 +55,7 @@ assert "/api/packages/execute" in server and "/api/packages/output" in server
 assert "start_official_installer" in server and "_verified_installer_root" in server
 assert "EJECUTAR " in html and "INSTALADOR" in html and "pollInstallerJob" in html
 assert "execute-package" in html and "api/packages/status" in html
-assert "already current or newer" in server and "verified as " in server
+assert "newer than the latest official stable release" in server and "verified as " in server
 assert "installer/install.sh" not in bootstrap
 print("Python syntax, manifest and bootstrap contract: PASS")
 PY
