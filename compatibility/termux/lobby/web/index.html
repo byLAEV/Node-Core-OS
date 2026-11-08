@@ -134,7 +134,7 @@ const output=terminal.querySelector('.termux-output'),state=terminal.querySelect
 let closed=false,lastOutput='';
 form.addEventListener('submit',async event=>{
 event.preventDefault();if(closed||!input.value)return;
-const value=input.value+'\\n';input.value='';
+const value=input.value+'\n';input.value='';
 try{const sent=await fetch('/api/terminal/input',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id,input:value}),cache:'no-store'});const result=await sent.json();if(!sent.ok||result.status!=='ok')throw new Error(result.message||'Input failed');}
 catch(error){state.textContent='Input error: '+error.message;state.className='bad';}
 });
