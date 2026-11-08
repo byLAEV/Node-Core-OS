@@ -920,12 +920,12 @@ def _verified_installer_root(kind):
             raise ValueError("The official {} package is incomplete; refusing execution.".format(kind))
         if kind == "install" and not (root / "installer" / "lib" / "filesystem.sh").is_file():
             raise ValueError("The official installer package is missing its filesystem library.")
-        return root, work
+        return root, work, release["version"]
     except BaseException:
         shutil.rmtree(work, ignore_errors=True)
         raise
 
-def _run_official_installer(job_id, kind, root, work):
+def _run_official_installer(job_id, kind, root, work, expected_version):
     process = None
     try:
         script = root / "installer" / (kind + ".sh")
@@ -977,11 +977,22 @@ def _run_official_installer(job_id, kind, root, work):
         finally:
             selector.close()
         code = process.wait()
+        verification_error = None
+        if code == 0:
+            installed = detect_node_core()
+            if not installed.get("installed") or installed.get("version") != expected_version:
+                code = 1
+                verification_error = (
+                    "The official script exited successfully, but the installed Node Core OS "
+                    "version could not be verified as " + expected_version + "."
+                )
+            else:
+                _append_install_output(job_id, "\\n[NODE CORE OS Lobby] Installation/update verified: " + expected_version + "\\n")
         with INSTALL_LOCK:
             job = INSTALL_JOBS.get(job_id)
             if job is not None:
                 job.update({"status": "timed_out" if timed_out else ("completed" if code == 0 else "failed"),
-                    "returncode": code, "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(), "pid": None})
+                    "returncode": code, "error": verification_error, "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(), "pid": None})
     except Exception as exc:
         with INSTALL_LOCK:
             job = INSTALL_JOBS.get(job_id)
@@ -1006,6 +1017,15 @@ def start_official_installer(kind):
         raise ValueError("A complete or partial Node Core OS installation already exists. Use the updater or resolve the partial installation first.")
     if kind == "update" and not node["installed"]:
         raise ValueError("Update requires a complete detected Node Core OS installation.")
+    if kind == "update":
+        try:
+            current_version = tuple(int(part) for part in node["version"].split("."))
+            release = latest_stable_release()
+            target_version = tuple(int(part) for part in release["version"].split("."))
+        except (KeyError, TypeError, ValueError, OSError, urllib.error.URLError) as exc:
+            raise ValueError("Could not verify the official stable update version: " + str(exc)[:160])
+        if target_version <= current_version:
+            raise ValueError("The installed Node Core OS version is already current or newer; no update will run.")
     with INSTALL_LOCK:
         active = sum(1 for job in INSTALL_JOBS.values() if job["status"] == "running")
         if active:
@@ -1016,7 +1036,7 @@ def start_official_installer(kind):
                 if len(INSTALL_JOBS) < INSTALL_JOB_LIMIT: break
         if len(INSTALL_JOBS) >= INSTALL_JOB_LIMIT:
             raise ValueError("Installer job history is full; reload the Lobby.")
-    root, work = _verified_installer_root(kind)
+    root, work, expected_version = _verified_installer_root(kind)
     job_id = secrets.token_urlsafe(18)
     with INSTALL_LOCK:
         INSTALL_JOBS[job_id] = {"job_id":job_id, "kind":kind, "status":"running",
@@ -1024,7 +1044,7 @@ def start_official_installer(kind):
             "output_truncated":False, "returncode":None,
             "started_at":dt.datetime.now(dt.timezone.utc).isoformat(), "finished_at":None, "pid":None}
     thread = threading.Thread(target=_run_official_installer,
-        args=(job_id,kind,root,work), name="node-core-official-installer", daemon=True)
+        args=(job_id,kind,root,work,expected_version), name="node-core-official-installer", daemon=True)
     thread.start()
     return {"job_id":job_id, "kind":kind, "status":"running"}
 
