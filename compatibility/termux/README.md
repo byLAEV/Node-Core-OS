@@ -120,14 +120,26 @@ records the release tag, package name, size, expected and actual digest, and
 explicitly records that the archive has not been inspected, extracted or
 executed.
 
-This is a staging milestone only. The Lobby does not yet extract or execute
-either archive. New installation must not be enabled until the agreed
-Bitcoin/Ethereum WIF/HEX reference-key flow is safely integrated with the
-canonical installer. An update package never asks for private identity keys.
-A later execution milestone must inspect archive paths, verify package
-contents and canonical entrypoints, request a separate explicit confirmation,
-run the official package script, and validate/rollback the resulting
-installation.
+After staging, the Lobby exposes a separate **EJECUTAR INSTALADOR /
+ACTUALIZADOR OFICIAL** action. Before execution the server re-fetches the
+current stable-release metadata, requires the staged receipt to match that
+exact release and re-hashes the complete archive. It then safely extracts the
+package into a private temporary workspace, rejecting absolute paths, parent
+traversal, symlinks, special files, excessive file counts and expanded size.
+The Lobby executes only the canonical script from that package:
+`installer/install.sh` for a new installation or `installer/update.sh` for
+an update. No arbitrary command or browser-supplied path is accepted.
+
+Execution is a separate authenticated HTTPS POST after explicit browser
+confirmation. The Lobby runs the official script as the unprivileged Termux
+user, displays its actual stdout/stderr in an in-page console, and reports
+the process exit code, timeout or failure. The official installer initializes
+the existing Ed25519 NODE ID; the proposed Bitcoin/Ethereum reference-key
+extension remains unimplemented and is not requested or collected by this
+workflow. Updates use the official updater and do not ask for identity private
+keys. This integration is code-complete in the feature branch but still
+requires automated CI and physical-device validation before it can be called
+production-ready.
 
 ## Stable Release discovery in the Lobby
 
@@ -146,11 +158,9 @@ The install and update dashboard panels show this release information and the
 installed version, if detected. If GitHub is unavailable or metadata is invalid,
 the Lobby reports that verification is unavailable and does not infer a version.
 
-**This stage validates release metadata only.** It does not download archives,
-re-hash package bytes, execute an installer, update Node Core OS, or ask for
-private keys. Those actions require a separately reviewed local operation API,
-explicit user authorization, archive staging, SHA-256 verification against the
-release metadata, compatibility checks, rollback, and end-to-end tests.
+Release discovery is read-only. Downloading, byte-level SHA-256 verification and
+installer execution are separate user-triggered steps described above. Release
+metadata alone never authorizes an install or update.
 
 ## Node Core OS installation and update boundary
 
@@ -169,13 +179,12 @@ The Lobby must detect an existing installation before choosing a path; update
 must preserve identity, configuration, local storage and the Kubo/IPFS
 repository and must never ask for identity input again.
 
-**Important current limitation:** the existing Lobby dashboard's install,
-update and repair panels are read-only readiness reports. The Node Core OS
-release installer currently initializes its own Ed25519 NODE ID. The proposed
-Bitcoin WIF/HEX reference identifiers and Ethereum address derivation have not
-been implemented or integrated. Do not prompt for, accept, store, transmit or
-log a Bitcoin/Ethereum private key in the current Lobby. This identity extension
-requires a separate reviewed implementation and tests before it can be enabled.
+**Identity boundary:** the Lobby invokes the canonical official package
+scripts. The current installer initializes the Node Core OS Ed25519 NODE ID.
+The proposed Bitcoin WIF/HEX reference identifiers and Ethereum address
+derivation have not been implemented or integrated. The Lobby does not prompt
+for, accept, store, transmit or log Bitcoin/Ethereum private keys. That identity
+extension remains a separate future implementation.
 
 The Lobby diagnostics API is read-only. It is not an authenticated administrative
 API and must not be extended with mutating actions without a separate security
@@ -327,5 +336,6 @@ or `http`. Do not mark HTTPS validated unless the response says
 - Termux:Widget launch and Android background lifecycle.
 - Automated tests for bootstrap syntax, server startup, loopback binding and
   health endpoints.
-- Separate end-to-end integration of the official Node Core OS installer and
-  updater before the Lobby's install/update buttons can execute operations.
+- End-to-end execution of both official release packages on physical Termux,
+  including a clean install, an update, rollback behavior and persistent-data
+  preservation.
