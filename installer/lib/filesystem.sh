@@ -33,6 +33,8 @@ if not root.exists():
     root.mkdir(mode=0o700)
 
 for entry in data.get("directories", []):
+    if entry.get("provisioner") != "node-core-installer":
+        continue
     relative = PurePosixPath(entry["path"])
     if relative.is_absolute() or not relative.parts or any(part in ("", ".", "..") for part in relative.parts):
         raise SystemExit(f"Unsafe directory path in manifest: {entry['path']!r}")
