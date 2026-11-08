@@ -80,6 +80,16 @@ server reports and uses HTTP on loopback only.
 - Diagnostics: `/api/diagnostics`
 - Full read-only report: `/api/report`
 
+## Generate Report — official TXT / JSON export
+
+The Lobby home screen provides a dedicated **Generate Report** action. It requests a fresh snapshot from the read-only `/api/report` endpoint and presents compatibility checks, Termux/Android environment, Node Core OS detection, tools, installed packages, network/local services, directory structure and privacy limits.
+
+The report can be copied as readable TXT or structured JSON, downloaded as `node-core-termux-report.txt` or `node-core-termux-report.json`, or shared to another Android application through the browser share sheet when supported. If file sharing is unavailable, the Lobby shares the text report; if native sharing is unavailable, it copies TXT to the clipboard.
+
+The JSON is the raw report object returned by the local API. The TXT version is a human-readable rendering of the same snapshot. Both include the UTC generation timestamp and check results. Exporting does not send the report to a remote service. Sharing is initiated only when the user presses **Share report** and selects a destination.
+
+The report is read-only and bounded. It excludes private keys, tokens, credentials and proxy values; it does not read arbitrary file contents or traverse private storage/IPFS contents. This report is a technical inventory, not a security certification.
+
 A self-signed certificate encrypts the local connection but is not automatically
 trusted by Android browsers. A browser warning may appear. The `curl -k` option
 is for controlled local testing only; it does not establish certificate trust.
