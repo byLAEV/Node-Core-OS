@@ -55,7 +55,11 @@ assert "/api/packages/execute" in server and "/api/packages/output" in server
 assert "start_official_installer" in server and "_verified_installer_root" in server
 assert "EJECUTAR " in html and "INSTALADOR" in html and "pollInstallerJob" in html
 assert "execute-package" in html and "api/packages/status" in html
-assert "EJECUTAR INSTALADOR OFICIAL" in html and "EJECUTAR ACTUALIZADOR OFICIAL" in html
+# renderRelease() composes the visible button label from the selected operation.
+# Validate the mapping and template expression rather than searching for a
+# fully-rendered phrase that does not exist literally in the source HTML.
+assert "const actionName=mode==='install'?'INSTALADOR':'ACTUALIZADOR';" in html
+assert "'>EJECUTAR '+actionName+' OFICIAL</button>'" in html
 assert "DESCARGAR Y VERIFICAR PAQUETE" in html
 assert "This step only downloads and verifies the archive" not in html
 assert "execute.disabled=false" in html
