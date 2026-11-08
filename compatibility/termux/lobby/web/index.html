@@ -99,7 +99,7 @@ if(rt.backup_available)body+='<button class="action secondary" data-cert-action=
 body+='</div><p class="muted">Changes require a Lobby restart to activate. This self-signed certificate does not install Android system/browser trust.</p>';
 }
 if(item.id==='node-core-peer-trust-store'){
-body+='<div class="result"><b>Import public Node Core OS peer certificate</b><p>Paste exactly one PEM certificate. Verify the displayed NODE ID and SHA-256 fingerprint with the peer through an independent channel before trusting it.</p><label for="peer-label">Peer label (optional)</label><input id="peer-label" maxlength="128" placeholder="Trusted peer label"><label for="peer-pem">Public PEM certificate only</label><textarea id="peer-pem" rows="6" placeholder="-----BEGIN CERTIFICATE-----"></textarea><div class="certificate-actions"><button class="action" id="peer-inspect">Inspect only</button><button class="action" id="peer-trust">Trust peer</button></div></div>';
+body+='<div class="result"><b>Import public Node Core OS peer certificate</b><p>Paste exactly one PEM certificate. Verify the displayed NODE ID and SHA-256 fingerprint with the peer through an independent channel before trusting it.</p><label for="peer-label">Peer label (optional)</label><input id="peer-label" maxlength="128" placeholder="Trusted peer label"><label for="peer-pem">Public PEM certificate only</label><textarea id="peer-pem" rows="6" placeholder="-----BEGIN CERTIFICATE-----"></textarea><label for="peer-fingerprint">SHA-256 fingerprint confirmed out of band (required to trust)</label><input id="peer-fingerprint" maxlength="64" placeholder="64 lowercase hexadecimal characters"><div class="certificate-actions"><button class="action" id="peer-inspect">Inspect only</button><button class="action" id="peer-trust">Trust peer</button></div></div>';
 for(const peer of rt.peers||[]){
 body+='<div class="result"><b>'+esc(peer.label||'Peer')+'</b><p><code>'+esc(peer.node_id)+'</code></p><p>SHA-256: <code>'+esc(peer.fingerprint_sha256)+'</code></p><p>Status: '+esc(peer.status)+'</p>';
 if(peer.status==='trusted')body+='<button class="action secondary" data-peer-revoke="'+esc(peer.node_id)+'">Revoke trust</button>';
@@ -116,6 +116,7 @@ return out;
 }
 async function certificateAction(action,payload={}){
 if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token is unavailable. Reload Lobby.</p>');return;}
+if((action==='peer_inspect'||action==='peer_trust')&&String(payload.certificate_pem||'').includes('PRIVATE KEY')){content.insertAdjacentHTML('afterbegin','<p class="bad">Private-key material is rejected and must never be submitted.</p>');return;}
 const descriptions={tls_install:'Generate and install the local Lobby TLS certificate?',tls_renew:'Renew the current Lobby TLS certificate? A protected local backup will be created.',tls_repair:'Generate a replacement TLS pair and quarantine invalid files?',tls_recover:'Restore the last verified TLS backup?',peer_trust:'Add this peer certificate to the Node Core OS explicit trust allowlist?',peer_revoke:'Revoke this peer from the local Node Core OS trust allowlist?'};
 if(!window.confirm(descriptions[action]||'Perform this certificate operation?'))return;
 try{
@@ -133,9 +134,14 @@ function wireCertificateActions(){
 content.querySelectorAll('[data-cert-action]').forEach(button=>button.addEventListener('click',()=>certificateAction(button.dataset.certAction)));
 content.querySelectorAll('[data-peer-revoke]').forEach(button=>button.addEventListener('click',()=>certificateAction('peer_revoke',{node_id:button.dataset.peerRevoke})));
 const inspect=document.getElementById('peer-inspect'),trust=document.getElementById('peer-trust');
-const getPeerPayload=()=>({certificate_pem:document.getElementById('peer-pem')?.value||'',label:document.getElementById('peer-label')?.value||''});
+const getPeerPayload=()=>({certificate_pem:document.getElementById('peer-pem')?.value||'',label:document.getElementById('peer-label')?.value||'',expected_fingerprint_sha256:document.getElementById('peer-fingerprint')?.value.trim().toLowerCase()||''});
 if(inspect)inspect.addEventListener('click',()=>certificateAction('peer_inspect',getPeerPayload()));
-if(trust)trust.addEventListener('click',()=>certificateAction('peer_trust',getPeerPayload()));
+if(trust)trust.addEventListener('click',()=>{
+const payload=getPeerPayload();
+if(payload.certificate_pem.includes('PRIVATE KEY')){content.insertAdjacentHTML('afterbegin','<p class="bad">Never paste a private key. Only public PEM certificates are accepted.</p>');return;}
+if(!/^[0-9a-f]{64}$/.test(payload.expected_fingerprint_sha256)){content.insertAdjacentHTML('afterbegin','<p class="warn">Inspect the certificate first, verify its SHA-256 fingerprint with the peer through an independent channel, then enter the exact 64-character fingerprint.</p>');return;}
+certificateAction('peer_trust',payload);
+});
 }
 function renderRelease(r, mode){
 if(r.status==='unavailable')return '<p class="bad"><b>Release verification unavailable.</b></p><p>'+esc(r.message||r.error||'No verified release metadata.')+'</p>';
