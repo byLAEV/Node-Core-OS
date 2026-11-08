@@ -23,6 +23,9 @@ manifest = json.loads((profile / "manifest.json").read_text(encoding="utf-8"))
 assert manifest["lobby"]["bind"] == "127.0.0.1"
 assert manifest["lobby"]["port"] == 8765
 assert manifest["lobby"]["transport_preference"] == ["https", "http-loopback"]
+assert manifest["lobby"]["release_package_staging"]["enabled"] is True
+assert manifest["lobby"]["release_package_staging"]["extracts_archives"] is False
+assert manifest["lobby"]["release_package_staging"]["executes_installers"] is False
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
 assert "compatibility/termux/install-lobby.sh" in bootstrap
