@@ -6,6 +6,8 @@ on:
     paths:
       - "Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/**"
       - "node_core/security/node_identity_certificate.py"
+      - "compatibility/termux/lobby/certificates/catalog.json"
+      - "compatibility/termux/lobby/certificate_manager.py"
       - "scripts/validate_certificate_catalog.py"
       - ".github/workflows/certificate-catalog-integrity.yml"
   push:
