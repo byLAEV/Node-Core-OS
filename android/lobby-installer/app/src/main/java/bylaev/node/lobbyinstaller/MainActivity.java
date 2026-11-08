@@ -46,6 +46,20 @@ public final class MainActivity extends Activity {
         sendCommandToTermux();
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 41 && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            sendCommandToTermux();
+        } else if (requestCode == 41) {
+            status.setText("Autorización denegada. Activa “Run commands in Termux environment” en los permisos de NODE y vuelve a abrirlo.");
+            Intent settings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            settings.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(settings);
+        }
+    }
+
     private void sendCommandToTermux() {
         try {
             getPackageManager().getPackageInfo("com.termux", 0);
@@ -56,10 +70,8 @@ public final class MainActivity extends Activity {
 
         if (checkSelfPermission("com.termux.permission.RUN_COMMAND")
                 != PackageManager.PERMISSION_GRANTED) {
-            status.setText("Falta autorizar NODE para ejecutar comandos en Termux. Abriendo los permisos de NODE…");
-            Intent settings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-            settings.setData(Uri.parse("package:" + getPackageName()));
-            startActivity(settings);
+            status.setText("Solicitando autorización para ejecutar comandos en Termux…");
+            requestPermissions(new String[]{"com.termux.permission.RUN_COMMAND"}, 41);
             return;
         }
 
