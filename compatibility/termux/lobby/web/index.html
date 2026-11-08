@@ -180,6 +180,28 @@ content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Offic
 }catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Package preparation failed: '+esc(error.message)+'</p>');}
 finally{button.disabled=false;button.textContent='Download and verify '+(kind==='install'?'installation':'update')+' package';}
 }
+async function checkLobbyConnection(){
+statusEl.textContent='Checking local Lobby service…';
+try{
+const response=await fetch('/health',{method:'GET',cache:'no-store',headers:{'Accept':'application/json'}});
+if(!response.ok)throw new Error('HTTP '+response.status);
+const data=await response.json();
+if(data.status!=='ok')throw new Error('Unexpected health response');
+const transport=data.transport||location.protocol.replace(':','');
+statusEl.textContent='Connected to local Lobby service · '+transport.toUpperCase()+' · 127.0.0.1:8765';
+statusEl.style.background='#192b25';
+statusEl.style.color='#9ce2b8';
+return true;
+}catch(error){
+statusEl.textContent='Local Lobby connection failed: '+error.message+' · Confirm that the service is running and reload this page.';
+statusEl.style.background='#38231f';
+statusEl.style.color='#ffb38f';
+return false;
+}
+}
+runBtn.addEventListener('click',runSelected);
+window.addEventListener('pageshow',()=>{checkLobbyConnection();});
+window.addEventListener('online',()=>{checkLobbyConnection();});
 async function runSelected(){
 runBtn.disabled=true;runBtn.textContent='Checking…';
 content.textContent='Collecting fresh local and official release information. No device changes are made.';
