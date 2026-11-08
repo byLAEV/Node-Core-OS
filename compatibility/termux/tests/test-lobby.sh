@@ -59,6 +59,12 @@ assert "EJECUTAR INSTALADOR OFICIAL" in html and "EJECUTAR ACTUALIZADOR OFICIAL"
 assert "DESCARGAR Y VERIFICAR PAQUETE" in html
 assert "This step only downloads and verifies the archive" not in html
 assert "execute.disabled=false" in html
+assert "OPEN NODE CORE OS" in html and "openNodeCoreTerminal" in html
+assert "/api/terminal/start" in html and "/api/terminal/input" in html
+assert "/api/terminal/output" in html and "/api/terminal/close" in html
+assert "pty.openpty()" in server and "NODE_CORE_LAUNCHER" in server
+assert 'NODE_CORE_LAUNCHER = HOME / ".node-core" / "bin" / "node-core"' in server
+assert 'shell=False' in server and 'start_new_session=True' in server
 assert "newer than the latest official stable release" in server and "verified as " in server
 assert "installer/install.sh" not in bootstrap
 print("Python syntax, manifest and bootstrap contract: PASS")
