@@ -942,8 +942,9 @@ def _run_official_installer(job_id, kind, root, work):
         # whose sole confirmation prompt accepts this affirmative response.
         if process.stdin:
             try:
-                process.stdin.write(b"y\\n")
-                process.stdin.flush()
+                if kind == "update":
+                    process.stdin.write(b"y\\n")
+                    process.stdin.flush()
                 process.stdin.close()
             except OSError:
                 pass
