@@ -201,6 +201,8 @@ class CertificateManager:
     def inspect_backup(self) -> dict[str, Any]:
         cert = self.backup_dir / "localhost.crt"
         key = self.backup_dir / "localhost.key"
+        if self.security_dir.is_symlink() or self.backup_dir.is_symlink():
+            return {"status": "invalid", "detail": "Refusing to follow a symlink in certificate backup storage."}
         if not cert.exists() or not key.exists():
             return {"status": "missing", "certificate_path": str(cert)}
         try:
@@ -236,7 +238,7 @@ class CertificateManager:
         if not cert.exists():
             result["detail"] = "No P2P identity certificate is present. Node Core OS creates it when the P2P identity service is initialized."
             return result
-        if cert.is_symlink() or metadata_path.is_symlink():
+        if identity.is_symlink() or (identity / "private").is_symlink() or cert.is_symlink() or metadata_path.is_symlink():
             result.update(status="invalid", detail="Refusing to follow symlinks in the Node Core identity directory.")
             return result
         try:
@@ -280,7 +282,7 @@ class CertificateManager:
 
     def list_trusted_peers(self) -> list[dict[str, Any]]:
         path = self._peer_store_path()
-        if path.is_symlink():
+        if self.core_data_dir.is_symlink() or path.parent.is_symlink() or path.is_symlink():
             raise CertificateManagerError("Refusing to read a symlink as the Node Core peer trust store")
         if not path.exists():
             return []
@@ -320,7 +322,7 @@ class CertificateManager:
         return records
 
     def inventory(self) -> dict[str, Any]:
-        if CATALOG_PATH.is_symlink() or not CATALOG_PATH.is_file():
+        if self.security_dir.is_symlink() or CATALOG_PATH.is_symlink() or not CATALOG_PATH.is_file():
             raise CertificateManagerError("Bundled security certificate catalog is missing or unsafe")
         try:
             catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
@@ -615,7 +617,7 @@ class CertificateManager:
 
     def _load_peer_store(self) -> dict[str, Any]:
         path = self._peer_store_path()
-        if path.is_symlink():
+        if self.core_data_dir.is_symlink() or path.is_symlink():
             raise CertificateManagerError("Refusing to write to a symlink peer trust store")
         parent = path.parent
         if parent.is_symlink():
