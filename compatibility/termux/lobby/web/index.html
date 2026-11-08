@@ -81,7 +81,7 @@ const category=item.category||'Basic commands';
 if(!groups.has(category))groups.set(category,[]);
 groups.get(category).push(item);
 }
-let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Open Node Core OS using the Termux command in an interactive terminal with live output and keyboard input.</p><pre><code>cd "$HOME/Node-Core-OS-Lobby" && python server.py</code></pre><div class="actions"><button class="action" id="open-node-core"><span aria-hidden="true">▶</span> OPEN NODE CORE OS</button></div></div>';
+let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Open Node Core OS using the Termux command in an interactive terminal with live output and keyboard input.</p><pre><code>cd "$HOME/Node-Core-OS" && python main.py</code></pre><div class="actions"><button class="action" id="open-node-core"><span aria-hidden="true">▶</span> OPEN NODE CORE OS</button></div></div>';
 for(const [category,items] of groups){
 out+='<h3>'+esc(category)+'</h3>';
 for(const item of items){
