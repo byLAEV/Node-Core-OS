@@ -5,32 +5,47 @@
 
 ## Purpose
 
-This profile installs and launches the local Node Core OS Lobby web interface.
-It is not an APK and does not install Node Core OS itself.
+The Lobby is the local lifecycle control surface for Node Core OS. It is
+installed independently and can run before Node Core OS exists. It is not an
+APK. Node Core OS can operate independently after installation.
 
-The Lobby is the lifecycle control surface for Node Core OS installation and
-updates. The Lobby installer only installs the Lobby. The Node Core OS runtime
-can operate independently after installation.
+## One-command Lobby bootstrap
 
-## Official Lobby installer
-
-Run from a checkout of this repository inside native Termux:
+From native Termux, install the minimum bootstrap tools and run:
 
 ```bash
-bash compatibility/termux/install-lobby.sh
+pkg update
+pkg install curl python tar bash -y
+curl -fsSL https://raw.githubusercontent.com/byLAEV/Node-Core-OS/feature/termux-local-lobby/compatibility/termux/bootstrap-lobby.sh -o "$HOME/bootstrap-lobby.sh"
+bash "$HOME/bootstrap-lobby.sh"
 ```
 
-If OpenSSL CLI is missing, the installer asks permission to install Termux's
-`openssl-tool` package. To approve that package installation non-interactively:
+The bootstrap resolves the selected official GitHub branch to a 40-character
+commit SHA, downloads that exact source snapshot, rejects unsafe archive paths
+and special files, and invokes `compatibility/termux/install-lobby.sh`.
+It does not run `pkg upgrade`, use root, or install/update Node Core OS.
+
+The default bootstrap ref is `feature/termux-local-lobby` while this profile is
+under review. To select another reviewed ref explicitly:
 
 ```bash
-bash compatibility/termux/install-lobby.sh --yes
+NODE_CORE_LOBBY_REF=main bash "$HOME/bootstrap-lobby.sh"
 ```
 
-The installer does not run `pkg upgrade`, does not use root, and does not
-install/update/repair Node Core OS. It validates source files and Python syntax,
-stages the Lobby files, preserves prior versions for rollback, and preserves
-existing Lobby configuration, token, certificates, logs and PID state.
+The branch ref is resolved at execution time and pinned to a commit for that
+download. A stable production installer should be published from a reviewed,
+tagged Lobby release after the PR is accepted and physical-device validation
+passes.
+
+If the Lobby installer needs OpenSSL CLI, it asks permission to install
+Termux's `openssl-tool` package. To approve that package installation
+non-interactively:
+
+```bash
+bash "$HOME/bootstrap-lobby.sh" --yes
+```
+
+## Lobby files and persistent state
 
 Installed application files:
 
@@ -40,7 +55,8 @@ Installed application files:
 - `~/.node-core/lobby/web/icon.svg`
 - `~/.shortcuts/node-core-lobby`
 
-Persistent service state is kept separately:
+Persistent service state is kept separately and is not overwritten by Lobby
+reinstallation:
 
 - `~/.node-core/lobby/server.json`
 - `~/.node-core/lobby/localhost.crt`
@@ -48,7 +64,8 @@ Persistent service state is kept separately:
 - `~/.node-core/lobby/lobby.log`
 - `~/.node-core/lobby/server.pid`
 
-The installer does not overwrite those state files.
+The installer stages and validates application files, preserves previous files
+for rollback, and only commits after the service health check succeeds.
 
 ## Local service
 
@@ -67,6 +84,35 @@ A self-signed certificate encrypts the local connection but is not automatically
 trusted by Android browsers. A browser warning may appear. The `curl -k` option
 is for controlled local testing only; it does not establish certificate trust.
 
+## Node Core OS installation and update boundary
+
+The Lobby installer installs only the Lobby. It is separate from the canonical
+Node Core OS installer and updater:
+
+- New installation: the official release's `node-core-os-install-VERSION.tar.gz`
+  package and its `installer/install.sh`.
+- Existing installation: the official release's
+  `node-core-os-update-VERSION.tar.gz` package and its `update.sh`.
+
+The latest stable release must be obtained from GitHub Releases, never inferred
+from the repository's development-branch `VERSION` file. The package SHA-256
+must match the digest published in that Release before extraction or execution.
+The Lobby must detect an existing installation before choosing a path; update
+must preserve identity, configuration, local storage and the Kubo/IPFS
+repository and must never ask for identity input again.
+
+**Important current limitation:** the existing Lobby dashboard's install,
+update and repair panels are read-only readiness reports. The Node Core OS
+release installer currently initializes its own Ed25519 NODE ID. The proposed
+Bitcoin WIF/HEX reference identifiers and Ethereum address derivation have not
+been implemented or integrated. Do not prompt for, accept, store, transmit or
+log a Bitcoin/Ethereum private key in the current Lobby. This identity extension
+requires a separate reviewed implementation and tests before it can be enabled.
+
+The Lobby diagnostics API is read-only. It is not an authenticated administrative
+API and must not be extended with mutating actions without a separate security
+design, explicit authorization, audit logging, rollback and tests.
+
 ## Android home-screen entry
 
 The installed Termux:Widget script is `~/.shortcuts/node-core-lobby`.
@@ -82,17 +128,6 @@ settings. It excludes SSH/GnuPG, keys, private credentials, wallets, identity
 material, caches and Git internals. Symlinks are not followed. Storage and IPFS
 directory contents are not traversed. Proxy presence may be reported, but proxy
 values are never exposed. Package and directory output are bounded.
-
-The current diagnostics API is read-only. It is not an authenticated administrative
-API and must not be extended with mutating actions without a separate security
-design, explicit authorization, audit logging, rollback and tests.
-
-## Current functional boundary
-
-The Lobby dashboard currently provides diagnostics and readiness inspection.
-Installation, update and repair controls are informational/read-only until their
-separate operation engines are implemented and tested. The Lobby installer must
-not be confused with the Node Core OS installer.
 
 ## Manual verification
 
@@ -112,10 +147,13 @@ or `http`. Do not mark HTTPS validated unless the response says
 
 ## Validation still required
 
-- Clean installation on a physical Termux ARM64 device.
+- Clean installation on a physical Termux ARM64 device using the bootstrap.
 - Reinstallation over an existing Lobby without losing state.
 - HTTPS certificate generation and browser behavior.
 - HTTP fallback when OpenSSL is unavailable.
 - Launcher restart and PID/process safety.
 - Termux:Widget launch and Android background lifecycle.
-- Automated tests for server startup, loopback binding and health endpoints.
+- Automated tests for bootstrap syntax, server startup, loopback binding and
+  health endpoints.
+- Separate end-to-end integration of the official Node Core OS installer and
+  updater before the Lobby's install/update buttons can execute operations.
