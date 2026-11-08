@@ -473,7 +473,7 @@ if(selected==='prepare')content.insertAdjacentHTML('afterbegin','<p class="muted
 if(selected==='repair')content.insertAdjacentHTML('afterbegin','<p class="muted">Read-only inspection only: no files or settings were repaired.</p>');}
 }
 }catch(e){content.textContent='Unable to generate report: '+e.message;}
-finally{runBtn.disabled=false;runBtn.textContent=selected==='termux'?'REVEAL COMMANDS':(selected==='status'?'Refresh status':(selected==='install'||selected==='update'?'Check official stable release':(selected==='certificates'?'Refresh catalog':'Generate report')));}
+finally{runBtn.disabled=false;runBtn.textContent=selected==='termux'?'REVEAL COMMANDS':(selected==='status'?'Refresh status':(selected==='install'||selected==='update'?'Check official stable release':(selected==='certificates'?'Refresh catalog':(selected==='identity'?'Refresh Bitcoin identity':'Generate report'))));}
 }
 </script></body>
 </html>
