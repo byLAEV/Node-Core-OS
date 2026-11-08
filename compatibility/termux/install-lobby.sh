@@ -126,7 +126,7 @@ cleanup() {
 trap cleanup EXIT
 
 info "Checking Python syntax before installation."
-python -m py_compile "$SOURCE/lobby/server.py" || fail "server.py failed Python syntax validation."
+python -c 'import ast,pathlib,sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$SOURCE/lobby/server.py" || fail "server.py failed Python syntax validation."
 
 info "Staging Lobby files."
 for i in "${!TARGETS[@]}"; do
@@ -150,7 +150,7 @@ for i in "${!TARGETS[@]}"; do
   fi
   mv -f "$temp" "$target"
 done
-chmod 700 "$DEST" "$DEST/web" "$SHORTCUTS"
+chmod 700 "$DEST" "$DEST/web"
 chmod 600 "$DEST/server.py" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
 
 info "Validating the installed server configuration."
