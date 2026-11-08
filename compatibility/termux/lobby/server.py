@@ -13,6 +13,7 @@ CONFIG = STATE / "server.json"
 CERT = STATE / "localhost.crt"
 KEY = STATE / "localhost.key"
 WEB = Path(__file__).resolve().parent / "web"
+LAYOUT_MANIFEST = STATE / "manifests" / "layout-manifest.json"
 PACKAGE_LIMIT = 400
 TREE_LIMIT = 180
 SENSITIVE = re.compile(r"(?:^\.ssh$|^\.gnupg$|^keys?$|private|secret|credential|wallet|token|identity|keystore|\.pem$|\.key$|id_ed25519|id_rsa)", re.I)
@@ -822,6 +823,12 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/api/termux/commands":
             self.send_json(termux_command_catalog())
+        elif path == "/api/layout/manifest":
+            try:
+                payload = json.loads(LAYOUT_MANIFEST.read_text(encoding="utf-8"))
+                self.send_json(payload)
+            except (OSError, ValueError) as exc:
+                self.send_json({"status": "unavailable", "message": str(exc)[:240]})
         elif path == "/health":
             self.send_json({"status": "ok", "transport": "https" if self.server.is_https else "http"})
         elif path in ("/api/diagnostics", "/api/report"):
