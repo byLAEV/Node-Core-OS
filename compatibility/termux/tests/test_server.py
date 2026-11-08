@@ -100,8 +100,10 @@ def main() -> int:
         log = state / "server-test.log"
         env = os.environ.copy()
         env["HOME"] = str(home)
-        env.pop("TERMUX_VERSION", None)
-        env.pop("PREFIX", None)
+        # Simulate the Termux runtime marker so first-install guard tests can
+        # reach the installer policy without running a real Android installer.
+        env["TERMUX_VERSION"] = "0.118-test"
+        env["PREFIX"] = "/data/data/com.termux/files/usr"
 
         with log.open("w", encoding="utf-8") as output:
             process = subprocess.Popen(
