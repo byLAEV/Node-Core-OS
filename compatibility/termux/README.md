@@ -222,6 +222,43 @@ The local action audit is stored at
 `~/.node-core/lobby/certificates/actions.jsonl`; it contains action names,
 timestamps and public fingerprints only.
 
+
+## 00 · Termux Commands — local command execution
+
+The Lobby includes a **00 · Termux Commands** panel. Select it and press
+**REVEAL COMMANDS** to load the available fixed command catalog. Each command
+shows its exact invocation and an **EXECUTE** control. Executing a command
+opens an in-page terminal window that polls and displays the actual local
+Termux process output, exit status and timeout result.
+
+The first catalog is intentionally small and read-only:
+
+- `pwd` — current working directory.
+- `whoami` — effective Termux user.
+- `uname -a` — kernel and architecture.
+- The Lobby's Python interpreter with `--version`.
+- `pkg --version` — Termux package manager version.
+
+Security boundary:
+
+- The browser submits a fixed command identifier, never a command string.
+- The server maps identifiers to a reviewed allowlist and starts processes
+  with argument arrays and `shell=False`; no shell command injection path is
+  provided.
+- Mutating execution endpoints require the local session token, matching
+  loopback Origin/Host and HTTPS. HTTP fallback can show the read-only catalog
+  but cannot start or retrieve command sessions.
+- No root, arbitrary command input, interactive shell, stdin forwarding or
+  command chaining is provided in this first milestone.
+- Each command has a 30-second timeout and a 64 KiB output cap; at most two
+  commands may run concurrently. Output and sessions are held in memory only.
+- Opening the panel does not execute anything. A user must press EXECUTE for
+  each command.
+
+This is a controlled command runner, not a full interactive Termux terminal.
+A later milestone may add explicitly reviewed interactive terminal features,
+but must preserve loopback-only access and explicit execution authorization.
+
 ## Android home-screen entry
 
 The installed Termux:Widget script is `~/.shortcuts/node-core-lobby`.
