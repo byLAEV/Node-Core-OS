@@ -943,7 +943,7 @@ def _run_official_installer(job_id, kind, root, work, expected_version):
         if process.stdin:
             try:
                 if kind == "update":
-                    process.stdin.write(b"y\\n")
+                    process.stdin.write(b"y\n")
                     process.stdin.flush()
                 process.stdin.close()
             except OSError:
@@ -987,7 +987,7 @@ def _run_official_installer(job_id, kind, root, work, expected_version):
                     "version could not be verified as " + expected_version + "."
                 )
             else:
-                _append_install_output(job_id, "\\n[NODE CORE OS Lobby] Installation/update verified: " + expected_version + "\\n")
+                _append_install_output(job_id, "\n[NODE CORE OS Lobby] Installation/update verified: " + expected_version + "\n")
         with INSTALL_LOCK:
             job = INSTALL_JOBS.get(job_id)
             if job is not None:
@@ -1040,7 +1040,7 @@ def start_official_installer(kind):
     job_id = secrets.token_urlsafe(18)
     with INSTALL_LOCK:
         INSTALL_JOBS[job_id] = {"job_id":job_id, "kind":kind, "status":"running",
-            "output":"[NODE CORE OS Lobby] Executing the verified official installer\\n",
+            "output":"[NODE CORE OS Lobby] Executing the verified official installer\n",
             "output_truncated":False, "returncode":None,
             "started_at":dt.datetime.now(dt.timezone.utc).isoformat(), "finished_at":None, "pid":None}
     thread = threading.Thread(target=_run_official_installer,
