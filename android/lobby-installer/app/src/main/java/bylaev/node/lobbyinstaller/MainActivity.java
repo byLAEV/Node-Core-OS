@@ -15,6 +15,12 @@ public final class MainActivity extends Activity {
     private TextView status;
 
     private static final String SOURCE_COMMIT = "31d0669886adc9c5858d24ca304d94188459fa85";
+    private static final String OPEN_TERMINAL_COMMAND =
+        "if [ ! -d \"$HOME/Node-Core-OS-Lobby\" ]; then echo \"ERROR: No existe $HOME/Node-Core-OS-Lobby\"; exec bash -i; fi; " +
+        "if [ ! -f \"$HOME/Node-Core-OS-Lobby/server.py\" ]; then echo \"ERROR: No existe server.py en $HOME/Node-Core-OS-Lobby\"; exec bash -i; fi; " +
+        "cd \"$HOME/Node-Core-OS-Lobby\" && python server.py; " +
+        "RESULT=$?; echo \"\\nNode Core OS Lobby terminó con código $RESULT. Terminal interactiva disponible.\"; exec bash -i";
+
     private static final String INSTALL_COMMAND =
         "set -Eeuo pipefail; " +
         "APP_DIR=\"$HOME/.node-core/lobby\"; " +
@@ -41,9 +47,16 @@ public final class MainActivity extends Activity {
         status.setTextSize(18);
         status.setGravity(Gravity.CENTER);
         status.setPadding(28, 28, 28, 28);
-        status.setText("NODE CORE OS\nLOBBY INSTALLER\n\nEnviando instalador a Termux…");
         setContentView(status);
-        sendCommandToTermux();
+        boolean openTerminal = getIntent() != null && "nodecoreos".equals(getIntent().getScheme())
+                && "open-terminal".equals(getIntent().getHost());
+        if (openTerminal) {
+            status.setText("NODE CORE OS\nOPEN TERMINAL\n\nComprobando $HOME/Node-Core-OS-Lobby…");
+            sendCommandToTermux(OPEN_TERMINAL_COMMAND, "Open Node Core Os");
+        } else {
+            status.setText("NODE CORE OS\nLOBBY INSTALLER\n\nEnviando instalador a Termux…");
+            sendCommandToTermux(INSTALL_COMMAND, "Install NODE CORE OS Lobby");
+        }
     }
 
     @Override
@@ -51,7 +64,10 @@ public final class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 41 && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            sendCommandToTermux();
+            boolean openTerminal = getIntent() != null && "nodecoreos".equals(getIntent().getScheme())
+                    && "open-terminal".equals(getIntent().getHost());
+            sendCommandToTermux(openTerminal ? OPEN_TERMINAL_COMMAND : INSTALL_COMMAND,
+                    openTerminal ? "Open Node Core Os" : "Install NODE CORE OS Lobby");
         } else if (requestCode == 41) {
             status.setText("Autorización denegada. Activa “Run commands in Termux environment” en los permisos de NODE y vuelve a abrirlo.");
             Intent settings = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
@@ -60,7 +76,7 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void sendCommandToTermux() {
+    private void sendCommandToTermux(String shellCommand, String label) {
         try {
             getPackageManager().getPackageInfo("com.termux", 0);
         } catch (PackageManager.NameNotFoundException missing) {
@@ -81,17 +97,17 @@ public final class MainActivity extends Activity {
         command.putExtra("com.termux.RUN_COMMAND_PATH",
                 "/data/data/com.termux/files/usr/bin/bash");
         command.putExtra("com.termux.RUN_COMMAND_ARGUMENTS",
-                new String[]{"-lc", INSTALL_COMMAND});
+                new String[]{"-lc", shellCommand});
         command.putExtra("com.termux.RUN_COMMAND_WORKDIR",
                 "/data/data/com.termux/files/home");
         command.putExtra("com.termux.RUN_COMMAND_BACKGROUND", false);
         command.putExtra("com.termux.RUN_COMMAND_SESSION_ACTION", "0");
         command.putExtra("com.termux.RUN_COMMAND_COMMAND_LABEL",
-                "Install NODE CORE OS Lobby");
+                label);
 
         try {
             startService(command);
-            status.setText("Termux recibió el comando. La instalación y el inicio del Lobby se ejecutan allí.");
+            status.setText("Termux recibió el comando. La sesión de terminal se abrirá en primer plano.");
         } catch (Exception error) {
             status.setText("No fue posible enviar el comando a Termux.\n\n" +
                     error.getMessage() +

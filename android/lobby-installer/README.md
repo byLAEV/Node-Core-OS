@@ -32,3 +32,7 @@ gradle --no-daemon :app:assembleDebug
 Output: `app/build/outputs/apk/debug/app-debug.apk`.
 
 The source commit is deliberately pinned in `MainActivity.java`. Update it deliberately when publishing a new Lobby installer.
+
+
+## Open Node Core Os button
+The Lobby home page includes an Open Node Core Os button. It launches this APK with `nodecoreos://open-terminal`. The launcher checks that `$HOME/Node-Core-OS-Lobby/server.py` exists, then runs `cd "$HOME/Node-Core-OS-Lobby" && python server.py` in a foreground Termux terminal session (session action 0). Termux is brought to the foreground and the new terminal session is interactive. Requires the NODE launcher APK and Termux RUN_COMMAND permission/setup.
