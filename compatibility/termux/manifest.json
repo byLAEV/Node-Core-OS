@@ -27,6 +27,18 @@
       "extracts_archives": false,
       "executes_installers": false,
       "requires_local_session_token": true
+    },
+    "certificate_manager": {
+      "enabled": true,
+      "catalog": "~/.node-core/lobby/certificates/catalog.json",
+      "module": "~/.node-core/lobby/certificate_manager.py",
+      "api_read": "GET /api/certificates",
+      "api_actions": "POST /api/certificates/action",
+      "authentication": "HTTPS + local session token + Origin/Host validation",
+      "private_key_export": false,
+      "manages_core_p2p_identity_certificate": false,
+      "manages_lobby_loopback_tls": true,
+      "manages_explicit_peer_trust": true
     }
   },
   "verification_required": [
