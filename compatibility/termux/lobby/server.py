@@ -901,13 +901,16 @@ def _verified_installer_root(kind):
                     with source, target.open("xb") as output:
                         shutil.copyfileobj(source, output, length=1024 * 1024)
                     target.chmod(0o700 if member.mode & 0o111 else 0o600)
-        candidates = [p.parent for p in work.rglob("install.sh") if p.name == "install.sh" and p.parent.name == "installer"]
-        roots = [p.parent for p in candidates if (p / "installer" / "install.sh").is_file()]
+        script_name = kind + ".sh"
+        candidates = [p.parent for p in work.rglob(script_name) if p.name == script_name and p.parent.name == "installer"]
+        roots = [p.parent for p in candidates if (p / "installer" / script_name).is_file()]
         if len(roots) != 1:
-            raise ValueError("The verified archive does not contain exactly one canonical installer/install.sh.")
+            raise ValueError("The verified archive does not contain exactly one canonical installer/{}. ".format(script_name))
         root = roots[0]
-        if not (root / "installer" / "config" / "defaults").is_file() or not (root / "installer" / "lib" / "filesystem.sh").is_file():
-            raise ValueError("The official installer package is incomplete; refusing execution.")
+        if not (root / "installer" / "config" / "defaults").is_file():
+            raise ValueError("The official {} package is incomplete; refusing execution.".format(kind))
+        if kind == "install" and not (root / "installer" / "lib" / "filesystem.sh").is_file():
+            raise ValueError("The official installer package is missing its filesystem library.")
         return root, work
     except BaseException:
         shutil.rmtree(work, ignore_errors=True)
@@ -916,7 +919,7 @@ def _verified_installer_root(kind):
 def _run_official_installer(job_id, kind, root, work):
     process = None
     try:
-        script = root / "installer" / "install.sh"
+        script = root / "installer" / (kind + ".sh")
         argv = [shutil.which("bash") or "bash", str(script)]
         process = subprocess.Popen(argv, cwd=str(root), stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=False,
