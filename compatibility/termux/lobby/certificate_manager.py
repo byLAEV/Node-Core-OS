@@ -238,7 +238,7 @@ class CertificateManager:
         if not cert.exists():
             result["detail"] = "No P2P identity certificate is present. Node Core OS creates it when the P2P identity service is initialized."
             return result
-        if identity.is_symlink() or (identity / "private").is_symlink() or cert.is_symlink() or metadata_path.is_symlink():
+        if self.core_data_dir.is_symlink() or identity.is_symlink() or (identity / "private").is_symlink() or cert.is_symlink() or metadata_path.is_symlink():
             result.update(status="invalid", detail="Refusing to follow symlinks in the Node Core identity directory.")
             return result
         try:
