@@ -42,6 +42,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <button class="card" data-panel="update"><h2>04 · Update Node Core OS</h2><small>Detect installed version and repository checkouts.</small></button>
 <button class="card" data-panel="repair"><h2>05 · Repair configuration</h2><small>Inspect known directories and environment risks without changes.</small></button>
 <button class="card" data-panel="status"><h2>06 · Node status</h2><small>View Lobby service and detected Node Core OS state.</small></button>
+<button class="card" data-panel="identity"><h2>08 · Bitcoin identity</h2><small>View the locally verified Bitcoin address and proof status.</small></button>
 <button class="card" data-panel="certificates"><h2>07 · Security certificates</h2><small>Official catalog, local TLS, peer trust and certificate status.</small></button>
 </div>
 <section id="panel" class="panel" aria-live="polite"><h2 id="panel-title">Module</h2><div id="panel-content" class="muted">Select an action.</div>
@@ -52,8 +53,8 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <script>
 const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
-const labels={termux:'00 · Termux Commands',layout:'Node Core OS · Canonical directory manifest',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager'};
-function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':'Generate report')));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+const labels={termux:'00 · Termux Commands',layout:'Node Core OS · Canonical directory manifest',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager',identity:'Bitcoin identity · public proof status'};
+function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':(name==='identity'?'Refresh Bitcoin identity':'Generate report'))));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
 const openNodeCoreTopButton=document.getElementById('open-node-core-top');
@@ -434,6 +435,17 @@ if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 content.innerHTML=renderTermuxCommands(d);
 content.querySelectorAll('[data-termux-execute]').forEach(button=>button.addEventListener('click',()=>executeTermuxCommand(button.dataset.termuxExecute,button)));
+}else if(selected==='identity'){
+const r=await fetch('/api/identity/bitcoin',{cache:'no-store'});
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+if(d.status==='control_verified'){
+content.innerHTML='<p class="ok"><b>Bitcoin key control verified</b></p><div class="result"><b>Full name</b><p>'+esc(d.full_name)+'</p></div><div class="result"><b>Bitcoin network</b><p>'+esc(d.network)+'</p></div><div class="result"><b>Address type</b><p>'+esc(d.address_type)+'</p></div><div class="result"><b>Bitcoin address</b><p><code>'+esc(d.address)+'</code></p></div><div class="result"><b>Installation ID</b><p><code>'+esc(d.installation_id)+'</code></p></div><div class="result"><b>Entity ID</b><p><code>'+esc(d.entity_id)+'</code></p></div><div class="result"><b>Proof timestamp</b><p>'+esc(d.verified_at)+'</p></div><p class="warn">Name is declared, not civil-identity verified. This public proof is staged locally and is not yet linked to an installed node.</p><button id="cancel-bitcoin-identity" class="action secondary" type="button">CANCEL PENDING IDENTITY</button>';
+const cancel=content.querySelector('#cancel-bitcoin-identity');
+cancel.addEventListener('click',async()=>{if(!confirm('Cancel the pending Bitcoin identity proof?'))return;const response=await fetch('/api/identity/bitcoin/cancel',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:'{}',cache:'no-store'});const result=await response.json();if(!response.ok||result.status!=='cancelled')throw new Error(result.message||'Unable to cancel identity');content.textContent='Pending Bitcoin identity cancelled.';});
+}else{
+content.innerHTML='<p class="warn">No verified Bitcoin identity is staged.</p><p class="muted">The proof-verification API is available, but the local private-key signing form and first-install enforcement are not yet enabled. Do not paste a private key into this Lobby until the browser-side signer is installed and verified.</p>';
+}
 }else if(selected==='certificates'){
 const r=await fetch('/api/certificates',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
