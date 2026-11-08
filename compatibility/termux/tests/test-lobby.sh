@@ -19,6 +19,11 @@ import sys
 
 profile = pathlib.Path(sys.argv[1])
 ast.parse((profile / "lobby" / "server.py").read_text(encoding="utf-8"))
+ast.parse((profile / "lobby" / "certificate_manager.py").read_text(encoding="utf-8"))
+catalog = json.loads((profile / "lobby" / "certificates" / "catalog.json").read_text(encoding="utf-8"))
+assert len(catalog["security_profiles"]) == 8
+assert catalog["policies"]["independent_from_core"] is True
+assert catalog["policies"]["node_identity_private_keys_are_never_managed_by_lobby"] is True
 manifest = json.loads((profile / "manifest.json").read_text(encoding="utf-8"))
 assert manifest["lobby"]["bind"] == "127.0.0.1"
 assert manifest["lobby"]["port"] == 8765
@@ -26,6 +31,8 @@ assert manifest["lobby"]["transport_preference"] == ["https", "http-loopback"]
 assert manifest["lobby"]["release_package_staging"]["enabled"] is True
 assert manifest["lobby"]["release_package_staging"]["extracts_archives"] is False
 assert manifest["lobby"]["release_package_staging"]["executes_installers"] is False
+assert manifest["lobby"]["certificate_manager"]["enabled"] is True
+assert manifest["lobby"]["certificate_manager"]["manages_core_p2p_identity_certificate"] is False
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
 assert "compatibility/termux/install-lobby.sh" in bootstrap
