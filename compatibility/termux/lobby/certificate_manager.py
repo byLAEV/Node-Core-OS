@@ -535,9 +535,13 @@ class CertificateManager:
             elif action == "tls_install":
                 self.cert_path.unlink(missing_ok=True)
                 self.key_path.unlink(missing_ok=True)
-            elif action == "tls_repair":
-                self.cert_path.unlink(missing_ok=True)
-                self.key_path.unlink(missing_ok=True)
+            elif action == "tls_repair" and quarantined:
+                # Only remove newly placed regular files after the original pair
+                # has actually been moved aside. If validation aborts before that
+                # point, leave every pre-existing path untouched.
+                for active in (self.cert_path, self.key_path):
+                    if active.exists() and active.is_file() and not active.is_symlink():
+                        active.unlink()
                 for saved, original in reversed(quarantined):
                     if saved.exists():
                         os.replace(saved, original)
