@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from certificate_manager import CertificateManager, CertificateManagerError
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -600,6 +601,11 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif path == "/api/packages/status":
             self.send_json(package_receipts())
+        elif path == "/api/certificates":
+            try:
+                self.send_json(CertificateManager().inventory())
+            except (CertificateManagerError, OSError, ValueError) as exc:
+                self.send_json({"status": "unavailable", "message": str(exc)[:300]})
         elif path == "/api/releases/latest":
             try:
                 release = latest_stable_release()
@@ -637,7 +643,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path != "/api/packages/prepare":
+            if path not in ("/api/packages/prepare", "/api/certificates/action"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -645,14 +651,27 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "message": "Invalid request length"})
                 return
             length = int(length_text)
-            if length < 1 or length > 4096:
+            maximum_body = 128 * 1024 if path == "/api/certificates/action" else 4096
+            if length < 1 or length > maximum_body:
                 self.send_json({"status": "error", "message": "Request body size is invalid"})
                 return
             if self.headers.get_content_type() != "application/json":
                 self.send_json({"status": "error", "message": "Content-Type must be application/json"})
                 return
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
-            kind = payload.get("kind") if isinstance(payload, dict) else None
+            if not isinstance(payload, dict):
+                self.send_json({"status": "error", "message": "Request body must be a JSON object"})
+                return
+            if path == "/api/certificates/action":
+                action = payload.get("action")
+                result = CertificateManager().execute(action, payload)
+                self.send_json({
+                    "status": "success",
+                    "result": result,
+                    "message": "Certificate operation completed and locally validated. Restart the Lobby if requested."
+                })
+                return
+            kind = payload.get("kind")
             receipt = download_and_verify_release_package(kind)
             self.send_json({
                 "status": "verified",
@@ -662,7 +681,7 @@ class Handler(BaseHTTPRequestHandler):
         except PermissionError as exc:
             self.send_json({"status": "forbidden", "message": str(exc)})
         except (OSError, urllib.error.URLError, urllib.error.HTTPError,
-                ValueError, json.JSONDecodeError, TimeoutError) as exc:
+                CertificateManagerError, ValueError, json.JSONDecodeError, TimeoutError) as exc:
             self.send_json({
                 "status": "error",
                 "message": str(exc)[:300],
