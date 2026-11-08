@@ -132,7 +132,7 @@ cleanup() {
 trap cleanup EXIT
 
 info "Checking Python syntax before installation."
-python -c 'import ast,pathlib,sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$SOURCE/lobby/server.py" || fail "server.py failed Python syntax validation."
+python -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); ast.parse((root/"server.py").read_text(encoding="utf-8")); ast.parse((root/"certificate_manager.py").read_text(encoding="utf-8")); json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager or certificate catalog validation failed."
 
 info "Staging Lobby files."
 for i in "${!TARGETS[@]}"; do
