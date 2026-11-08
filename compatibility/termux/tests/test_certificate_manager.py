@@ -133,6 +133,8 @@ class CertificateManagerTests(unittest.TestCase):
         self.assertEqual(self.manager.inspect_lobby_tls()["status"], "invalid")
         with self.assertRaises(CertificateManagerError):
             self.manager.change_lobby_tls("tls_repair")
+        self.assertTrue(self.manager.cert_path.is_symlink())
+        self.assertEqual(target.read_text(encoding="ascii"), "not a certificate")
 
 
 if __name__ == "__main__":
