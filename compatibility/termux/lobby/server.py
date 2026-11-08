@@ -679,8 +679,8 @@ TERMINAL_LOCK = threading.Lock()
 TERMINAL_OUTPUT_LIMIT = 256 * 1024
 TERMINAL_SESSION_LIMIT = 2
 TERMINAL_IDLE_SECONDS = 1800
-NODE_CORE_LOBBY_DIR = HOME / "Node-Core-OS-Lobby"
-NODE_CORE_SERVER = NODE_CORE_LOBBY_DIR / "server.py"
+NODE_CORE_OS_DIR = HOME / "Node-Core-OS"
+NODE_CORE_MAIN = NODE_CORE_OS_DIR / "main.py"
 
 def _terminal_reader(session_id, master_fd, process):
     try:
@@ -712,8 +712,8 @@ def _terminal_reader(session_id, master_fd, process):
             pass
 
 def start_node_core_terminal():
-    if not NODE_CORE_SERVER.is_file():
-        raise ValueError("Node Core OS server.py was not found: " + str(NODE_CORE_SERVER))
+    if not NODE_CORE_MAIN.is_file():
+        raise ValueError("Node Core OS main.py was not found: " + str(NODE_CORE_MAIN))
     with TERMINAL_LOCK:
         active = sum(1 for item in TERMINAL_SESSIONS.values() if item["status"] == "running")
         if active >= TERMINAL_SESSION_LIMIT:
@@ -745,7 +745,7 @@ def start_node_core_terminal():
     thread = threading.Thread(target=_terminal_reader, args=(session_id, master_fd, process),
                               name="node-core-pty-" + session_id[:8], daemon=True)
     thread.start()
-    command = 'cd "$HOME/Node-Core-OS-Lobby" && python server.py'
+    command = 'cd "$HOME/Node-Core-OS" && python main.py'
     os.write(master_fd, (command + "\n").encode("utf-8"))
     return {"session_id": session_id, "command": command, "status": "running",
             "message": "Interactive PTY started. Type commands in the terminal input."}
