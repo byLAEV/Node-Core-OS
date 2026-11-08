@@ -38,6 +38,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openssl shellcheck
+          python -m pip install --disable-pip-version-check "cryptography>=42.0.0"
       - name: Validate Bash syntax and installer guards
         run: |
           bash -n compatibility/termux/bootstrap-lobby.sh
