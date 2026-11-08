@@ -33,6 +33,12 @@ assert manifest["lobby"]["release_package_staging"]["extracts_archives"] is Fals
 assert manifest["lobby"]["release_package_staging"]["executes_installers"] is False
 assert manifest["lobby"]["certificate_manager"]["enabled"] is True
 assert manifest["lobby"]["certificate_manager"]["manages_core_p2p_identity_certificate"] is False
+html = (profile / "lobby" / "web" / "index.html").read_text(encoding="utf-8")
+server = (profile / "lobby" / "server.py").read_text(encoding="utf-8")
+assert 'data-panel="termux"' in html
+assert "REVEAL COMMANDS" in html
+assert "/api/termux/execute" in html and "/api/termux/output" in html
+assert "TERMUX_COMMANDS" in server and "shell=False" in server
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
 assert "compatibility/termux/install-lobby.sh" in bootstrap
