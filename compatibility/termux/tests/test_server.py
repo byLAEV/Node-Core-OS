@@ -108,6 +108,15 @@ def main() -> int:
                 assert "checkLobbyConnection();" in page
                 assert "runBtn.addEventListener('click',runSelected)" in page
                 assert "fetch('/health'" in page
+                assert "Generate Report" in page
+                assert "Copy TXT" in page and "Copy JSON" in page
+                assert "Download TXT" in page and "Download JSON" in page
+                assert "Share report" in page
+                report = request_json(base_url + "/api/report", tls_expected)
+                assert report["summary"]["total"] == len(report["checks"]), report
+                assert report["privacy"]["read_only"] is True, report
+                assert "environment" in report and "node_core" in report and "network" in report
+                print("Official read-only Termux report API and export controls: PASS")
                 assert headers.get("Cache-Control") == "no-store"
                 assert headers.get("Content-Security-Policy")
                 assert headers.get("X-Frame-Options") == "DENY"
