@@ -611,9 +611,58 @@ TERMUX_COMMANDS = {
         "binary": sys.executable, "args": ["--version"]
     },
     "pkg-version": {
+        "category": "Termux packages",
         "label": "Termux package manager version",
         "description": "Show the installed Termux pkg version, if available.",
         "binary": "pkg", "args": ["--version"]
+    },
+    "user-id": {
+        "category": "User and permissions",
+        "label": "User ID and groups",
+        "description": "Show the current numeric user ID, group ID and group memberships. Does not use root.",
+        "binary": "id", "args": []
+    },
+    "home-files": {
+        "category": "Files and directories",
+        "label": "List home directory",
+        "description": "List names, permissions and sizes in the Termux home directory. File contents are not opened.",
+        "binary": "ls", "args": ["-la"]
+    },
+    "current-date": {
+        "category": "System information",
+        "label": "Device date and time",
+        "description": "Show the date, time and timezone configured on the Android device.",
+        "binary": "date", "args": []
+    },
+    "storage-space": {
+        "category": "Storage",
+        "label": "Filesystem space",
+        "description": "Show filesystem capacity and available space in human-readable units.",
+        "binary": "df", "args": ["-h"]
+    },
+    "running-processes": {
+        "category": "System information",
+        "label": "Running processes",
+        "description": "List visible processes. Output is limited to 64 KiB.",
+        "binary": "ps", "args": ["-A"]
+    },
+    "android-release": {
+        "category": "Android information",
+        "label": "Android release",
+        "description": "Read the Android release property using the read-only getprop command.",
+        "binary": "getprop", "args": ["ro.build.version.release"]
+    },
+    "android-abi": {
+        "category": "Android information",
+        "label": "Android CPU ABI",
+        "description": "Read the Android primary CPU application binary interface.",
+        "binary": "getprop", "args": ["ro.product.cpu.abi"]
+    },
+    "installed-packages": {
+        "category": "Termux packages",
+        "label": "Installed Termux packages",
+        "description": "List installed packages using pkg. This may produce a long result; output is capped at 64 KiB.",
+        "binary": "pkg", "args": ["list-installed"]
     },
 }
 COMMAND_JOBS = {}
@@ -627,7 +676,7 @@ def termux_command_catalog():
     for command_id, spec in TERMUX_COMMANDS.items():
         executable = spec["binary"] if os.path.isabs(spec["binary"]) else shutil.which(spec["binary"])
         items.append({
-            "id": command_id, "label": spec["label"],
+            "id": command_id, "category": spec.get("category", "Basic commands"), "label": spec["label"],
             "description": spec["description"],
             "command": " ".join([spec["binary"], *spec["args"]]),
             "available": bool(executable),
