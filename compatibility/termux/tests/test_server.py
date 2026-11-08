@@ -75,10 +75,10 @@ def main() -> int:
         fake_launcher = home / ".node-core" / "bin" / "node-core"
         fake_launcher.parent.mkdir(parents=True, exist_ok=True)
         fake_launcher.write_text(
-            "#!/usr/bin/env bash\\n"
-            "printf 'NODE_CORE_TEST_LAUNCHER_EXECUTED\\n'\\n"
-            "IFS= read -r terminal_input || true\\n"
-            "printf 'NODE_CORE_TEST_INPUT:%s\\n' \"$terminal_input\"\\n",
+            "#!/usr/bin/env bash\n"
+            "printf 'NODE_CORE_TEST_LAUNCHER_EXECUTED\n'\n"
+            "IFS= read -r terminal_input || true\n"
+            "printf 'NODE_CORE_TEST_INPUT:%s\n' \"$terminal_input\"\n",
             encoding="utf-8",
         )
         fake_launcher.chmod(0o700)
@@ -295,7 +295,7 @@ def main() -> int:
                         terminal_result = terminal_request("output")
                     assert "NODE_CORE_TEST_LAUNCHER_EXECUTED" in terminal_result["output"], terminal_result
 
-                    terminal_request("input", {"input": "NODE_CORE_TERMINAL_INPUT_OK\\n"})
+                    terminal_request("input", {"input": "NODE_CORE_TERMINAL_INPUT_OK\n"})
                     deadline = time.monotonic() + 5
                     while time.monotonic() < deadline:
                         terminal_result = terminal_request("output")
@@ -304,7 +304,7 @@ def main() -> int:
                         time.sleep(0.05)
                     assert "NODE_CORE_TEST_INPUT:NODE_CORE_TERMINAL_INPUT_OK" in terminal_result["output"], terminal_result
 
-                    terminal_request("input", {"input": "exit\\n"})
+                    terminal_request("input", {"input": "exit\n"})
                     deadline = time.monotonic() + 5
                     while time.monotonic() < deadline:
                         terminal_result = terminal_request("output")
