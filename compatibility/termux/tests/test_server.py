@@ -69,6 +69,20 @@ def main() -> int:
         shutil.copy2(canonical_layout, installed_layout)
         installed_layout.chmod(0o600)
 
+        # Provide a harmless fake installed launcher so the HTTP integration
+        # test can prove that the Lobby PTY starts the installed command, not
+        # an assumed development checkout.
+        fake_launcher = home / ".node-core" / "bin" / "node-core"
+        fake_launcher.parent.mkdir(parents=True, exist_ok=True)
+        fake_launcher.write_text(
+            "#!/usr/bin/env bash\\n"
+            "printf 'NODE_CORE_TEST_LAUNCHER_EXECUTED\\n'\\n"
+            "IFS= read -r terminal_input || true\\n"
+            "printf 'NODE_CORE_TEST_INPUT:%s\\n' \"$terminal_input\"\\n",
+            encoding="utf-8",
+        )
+        fake_launcher.chmod(0o700)
+
         config = {
             "bind": "127.0.0.1",
             "port": PORT,
@@ -237,6 +251,69 @@ def main() -> int:
                         invalid_result = json.loads(response.read().decode("utf-8"))
                     assert invalid_result["status"] == "error", invalid_result
                     print("Authenticated Termux command execution, live output and allowlist enforcement: PASS")
+
+                    # Exercise the installed Node Core launcher through the
+                    # actual interactive PTY API, including input and output.
+                    terminal_start = urllib.request.Request(
+                        base_url + "/api/terminal/start",
+                        data=b"{}",
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": base_url,
+                            "X-Node-Core-Lobby-Token": config["token"],
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(terminal_start, timeout=3.0, context=context) as response:
+                        terminal_started = json.loads(response.read().decode("utf-8"))
+                    assert terminal_started["status"] == "started", terminal_started
+                    terminal = terminal_started["terminal"]
+                    session_id = terminal["session_id"]
+                    assert terminal["command"] == '"$HOME/.node-core/bin/node-core"', terminal
+
+                    def terminal_request(action, extra=None):
+                        payload = {"session_id": session_id}
+                        if extra:
+                            payload.update(extra)
+                        request = urllib.request.Request(
+                            base_url + "/api/terminal/" + action,
+                            data=json.dumps(payload).encode("utf-8"),
+                            headers={
+                                "Content-Type": "application/json",
+                                "Origin": base_url,
+                                "X-Node-Core-Lobby-Token": config["token"],
+                            },
+                            method="POST",
+                        )
+                        with urllib.request.urlopen(request, timeout=3.0, context=context) as response:
+                            return json.loads(response.read().decode("utf-8"))["terminal"]
+
+                    deadline = time.monotonic() + 5
+                    terminal_result = terminal_request("output")
+                    while time.monotonic() < deadline and "NODE_CORE_TEST_LAUNCHER_EXECUTED" not in terminal_result["output"]:
+                        time.sleep(0.05)
+                        terminal_result = terminal_request("output")
+                    assert "NODE_CORE_TEST_LAUNCHER_EXECUTED" in terminal_result["output"], terminal_result
+
+                    terminal_request("input", {"input": "NODE_CORE_TERMINAL_INPUT_OK\\n"})
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        terminal_result = terminal_request("output")
+                        if "NODE_CORE_TEST_INPUT:NODE_CORE_TERMINAL_INPUT_OK" in terminal_result["output"]:
+                            break
+                        time.sleep(0.05)
+                    assert "NODE_CORE_TEST_INPUT:NODE_CORE_TERMINAL_INPUT_OK" in terminal_result["output"], terminal_result
+
+                    terminal_request("input", {"input": "exit\\n"})
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        terminal_result = terminal_request("output")
+                        if terminal_result["status"] == "exited":
+                            break
+                        time.sleep(0.05)
+                    assert terminal_result["status"] == "exited", terminal_result
+                    terminal_request("close")
+                    print("Installed Node Core launcher PTY execution, interactive input and output: PASS")
 
                 if tls_expected:
                     renew = urllib.request.Request(
