@@ -46,6 +46,7 @@ for file in \
   "$SOURCE/lobby/server.py" \
   "$SOURCE/lobby/certificate_manager.py" \
   "$SOURCE/lobby/certificates/catalog.json" \
+  "$ROOT/installer/layout-manifest.json" \
   "$SOURCE/lobby/launcher.sh" \
   "$SOURCE/lobby/web/index.html" \
   "$SOURCE/lobby/web/manifest.webmanifest" \
@@ -62,7 +63,7 @@ command -v pkg >/dev/null 2>&1 || fail "Termux package manager 'pkg' was not fou
 for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$DEST/certificates" "$SHORTCUTS" "$SHORTCUT"; do
   [[ ! -L "$path" ]] || fail "Refusing to install through symlink: $path"
 done
-for target in "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg" "$SHORTCUT"; do
+for target in "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/manifests/layout-manifest.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg" "$SHORTCUT"; do
   [[ ! -e "$target" || -f "$target" ]] || fail "Refusing to replace a non-file path: $target"
 done
 
@@ -85,7 +86,7 @@ fi
 
 command -v openssl >/dev/null 2>&1 || warn "OpenSSL is still unavailable; HTTPS will not be available until it is installed."
 
-mkdir -p "$HOME/.node-core" "$DEST/web" "$DEST/certificates" "$SHORTCUTS"
+mkdir -p "$HOME/.node-core" "$DEST/web" "$DEST/certificates" "$DEST/manifests" "$SHORTCUTS"
 STAGE="$(mktemp -d "$HOME/.node-core-lobby-stage.XXXXXX")"
 BACKUP="$STAGE/backup"
 mkdir -p "$BACKUP"
@@ -94,6 +95,7 @@ TARGETS=(
   "$DEST/server.py"
   "$DEST/certificate_manager.py"
   "$DEST/certificates/catalog.json"
+  "$DEST/manifests/layout-manifest.json"
   "$DEST/web/index.html"
   "$DEST/web/manifest.webmanifest"
   "$DEST/web/icon.svg"
@@ -103,6 +105,7 @@ SOURCES=(
   "$SOURCE/lobby/server.py"
   "$SOURCE/lobby/certificate_manager.py"
   "$SOURCE/lobby/certificates/catalog.json"
+  "$ROOT/installer/layout-manifest.json"
   "$SOURCE/lobby/web/index.html"
   "$SOURCE/lobby/web/manifest.webmanifest"
   "$SOURCE/lobby/web/icon.svg"
@@ -156,7 +159,7 @@ for i in "${!TARGETS[@]}"; do
   fi
   mv -f "$temp" "$target"
 done
-chmod 700 "$DEST" "$DEST/web" "$DEST/certificates"
+chmod 700 "$DEST" "$DEST/web" "$DEST/certificates" "$DEST/manifests"
 chmod 600 "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
 
 info "Validating the installed server configuration."
