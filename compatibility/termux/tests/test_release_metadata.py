@@ -2,9 +2,13 @@
 """Unit tests for official stable-release metadata validation."""
 from __future__ import annotations
 
+import hashlib
 import importlib.util
+import io
 import pathlib
+import tempfile
 import unittest
+from unittest import mock
 
 SERVER = pathlib.Path(__file__).resolve().parents[1] / "lobby" / "server.py"
 SPEC = importlib.util.spec_from_file_location("node_core_lobby_server", SERVER)
@@ -92,6 +96,72 @@ class ReleaseMetadataTests(unittest.TestCase):
         payload["assets"][0]["browser_download_url"] = "https://evil.example/file.tar.gz"
         with self.assertRaisesRegex(ValueError, "metadata is invalid"):
             MODULE.parse_latest_stable_release(payload)
+
+
+    def test_downloads_and_verifies_package_bytes_atomically(self):
+        package_bytes = b"unit-test-release-package"
+        payload = release_payload()
+        install_name = "node-core-os-install-1.5.6.tar.gz"
+        install_asset = payload["assets"][0]
+        install_asset["size"] = len(package_bytes)
+        install_asset["digest"] = "sha256:" + hashlib.sha256(package_bytes).hexdigest()
+        payload["body"] = payload["body"].replace("a" * 64, hashlib.sha256(package_bytes).hexdigest(), 1)
+        release = MODULE.parse_latest_stable_release(payload)
+
+        class FakeResponse(io.BytesIO):
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                self.close()
+            def geturl(self):
+                return "https://release-assets.githubusercontent.com/asset"
+
+        with tempfile.TemporaryDirectory() as temp:
+            old_home, old_state = MODULE.HOME, MODULE.STATE
+            MODULE.HOME = pathlib.Path(temp)
+            MODULE.STATE = MODULE.HOME / ".node-core" / "lobby"
+            try:
+                with mock.patch.object(MODULE.urllib.request, "urlopen", return_value=FakeResponse(package_bytes)):
+                    receipt = MODULE.download_and_verify_release_package("install", release)
+                package_path = MODULE.STATE / "packages" / install_name
+                self.assertEqual(package_path.read_bytes(), package_bytes)
+                self.assertEqual(receipt["status"], "sha256_verified")
+                self.assertEqual(receipt["actual_sha256"], hashlib.sha256(package_bytes).hexdigest())
+                self.assertFalse(receipt["extracted"])
+                self.assertFalse(receipt["executed"])
+                self.assertEqual(package_path.stat().st_mode & 0o777, 0o600)
+            finally:
+                MODULE.HOME, MODULE.STATE = old_home, old_state
+
+    def test_rejects_download_digest_mismatch_and_keeps_no_partial_package(self):
+        package_bytes = b"tampered-package"
+        payload = release_payload()
+        install_name = "node-core-os-install-1.5.6.tar.gz"
+        payload["assets"][0]["size"] = len(package_bytes)
+        # Keep the official expected digest from the fixture; the bytes are tampered.
+        release = MODULE.parse_latest_stable_release(payload)
+
+        class FakeResponse(io.BytesIO):
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                self.close()
+            def geturl(self):
+                return "https://release-assets.githubusercontent.com/asset"
+
+        with tempfile.TemporaryDirectory() as temp:
+            old_home, old_state = MODULE.HOME, MODULE.STATE
+            MODULE.HOME = pathlib.Path(temp)
+            MODULE.STATE = MODULE.HOME / ".node-core" / "lobby"
+            try:
+                with mock.patch.object(MODULE.urllib.request, "urlopen", return_value=FakeResponse(package_bytes)):
+                    with self.assertRaisesRegex(ValueError, "SHA-256"):
+                        MODULE.download_and_verify_release_package("install", release)
+                package_path = MODULE.STATE / "packages" / install_name
+                self.assertFalse(package_path.exists())
+                self.assertEqual(list((MODULE.STATE / "packages").glob("*.part")), [])
+            finally:
+                MODULE.HOME, MODULE.STATE = old_home, old_state
 
 
 if __name__ == "__main__":
