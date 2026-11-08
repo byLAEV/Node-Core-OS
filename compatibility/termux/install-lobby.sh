@@ -59,10 +59,10 @@ command -v bash >/dev/null 2>&1 || fail "Bash is required."
 command -v pkg >/dev/null 2>&1 || fail "Termux package manager 'pkg' was not found."
 
 # Never follow an unexpected symlink into an existing user data directory.
-for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$SHORTCUTS" "$SHORTCUT"; do
+for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$DEST/certificates" "$SHORTCUTS" "$SHORTCUT"; do
   [[ ! -L "$path" ]] || fail "Refusing to install through symlink: $path"
 done
-for target in "$DEST/server.py" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg" "$SHORTCUT"; do
+for target in "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg" "$SHORTCUT"; do
   [[ ! -e "$target" || -f "$target" ]] || fail "Refusing to replace a non-file path: $target"
 done
 
@@ -92,6 +92,8 @@ mkdir -p "$BACKUP"
 COMMITTED=0
 TARGETS=(
   "$DEST/server.py"
+  "$DEST/certificate_manager.py"
+  "$DEST/certificates/catalog.json"
   "$DEST/web/index.html"
   "$DEST/web/manifest.webmanifest"
   "$DEST/web/icon.svg"
@@ -99,6 +101,8 @@ TARGETS=(
 )
 SOURCES=(
   "$SOURCE/lobby/server.py"
+  "$SOURCE/lobby/certificate_manager.py"
+  "$SOURCE/lobby/certificates/catalog.json"
   "$SOURCE/lobby/web/index.html"
   "$SOURCE/lobby/web/manifest.webmanifest"
   "$SOURCE/lobby/web/icon.svg"
