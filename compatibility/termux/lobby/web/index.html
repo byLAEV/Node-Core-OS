@@ -81,7 +81,7 @@ const category=item.category||'Basic commands';
 if(!groups.has(category))groups.set(category,[]);
 groups.get(category).push(item);
 }
-let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p>';
+let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Open the installed Node Core OS launcher in an interactive terminal with live output and keyboard input.</p><pre><code>"$HOME/.node-core/bin/node-core"</code></pre><div class="actions"><button class="action" id="open-node-core"><span aria-hidden="true">▶</span> OPEN NODE CORE OS</button></div></div>';
 for(const [category,items] of groups){
 out+='<h3>'+esc(category)+'</h3>';
 for(const item of items){
@@ -118,6 +118,44 @@ await pollTermuxJob(job.job_id,terminal,state,output);
 content.insertAdjacentHTML('afterbegin','<p class="bad">Command execution failed: '+esc(error.message)+'</p>');
 button.disabled=false;
 }
+}
+async function openNodeCoreTerminal(button){
+if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token unavailable. Reload the Lobby.</p>');return;}
+button.disabled=true;
+try{
+const response=await fetch('/api/terminal/start',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({}),cache:'no-store'});
+const data=await response.json();
+if(!response.ok||data.status!=='started')throw new Error(data.message||'Unable to open Node Core OS terminal');
+const terminal=document.createElement('section');
+terminal.className='panel open';terminal.style.display='block';
+terminal.innerHTML='<h2>NODE CORE OS · INTERACTIVE TERMINAL</h2><p class="muted">Starting interactive shell and Node Core OS…</p><pre class="termux-output" style="background:#080d11;padding:14px;border:1px solid #35404b;border-radius:8px;min-height:180px;max-height:55vh;overflow:auto;white-space:pre-wrap"></pre><form class="terminal-form"><label for="node-core-terminal-input">Terminal input</label><input id="node-core-terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a command and press Enter"><div class="actions"><button class="action" type="submit">SEND / ENTER</button><button class="action secondary terminal-close" type="button">CLOSE TERMINAL</button></div></form><p class="muted">This is a real local PTY session. Input is sent to the shell running the official Node Core OS launcher.</p>';
+content.appendChild(terminal);terminal.scrollIntoView({behavior:'smooth',block:'start'});
+const output=terminal.querySelector('.termux-output'),state=terminal.querySelector('.muted'),form=terminal.querySelector('form'),input=terminal.querySelector('input');
+let closed=false,lastOutput='';
+form.addEventListener('submit',async event=>{
+event.preventDefault();if(closed||!input.value)return;
+const value=input.value+'\\n';input.value='';
+try{const sent=await fetch('/api/terminal/input',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id,input:value}),cache:'no-store'});const result=await sent.json();if(!sent.ok||result.status!=='ok')throw new Error(result.message||'Input failed');}
+catch(error){state.textContent='Input error: '+error.message;state.className='bad';}
+});
+terminal.querySelector('.terminal-close').addEventListener('click',async()=>{
+closed=true;try{await fetch('/api/terminal/close',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id}),cache:'no-store'});}catch(_){}
+terminal.remove();button.disabled=false;
+});
+async function poll(){
+if(closed||!terminal.isConnected)return;
+try{
+const response=await fetch('/api/terminal/output',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id}),cache:'no-store'});
+const result=await response.json();if(!response.ok||result.status!=='ok')throw new Error(result.message||'Terminal stream failed');
+const session=result.terminal;
+if(session.output!==lastOutput){output.textContent=session.output+(session.output_truncated?'\\n[OUTPUT LIMIT REACHED]':'');lastOutput=session.output;output.scrollTop=output.scrollHeight;}
+state.textContent=session.status==='running'?'CONNECTED · Interactive Node Core OS terminal':'PROCESS EXITED · code '+session.returncode;
+if(session.status==='running')window.setTimeout(poll,250);
+else {input.disabled=true;terminal.querySelector('button[type=submit]').disabled=true;button.disabled=false;}
+}catch(error){state.textContent='Terminal connection error: '+error.message;state.className='bad';button.disabled=false;}
+}
+input.focus();poll();
+}catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Unable to open Node Core OS: '+esc(error.message)+'</p>');button.disabled=false;}
 }
 async function pollTermuxJob(jobId,terminal,state,output){
 try{
@@ -379,6 +417,7 @@ if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 content.innerHTML=renderTermuxCommands(d);
 content.querySelectorAll('[data-termux-execute]').forEach(button=>button.addEventListener('click',()=>executeTermuxCommand(button.dataset.termuxExecute,button)));
+const openNodeButton=content.querySelector('#open-node-core');if(openNodeButton)openNodeButton.addEventListener('click',()=>openNodeCoreTerminal(openNodeButton));
 }else if(selected==='certificates'){
 const r=await fetch('/api/certificates',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
