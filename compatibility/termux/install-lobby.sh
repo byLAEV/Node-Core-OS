@@ -60,6 +60,11 @@ command -v curl >/dev/null 2>&1 || fail "curl is required. Run: pkg install curl
 command -v bash >/dev/null 2>&1 || fail "Bash is required."
 command -v pkg >/dev/null 2>&1 || fail "Termux package manager 'pkg' was not found."
 
+if ! python -c 'import cryptography' >/dev/null 2>&1; then
+  info "Installing the required Termux Python cryptography package."
+  pkg install -y python-cryptography || fail "Could not install python-cryptography."
+fi
+
 # Never follow an unexpected symlink into an existing user data directory.
 for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$DEST/certificates" "$DEST/manifests" "$SHORTCUTS" "$SHORTCUT"; do
   [[ ! -L "$path" ]] || fail "Refusing to install through symlink: $path"
