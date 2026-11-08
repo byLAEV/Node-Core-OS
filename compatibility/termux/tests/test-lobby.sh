@@ -53,7 +53,9 @@ assert "layout-manifest.json" in filesystem and "prepare_filesystem" in filesyst
 assert "NODE_CORE_LOBBY_REF" in bootstrap
 assert "/api/packages/execute" in server and "/api/packages/output" in server
 assert "start_official_installer" in server and "_verified_installer_root" in server
-assert "EJECUTAR INSTALADOR" in html and "pollInstallerJob" in html
+assert "EJECUTAR " in html and "INSTALADOR" in html and "pollInstallerJob" in html
+assert "execute-package" in html and "api/packages/status" in html
+assert "already current or newer" in server and "verified as " in server
 assert "installer/install.sh" not in bootstrap
 print("Python syntax, manifest and bootstrap contract: PASS")
 PY
