@@ -1024,8 +1024,8 @@ def start_official_installer(kind):
             target_version = tuple(int(part) for part in release["version"].split("."))
         except (KeyError, TypeError, ValueError, OSError, urllib.error.URLError) as exc:
             raise ValueError("Could not verify the official stable update version: " + str(exc)[:160])
-        if target_version <= current_version:
-            raise ValueError("The installed Node Core OS version is already current or newer; no update will run.")
+        if target_version < current_version:
+            raise ValueError("The installed Node Core OS version is newer than the latest official stable release; downgrade is not allowed.")
     with INSTALL_LOCK:
         active = sum(1 for job in INSTALL_JOBS.values() if job["status"] == "running")
         if active:
@@ -1095,7 +1095,7 @@ class Handler(BaseHTTPRequestHandler):
                 release["local_transport"] = "https" if self.server.is_https else "http"
                 try:
                     release["update_available"] = bool(
-                        installed and tuple(map(int, release["version"].split("."))) >
+                        installed and tuple(map(int, release["version"].split("."))) >=
                         tuple(map(int, installed.split(".")))
                     )
                 except (AttributeError, TypeError, ValueError):
