@@ -7,6 +7,8 @@ import importlib.util
 import io
 import pathlib
 import tempfile
+import tarfile
+import json
 import unittest
 from unittest import mock
 
@@ -160,6 +162,73 @@ class ReleaseMetadataTests(unittest.TestCase):
                 package_path = MODULE.STATE / "packages" / install_name
                 self.assertFalse(package_path.exists())
                 self.assertEqual(list((MODULE.STATE / "packages").glob("*.part")), [])
+            finally:
+                MODULE.HOME, MODULE.STATE = old_home, old_state
+
+
+    def _stage_installer_fixture(self, temp, kind="install", unsafe=False):
+        old_home, old_state = MODULE.HOME, MODULE.STATE
+        MODULE.HOME = pathlib.Path(temp)
+        MODULE.STATE = MODULE.HOME / ".node-core" / "lobby"
+        package_dir = MODULE.ensure_package_directory()
+        name = f"node-core-os-{kind}-9.9.9.tar.gz"
+        archive_path = package_dir / name
+        files = {
+            f"node-core-os/installer/{kind}.sh": b"#!/usr/bin/env bash\\nexit 0\\n",
+            "node-core-os/installer/config/defaults": b"NODE_CORE_DATA_DIR=$HOME/.node-core\\n",
+        }
+        if kind == "install":
+            files["node-core-os/installer/lib/filesystem.sh"] = b"prepare_filesystem() { :; }\\n"
+        with tarfile.open(archive_path, "w:gz") as archive:
+            for member_name, content in files.items():
+                info = tarfile.TarInfo(member_name)
+                info.size = len(content)
+                info.mode = 0o755 if member_name.endswith(".sh") else 0o644
+                archive.addfile(info, io.BytesIO(content))
+            if unsafe:
+                info = tarfile.TarInfo("node-core-os/installer/escape.sh")
+                info.type = tarfile.SYMTYPE
+                info.linkname = "../../outside"
+                archive.addfile(info)
+        digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+        receipt_path = package_dir / (name + ".json")
+        receipt_path.write_text(json.dumps({"status":"sha256_verified","kind":kind,"asset_name":name,"actual_sha256":digest}), encoding="utf-8")
+        return old_home, old_state, name
+
+    def test_extracts_only_canonical_install_script_from_verified_package(self):
+        with tempfile.TemporaryDirectory() as temp:
+            old_home, old_state, name = self._stage_installer_fixture(temp, "install")
+            try:
+                with mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install"}]}):
+                    root, work = MODULE._verified_installer_root("install")
+                self.assertTrue((root / "installer" / "install.sh").is_file())
+                self.assertTrue((root / "installer" / "lib" / "filesystem.sh").is_file())
+                self.assertEqual(root.parent, work)
+                import shutil
+                shutil.rmtree(work)
+            finally:
+                MODULE.HOME, MODULE.STATE = old_home, old_state
+
+    def test_selects_official_update_script_not_install_script(self):
+        with tempfile.TemporaryDirectory() as temp:
+            old_home, old_state, name = self._stage_installer_fixture(temp, "update")
+            try:
+                with mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"update"}]}):
+                    root, work = MODULE._verified_installer_root("update")
+                self.assertTrue((root / "installer" / "update.sh").is_file())
+                self.assertFalse((root / "installer" / "install.sh").exists())
+                import shutil
+                shutil.rmtree(work)
+            finally:
+                MODULE.HOME, MODULE.STATE = old_home, old_state
+
+    def test_rejects_symlink_members_in_official_package(self):
+        with tempfile.TemporaryDirectory() as temp:
+            old_home, old_state, name = self._stage_installer_fixture(temp, "install", unsafe=True)
+            try:
+                with mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install"}]}):
+                    with self.assertRaisesRegex(ValueError, "unsafe path|unsupported link"):
+                        MODULE._verified_installer_root("install")
             finally:
                 MODULE.HOME, MODULE.STATE = old_home, old_state
 
