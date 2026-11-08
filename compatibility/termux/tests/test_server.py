@@ -191,6 +191,24 @@ def main() -> int:
                     assert authorized_result["status"] == "forbidden", authorized_result
                     assert "requires HTTPS" in authorized_result["message"], authorized_result
                 print("Session token injection, security headers and HTTPS-only package API authorization: PASS")
+                # A first install must fail closed until a Bitcoin identity proof exists.
+                env["TERMUX_VERSION"] = "0.118-test"
+                env["PREFIX"] = "/data/data/com.termux/files/usr"
+                install_without_identity = urllib.request.Request(
+                    base_url + "/api/packages/execute",
+                    data=b'{"kind":"install"}',
+                    headers={
+                        "Content-Type": "application/json",
+                        "Origin": base_url,
+                        "X-Node-Core-Lobby-Token": config["token"],
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(install_without_identity, timeout=3.0, context=context) as response:
+                    install_locked = json.loads(response.read().decode("utf-8"))
+                assert install_locked["status"] == "error", install_locked
+                assert "Bitcoin" in install_locked["message"] and "locked" in install_locked["message"], install_locked
+                print("First installation blocked until verified Bitcoin identity proof: PASS")
 
                 # Verify the public-only Bitcoin identity gate end-to-end.
                 if tls_expected:
