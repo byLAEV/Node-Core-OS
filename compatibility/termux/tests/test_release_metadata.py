@@ -200,8 +200,9 @@ class ReleaseMetadataTests(unittest.TestCase):
             old_home, old_state, name, digest = self._stage_installer_fixture(temp, "install")
             try:
                 with mock.patch.object(MODULE, "latest_stable_release", return_value={"status":"verified_metadata","version":"9.9.9","tag":"v9.9.9","assets":{"install":{"sha256":digest}}}), mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"install","version":"9.9.9"}]}):
-                    root, work = MODULE._verified_installer_root("install")
+                    root, work, version = MODULE._verified_installer_root("install")
                 self.assertTrue((root / "installer" / "install.sh").is_file())
+                self.assertEqual(version, "9.9.9")
                 self.assertTrue((root / "installer" / "lib" / "filesystem.sh").is_file())
                 self.assertEqual(root.parent, work)
                 import shutil
@@ -214,8 +215,9 @@ class ReleaseMetadataTests(unittest.TestCase):
             old_home, old_state, name, digest = self._stage_installer_fixture(temp, "update")
             try:
                 with mock.patch.object(MODULE, "latest_stable_release", return_value={"status":"verified_metadata","version":"9.9.9","tag":"v9.9.9","assets":{"update":{"sha256":digest}}}), mock.patch.object(MODULE, "package_receipts", return_value={"packages":[{"asset_name":name,"kind":"update","version":"9.9.9"}]}):
-                    root, work = MODULE._verified_installer_root("update")
+                    root, work, version = MODULE._verified_installer_root("update")
                 self.assertTrue((root / "installer" / "update.sh").is_file())
+                self.assertEqual(version, "9.9.9")
                 self.assertFalse((root / "installer" / "install.sh").exists())
                 import shutil
                 shutil.rmtree(work)
