@@ -24,7 +24,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 </style></head>
 <body>
 <header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
-<p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device.</p>
+<p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels check official stable-release metadata only; no changes are executed.</p>
 <div class="grid">
 <button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Full report: environment, installation, packages, network and directories.</small></button>
 <button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites, missing tools and possible blockers.</small></button>
@@ -36,12 +36,12 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <section id="panel" class="panel" aria-live="polite"><h2 id="panel-title">Module</h2><div id="panel-content" class="muted">Select an action.</div>
 <div class="actions"><button id="run" class="action">Generate report</button><button id="close" class="action secondary">Close</button></div></section>
 <div id="status" class="status">Connecting to local Lobby service…</div>
-<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only inventory</footer>
+<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only inventory · Release metadata verification</footer>
 <script>
 const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
 const labels={diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status'};
-function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='status'?'Refresh status':'Generate report';panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':'Generate report');panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -73,20 +73,42 @@ dirs+='<p class="muted">'+esc(d.directories.policy)+'</p>';out+=section('Directo
 out+=section('Privacy and scan limits','<pre>'+esc(JSON.stringify(d.privacy,null,2))+'</pre>');
 return out;
 }
+function renderRelease(r, mode){
+if(r.status==='unavailable')return '<p class="bad"><b>Release verification unavailable.</b></p><p>'+esc(r.message||r.error||'No verified release metadata.')+'</p>';
+const a=r.assets||{};
+let out='<p><b>Latest stable release:</b> <span class="ok">'+esc(r.name)+' ('+esc(r.tag)+')</span></p>';
+out+='<p><b>Published:</b> '+esc(r.published_at)+'</p>';
+out+='<p><b>Official release:</b> <a href="'+esc(r.release_url)+'" target="_blank" rel="noopener noreferrer">Open GitHub Release</a></p>';
+out+='<p><b>Installed version:</b> '+esc(r.installed_version||'No complete installation detected')+'</p>';
+if(r.installation_detected)out+='<p class="warn">An existing Node Core OS installation was detected. The Lobby must use the updater, not the new-install path.</p>';
+else out+='<p class="muted">No complete Node Core OS installation was detected. This is only a status result, not authorization to install.</p>';
+out+='<p><b>SHA-256 metadata:</b> '+(r.verification?.release_notes_checksums_match_asset_digests?'<span class="ok">Release notes match GitHub asset digests</span>':'<span class="bad">Not verified</span>')+'</p>';
+for(const kind of ['install','update']){
+const item=a[kind];if(!item)continue;
+out+='<div class="result"><b>'+esc(kind==='install'?'New installation package':'Update package')+'</b><br><small>'+esc(item.name)+'</small><br><small>SHA-256: <code>'+esc(item.sha256)+'</code></small><br><small>Size: '+esc(item.size_bytes)+' bytes</small></div>';
+}
+out+='<p class="warn">The Lobby currently verifies release metadata only. It does not download, install, update, request private keys or change Node Core OS.</p>';
+return out;
+}
 async function runSelected(){
-runBtn.disabled=true;runBtn.textContent='Scanning…';content.textContent='Collecting local inventory. Network checks have short timeouts; no device changes are made.';
+runBtn.disabled=true;runBtn.textContent='Checking…';
+content.textContent='Collecting fresh local and official release information. No device changes are made.';
 try{
+if(selected==='install'||selected==='update'){
+const r=await fetch('/api/releases/latest',{cache:'no-store'});
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+content.innerHTML=renderRelease(d,selected);
+}else{
 const r=await fetch(selected==='status'?'/api/status':'/api/report',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
 const d=await r.json();
 if(selected==='status')content.innerHTML='<pre>'+esc(JSON.stringify(d,null,2))+'</pre>';
 else {content.innerHTML=renderReport(d);
 if(selected==='prepare')content.insertAdjacentHTML('afterbegin','<p class="muted">Preparation report only: no packages or configuration were changed.</p>');
-if(selected==='install')content.insertAdjacentHTML('afterbegin','<p class="muted">Readiness inspection only: installation is not executed.</p>');
-if(selected==='update')content.insertAdjacentHTML('afterbegin','<p class="muted">Version and checkout inspection only: no update is executed.</p>');
 if(selected==='repair')content.insertAdjacentHTML('afterbegin','<p class="muted">Read-only inspection only: no files or settings were repaired.</p>');}
-}catch(e){content.textContent='Unable to generate report: '+e.message;}
-finally{runBtn.disabled=false;runBtn.textContent=selected==='status'?'Refresh status':'Generate report';}
 }
-runBtn.addEventListener('click',runSelected);
-(async()=>{try{const r=await fetch('/health',{cache:'no-store'});const j=await r.json();statusEl.textContent='Lobby service: ONLINE · Transport: '+j.transport.toUpperCase()+' · 127.0.0.1 only.';}catch(e){statusEl.textContent='Lobby service unavailable. Return to Termux and run the Lobby launcher.';}})();
-</script></body></html>
+}catch(e){content.textContent='Unable to generate report: '+e.message;}
+finally{runBtn.disabled=false;runBtn.textContent=selected==='status'?'Refresh status':(selected==='install'||selected==='update'?'Check official stable release':'Generate report');}
+}
+</script></body>
+</html>
