@@ -60,6 +60,9 @@ command -v pkg >/dev/null 2>&1 || fail "Termux package manager 'pkg' was not fou
 for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$SHORTCUTS" "$SHORTCUT"; do
   [[ ! -L "$path" ]] || fail "Refusing to install through symlink: $path"
 done
+for target in "$DEST/server.py" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg" "$SHORTCUT"; do
+  [[ ! -e "$target" || -f "$target" ]] || fail "Refusing to replace a non-file path: $target"
+done
 
 if ! command -v openssl >/dev/null 2>&1; then
   warn "OpenSSL CLI is missing. HTTPS cannot start until openssl-tool is installed."
@@ -114,6 +117,9 @@ cleanup() {
         rm -f "$target" 2>/dev/null || true
       fi
     done
+    if [[ -f "$SHORTCUT" ]]; then
+      bash "$SHORTCUT" >/dev/null 2>&1 || warn "Previous Lobby files were restored, but the previous service did not restart automatically."
+    fi
   fi
   rm -rf "$STAGE"
 }
@@ -150,8 +156,7 @@ chmod 600 "$DEST/server.py" "$DEST/web/index.html" "$DEST/web/manifest.webmanife
 info "Validating the installed server configuration."
 python "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
 
-COMMITTED=1
-info "Lobby files installed successfully."
+info "Lobby files staged and configuration validated."
 info "Existing server.json, certificates, logs and PID state were preserved."
 info "Starting/restarting the local Lobby service."
 bash "$SHORTCUT"
@@ -167,4 +172,5 @@ else
   fail "Lobby process did not pass its health check. Inspect ~/.node-core/lobby/lobby.log"
 fi
 
+COMMITTED=1
 info "Installation complete. No Node Core OS install/update/repair operation was executed."
