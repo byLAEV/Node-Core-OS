@@ -148,6 +148,64 @@ def main() -> int:
                 assert all(not item["installable_certificate"] for item in catalog_response["security_profiles"])
                 print("Read-only certificate catalog endpoint: PASS")
 
+                commands = request_json(base_url + "/api/termux/commands", tls_expected)
+                command_ids = {item["id"] for item in commands["commands"]}
+                assert "working-directory" in command_ids, commands
+                assert commands["execution_policy"]["allowlist_only"] is True
+                assert commands["execution_policy"]["shell_interpretation"] is False
+                print("Read-only Termux command catalog and execution policy: PASS")
+
+                if tls_expected:
+                    execute = urllib.request.Request(
+                        base_url + "/api/termux/execute",
+                        data=json.dumps({"command_id": "working-directory"}).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": base_url,
+                            "X-Node-Core-Lobby-Token": config["token"],
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(execute, timeout=3.0, context=context) as response:
+                        started = json.loads(response.read().decode("utf-8"))
+                    assert started["status"] == "started", started
+                    job_id = started["job"]["job_id"]
+                    deadline = time.monotonic() + 5
+                    while time.monotonic() < deadline:
+                        output_request = urllib.request.Request(
+                            base_url + "/api/termux/output",
+                            data=json.dumps({"job_id": job_id}).encode("utf-8"),
+                            headers={
+                                "Content-Type": "application/json",
+                                "Origin": base_url,
+                                "X-Node-Core-Lobby-Token": config["token"],
+                            },
+                            method="POST",
+                        )
+                        with urllib.request.urlopen(output_request, timeout=2.0, context=context) as response:
+                            output_result = json.loads(response.read().decode("utf-8"))
+                        job = output_result["job"]
+                        if job["status"] != "running":
+                            break
+                        time.sleep(0.05)
+                    assert job["status"] == "completed", job
+                    assert job["returncode"] == 0, job
+                    assert job["output"].strip(), job
+                    invalid = urllib.request.Request(
+                        base_url + "/api/termux/execute",
+                        data=b'{"command_id":"arbitrary-shell"}',
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": base_url,
+                            "X-Node-Core-Lobby-Token": config["token"],
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(invalid, timeout=2.0, context=context) as response:
+                        invalid_result = json.loads(response.read().decode("utf-8"))
+                    assert invalid_result["status"] == "error", invalid_result
+                    print("Authenticated Termux command execution, live output and allowlist enforcement: PASS")
+
                 if tls_expected:
                     renew = urllib.request.Request(
                         base_url + "/api/certificates/action",
