@@ -84,6 +84,35 @@ A self-signed certificate encrypts the local connection but is not automatically
 trusted by Android browsers. A browser warning may appear. The `curl -k` option
 is for controlled local testing only; it does not establish certificate trust.
 
+## Official package download and SHA-256 staging
+
+The install and update panels now offer an explicit, browser-confirmed
+`Download and verify` action when the detected installation state permits it.
+The server requires a per-installation random session token, a matching local
+Origin and Host, a JSON POST request, and a supported package kind.
+
+The Lobby downloads only the canonical release asset over HTTPS, enforces a
+300 MiB maximum and the published byte count, streams SHA-256 over the complete
+archive, compares it with GitHub's Release asset digest, then atomically places
+the verified file under:
+
+`~/.node-core/lobby/packages/`
+
+Package files and verification receipts are mode 0600; the package directory is
+mode 0700. Temporary partial downloads are removed on failure. A receipt
+records the release tag, package name, size, expected and actual digest, and
+explicitly records that the archive has not been inspected, extracted or
+executed.
+
+This is a staging milestone only. The Lobby does not yet extract or execute
+either archive. New installation must not be enabled until the agreed
+Bitcoin/Ethereum WIF/HEX reference-key flow is safely integrated with the
+canonical installer. An update package never asks for private identity keys.
+A later execution milestone must inspect archive paths, verify package
+contents and canonical entrypoints, request a separate explicit confirmation,
+run the official package script, and validate/rollback the resulting
+installation.
+
 ## Stable Release discovery in the Lobby
 
 The Lobby exposes a read-only `GET /api/releases/latest` endpoint. It queries
