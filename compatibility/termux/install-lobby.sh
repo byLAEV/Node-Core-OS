@@ -60,7 +60,7 @@ command -v bash >/dev/null 2>&1 || fail "Bash is required."
 command -v pkg >/dev/null 2>&1 || fail "Termux package manager 'pkg' was not found."
 
 # Never follow an unexpected symlink into an existing user data directory.
-for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$DEST/certificates" "$SHORTCUTS" "$SHORTCUT"; do
+for path in "$HOME/.node-core" "$DEST" "$DEST/web" "$DEST/certificates" "$DEST/manifests" "$SHORTCUTS" "$SHORTCUT"; do
   [[ ! -L "$path" ]] || fail "Refusing to install through symlink: $path"
 done
 for target in "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/certificates/catalog.json" "$DEST/manifests/layout-manifest.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg" "$SHORTCUT"; do
