@@ -1,0 +1,136 @@
+{
+  "schema_version": "1.0.0",
+  "layout_id": "node-core-os-user-runtime",
+  "owner": "Node Core OS byLAEV",
+  "root": {
+    "default": "~/.node-core",
+    "environment_variable": "NODE_CORE_DATA_DIR",
+    "policy": "User-owned directory inside HOME; never install as root; do not replace the root or persistent data during updates."
+  },
+  "directories": [
+    {
+      "path": "app",
+      "provisioner": "node-core-installer",
+      "purpose": "Versioned Node Core OS application source and runtime modules.",
+      "persistence": "replaceable_on_verified_update"
+    },
+    {
+      "path": "bin",
+      "provisioner": "node-core-installer",
+      "purpose": "Stable user-level launchers and, on supported Linux distributions, the Kubo executable.",
+      "persistence": "managed"
+    },
+    {
+      "path": "config",
+      "provisioner": "reserved",
+      "purpose": "Reserved namespace for future configuration files; current canonical configuration remains config.json at the root.",
+      "persistence": "persistent"
+    },
+    {
+      "path": "storage",
+      "provisioner": "node-core-installer",
+      "purpose": "Local Node Core OS user data and locally stored protocol/application content.",
+      "persistence": "persistent_never_replace_on_update"
+    },
+    {
+      "path": "ipfs",
+      "provisioner": "node-core-installer",
+      "purpose": "Kubo/IPFS repository, identity and decentralized storage metadata.",
+      "persistence": "persistent_never_replace_on_update"
+    },
+    {
+      "path": "logs",
+      "provisioner": "node-core-installer",
+      "purpose": "Node Core OS and Kubo runtime logs.",
+      "persistence": "persistent"
+    },
+    {
+      "path": "runtime",
+      "provisioner": "node-core-installer",
+      "purpose": "Private runtime environments, process state and updater work area.",
+      "persistence": "managed"
+    },
+    {
+      "path": "runtime/node-core-venv",
+      "provisioner": "node-core-installer",
+      "purpose": "Private Python virtual environment for Node Core OS.",
+      "persistence": "managed_rebuildable"
+    },
+    {
+      "path": "runtime/update",
+      "provisioner": "updater",
+      "purpose": "Temporary update staging, backups and recovery metadata.",
+      "persistence": "temporary_recovery_data"
+    },
+    {
+      "path": "services",
+      "provisioner": "node-core-installer",
+      "purpose": "Reserved local service metadata and integration state; service-manager unit files remain in the platform XDG service directory.",
+      "persistence": "persistent"
+    },
+    {
+      "path": "lobby",
+      "provisioner": "lobby-installer",
+      "purpose": "Independent local lifecycle manager; can exist before Node Core OS installation.",
+      "persistence": "independent"
+    },
+    {
+      "path": "lobby/manifests",
+      "provisioner": "lobby-installer",
+      "purpose": "Read-only canonical installation and layout manifests exposed by the Lobby.",
+      "persistence": "managed"
+    }
+  ],
+  "files": [
+    {
+      "path": "config.json",
+      "provisioner": "node-core-installer",
+      "purpose": "Canonical Node Core OS configuration, including local storage and Kubo paths.",
+      "persistence": "persistent"
+    },
+    {
+      "path": "bin/node-core",
+      "provisioner": "node-core-installer",
+      "purpose": "Primary Node Core OS launcher."
+    },
+    {
+      "path": "bin/node-core-update",
+      "provisioner": "node-core-installer",
+      "purpose": "Protected updater entry point."
+    },
+    {
+      "path": "bin/node-core-compatibility",
+      "provisioner": "node-core-installer",
+      "purpose": "Compatibility diagnostic entry point."
+    },
+    {
+      "path": "runtime/kubo.pid",
+      "provisioner": "node-core-installer",
+      "purpose": "Kubo daemon process identifier."
+    },
+    {
+      "path": "runtime/node-core-commit",
+      "provisioner": "updater",
+      "purpose": "Source commit currently activated by the updater."
+    },
+    {
+      "path": "logs/kubo.log",
+      "provisioner": "node-core-installer",
+      "purpose": "Kubo daemon stdout and stderr."
+    }
+  ],
+  "external_paths": [
+    {
+      "path": "${XDG_CONFIG_HOME:-~/.config}/systemd/user/node-core-kubo.service",
+      "purpose": "Optional systemd user service unit; intentionally outside ~/.node-core."
+    }
+  ],
+  "invariants": [
+    "The relative directory layout is identical for every standard installation.",
+    "The Lobby is installed independently and is not a prerequisite for the Node Core OS runtime.",
+    "The storage and ipfs directories are persistent user data and must never be removed or replaced by an application update.",
+    "The app directory is the replaceable application payload; updates preserve config.json, storage, ipfs, logs, identity and runtime state unless a separately documented migration is required.",
+    "The layout manifest is descriptive and versioned; installer code validates paths and creates only directories owned by its provisioner.",
+    "No private keys, credentials, tokens or secret contents are stored in this manifest."
+  ]
+}
