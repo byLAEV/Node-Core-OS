@@ -27,7 +27,7 @@ root = Path(os.path.abspath(root_arg))
 home = Path(os.path.realpath(home_arg))
 if root == home or home not in root.parents:
     raise SystemExit("Unsafe NODE_CORE_DATA_DIR: it must be inside HOME.")
-if root.exists() and (root.is_symlink() or not root.is_dir()):
+if root.is_symlink() or (root.exists() and not root.is_dir()):
     raise SystemExit(f"Unsafe Node Core OS root: {root}")
 if not root.exists():
     root.mkdir(mode=0o700)
