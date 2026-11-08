@@ -291,9 +291,8 @@ def parse_latest_stable_release(payload):
         digest_match = re.fullmatch(r"sha256:([0-9a-f]{64})", digest or "")
         url = item.get("browser_download_url")
         size = item.get("size")
-        if not digest_match or not isinstance(url, str) or not url.startswith(
-            "https://github.com/byLAEV/Node-Core-OS/releases/download/"
-        ):
+        expected_url = f"https://github.com/byLAEV/Node-Core-OS/releases/download/{tag}/{name}"
+        if not digest_match or url != expected_url:
             raise ValueError(f"Release asset metadata is invalid: {name}")
         if not isinstance(size, int) or size <= 0:
             raise ValueError(f"Release asset size is invalid: {name}")
@@ -313,13 +312,17 @@ def parse_latest_stable_release(payload):
     published = payload.get("published_at")
     if not isinstance(published, str) or not published:
         raise ValueError("Release publication timestamp is missing")
+    release_url = payload.get("html_url")
+    expected_release_url = f"https://github.com/byLAEV/Node-Core-OS/releases/tag/{tag}"
+    if release_url != expected_release_url:
+        raise ValueError("Release page URL is not the canonical official GitHub URL")
     return {
         "status": "verified_metadata",
         "version": version,
         "tag": tag,
         "name": payload.get("name") or f"Node Core OS {version}",
         "published_at": published,
-        "release_url": payload.get("html_url"),
+        "release_url": release_url,
         "assets": assets,
         "verification": {
             "stable_release": True,
@@ -345,7 +348,6 @@ def latest_stable_release():
         raise ValueError("GitHub release metadata exceeds the allowed response size")
     payload = json.loads(raw.decode("utf-8"))
     result = parse_latest_stable_release(payload)
-    result["source_commit"] = payload.get("target_commitish")
     return result
 
 def load_config():
