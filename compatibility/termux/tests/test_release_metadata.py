@@ -174,11 +174,11 @@ class ReleaseMetadataTests(unittest.TestCase):
         name = f"node-core-os-{kind}-9.9.9.tar.gz"
         archive_path = package_dir / name
         files = {
-            f"node-core-os/installer/{kind}.sh": b"#!/usr/bin/env bash\\nexit 0\\n",
-            "node-core-os/installer/config/defaults": b"NODE_CORE_DATA_DIR=$HOME/.node-core\\n",
+            f"node-core-os/installer/{kind}.sh": b"#!/usr/bin/env bash\nexit 0\n",
+            "node-core-os/installer/config/defaults": b"NODE_CORE_DATA_DIR=$HOME/.node-core\n",
         }
         if kind == "install":
-            files["node-core-os/installer/lib/filesystem.sh"] = b"prepare_filesystem() { :; }\\n"
+            files["node-core-os/installer/lib/filesystem.sh"] = b"prepare_filesystem() { :; }\n"
         with tarfile.open(archive_path, "w:gz") as archive:
             for member_name, content in files.items():
                 info = tarfile.TarInfo(member_name)
