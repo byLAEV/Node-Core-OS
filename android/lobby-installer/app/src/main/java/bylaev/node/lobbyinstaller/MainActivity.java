@@ -26,7 +26,8 @@ public final class MainActivity extends Activity {
     }
 
     private void launchLobby() {
-        if (getPackageManager().getPackageInfo("com.termux", 0) == null) {
+        try { getPackageManager().getPackageInfo("com.termux", 0); }
+        catch (PackageManager.NameNotFoundException missing) {
             status.setText("Termux no está instalado. Instala Termux y vuelve a abrir NODE.");
             return;
         }
