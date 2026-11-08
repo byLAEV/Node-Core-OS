@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only system inventory and local Lobby server for native Termux."""
 from __future__ import annotations
-import argparse, datetime as dt, json, os, platform, re, shutil, socket, ssl, subprocess, sys, urllib.error, urllib.request
+import argparse, datetime as dt, hashlib, hmac, json, os, platform, re, secrets, shutil, socket, ssl, subprocess, sys, tempfile, urllib.error, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -350,17 +350,186 @@ def latest_stable_release():
     result = parse_latest_stable_release(payload)
     return result
 
+PACKAGE_MAX_BYTES = 300 * 1024 * 1024
+PACKAGE_CHUNK_BYTES = 1024 * 1024
+
+def package_receipts():
+    package_dir = HOME / ".node-core" / "lobby" / "packages"
+    output = []
+    if package_dir.is_symlink() or not package_dir.is_dir():
+        return {"packages": output}
+    for receipt_path in sorted(package_dir.glob("node-core-os-*.tar.gz.json")):
+        if receipt_path.is_symlink() or not receipt_path.is_file():
+            continue
+        try:
+            data = json.loads(receipt_path.read_text(encoding="utf-8"))
+            if data.get("status") != "sha256_verified":
+                continue
+            output.append({
+                "kind": data.get("kind"),
+                "version": data.get("version"),
+                "asset_name": data.get("asset_name"),
+                "size_bytes": data.get("size_bytes"),
+                "actual_sha256": data.get("actual_sha256"),
+                "verified_at": data.get("verified_at"),
+                "extracted": data.get("extracted", False),
+                "executed": data.get("executed", False),
+            })
+        except (OSError, ValueError, TypeError):
+            continue
+    return {"packages": output}
+
+def ensure_package_directory():
+    base = HOME / ".node-core"
+    for path in (base, STATE):
+        if path.is_symlink():
+            raise ValueError(f"Refusing to use a symlink as Lobby state: {path}")
+        if path.exists() and not path.is_dir():
+            raise ValueError(f"Lobby state path is not a directory: {path}")
+    base.mkdir(mode=0o700, parents=True, exist_ok=True)
+    STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.stat(base).st_uid != os.getuid() or os.stat(STATE).st_uid != os.getuid():
+        raise ValueError("Lobby state directory is not owned by the current user")
+    package_dir = STATE / "packages"
+    if package_dir.is_symlink():
+        raise ValueError(f"Refusing to use a symlink as package storage: {package_dir}")
+    if package_dir.exists() and not package_dir.is_dir():
+        raise ValueError("Package storage path is not a directory")
+    package_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.stat(package_dir).st_uid != os.getuid():
+        raise ValueError("Package storage is not owned by the current user")
+    package_dir.chmod(0o700)
+    return package_dir
+
+def atomic_write_json(path, payload):
+    data = (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    fd, temporary = tempfile.mkstemp(prefix=".metadata-", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "wb") as output:
+            output.write(data)
+            output.flush()
+            os.fsync(output.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+def download_and_verify_release_package(kind, release=None):
+    """Download one canonical release package and verify its complete SHA-256."""
+    if kind not in ("install", "update"):
+        raise ValueError("Package kind must be 'install' or 'update'")
+    if release is None:
+        release = latest_stable_release()
+    if release.get("status") != "verified_metadata":
+        raise ValueError("Stable release metadata has not been verified")
+    asset = release.get("assets", {}).get(kind)
+    if not isinstance(asset, dict):
+        raise ValueError(f"The verified release has no {kind} package")
+    expected_name = f"node-core-os-{kind}-{release['version']}.tar.gz"
+    expected_url = (
+        f"https://github.com/byLAEV/Node-Core-OS/releases/download/"
+        f"{release['tag']}/{expected_name}"
+    )
+    digest = asset.get("sha256")
+    size = asset.get("size_bytes")
+    if asset.get("name") != expected_name or asset.get("url") != expected_url:
+        raise ValueError("Release package identity or download URL is not canonical")
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise ValueError("Release package SHA-256 metadata is invalid")
+    if not isinstance(size, int) or size <= 0 or size > PACKAGE_MAX_BYTES:
+        raise ValueError("Release package size is outside the permitted limit")
+
+    package_dir = ensure_package_directory()
+    final_path = package_dir / expected_name
+    receipt_path = package_dir / f"{expected_name}.json"
+    if final_path.is_symlink() or receipt_path.is_symlink():
+        raise ValueError("Refusing to replace a symlink in package storage")
+
+    request = urllib.request.Request(
+        expected_url,
+        headers={
+            "Accept": "application/octet-stream",
+            "User-Agent": "Node-Core-OS-Lobby",
+        }
+    )
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{kind}-{release['version']}-", suffix=".part", dir=str(package_dir)
+    )
+    digestor = hashlib.sha256()
+    total = 0
+    try:
+        with os.fdopen(fd, "wb") as output:
+            with urllib.request.urlopen(request, timeout=60.0) as response:
+                parsed_url = urllib.parse.urlparse(response.geturl())
+                allowed_hosts = {
+                    "release-assets.githubusercontent.com",
+                    "objects.githubusercontent.com",
+                    "github.com",
+                }
+                if parsed_url.scheme != "https" or parsed_url.hostname not in allowed_hosts:
+                    raise ValueError("GitHub redirected the package download to an untrusted host")
+                while True:
+                    chunk = response.read(PACKAGE_CHUNK_BYTES)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > size or total > PACKAGE_MAX_BYTES:
+                        raise ValueError("Downloaded package exceeds the published size")
+                    digestor.update(chunk)
+                    output.write(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+
+        actual_digest = digestor.hexdigest()
+        if total != size:
+            raise ValueError(f"Downloaded size mismatch: expected {size}, received {total}")
+        if not hmac.compare_digest(actual_digest, digest):
+            raise ValueError("Downloaded package SHA-256 does not match the official Release")
+
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, final_path)
+        receipt = {
+            "status": "sha256_verified",
+            "kind": kind,
+            "version": release["version"],
+            "tag": release["tag"],
+            "release_url": release["release_url"],
+            "asset_name": expected_name,
+            "size_bytes": total,
+            "expected_sha256": digest,
+            "actual_sha256": actual_digest,
+            "verified_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            "archive_inspected": False,
+            "extracted": False,
+            "executed": False,
+        }
+        atomic_write_json(receipt_path, receipt)
+        return receipt
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
 def load_config():
     STATE.mkdir(parents=True, exist_ok=True)
+    if CONFIG.is_symlink():
+        raise RuntimeError("Refusing to load Lobby configuration through a symlink")
     if CONFIG.exists():
         data = json.loads(CONFIG.read_text())
-        if data.get("bind") != "127.0.0.1" or not isinstance(data.get("port"), int):
+        if data.get("bind") != "127.0.0.1" or not isinstance(data.get("port"), int) or not 1 <= data["port"] <= 65535:
             raise RuntimeError("Unsafe or invalid Lobby configuration")
+        if not isinstance(data.get("token"), str) or len(data["token"]) < 40:
+            data["token"] = secrets.token_urlsafe(32)
+            atomic_write_json(CONFIG, data)
         return data
-    import secrets
     data = {"bind": "127.0.0.1", "port": 8765, "token": secrets.token_urlsafe(32), "https": True}
-    CONFIG.write_text(json.dumps(data, indent=2) + "\n")
-    CONFIG.chmod(0o600)
+    atomic_write_json(CONFIG, data)
     return data
 
 def ensure_certificate():
@@ -425,6 +594,8 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "running", "transport": "https" if self.server.is_https else "http",
                 "environment": termux_info(), "node_core": detect_node_core()
             })
+        elif path == "/api/packages/status":
+            self.send_json(package_receipts())
         elif path == "/api/releases/latest":
             try:
                 release = latest_stable_release()
@@ -449,12 +620,82 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(WEB / "icon.svg", "image/svg+xml")
         else:
             self.send_error(404)
+    def do_POST(self):
+        path = urlparse(self.path).path
+        try:
+            self.require_local_authorization()
+            if path != "/api/packages/prepare":
+                self.send_json({"status": "error", "message": "Unknown operation"})
+                return
+            length_text = self.headers.get("Content-Length", "")
+            if not length_text.isdigit():
+                self.send_json({"status": "error", "message": "Invalid request length"})
+                return
+            length = int(length_text)
+            if length < 1 or length > 4096:
+                self.send_json({"status": "error", "message": "Request body size is invalid"})
+                return
+            if self.headers.get_content_type() != "application/json":
+                self.send_json({"status": "error", "message": "Content-Type must be application/json"})
+                return
+            payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            kind = payload.get("kind") if isinstance(payload, dict) else None
+            receipt = download_and_verify_release_package(kind)
+            self.send_json({
+                "status": "verified",
+                "receipt": receipt,
+                "message": "Package downloaded and SHA-256 verified. It has not been extracted or executed."
+            })
+        except PermissionError as exc:
+            self.send_json({"status": "forbidden", "message": str(exc)})
+        except (OSError, urllib.error.URLError, urllib.error.HTTPError,
+                ValueError, json.JSONDecodeError, TimeoutError) as exc:
+            self.send_json({
+                "status": "error",
+                "message": str(exc)[:300],
+                "operation_started": False
+            })
+
+    def require_local_authorization(self):
+        expected_token = self.server.config.get("token", "")
+        supplied_token = self.headers.get("X-Node-Core-Lobby-Token", "")
+        if not isinstance(expected_token, str) or not expected_token or not hmac.compare_digest(
+            supplied_token, expected_token
+        ):
+            raise PermissionError("Local Lobby authorization failed")
+
+        host = self.headers.get("Host", "")
+        hostname = host.rsplit(":", 1)[0].strip("[]").lower() if ":" in host else host.lower()
+        port_text = host.rsplit(":", 1)[1] if ":" in host else ""
+        if hostname not in ("127.0.0.1", "localhost") or port_text != str(self.server.server_port):
+            raise PermissionError("Host header is not the local Lobby host")
+
+        origin = self.headers.get("Origin", "")
+        scheme = "https" if getattr(self.server, "is_https", False) else "http"
+        if origin not in (
+            f"{scheme}://127.0.0.1:{self.server.server_port}",
+            f"{scheme}://localhost:{self.server.server_port}",
+        ):
+            raise PermissionError("Request origin is not the local Lobby origin")
+
     def send_file(self, path, content_type):
         data = path.read_bytes()
+        if path.name == "index.html":
+            marker = b"<!-- NODE_CORE_LOBBY_SESSION -->"
+            session_script = (
+                b"<script>window.NODE_CORE_LOBBY_SESSION = "
+                + json.dumps(self.server.config["token"]).encode("ascii")
+                + b";</script>"
+            )
+            data = data.replace(marker, session_script)
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
         self.end_headers()
         self.wfile.write(data)
     def send_json(self, obj):
@@ -482,6 +723,7 @@ def main():
         return 0
     httpd = ThreadingHTTPServer((cfg["bind"], cfg["port"]), Handler)
     httpd.daemon_threads = True
+    httpd.config = cfg
     use_https = bool(cfg.get("https")) and ensure_certificate()
     if use_https:
         try:
