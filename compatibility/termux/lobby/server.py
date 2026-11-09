@@ -120,15 +120,34 @@ def associate_pending_bitcoin_identity_with_node():
     if not isinstance(node_id, str) or not isinstance(public_key_hex, str):
         raise ValueError("The installed Node Core OS identity metadata is incomplete.")
 
-    challenge_message = (
-        "Node Core OS byLAEV local entity association v1\n"
-        + "entity_id:" + pending["entity_id"] + "\n"
-        + "installation_id:" + pending["installation_id"] + "\n"
-        + "node_id:" + node_id + "\n"
-        + "nonce:" + secrets.token_hex(32) + "\n"
-    )
-    challenge_bytes = challenge_message.encode("utf-8")
-    signature = node_store.sign(challenge_bytes)
+    existing_association = pending.get("node_association")
+    if isinstance(existing_association, dict) and existing_association.get("node_id"):
+        if existing_association["node_id"] != node_id:
+            raise ValueError("This Bitcoin identity is already associated with a different NODE ID.")
+        challenge_message = existing_association.get("challenge_message")
+        signature_hex = existing_association.get("signature_hex")
+        public_key_hex = existing_association.get("public_key_hex")
+        if not all(isinstance(value, str) and value for value in (
+            challenge_message, signature_hex, public_key_hex
+        )):
+            raise ValueError("The stored NODE ID association proof is incomplete.")
+        try:
+            signature = bytes.fromhex(signature_hex)
+        except ValueError as exc:
+            raise ValueError("The stored NODE ID association signature is invalid.") from exc
+        challenge_bytes = challenge_message.encode("utf-8")
+    else:
+        challenge_message = (
+            "Node Core OS byLAEV local entity association v1\n"
+            + "entity_id:" + pending["entity_id"] + "\n"
+            + "installation_id:" + pending["installation_id"] + "\n"
+            + "node_id:" + node_id + "\n"
+            + "nonce:" + secrets.token_hex(32) + "\n"
+        )
+        challenge_bytes = challenge_message.encode("utf-8")
+        signature = node_store.sign(challenge_bytes)
+        signature_hex = signature.hex()
+
     if not NodeIdentityStore.verify(public_key_hex, challenge_bytes, signature):
         raise ValueError("The installed Ed25519 NODE ID failed its local possession check.")
 
