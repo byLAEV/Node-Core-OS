@@ -1203,6 +1203,7 @@ def _run_official_installer(job_id, kind, root, work, expected_version):
             selector.close()
         code = process.wait()
         verification_error = None
+        identity_association = "not_applicable"
         if code == 0:
             installed = detect_node_core()
             if not installed.get("installed") or installed.get("version") != expected_version:
@@ -1213,11 +1214,29 @@ def _run_official_installer(job_id, kind, root, work, expected_version):
                 )
             else:
                 _append_install_output(job_id, "\n[NODE CORE OS Lobby] Installation/update verified: " + expected_version + "\n")
+                if kind == "install":
+                    try:
+                        association = associate_pending_bitcoin_identity_with_node()
+                        identity_association = association["status"]
+                        _append_install_output(
+                            job_id,
+                            "[NODE CORE OS Lobby] Bitcoin entity associated with NODE ID: "
+                            + association["node_id"] + "\n",
+                        )
+                    except Exception as exc:
+                        identity_association = "pending"
+                        _append_install_output(
+                            job_id,
+                            "[NODE CORE OS Lobby] WARNING: NODE ID association is pending. "
+                            + str(exc)[:240] + "\n",
+                        )
         with INSTALL_LOCK:
             job = INSTALL_JOBS.get(job_id)
             if job is not None:
                 job.update({"status": "timed_out" if timed_out else ("completed" if code == 0 else "failed"),
-                    "returncode": code, "error": verification_error, "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(), "pid": None})
+                    "returncode": code, "error": verification_error,
+                    "identity_association": identity_association,
+                    "finished_at": dt.datetime.now(dt.timezone.utc).isoformat(), "pid": None})
     except Exception as exc:
         with INSTALL_LOCK:
             job = INSTALL_JOBS.get(job_id)
@@ -1352,7 +1371,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/cancel"):
+            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/associate-node", "/api/identity/bitcoin/cancel"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -1396,6 +1415,10 @@ class Handler(BaseHTTPRequestHandler):
                     # guaranteed to be zeroized; cleanup is best-effort only.
                     payload.clear()
                 self.send_json({"status": "verified", "identity": result})
+                return
+            if path == "/api/identity/bitcoin/associate-node":
+                result = associate_pending_bitcoin_identity_with_node()
+                self.send_json({"status": "associated", "association": result})
                 return
             if path == "/api/identity/bitcoin/cancel":
                 BITCOIN_IDENTITY.cancel_pending()
