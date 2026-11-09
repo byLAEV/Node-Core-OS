@@ -48,10 +48,21 @@ for endpoint in ("/api/termux/execute", "/api/termux/output"):
 assert "TERMUX_COMMANDS" in server and "shell=False" in server
 assert "BitcoinIdentityGate" in server
 assert "BITCOIN_IDENTITY.read_pending() is None" in server
+assert "request dictionary even when validation fails" in server
+assert 'finally:\n                    payload.clear()' in server
 assert "First installation is locked" in server
 assert 'data-panel="identity"' in html
 assert "/api/identity/bitcoin" in html
-assert "Do not paste a private key into this Lobby" in html
+assert 'id="bitcoin-private-key"' in html
+assert 'id="bitcoin-full-name"' in html
+assert 'type="password"' in html
+assert "private_key_hex:privateKey" in html
+assert "window.location.protocol!=='https:'" in html
+assert "refreshBitcoinIdentityHeader" in html
+assert 'id="bitcoin-address-header"' in html
+assert "localStorage.setItem('bitcoin-private-key'" not in html
+assert "sessionStorage.setItem('bitcoin-private-key'" not in html
+assert "Browser and Python memory cleanup is best-effort" in html
 assert "bitcoin_identity.py" in installer
 assert manifest["lobby"]["bitcoin_identity"]["enabled"] is True
 for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/cancel"):
