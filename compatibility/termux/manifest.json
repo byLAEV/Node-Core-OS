@@ -104,5 +104,40 @@
     "widget-launch",
     "android-background-lifecycle",
     "lobby-bitcoin-identity-api-integration"
-  ]
+  ],
+  "native_device_validation": {
+    "status": "pending_physical_device_execution",
+    "checklist": "compatibility/termux/DEVICE-ACCEPTANCE.md",
+    "target": "native Termux on Android ARM64 (aarch64)",
+    "runner": "self-hosted GitHub Actions runner gated by vars.TERMUX_DEVICE_RUNNER=enabled",
+    "scope": [
+      "clean Lobby bootstrap",
+      "loopback HTTPS and HTTP fallback",
+      "Termux:Widget launch",
+      "Android background lifecycle",
+      "first Node Core OS install",
+      "Bitcoin entity to Ed25519 NODE ID association",
+      "official update",
+      "identity and entity registry preservation",
+      "local storage preservation",
+      "Kubo/IPFS repository preservation",
+      "failure and rollback handling"
+    ],
+    "note": "Ubuntu CI and simulated updater fixtures do not substitute for physical Android validation."
+  },
+  "ci_validation": {
+    "python_matrix": [
+      "3.10",
+      "3.11",
+      "3.12",
+      "3.13"
+    ],
+    "integration_test": "compatibility/termux/tests/test_server.py",
+    "updater_preservation_tests": [
+      "installer/tests/update-preservation.sh",
+      "installer/tests/termux-update-preservation.sh"
+    ],
+    "package_validation_workflow": ".github/workflows/package-installers.yml",
+    "offline_updater_e2e": "installer/tests/offline-updater-e2e.sh"
+  }
 }
