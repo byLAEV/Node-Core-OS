@@ -15,6 +15,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import tempfile
@@ -333,7 +334,51 @@ class BitcoinIdentityGate:
             "entity_id": pending["entity_id"],
             "verified_at": pending["proof"]["verified_at"],
             "expires_at": pending["expires_at"],
+            "node_id": (pending.get("node_association") or {}).get("node_id"),
+            "node_association_status": (
+                (pending.get("node_association") or {}).get("status", "not_associated")
+            ),
+            "node_key_possession_verified": bool(
+                (pending.get("node_association") or {}).get("node_key_possession_verified")
+            ),
         }
+
+    def record_node_association(
+        self,
+        *,
+        node_id: Any,
+        proof_sha256: Any,
+    ) -> dict[str, Any]:
+        """Record the locally verified NODE ID linked to this Bitcoin proof."""
+        if not isinstance(node_id, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", node_id) is None:
+            raise BitcoinIdentityError("A canonical SHA-256 Node Core OS identifier is required.")
+        if not isinstance(proof_sha256, str) or re.fullmatch(r"[0-9a-f]{64}", proof_sha256) is None:
+            raise BitcoinIdentityError("A valid Node ID possession proof digest is required.")
+
+        pending = self.read_pending()
+        if pending is None:
+            raise BitcoinIdentityError("A non-expired Bitcoin identity proof is required.")
+        existing = pending.get("node_association")
+        if isinstance(existing, dict):
+            existing_node_id = existing.get("node_id")
+            if existing_node_id and existing_node_id != node_id:
+                raise BitcoinIdentityError(
+                    "This Bitcoin identity is already associated with a different NODE ID."
+                )
+            if existing_node_id == node_id and existing.get("status") == "associated":
+                return self.public_status()
+
+        now = datetime.now(timezone.utc).isoformat()
+        pending["node_association"] = {
+            "node_id": node_id,
+            "relationship": "controlled_by",
+            "status": "associated",
+            "node_key_possession_verified": True,
+            "proof_sha256": proof_sha256,
+            "verified_at": now,
+        }
+        self._write_pending(pending)
+        return self.public_status()
 
     def read_pending(self) -> dict[str, Any] | None:
         if self.pending_path.is_symlink() or not self.pending_path.is_file():
