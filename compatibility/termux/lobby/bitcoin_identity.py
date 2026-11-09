@@ -27,7 +27,7 @@ from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec, utils
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, utils
 
 
 BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
@@ -347,14 +347,36 @@ class BitcoinIdentityGate:
         self,
         *,
         node_id: Any,
-        proof_sha256: Any,
+        challenge_message: Any,
+        signature_hex: Any,
+        public_key_hex: Any,
     ) -> dict[str, Any]:
-        """Record the locally verified NODE ID linked to this Bitcoin proof."""
+        """Verify and persist a public Ed25519 proof for the installed NODE ID."""
         if not isinstance(node_id, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", node_id) is None:
             raise BitcoinIdentityError("A canonical SHA-256 Node Core OS identifier is required.")
-        if not isinstance(proof_sha256, str) or re.fullmatch(r"[0-9a-f]{64}", proof_sha256) is None:
-            raise BitcoinIdentityError("A valid Node ID possession proof digest is required.")
+        if not isinstance(challenge_message, str) or not 1 <= len(challenge_message) <= 2048:
+            raise BitcoinIdentityError("A valid Node ID possession challenge is required.")
+        if not isinstance(signature_hex, str) or not isinstance(public_key_hex, str):
+            raise BitcoinIdentityError("Node ID public key and signature are required.")
+        try:
+            public_key_bytes = bytes.fromhex(public_key_hex)
+            signature = bytes.fromhex(signature_hex)
+        except ValueError as exc:
+            raise BitcoinIdentityError("Node ID public key and signature must be hexadecimal.") from exc
+        if len(public_key_bytes) != 32 or public_key_bytes.hex() != public_key_hex:
+            raise BitcoinIdentityError("Node ID public key encoding is invalid.")
+        if "sha256:" + hashlib.sha256(public_key_bytes).hexdigest() != node_id:
+            raise BitcoinIdentityError("Node ID does not match its Ed25519 public key.")
+        try:
+            ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes).verify(
+                signature, challenge_message.encode("utf-8")
+            )
+        except (ValueError, InvalidSignature) as exc:
+            raise BitcoinIdentityError("Node ID possession signature is invalid.") from exc
 
+        proof_sha256 = hashlib.sha256(
+            challenge_message.encode("utf-8") + b"\\x00" + signature
+        ).hexdigest()
         pending = self.read_pending()
         if pending is None:
             raise BitcoinIdentityError("A non-expired Bitcoin identity proof is required.")
@@ -366,6 +388,8 @@ class BitcoinIdentityGate:
                     "This Bitcoin identity is already associated with a different NODE ID."
                 )
             if existing_node_id == node_id and existing.get("status") == "associated":
+                if existing.get("proof_sha256") != proof_sha256:
+                    raise BitcoinIdentityError("Stored NODE ID association proof does not match.")
                 return self.public_status()
 
         now = datetime.now(timezone.utc).isoformat()
@@ -374,6 +398,9 @@ class BitcoinIdentityGate:
             "relationship": "controlled_by",
             "status": "associated",
             "node_key_possession_verified": True,
+            "public_key_hex": public_key_hex,
+            "challenge_message": challenge_message,
+            "signature_hex": signature_hex,
             "proof_sha256": proof_sha256,
             "verified_at": now,
         }
