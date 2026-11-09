@@ -323,6 +323,9 @@ def main() -> int:
                     assert association["node_id"] == node_metadata["node_id"], association
                     assert association["node_key_possession_verified"] is True, association
                     assert association["relationship_status"] == "declared", association
+                    repeated_association = identity_post("/api/identity/bitcoin/associate-node", {})
+                    assert repeated_association["status"] == "associated", repeated_association
+                    assert repeated_association["association"]["node_id"] == node_metadata["node_id"], repeated_association
                     identity_status = request_json(base_url + "/api/identity/bitcoin", True)
                     assert identity_status["node_id"] == node_metadata["node_id"], identity_status
                     assert identity_status["node_association_status"] == "associated", identity_status
