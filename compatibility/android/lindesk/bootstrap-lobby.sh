@@ -3,10 +3,10 @@ set -Eeuo pipefail
 umask 077
 OWNER=byLAEV
 REPO=Node-Core-OS
-REF="\${NODE_CORE_LOBBY_REF:-feature/lindesk-local-lobby}"
+REF="${NODE_CORE_LOBBY_REF:-feature/lindesk-local-lobby}"
 fail(){ echo "LOBBY BOOTSTRAP ERROR: $*" >&2; exit 1; }
 [[ "$(id -u)" != 0 ]] || fail "Do not run as root."
-[[ -n "\${HOME:-}" && -d "$HOME" ]] || fail "HOME unavailable."
+[[ -n "${HOME:-}" && -d "$HOME" ]] || fail "HOME unavailable."
 for c in bash curl python3; do command -v "$c" >/dev/null || fail "Missing $c"; done
 python3 - <<'PY' || fail "Expected Debian ARM64."
 import platform
