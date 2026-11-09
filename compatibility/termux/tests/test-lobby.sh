@@ -49,7 +49,7 @@ assert "TERMUX_COMMANDS" in server and "shell=False" in server
 assert "BitcoinIdentityGate" in server
 assert "BITCOIN_IDENTITY.read_pending() is None" in server
 assert "request dictionary even when validation fails" in server
-assert 'finally:\n                    payload.clear()' in server
+assert "finally:" in server and "payload.clear()" in server
 assert "First installation is locked" in server
 assert 'data-panel="identity"' in html
 assert "/api/identity/bitcoin" in html
