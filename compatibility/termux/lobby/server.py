@@ -151,6 +151,16 @@ def associate_pending_bitcoin_identity_with_node():
     if not NodeIdentityStore.verify(public_key_hex, challenge_bytes, signature):
         raise ValueError("The installed Ed25519 NODE ID failed its local possession check.")
 
+    # Persist the verified proof before mutating the entity registry. If the
+    # process stops during registry writes, the next request reuses this exact
+    # challenge and proof instead of generating duplicate evidence references.
+    identity = BITCOIN_IDENTITY.record_node_association(
+        node_id=node_id,
+        challenge_message=challenge_message,
+        signature_hex=signature.hex(),
+        public_key_hex=public_key_hex,
+    )
+
     registry = EntityIdentityRegistry(data_dir)
     entity_id = pending["entity_id"]
     try:
@@ -192,12 +202,6 @@ def associate_pending_bitcoin_identity_with_node():
     if node_reference not in evidence_refs:
         registry.add_evidence_reference(entity_id, "other", node_reference)
 
-    identity = BITCOIN_IDENTITY.record_node_association(
-        node_id=node_id,
-        challenge_message=challenge_message,
-        signature_hex=signature.hex(),
-        public_key_hex=public_key_hex,
-    )
     return {
         "status": "associated",
         "entity_id": entity_id,
