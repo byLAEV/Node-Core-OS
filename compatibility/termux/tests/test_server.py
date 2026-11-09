@@ -193,21 +193,26 @@ def main() -> int:
                     assert authorized_result["status"] == "forbidden", authorized_result
                     assert "requires HTTPS" in authorized_result["message"], authorized_result
                 print("Session token injection, security headers and HTTPS-only package API authorization: PASS")
-                # A first install must fail closed until a Bitcoin identity proof exists.
-                env["TERMUX_VERSION"] = "0.118-test"
-                env["PREFIX"] = "/data/data/com.termux/files/usr"
-                install_without_identity = urllib.request.Request(
-                    base_url + "/api/packages/execute",
-                    data=b'{"kind":"install"}',
-                    headers={
-                        "Content-Type": "application/json",
-                        "Origin": base_url,
-                        "X-Node-Core-Lobby-Token": config["token"],
-                    },
-                    method="POST",
-                )
-                with urllib.request.urlopen(install_without_identity, timeout=3.0, context=context) as response:
-                    install_locked = json.loads(response.read().decode("utf-8"))
+                # The fake launcher exists only for the later PTY test. Temporarily
+                # remove it so the first-install gate sees a genuinely clean HOME.
+                fake_launcher_contents = fake_launcher.read_text(encoding="utf-8")
+                fake_launcher.unlink()
+                try:
+                    install_without_identity = urllib.request.Request(
+                        base_url + "/api/packages/execute",
+                        data=b'{"kind":"install"}',
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": base_url,
+                            "X-Node-Core-Lobby-Token": config["token"],
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(install_without_identity, timeout=3.0, context=context) as response:
+                        install_locked = json.loads(response.read().decode("utf-8"))
+                finally:
+                    fake_launcher.write_text(fake_launcher_contents, encoding="utf-8")
+                    fake_launcher.chmod(0o700)
                 assert install_locked["status"] == "error", install_locked
                 assert "Bitcoin" in install_locked["message"] and "locked" in install_locked["message"], install_locked
                 print("First installation blocked until verified Bitcoin identity proof: PASS")
