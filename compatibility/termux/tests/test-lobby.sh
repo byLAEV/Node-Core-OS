@@ -10,6 +10,28 @@ bash -n "$PROFILE/install-lobby.sh"
 bash -n "$PROFILE/lobby/launcher.sh"
 bash "$PROFILE/bootstrap-lobby.sh" --help >/dev/null
 
+printf '[TEST] Lobby JavaScript syntax (when Node.js is available)\n'
+if command -v node >/dev/null 2>&1; then
+  python - "$PROFILE/lobby/web/index.html" <<'PY'
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+html = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+scripts = re.findall(r"<script>(.*?)</script>", html, flags=re.DOTALL)
+assert len(scripts) == 1, "Expected exactly one inline Lobby application script"
+with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8") as script:
+    script.write(scripts[0])
+    script.flush()
+    subprocess.run(["node", "--check", script.name], check=True)
+print("Lobby JavaScript syntax: PASS")
+PY
+else
+  printf 'Node.js is unavailable; JavaScript syntax check skipped.\\n'
+fi
+
 printf '[TEST] Python syntax and manifest JSON\n'
 python - "$PROFILE" <<'PY'
 import ast
