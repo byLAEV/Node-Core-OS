@@ -1284,11 +1284,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"status": "verified", "identity": result})
                 return
             if path == "/api/identity/bitcoin/verify-local-key":
-                result = BITCOIN_IDENTITY.verify_private_key_and_stage(
-                    challenge_id=payload.get("challenge_id"),
-                    private_key_hex=payload.get("private_key_hex"),
-                )
-                payload.clear()
+                try:
+                    result = BITCOIN_IDENTITY.verify_private_key_and_stage(
+                        challenge_id=payload.get("challenge_id"),
+                        private_key_hex=payload.get("private_key_hex"),
+                    )
+                finally:
+                    # Drop the request dictionary even when validation fails.
+                    # Python strings and cryptographic backend objects cannot be
+                    # guaranteed to be zeroized; cleanup is best-effort only.
+                    payload.clear()
                 self.send_json({"status": "verified", "identity": result})
                 return
             if path == "/api/identity/bitcoin/cancel":
