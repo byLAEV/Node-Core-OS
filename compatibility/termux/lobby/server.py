@@ -1251,7 +1251,7 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             self.require_local_authorization()
-            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/cancel"):
+            if path not in ("/api/packages/prepare", "/api/packages/execute", "/api/packages/output", "/api/certificates/action", "/api/termux/execute", "/api/termux/output", "/api/terminal/start", "/api/terminal/input", "/api/terminal/output", "/api/terminal/close", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/cancel"):
                 self.send_json({"status": "error", "message": "Unknown operation"})
                 return
             length_text = self.headers.get("Content-Length", "")
@@ -1281,6 +1281,14 @@ class Handler(BaseHTTPRequestHandler):
                     address=payload.get("address"),
                     signature_hex=payload.get("signature_hex"),
                 )
+                self.send_json({"status": "verified", "identity": result})
+                return
+            if path == "/api/identity/bitcoin/verify-local-key":
+                result = BITCOIN_IDENTITY.verify_private_key_and_stage(
+                    challenge_id=payload.get("challenge_id"),
+                    private_key_hex=payload.get("private_key_hex"),
+                )
+                payload.clear()
                 self.send_json({"status": "verified", "identity": result})
                 return
             if path == "/api/identity/bitcoin/cancel":
