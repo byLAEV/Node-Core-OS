@@ -82,7 +82,10 @@
       "private_key_transmission": false,
       "proof": "single-use ECDSA challenge verified against compressed secp256k1 public key and derived P2WPKH address",
       "identity_assurance": "declared name plus proof of control of the supplied Bitcoin key; not civil-identity verification",
-      "first_install_gate": "proof API is implemented; installer enforcement and browser-side private-key signing UI remain pending"
+      "first_install_gate": "server-side first-install execution is blocked unless a non-expired verified Bitcoin proof is staged",
+      "local_key_proof_endpoint": "POST /api/identity/bitcoin/verify-local-key",
+      "local_key_handling": "key is accepted only by authenticated local Lobby API, used in memory to derive compressed public key and sign challenge, and is not written to pending identity JSON",
+      "browser_form_status": "pending"
     }
   },
   "verification_required": [
@@ -97,7 +100,8 @@
     "widget-launch",
     "android-background-lifecycle",
     "browser-side-local-bitcoin-key-signing-ui",
-    "first-install-bitcoin-identity-gate-enforcement",
-    "lobby-bitcoin-identity-api-integration"
+    "lobby-bitcoin-identity-api-integration",
+    "browser-local-bitcoin-key-input-form",
+    "associate-bitcoin-entity-with-installed-node-id"
   ]
 }
