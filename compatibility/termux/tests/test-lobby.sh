@@ -54,7 +54,7 @@ assert "/api/identity/bitcoin" in html
 assert "Do not paste a private key into this Lobby" in html
 assert "bitcoin_identity.py" in installer
 assert manifest["lobby"]["bitcoin_identity"]["enabled"] is True
-for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/cancel"):
+for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/cancel"):
     assert endpoint in server, f"Missing Bitcoin identity endpoint: {endpoint}"
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
