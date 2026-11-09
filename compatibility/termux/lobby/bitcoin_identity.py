@@ -1,8 +1,12 @@
 """Local Bitcoin P2WPKH proof gate for the Termux Lobby.
 
-The private scalar is deliberately not accepted by this module. Browser-side code
-derives the public key/address and signs a short-lived challenge. This module
-verifies only public proof material and persists no Bitcoin private key.
+The authenticated HTTPS loopback API may pass a raw HEX scalar to
+verify_private_key_and_stage. The scalar is used transiently to derive the
+compressed public key and sign a single-use challenge; it is never persisted or
+returned. Cleanup is best-effort: Python and cryptographic backend memory cannot
+be guaranteed to be zeroized. verify_and_stage also accepts public proof
+material produced by an external signer. Only public identity and proof data are
+persisted in the local pending record.
 """
 from __future__ import annotations
 
