@@ -323,9 +323,10 @@ class BitcoinIdentityGate:
         pending = self.read_pending()
         if pending is None:
             return {"status": "not_verified", "pending": False}
+        association = pending.get("node_association")
         return {
             "status": "control_verified",
-            "pending": True,
+            "pending": not (isinstance(association, dict) and association.get("status") == "associated"),
             "full_name": pending["full_name"],
             "network": pending["bitcoin"]["network"],
             "address_type": pending["bitcoin"]["address_type"],
@@ -422,7 +423,12 @@ class BitcoinIdentityGate:
             expires_at = datetime.fromisoformat(payload["expires_at"])
         except (KeyError, TypeError, ValueError) as exc:
             raise BitcoinIdentityError("Pending Bitcoin proof expiry is invalid.") from exc
-        if expires_at <= datetime.now(timezone.utc):
+        association_marker = payload.get("node_association")
+        association_is_complete = (
+            isinstance(association_marker, dict)
+            and association_marker.get("status") == "associated"
+        )
+        if expires_at <= datetime.now(timezone.utc) and not association_is_complete:
             self.cancel_pending()
             return None
         bitcoin = payload.get("bitcoin")
