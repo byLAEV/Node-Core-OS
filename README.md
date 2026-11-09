@@ -346,9 +346,48 @@ The core should provide shared capabilities so that applications do not each nee
 
 **Node Core OS provides the infrastructure. Protocols define reusable rules. Applications compose those capabilities for specific purposes. Code and tests determine which capabilities are actually available.**
 
+## 16. Enterprise security applications: certificates, connected products, and services
 
-## Smart TV Security Module (proposal)
+Node Core OS can serve as a foundation for companies that want to strengthen the security and verifiability of the products and services they build or operate. The goal is not to replace a manufacturer's engineering, a security operations team, a trusted certificate authority, or an established security standard. It is to provide reusable infrastructure and protocols that can help organizations issue, verify, distribute, and audit security evidence across products, services, devices, and participating nodes.
 
-The proposed Smart TV security architecture is documented in [`docs/smart-tv/README.md`](docs/smart-tv/README.md). It separates manufacturer attestation, device-key identity, owner claims, firmware integrity, authenticated alerts, local peer corroboration, privacy controls, emergency containment, and support-work authorization. Its manifest and example are checked by [Smart TV Specification Integrity](.github/workflows/smart-tv-spec-integrity.yml).
+### Three complementary security layers
 
-**Status:** proposal documentation and manifest checks only. This does not establish OEM firmware integration, secure boot, physical microphone/camera isolation, a hardware kill-switch, production real-time defense, or enabled payment rails. See [`docs/smart-tv/IMPLEMENTATION-STATUS.md`](docs/smart-tv/IMPLEMENTATION-STATUS.md) for explicit gaps.
+- **Code and software supply-chain integrity:** record versioned build artifacts, identify their content with cryptographic hashes, associate signed attestations with authorized developers or build systems, and verify that deployed components match approved releases. A hash detects content differences; a signature authenticates the signer and integrity of the signed statement, but neither proves that the software is free of vulnerabilities.
+- **Network and device security:** use node and device credentials to support mutual authentication, scoped authorization, secure service-to-service communication, and auditable connection events. Credential issuance, expiry, renewal, and revocation policies must be explicit. A decentralized network does not automatically make every peer trustworthy.
+- **Operational security and evidence:** maintain traceable records of security checks, configuration changes, firmware or software versions, incident signals, and verification results. Local records and distributed references can support independent corroboration, subject to access controls, privacy requirements, retention rules, and the availability of the participating nodes.
+
+### Certificates as verifiable security contracts
+
+A certificate or credential can bind a defined claim to an issuer, a subject, a validity period, a scope, and a verification method. Depending on the use case, claims could concern a device identity, an approved software build, a firmware release, a service endpoint, a maintenance technician, or an organization.
+
+A practical certificate lifecycle should define:
+
+1. who is authorized to issue the certificate;
+2. what subject and claim it identifies;
+3. what evidence and checks support the claim;
+4. which systems and operations may rely on it;
+5. when it expires and how it is renewed or revoked; and
+6. how verifiers obtain current status and preserve an audit trail.
+
+Node Core OS's local and Kubo/IPFS-backed storage can be used to manage records and content-addressed evidence, while node identities and signed statements can help establish provenance and integrity. Sensitive information and private keys must not be published to IPFS. Public references should be separated from confidential data, and publication must remain an explicit authorized action.
+
+### Applied example: a connected Smart TV
+
+A smart television is one example of how these capabilities could be composed; it is not the defining product or exclusive target of Node Core OS. A manufacturer, software supplier, service operator, and authorized maintenance provider could use a certificate-based workflow to:
+
+- identify a device and its authorized manufacturer or owner claims;
+- verify signed firmware and software release evidence before accepting an update;
+- check whether device and service credentials are valid, expired, or revoked;
+- authenticate device-to-service and service-to-service communications;
+- record security-relevant events and configuration changes with verifiable provenance; and
+- provide authorized technicians with scoped credentials and auditable maintenance actions.
+
+This example requires integration with the device manufacturer, its hardware trust facilities, firmware update process, and operational systems. Node Core OS documentation or a manifest check alone cannot enforce secure boot, isolate microphones or cameras, guarantee firmware safety, or provide a hardware kill switch.
+
+The Smart TV example and its supporting proposal are documented in [the Smart TV security use case](docs/smart-tv/README.md). The existing [Smart TV Specification Integrity workflow](.github/workflows/smart-tv-spec-integrity.yml) checks specification artifacts; it is not a product security certification or proof of hardware-level protection. See [Smart TV implementation status and limitations](docs/smart-tv/IMPLEMENTATION-STATUS.md).
+
+### Business value and implementation boundary
+
+For an enterprise, the potential value is a reusable way to verify product and service components, exchange signed evidence between independent participants, track certificate status, and support security audits across organizational boundaries. Each deployment must define its threat model, trust anchors, certificate policies, privacy boundaries, service-level requirements, incident process, and acceptance tests.
+
+These are architectural applications and product opportunities, not a statement that enterprise PKI, manufacturer integrations, device enforcement, continuous monitoring, or production certification services are already implemented. Each capability must be developed, tested, independently reviewed where appropriate, and described according to the repository's [Implementation Status and Evidence Policy](docs/IMPLEMENTATION-STATUS-POLICY.md).
