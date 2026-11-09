@@ -87,7 +87,9 @@
       "local_key_handling": "Accepted only by the HTTPS loopback API after session token and Host/Origin checks; used transiently in memory, omitted from the pending identity JSON, and request payload is cleared on success or failure. Memory zeroization is best-effort and cannot be guaranteed.",
       "browser_form_status": "implemented",
       "transport": "HTTPS loopback only; local session token and Host/Origin validation required",
-      "browser_signing_model": "The browser submits the raw HEX scalar only to the authenticated HTTPS loopback API; the local Lobby derives the address and signs the one-time challenge."
+      "browser_signing_model": "The browser submits the raw HEX scalar only to the authenticated HTTPS loopback API; the local Lobby derives the address and signs the one-time challenge.",
+      "node_association_endpoint": "POST /api/identity/bitcoin/associate-node",
+      "node_association": "After successful first installation, the Lobby loads and validates the installed Ed25519 NODE ID, signs a one-time local association challenge, verifies the signature, and links the existing entity_id to that node in ~/.node-core/identity/entity-registry.json. The registry relationship remains declared; node-key possession is recorded as cryptographically verified."
     }
   },
   "verification_required": [
@@ -101,7 +103,6 @@
     "http-loopback-fallback",
     "widget-launch",
     "android-background-lifecycle",
-    "lobby-bitcoin-identity-api-integration",
-    "associate-bitcoin-entity-with-installed-node-id"
+    "lobby-bitcoin-identity-api-integration"
   ]
 }
