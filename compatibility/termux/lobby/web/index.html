@@ -8,7 +8,8 @@
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101419;color:#edf2f7}
 *{box-sizing:border-box}body{margin:0;padding:24px;max-width:900px;margin-inline:auto}
 header{padding:12px 0 24px;border-bottom:1px solid #35404b}h1{font-size:2rem;letter-spacing:.08em;margin:0}
-.sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}p{line-height:1.55;color:#c6d0d9}
+.sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}
+.bitcoin-address-header{margin-top:8px;color:#9ce2b8;font-size:.78rem;overflow-wrap:anywhere}p{line-height:1.55;color:#c6d0d9}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
 .card{display:block;width:100%;text-align:left;border:1px solid #35404b;border-radius:14px;padding:16px;background:#171e25;color:inherit;cursor:pointer}
 .card:active{transform:scale(.99);background:#202b35}.card:focus-visible,button:focus-visible{outline:2px solid #8dceff;outline-offset:3px}
@@ -29,7 +30,7 @@ footer{margin-top:30px;color:#8795a1;font-size:.8rem}details{border:1px solid #3
 summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;color:#c9d5df;max-height:420px;overflow:auto}
 </style></head>
 <body>
-<header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div></header>
+<header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div><div id="bitcoin-address-header" class="bitcoin-address-header" aria-live="polite" hidden></div></header>
 <div class="launch-area"><button id="open-node-core-top" class="launch-button" type="button" aria-label="Open Node Core OS in an interactive terminal">▶ OPEN NODE CORE OS</button><p class="launch-note">Start Node Core OS directly in a live Termux terminal. Output is displayed here and keyboard input remains available.</p></div>
 <p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels can stage, verify and explicitly execute the official Node Core OS installer or updater.</p>
 <div class="grid">
@@ -61,6 +62,106 @@ const openNodeCoreTopButton=document.getElementById('open-node-core-top');
 if(openNodeCoreTopButton)openNodeCoreTopButton.addEventListener('click',()=>openNodeCoreTerminal(openNodeCoreTopButton));
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function section(name,body){return '<details open><summary>'+esc(name)+'</summary>'+body+'</details>';}
+function updateBitcoinIdentityHeader(identity){
+const header=document.getElementById('bitcoin-address-header');
+if(!header)return;
+if(identity&&identity.status==='control_verified'&&identity.address){
+header.textContent='BITCOIN MAINNET · '+identity.address;
+header.hidden=false;
+}else{
+header.textContent='';
+header.hidden=true;
+}
+}
+async function refreshBitcoinIdentityHeader(){
+try{
+const response=await fetch('/api/identity/bitcoin',{cache:'no-store',credentials:'same-origin',referrerPolicy:'no-referrer'});
+if(!response.ok)throw new Error('HTTP '+response.status);
+updateBitcoinIdentityHeader(await response.json());
+}catch(_){
+updateBitcoinIdentityHeader(null);
+}
+}
+async function postBitcoinIdentity(path,payload){
+if(window.location.protocol!=='https:')throw new Error('Bitcoin identity setup requires the HTTPS local Lobby connection.');
+if(!window.NODE_CORE_LOBBY_SESSION)throw new Error('Local Lobby session token is unavailable. Reload the Lobby.');
+const response=await fetch(path,{
+method:'POST',
+headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},
+body:JSON.stringify(payload),
+cache:'no-store',
+credentials:'same-origin',
+referrerPolicy:'no-referrer'
+});
+const result=await response.json();
+if(!response.ok||result.status==='error'||result.status==='forbidden')throw new Error(result.message||'Bitcoin identity request failed.');
+return result;
+}
+function renderBitcoinIdentityStatus(identity){
+if(identity&&identity.status==='control_verified'){
+updateBitcoinIdentityHeader(identity);
+content.innerHTML='<p class="ok"><b>Bitcoin key control verified</b></p><div class="result"><b>Full name (declared)</b><p>'+esc(identity.full_name)+'</p></div><div class="result"><b>Network / address type</b><p>'+esc(identity.network)+' · '+esc(identity.address_type)+'</p></div><div class="result"><b>Bitcoin address</b><p><code>'+esc(identity.address)+'</code></p></div><div class="result"><b>Installation ID</b><p><code>'+esc(identity.installation_id)+'</code></p></div><div class="result"><b>Entity ID</b><p><code>'+esc(identity.entity_id)+'</code></p></div><div class="result"><b>Proof timestamp</b><p>'+esc(identity.verified_at)+'</p></div><p class="warn">The name is self-declared, not civil-identity verified. This proof is staged locally and is not yet associated with the installed Ed25519 NODE ID.</p><button id="cancel-bitcoin-identity" class="action secondary" type="button">CANCEL PENDING IDENTITY</button>';
+const cancel=content.querySelector('#cancel-bitcoin-identity');
+cancel.addEventListener('click',async()=>{
+if(!confirm('Cancel the pending Bitcoin identity proof?'))return;
+cancel.disabled=true;
+try{
+await postBitcoinIdentity('/api/identity/bitcoin/cancel',{});
+updateBitcoinIdentityHeader(null);
+renderBitcoinIdentityStatus({status:'not_verified'});
+}catch(error){
+content.insertAdjacentHTML('afterbegin','<p class="bad">'+esc(error.message)+'</p>');
+cancel.disabled=false;
+}
+});
+return;
+}
+if(identity&&identity.status==='unavailable'){
+content.innerHTML='<p class="bad">'+esc(identity.message||'Bitcoin identity service is unavailable.')+'</p>';
+return;
+}
+content.innerHTML='<p class="muted">Declare the name to associate with this installation and prove control of a Bitcoin mainnet P2WPKH key.</p><form id="bitcoin-identity-form" autocomplete="off"><label for="bitcoin-full-name">Full name (self-declared)</label><input id="bitcoin-full-name" type="text" maxlength="120" autocomplete="name" required placeholder="Full name"><label for="bitcoin-private-key">Bitcoin private key · HEX (64 characters)</label><input id="bitcoin-private-key" type="password" maxlength="64" minlength="64" pattern="[0-9a-fA-F]{64}" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text" required placeholder="64 hexadecimal characters"><p class="warn">Enter the raw 32-byte hexadecimal private key only. Do not enter a recovery phrase or WIF text.</p><p class="muted">The key is sent only through HTTPS to this local Lobby at 127.0.0.1. The API requires a local session token and Host/Origin validation. It is not sent to a remote service or written to disk. Browser and Python memory cleanup is best-effort; complete zeroization cannot be guaranteed.</p><div class="actions"><button id="bitcoin-identity-submit" class="action" type="submit">VERIFY BITCOIN KEY AND STAGE IDENTITY</button></div><p id="bitcoin-identity-feedback" class="muted" role="status" aria-live="polite"></p></form>';
+const form=content.querySelector('#bitcoin-identity-form');
+form.addEventListener('submit',async event=>{
+event.preventDefault();
+const fullName=content.querySelector('#bitcoin-full-name').value.trim();
+const privateKeyInput=content.querySelector('#bitcoin-private-key');
+let privateKey=privateKeyInput.value.trim();
+const submit=content.querySelector('#bitcoin-identity-submit');
+const feedback=content.querySelector('#bitcoin-identity-feedback');
+if(!/^[0-9a-fA-F]{64}$/.test(privateKey)){
+feedback.textContent='The key must contain exactly 64 hexadecimal characters.';
+return;
+}
+if(window.location.protocol!=='https:'){
+feedback.textContent='HTTPS is required. The key will not be submitted over HTTP.';
+privateKeyInput.value='';
+privateKey='';
+return;
+}
+submit.disabled=true;
+feedback.textContent='Requesting a one-time challenge and verifying the key locally…';
+privateKeyInput.value='';
+try{
+const challengeResult=await postBitcoinIdentity('/api/identity/bitcoin/challenge',{full_name:fullName});
+const challenge=challengeResult.challenge;
+if(!challenge||!challenge.challenge_id)throw new Error('The local service did not return a valid challenge.');
+const verified=await postBitcoinIdentity('/api/identity/bitcoin/verify-local-key',{
+challenge_id:challenge.challenge_id,
+private_key_hex:privateKey
+});
+privateKey='';
+renderBitcoinIdentityStatus(verified.identity);
+}catch(error){
+privateKey='';
+feedback.textContent='Verification failed: '+error.message+' Request a new challenge and try again.';
+}finally{
+privateKey='';
+privateKeyInput.value='';
+submit.disabled=false;
+}
+});
+}
 function renderLayoutManifest(d){
 let out="<p><b>Layout:</b> "+esc(d.layout_id)+" · <b>Schema:</b> "+esc(d.schema_version)+"</p>";
 out+="<p><b>Canonical root:</b> <code>"+esc(d.root.default)+"</code><br>"+esc(d.root.policy)+"</p>";
@@ -423,6 +524,7 @@ runBtn.addEventListener('click',runSelected);
 window.addEventListener('pageshow',()=>{checkLobbyConnection();});
 window.addEventListener('online',()=>{checkLobbyConnection();});
 checkLobbyConnection();
+refreshBitcoinIdentityHeader();
 async function runSelected(){
 runBtn.disabled=true;runBtn.textContent='Checking…';
 content.textContent='Collecting fresh local and official release information. No device changes are made.';
@@ -438,14 +540,7 @@ content.querySelectorAll('[data-termux-execute]').forEach(button=>button.addEven
 }else if(selected==='identity'){
 const r=await fetch('/api/identity/bitcoin',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
-const d=await r.json();
-if(d.status==='control_verified'){
-content.innerHTML='<p class="ok"><b>Bitcoin key control verified</b></p><div class="result"><b>Full name</b><p>'+esc(d.full_name)+'</p></div><div class="result"><b>Bitcoin network</b><p>'+esc(d.network)+'</p></div><div class="result"><b>Address type</b><p>'+esc(d.address_type)+'</p></div><div class="result"><b>Bitcoin address</b><p><code>'+esc(d.address)+'</code></p></div><div class="result"><b>Installation ID</b><p><code>'+esc(d.installation_id)+'</code></p></div><div class="result"><b>Entity ID</b><p><code>'+esc(d.entity_id)+'</code></p></div><div class="result"><b>Proof timestamp</b><p>'+esc(d.verified_at)+'</p></div><p class="warn">Name is declared, not civil-identity verified. This public proof is staged locally and is not yet linked to an installed node.</p><button id="cancel-bitcoin-identity" class="action secondary" type="button">CANCEL PENDING IDENTITY</button>';
-const cancel=content.querySelector('#cancel-bitcoin-identity');
-cancel.addEventListener('click',async()=>{if(!confirm('Cancel the pending Bitcoin identity proof?'))return;const response=await fetch('/api/identity/bitcoin/cancel',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:'{}',cache:'no-store'});const result=await response.json();if(!response.ok||result.status!=='cancelled')throw new Error(result.message||'Unable to cancel identity');content.textContent='Pending Bitcoin identity cancelled.';});
-}else{
-content.innerHTML='<p class="warn">No verified Bitcoin identity is staged.</p><p class="muted">The proof-verification API is available, but the local private-key signing form and first-install enforcement are not yet enabled. Do not paste a private key into this Lobby until the browser-side signer is installed and verified.</p>';
-}
+renderBitcoinIdentityStatus(await r.json());
 }else if(selected==='certificates'){
 const r=await fetch('/api/certificates',{cache:'no-store'});
 if(!r.ok)throw new Error('HTTP '+r.status);
