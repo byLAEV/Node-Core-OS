@@ -100,7 +100,7 @@ return result;
 function renderBitcoinIdentityStatus(identity){
 if(identity&&identity.status==='control_verified'){
 updateBitcoinIdentityHeader(identity);
-content.innerHTML='<p class="ok"><b>Bitcoin key control verified</b></p><div class="result"><b>Full name (declared)</b><p>'+esc(identity.full_name)+'</p></div><div class="result"><b>Network / address type</b><p>'+esc(identity.network)+' · '+esc(identity.address_type)+'</p></div><div class="result"><b>Bitcoin address</b><p><code>'+esc(identity.address)+'</code></p></div><div class="result"><b>Installation ID</b><p><code>'+esc(identity.installation_id)+'</code></p></div><div class="result"><b>Entity ID</b><p><code>'+esc(identity.entity_id)+'</code></p></div><div class="result"><b>Proof timestamp</b><p>'+esc(identity.verified_at)+'</p></div>'+(identity.node_id?'<div class="result"><b>Installed NODE ID</b><p><code>'+esc(identity.node_id)+'</code></p><p class="ok">Ed25519 key possession verified · Entity relationship: declared</p></div>':'<p class="warn">The name is self-declared, not civil-identity verified. The Bitcoin proof is staged locally. Associate it with the installed Ed25519 NODE ID after the first installation completes.</p><button id="associate-bitcoin-identity" class="action" type="button">ASSOCIATE WITH INSTALLED NODE ID</button>')+'<button id="cancel-bitcoin-identity" class="action secondary" type="button">CANCEL PENDING IDENTITY</button>';
+content.innerHTML='<p class="ok"><b>Bitcoin key control verified</b></p><div class="result"><b>Full name (declared)</b><p>'+esc(identity.full_name)+'</p></div><div class="result"><b>Network / address type</b><p>'+esc(identity.network)+' · '+esc(identity.address_type)+'</p></div><div class="result"><b>Bitcoin address</b><p><code>'+esc(identity.address)+'</code></p></div><div class="result"><b>Installation ID</b><p><code>'+esc(identity.installation_id)+'</code></p></div><div class="result"><b>Entity ID</b><p><code>'+esc(identity.entity_id)+'</code></p></div><div class="result"><b>Proof timestamp</b><p>'+esc(identity.verified_at)+'</p></div>'+(identity.node_id?'<div class="result"><b>Installed NODE ID</b><p><code>'+esc(identity.node_id)+'</code></p><p class="ok">Ed25519 key possession verified · Entity relationship: declared</p></div>':'<p class="warn">The name is self-declared, not civil-identity verified. The Bitcoin proof is staged locally. Associate it with the installed Ed25519 NODE ID after the first installation completes.</p><button id="associate-bitcoin-identity" class="action" type="button">ASSOCIATE WITH INSTALLED NODE ID</button>')+(identity.pending?'<button id="cancel-bitcoin-identity" class="action secondary" type="button">CANCEL PENDING IDENTITY</button>':'');
 const associate=content.querySelector('#associate-bitcoin-identity');
 if(associate)associate.addEventListener('click',async()=>{
 associate.disabled=true;
@@ -114,7 +114,7 @@ associate.disabled=false;
 }
 });
 const cancel=content.querySelector('#cancel-bitcoin-identity');
-cancel.addEventListener('click',async()=>{
+if(cancel)cancel.addEventListener('click',async()=>{
 if(!confirm('Cancel the pending Bitcoin identity proof?'))return;
 cancel.disabled=true;
 try{
