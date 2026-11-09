@@ -303,8 +303,40 @@ def main() -> int:
                     pending_text = pending_file.read_text(encoding="utf-8")
                     assert local_key_hex not in pending_text
                     assert "private_key_hex" not in pending_text
+
+                    # Simulate the official installer having created the app tree
+                    # and the real persistent Ed25519 node identity.
+                    app_root = home / ".node-core" / "app"
+                    app_root.mkdir(parents=True)
+                    (app_root / "node_core").symlink_to(repository_root / "node_core", target_is_directory=True)
+                    (app_root / "VERSION").write_text("1.2.3", encoding="utf-8")
+                    if str(repository_root) not in sys.path:
+                        sys.path.insert(0, str(repository_root))
+                    from node_core.identity.entity_registry import EntityIdentityRegistry
+                    from node_core.identity.node_identity import NodeIdentityStore
+                    node_metadata = NodeIdentityStore(home / ".node-core").initialize()
+
+                    association_response = identity_post("/api/identity/bitcoin/associate-node", {})
+                    assert association_response["status"] == "associated", association_response
+                    association = association_response["association"]
+                    assert association["entity_id"] == local_verified["identity"]["entity_id"], association
+                    assert association["node_id"] == node_metadata["node_id"], association
+                    assert association["node_key_possession_verified"] is True, association
+                    assert association["relationship_status"] == "declared", association
+                    identity_status = request_json(base_url + "/api/identity/bitcoin", True)
+                    assert identity_status["node_id"] == node_metadata["node_id"], identity_status
+                    assert identity_status["node_association_status"] == "associated", identity_status
+                    registry = EntityIdentityRegistry(home / ".node-core")
+                    entity_record = registry.get_entity(local_verified["identity"]["entity_id"])
+                    assert entity_record["identity_assurance"] == "declared", entity_record
+                    assert entity_record["node_links"][0]["node_id"] == node_metadata["node_id"], entity_record
+                    assert entity_record["node_links"][0]["status"] == "declared", entity_record
+                    assert len(entity_record["evidence_references"]) == 2, entity_record
+                    pending_text = pending_file.read_text(encoding="utf-8")
+                    assert "signature_hex" in pending_text and "node_association" in pending_text
                     identity_post("/api/identity/bitcoin/cancel", {})
                     print("Local Bitcoin key derivation, one-time signature, no private-key persistence and cleanup: PASS")
+                    print("Bitcoin entity to installed Ed25519 NODE ID association and local entity registry: PASS")
                     print("Bitcoin P2WPKH address derivation, one-time ECDSA challenge, public-only persistence and replay rejection: PASS")
 
                 catalog_response = request_json(base_url + "/api/certificates", tls_expected)
