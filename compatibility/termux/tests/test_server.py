@@ -329,6 +329,12 @@ def main() -> int:
                     identity_status = request_json(base_url + "/api/identity/bitcoin", True)
                     assert identity_status["node_id"] == node_metadata["node_id"], identity_status
                     assert identity_status["node_association_status"] == "associated", identity_status
+                    assert identity_status["pending"] is False, identity_status
+                    persisted_identity = json.loads(pending_file.read_text(encoding="utf-8"))
+                    persisted_identity["expires_at"] = "2020-01-01T00:00:00+00:00"
+                    pending_file.write_text(json.dumps(persisted_identity), encoding="utf-8")
+                    retained_identity = request_json(base_url + "/api/identity/bitcoin", True)
+                    assert retained_identity["node_id"] == node_metadata["node_id"], retained_identity
                     registry = EntityIdentityRegistry(home / ".node-core")
                     entity_record = registry.get_entity(local_verified["identity"]["entity_id"])
                     assert entity_record["identity_assurance"] == "declared", entity_record
