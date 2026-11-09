@@ -89,6 +89,107 @@ def detect_node_core():
         "launcher_path": str(launcher), "layout": layout, "repository_checkouts": checkouts
     }
 
+def associate_pending_bitcoin_identity_with_node():
+    """Link the staged Bitcoin entity to the installed, verified Ed25519 NODE ID."""
+    pending = BITCOIN_IDENTITY.read_pending()
+    if pending is None:
+        raise BitcoinIdentityError("A non-expired Bitcoin identity proof is required.")
+
+    app_root = HOME / ".node-core" / "app"
+    if not app_root.is_dir() or not (app_root / "node_core").is_dir():
+        raise ValueError("The installed Node Core OS application package is unavailable.")
+
+    app_root_text = str(app_root.resolve())
+    if app_root_text not in sys.path:
+        sys.path.insert(0, app_root_text)
+
+    try:
+        from node_core.identity.entity_registry import (
+            EntityIdentityRegistry,
+            EntityIdentityRegistryError,
+        )
+        from node_core.identity.node_identity import NodeIdentityStore
+    except ImportError as exc:
+        raise ValueError("The installed Node Core OS identity modules could not be loaded.") from exc
+
+    data_dir = HOME / ".node-core"
+    node_store = NodeIdentityStore(data_dir)
+    metadata = node_store.load()
+    node_id = metadata.get("node_id")
+    public_key_hex = metadata.get("public_key")
+    if not isinstance(node_id, str) or not isinstance(public_key_hex, str):
+        raise ValueError("The installed Node Core OS identity metadata is incomplete.")
+
+    challenge_message = (
+        "Node Core OS byLAEV local entity association v1\n"
+        + "entity_id:" + pending["entity_id"] + "\n"
+        + "installation_id:" + pending["installation_id"] + "\n"
+        + "node_id:" + node_id + "\n"
+        + "nonce:" + secrets.token_hex(32) + "\n"
+    )
+    challenge_bytes = challenge_message.encode("utf-8")
+    signature = node_store.sign(challenge_bytes)
+    if not NodeIdentityStore.verify(public_key_hex, challenge_bytes, signature):
+        raise ValueError("The installed Ed25519 NODE ID failed its local possession check.")
+
+    registry = EntityIdentityRegistry(data_dir)
+    entity_id = pending["entity_id"]
+    try:
+        entity = registry.get_entity(entity_id)
+    except EntityIdentityRegistryError as exc:
+        if str(exc) != "Entity identifier was not found.":
+            raise
+        entity = registry.register_entity(
+            "person",
+            display_name=pending["full_name"],
+            entity_id=entity_id,
+        )
+
+    if entity.get("entity_type") != "person" or entity.get("display_name") != pending["full_name"]:
+        raise ValueError("The existing entity record conflicts with the staged Bitcoin identity.")
+    if entity.get("status") != "active":
+        raise ValueError("The staged Bitcoin entity is revoked in the local entity registry.")
+
+    registry.link_node(entity_id, node_id, relationship="controlled_by")
+    evidence_refs = {
+        item.get("reference")
+        for item in registry.get_entity(entity_id).get("evidence_references", [])
+    }
+    bitcoin_reference = (
+        "local-evidence://node-core-os-lobby/bitcoin-key-control/"
+        + pending["proof"]["message_sha256"]
+    )
+    if bitcoin_reference not in evidence_refs:
+        registry.add_evidence_reference(entity_id, "other", bitcoin_reference)
+        evidence_refs.add(bitcoin_reference)
+
+    node_proof_sha256 = hashlib.sha256(
+        challenge_bytes + bytes((0,)) + signature
+    ).hexdigest()
+    node_reference = (
+        "local-evidence://node-core-os-lobby/node-key-possession/"
+        + node_proof_sha256
+    )
+    if node_reference not in evidence_refs:
+        registry.add_evidence_reference(entity_id, "other", node_reference)
+
+    identity = BITCOIN_IDENTITY.record_node_association(
+        node_id=node_id,
+        challenge_message=challenge_message,
+        signature_hex=signature.hex(),
+        public_key_hex=public_key_hex,
+    )
+    return {
+        "status": "associated",
+        "entity_id": entity_id,
+        "node_id": node_id,
+        "relationship": "controlled_by",
+        "relationship_status": "declared",
+        "node_key_possession_verified": True,
+        "identity": identity,
+    }
+
+
 def package_inventory():
     fmt = "$" + "{binary:Package}\t" + "$" + "{Version}\n"
     r = run_command(["dpkg-query", "-W", "-f=" + fmt], 12.0)
