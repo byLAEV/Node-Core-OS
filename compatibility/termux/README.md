@@ -367,6 +367,8 @@ or `http`. Do not mark HTTPS validated unless the response says
 
 ## Validation still required
 
+The detailed Android ARM64 acceptance procedure is maintained in [DEVICE-ACCEPTANCE.md](DEVICE-ACCEPTANCE.md). It covers preflight, Lobby-only bootstrap, widget and background lifecycle, first installation and identity association, update preservation, and the physical-device exit criteria.
+
 - Clean installation on a physical Termux ARM64 device using the bootstrap.
 - Reinstallation over an existing Lobby without losing state.
 - HTTPS certificate generation and browser behavior.
