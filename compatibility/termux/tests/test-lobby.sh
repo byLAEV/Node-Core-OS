@@ -73,6 +73,8 @@ assert "BITCOIN_IDENTITY.read_pending() is None" in server
 assert "request dictionary even when validation fails" in server
 assert "finally:" in server and "payload.clear()" in server
 assert "First installation is locked" in server
+assert "associate_pending_bitcoin_identity_with_node" in server
+assert "NodeIdentityStore" in server and "EntityIdentityRegistry" in server
 assert 'data-panel="identity"' in html
 assert "/api/identity/bitcoin" in html
 assert 'id="bitcoin-private-key"' in html
@@ -82,11 +84,13 @@ assert "private_key_hex:privateKey" in html
 assert "window.location.protocol!=='https:'" in html
 assert "refreshBitcoinIdentityHeader" in html
 assert 'id="bitcoin-address-header"' in html
+assert "associate-bitcoin-identity" in html
+assert "/api/identity/bitcoin/associate-node" in html
 assert "localStorage.setItem('bitcoin-private-key'" not in html
 assert "sessionStorage.setItem('bitcoin-private-key'" not in html
 assert "Browser and Python memory cleanup is best-effort" in html
 assert manifest["lobby"]["bitcoin_identity"]["enabled"] is True
-for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/cancel"):
+for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/associate-node", "/api/identity/bitcoin/cancel"):
     assert endpoint in server, f"Missing Bitcoin identity endpoint: {endpoint}"
 bootstrap = (profile / "bootstrap-lobby.sh").read_text(encoding="utf-8")
 assert "codeload.github.com" in bootstrap
