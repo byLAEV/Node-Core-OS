@@ -4,9 +4,9 @@ umask 077
 fail(){ echo "LOBBY INSTALL ERROR: $*" >&2; exit 1; }
 [[ "$(id -u)" != 0 ]] || fail "Do not run as root."
 . /etc/os-release
-[[ "\${ID:-}" == debian && "$(uname -m)" == aarch64 ]] || fail "Requires Debian ARM64."
+[[ "${ID:-}" == debian && "$(uname -m)" == aarch64 ]] || fail "Requires Debian ARM64."
 for c in bash curl python3; do command -v "$c" >/dev/null || fail "Missing $c"; done
-ROOT="$(cd "$(dirname "\${BASH_SOURCE[0]}")/../../.." && pwd -P)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)"
 SRC="$ROOT/compatibility/termux/lobby"
 MANIFEST="$ROOT/installer/layout-manifest.json"
 DEST="$HOME/.node-core/lobby"
