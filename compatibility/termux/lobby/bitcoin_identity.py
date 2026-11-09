@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import secrets
 import tempfile
+from cryptography.hazmat.primitives import serialization
 import threading
 import time
 import uuid
@@ -225,6 +226,87 @@ class BitcoinIdentityGate:
                 "verified_at": now.isoformat(),
                 "status": "control_verified",
             },
+            "civil_identity_status": "not_verified",
+            "created_at": now.isoformat(),
+            "expires_at": (now + timedelta(seconds=PENDING_TTL_SECONDS)).isoformat(),
+        }
+        self._write_pending(pending)
+        return self.public_status()
+
+    def verify_private_key_and_stage(
+        self,
+        *,
+        challenge_id: Any,
+        private_key_hex: Any,
+    ) -> dict[str, Any]:
+        """Derive and prove a raw private scalar received only by the local Lobby.
+
+        The scalar is never written to disk or returned. The caller must send it
+        only to this loopback-bound, authenticated Lobby endpoint. Python cannot
+        guarantee zeroization of immutable strings or cryptography backend state;
+        this method therefore clears its mutable byte buffer and releases local
+        references on a best-effort basis.
+        """
+        if not isinstance(challenge_id, str):
+            raise BitcoinIdentityError("A valid Bitcoin challenge identifier is required.")
+        if not isinstance(private_key_hex, str) or len(private_key_hex) != 64:
+            raise BitcoinIdentityError("Bitcoin private key must be exactly 64 hexadecimal characters.")
+        if any(character not in "0123456789abcdefABCDEF" for character in private_key_hex):
+            raise BitcoinIdentityError("Bitcoin private key must contain hexadecimal characters only.")
+
+        with self._lock:
+            self._prune_challenges_locked()
+            challenge = self._challenges.pop(challenge_id, None)
+        if challenge is None:
+            raise BitcoinIdentityError("Bitcoin challenge is unknown, expired, or already used.")
+
+        private_key_bytes = bytearray.fromhex(private_key_hex)
+        private_key = None
+        scalar = int.from_bytes(private_key_bytes, "big")
+        for index in range(len(private_key_bytes)):
+            private_key_bytes[index] = 0
+        private_key_hex = None
+        if scalar <= 0 or scalar >= 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141:
+            raise BitcoinIdentityError("Bitcoin private key scalar is outside the secp256k1 range.")
+
+        try:
+            private_key = ec.derive_private_key(scalar, ec.SECP256K1())
+            public_key = private_key.public_key().public_bytes(
+                encoding=serialization.Encoding.X962,
+                format=serialization.PublicFormat.CompressedPoint,
+            )
+            derived_address = encode_p2wpkh_address(public_key)
+            message = challenge["message"]
+            signature = private_key.sign(message, ec.ECDSA(hashes.SHA256()))
+            verify_challenge_signature(public_key, message, signature)
+        except (ValueError, TypeError) as exc:
+            raise BitcoinIdentityError("Bitcoin private key could not produce a valid mainnet address.") from exc
+        finally:
+            scalar = 0
+            private_key = None
+
+        now = datetime.now(timezone.utc)
+        pending = {
+            "schema_version": 1,
+            "installation_id": str(uuid.uuid4()),
+            "entity_id": str(uuid.uuid4()),
+            "full_name": challenge["full_name"],
+            "identity_status": "declared",
+            "bitcoin": {
+                "network": NETWORK,
+                "address_type": ADDRESS_TYPE,
+                "address": derived_address,
+                "public_key_hex": public_key.hex(),
+            },
+            "proof": {
+                "method": "node-core-os-local-bitcoin-key-control/v1",
+                "challenge_id": challenge_id,
+                "message_sha256": hashlib.sha256(message).hexdigest(),
+                "signature_hex": signature.hex(),
+                "verified_at": now.isoformat(),
+                "status": "control_verified",
+            },
+            "private_key_storage": False,
             "civil_identity_status": "not_verified",
             "created_at": now.isoformat(),
             "expires_at": (now + timedelta(seconds=PENDING_TTL_SECONDS)).isoformat(),
