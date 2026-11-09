@@ -35,6 +35,30 @@ chmod +x "$NODE_CORE_DATA_DIR/bin/ipfs"
 printf '#!/usr/bin/env bash\nif [[ "${1:-}" == "version" ]]; then echo "kubo version test"; exit 0; fi\nexit 2\n' > "$PREFIX/bin/ipfs"
 chmod +x "$PREFIX/bin/ipfs"
 printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n' > "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
+
+# The updater may replace only app/. The technical NODE ID, entity registry,
+# staged Bitcoin proof, local storage and Kubo repository must remain byte-identical.
+mkdir -p "$NODE_CORE_DATA_DIR/identity/private" "$NODE_CORE_DATA_DIR/lobby"
+printf '{"schema_version":1,"algorithm":"Ed25519","node_id":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","public_key":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}\n' > "$NODE_CORE_DATA_DIR/identity/node.json"
+printf 'SYNTHETIC_NODE_PRIVATE_KEY_FIXTURE\n' > "$NODE_CORE_DATA_DIR/identity/private/node.key"
+printf '{"schema_version":1,"entities":[{"entity_id":"12345678-1234-5678-1234-567812345678","entity_type":"person","display_name":"Synthetic Termux Identity","status":"active","identity_assurance":"declared","node_links":[{"node_id":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","relationship":"controlled_by","status":"declared"}],"evidence_references":[]}]}\n' > "$NODE_CORE_DATA_DIR/identity/entity-registry.json"
+printf '{"schema_version":1,"full_name":"Synthetic Termux Identity","private_key_storage":false,"bitcoin":{"network":"mainnet","address_type":"p2wpkh","address":"bc1qsynthetic"},"entity_id":"12345678-1234-5678-1234-567812345678"}\n' > "$NODE_CORE_DATA_DIR/lobby/bitcoin-identity-pending.json"
+chmod 700 "$NODE_CORE_DATA_DIR/identity" "$NODE_CORE_DATA_DIR/identity/private" "$NODE_CORE_DATA_DIR/lobby"
+chmod 600 "$NODE_CORE_DATA_DIR/identity/node.json" "$NODE_CORE_DATA_DIR/identity/private/node.key" "$NODE_CORE_DATA_DIR/identity/entity-registry.json" "$NODE_CORE_DATA_DIR/lobby/bitcoin-identity-pending.json"
+sha256sum \
+  "$NODE_CORE_DATA_DIR/identity/node.json" \
+  "$NODE_CORE_DATA_DIR/identity/private/node.key" \
+  "$NODE_CORE_DATA_DIR/identity/entity-registry.json" \
+  "$NODE_CORE_DATA_DIR/lobby/bitcoin-identity-pending.json" \
+  > "$TEST_FIXTURES/identity-state-before.sha256"
+
+assert_identity_and_data_preserved() {
+  sha256sum --check "$TEST_FIXTURES/identity-state-before.sha256"
+  grep -qx 'preserve Termux local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
+  grep -qx 'preserve Termux IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+  test -x "$NODE_CORE_DATA_DIR/bin/ipfs"
+}
+
 printf '{"sha":"5555555555555555555555555555555555555555"}\n' > "$TEST_FIXTURES/latest-commit.json"
 
 # Simulate a venv created by the older installer without system-site-packages.
@@ -180,6 +204,7 @@ grep -q 'old bundled Kubo fixture' "$NODE_CORE_DATA_DIR/bin/ipfs"
 grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 grep -q 'updated Node Core application' "$NODE_CORE_DATA_DIR/app/main.py"
 grep -qx '1.2.6' "$NODE_CORE_DATA_DIR/app/VERSION"
+assert_identity_and_data_preserved
 test ! -e "$NODE_CORE_DATA_DIR/app/applications/hashpaper"
 test ! -e "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"
 test ! -e "$NODE_CORE_DATA_DIR/app/docs/P2P-CONTRACTS-TECHNICAL-AUDIT.md"
@@ -207,6 +232,7 @@ test -f "$recovery_archive/RECOVERY.txt"
 grep -qx '5555555555555555555555555555555555555555' "$NODE_CORE_DATA_DIR/runtime/node-core-commit"
 grep -qx 'preserve Termux local storage' "$NODE_CORE_DATA_DIR/storage/user-data.txt"
 grep -qx 'preserve Termux IPFS repository' "$NODE_CORE_DATA_DIR/ipfs/config"
+assert_identity_and_data_preserved
 
 printf 'Termux updater stale-cleanup recovery test passed.\n'
 
