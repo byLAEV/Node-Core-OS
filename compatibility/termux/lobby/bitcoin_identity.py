@@ -375,7 +375,7 @@ class BitcoinIdentityGate:
             raise BitcoinIdentityError("Node ID possession signature is invalid.") from exc
 
         proof_sha256 = hashlib.sha256(
-            challenge_message.encode("utf-8") + b"\\x00" + signature
+            challenge_message.encode("utf-8") + b"\x00" + signature
         ).hexdigest()
         pending = self.read_pending()
         if pending is None:
