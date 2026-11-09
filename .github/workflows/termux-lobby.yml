@@ -67,7 +67,9 @@ jobs:
               print(f"JSON PASS: {path}")
           PY
       - name: Validate Termux Lobby contracts and local server integration
-        run: bash compatibility/termux/tests/test-lobby.sh
+        run: |
+          bash compatibility/termux/tests/test-lobby.sh
+          python -m unittest tests.test_identity_entity_registry -v
       - name: Upload static validation logs
         if: always()
         uses: actions/upload-artifact@v4
