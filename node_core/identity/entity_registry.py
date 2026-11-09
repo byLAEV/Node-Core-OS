@@ -52,8 +52,13 @@ class EntityIdentityRegistry:
         entity_type: str,
         *,
         display_name: str | None = None,
+        entity_id: str | None = None,
     ) -> dict[str, Any]:
-        """Register an entity without asserting that its declared identity is verified."""
+        """Register an entity without asserting that its declared identity is verified.
+
+        An existing UUID may be supplied when another local subsystem has already
+        assigned the stable entity identifier. Duplicate identifiers are rejected.
+        """
         if entity_type not in self.ENTITY_TYPES:
             raise EntityIdentityRegistryError("Unsupported entity type.")
         if display_name is not None and (
@@ -62,9 +67,23 @@ class EntityIdentityRegistry:
             raise EntityIdentityRegistryError("Display name must be omitted or non-empty.")
 
         state = self._read_state()
+        if entity_id is None:
+            normalized_entity_id = str(uuid.uuid4())
+        else:
+            if not isinstance(entity_id, str):
+                raise EntityIdentityRegistryError("Entity identifier must be a canonical UUID.")
+            try:
+                normalized_entity_id = str(uuid.UUID(entity_id))
+            except (AttributeError, TypeError, ValueError) as exc:
+                raise EntityIdentityRegistryError("Entity identifier must be a canonical UUID.") from exc
+            if normalized_entity_id != entity_id:
+                raise EntityIdentityRegistryError("Entity identifier must be a canonical UUID.")
+            if any(item.get("entity_id") == normalized_entity_id for item in state["entities"]):
+                raise EntityIdentityRegistryError("Entity identifier already exists.")
+
         now = self._now()
         record: dict[str, Any] = {
-            "entity_id": str(uuid.uuid4()),
+            "entity_id": normalized_entity_id,
             "schema_version": self.SCHEMA_VERSION,
             "entity_type": entity_type,
             "display_name": display_name.strip() if display_name is not None else None,
