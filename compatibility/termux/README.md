@@ -134,12 +134,18 @@ Execution is a separate authenticated HTTPS POST after explicit browser
 confirmation. The Lobby runs the official script as the unprivileged Termux
 user, displays its actual stdout/stderr in an in-page console, and reports
 the process exit code, timeout or failure. The official installer initializes
-the existing Ed25519 NODE ID; the proposed Bitcoin/Ethereum reference-key
-extension remains unimplemented and is not requested or collected by this
-workflow. Updates use the official updater and do not ask for identity private
-keys. This integration is code-complete in the feature branch but still
-requires automated CI and physical-device validation before it can be called
-production-ready.
+the persistent Ed25519 NODE ID. For a first installation, the Lobby
+also requires a declared full name and proof of control of a Bitcoin Mainnet
+private key through the local identity form. The accepted HEX scalar is
+processed only by the authenticated HTTPS loopback service; the Bitcoin
+private key is never written to disk or sent to a remote service.
+Python/cryptography memory zeroization is best-effort and cannot be guaranteed.
+The name remains self-declared, not civil-identity verified. After
+installation, the Lobby verifies possession of the installed Ed25519 NODE ID
+key and links the existing Bitcoin entity ID to that node in the local entity
+registry. Updates use the official updater and do not request the Bitcoin
+private key again. This integration requires green automated CI and
+physical-device validation before it can be called production-ready.
 
 ## Stable Release discovery in the Lobby
 
@@ -180,11 +186,22 @@ must preserve identity, configuration, local storage and the Kubo/IPFS
 repository and must never ask for identity input again.
 
 **Identity boundary:** the Lobby invokes the canonical official package
-scripts. The current installer initializes the Node Core OS Ed25519 NODE ID.
-The proposed Bitcoin WIF/HEX reference identifiers and Ethereum address
-derivation have not been implemented or integrated. The Lobby does not prompt
-for, accept, store, transmit or log Bitcoin/Ethereum private keys. That identity
-extension remains a separate future implementation.
+scripts. The current installer initializes the persistent Ed25519 NODE ID
+under \`~/.node-core/identity/\`. The Lobby's first-install identity gate
+accepts a declared full name and a Bitcoin Mainnet private-key HEX scalar
+(64 hexadecimal characters, valid secp256k1 scalar) through the local browser
+form. The local service derives the P2WPKH address and verifies a single-use
+ECDSA challenge. The Bitcoin private key is not persisted, logged or sent to a
+remote service; it is sent only over the authenticated HTTPS loopback
+connection to the local Lobby process. Complete memory zeroization cannot be
+guaranteed. After a successful first installation, the Lobby verifies the
+installed Ed25519 key's proof of possession and associates the Bitcoin entity
+ID with the NODE ID in \`~/.node-core/identity/entity-registry.json\`.
+The relationship is recorded as declared, while the cryptographic proof of
+NODE ID key possession is verified. A declared name is not civil-identity
+verification. Updates preserve both identities and do not ask for the Bitcoin
+private key again. No Ethereum private-key or address workflow is implemented
+by this milestone.
 
 The Lobby diagnostics API is read-only. It is not an authenticated administrative
 API and must not be extended with mutating actions without a separate security
@@ -309,6 +326,28 @@ settings. It excludes SSH/GnuPG, keys, private credentials, wallets, identity
 material, caches and Git internals. Symlinks are not followed. Storage and IPFS
 directory contents are not traversed. Proxy presence may be reported, but proxy
 values are never exposed. Package and directory output are bounded.
+
+## Bitcoin identity and NODE ID association
+
+The first-install flow is available from the Lobby identity panel. Enter only
+the declared name and Bitcoin HEX private key on the local device; never paste
+the private key into ChatGPT, issue trackers, CI logs, screenshots, or support
+messages. The browser sends the key only to the authenticated HTTPS loopback
+service. The local service derives the Mainnet P2WPKH address, verifies the
+one-time challenge, and persists only public proof material.
+
+After the first installation finishes, use **ASSOCIATE WITH INSTALLED NODE
+ID** if the association did not complete automatically. The service loads the
+installed Ed25519 identity, verifies a fresh or previously staged possession
+proof, and idempotently updates the local entity registry. A retry reuses the
+same staged proof, so a process interruption does not require the Bitcoin key
+to be entered again. The Ed25519 private key belongs to Node Core OS and is
+stored separately in its protected identity directory; it is not the Bitcoin
+private key.
+
+The registry relationship is \`declared\`; proof of possession of the Ed25519
+NODE ID is cryptographically verified. Neither result establishes a person's
+civil identity.
 
 ## Manual verification
 
