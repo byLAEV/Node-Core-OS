@@ -433,6 +433,48 @@ class BitcoinIdentityGate:
             raise BitcoinIdentityError("Pending Bitcoin proof uses an unsupported network or address type.")
         if proof.get("status") != "control_verified":
             raise BitcoinIdentityError("Pending Bitcoin proof is not verified.")
+
+        association = payload.get("node_association")
+        if association is not None:
+            if not isinstance(association, dict):
+                raise BitcoinIdentityError("Pending NODE ID association is invalid.")
+            node_id = association.get("node_id")
+            public_key_hex = association.get("public_key_hex")
+            challenge_message = association.get("challenge_message")
+            signature_hex = association.get("signature_hex")
+            if (
+                association.get("status") != "associated"
+                or association.get("relationship") != "controlled_by"
+                or association.get("node_key_possession_verified") is not True
+                or not isinstance(node_id, str)
+                or re.fullmatch(r"sha256:[0-9a-f]{64}", node_id) is None
+                or not isinstance(public_key_hex, str)
+                or not isinstance(challenge_message, str)
+                or not isinstance(signature_hex, str)
+            ):
+                raise BitcoinIdentityError("Pending NODE ID association fields are incomplete.")
+            try:
+                public_key_bytes = bytes.fromhex(public_key_hex)
+                signature = bytes.fromhex(signature_hex)
+            except ValueError as exc:
+                raise BitcoinIdentityError("Pending NODE ID association encoding is invalid.") from exc
+            if (
+                len(public_key_bytes) != 32
+                or public_key_bytes.hex() != public_key_hex
+                or "sha256:" + hashlib.sha256(public_key_bytes).hexdigest() != node_id
+            ):
+                raise BitcoinIdentityError("Pending NODE ID does not match its public key.")
+            try:
+                ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes).verify(
+                    signature, challenge_message.encode("utf-8")
+                )
+            except (ValueError, InvalidSignature) as exc:
+                raise BitcoinIdentityError("Pending NODE ID possession signature is invalid.") from exc
+            expected_proof = hashlib.sha256(
+                challenge_message.encode("utf-8") + bytes((0,)) + signature
+            ).hexdigest()
+            if association.get("proof_sha256") != expected_proof:
+                raise BitcoinIdentityError("Pending NODE ID possession proof digest is invalid.")
         return payload
 
     def cancel_pending(self) -> None:
