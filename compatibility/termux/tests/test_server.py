@@ -278,6 +278,28 @@ def main() -> int:
                     assert replay["status"] == "error", replay
                     identity_post("/api/identity/bitcoin/cancel", {})
                     assert request_json(base_url + "/api/identity/bitcoin", True)["status"] == "not_verified"
+
+                    local_challenge_response = identity_post(
+                        "/api/identity/bitcoin/challenge",
+                        {"full_name": "Synthetic Local Key Identity"},
+                    )
+                    local_challenge = local_challenge_response["challenge"]
+                    local_key_hex = (1).to_bytes(32, "big").hex()
+                    local_verified = identity_post(
+                        "/api/identity/bitcoin/verify-local-key",
+                        {
+                            "challenge_id": local_challenge["challenge_id"],
+                            "private_key_hex": local_key_hex,
+                        },
+                    )
+                    assert local_verified["status"] == "verified", local_verified
+                    assert local_verified["identity"]["address"] == address, local_verified
+                    assert local_verified["identity"]["full_name"] == "Synthetic Local Key Identity"
+                    pending_text = pending_file.read_text(encoding="utf-8")
+                    assert local_key_hex not in pending_text
+                    assert "private_key_hex" not in pending_text
+                    identity_post("/api/identity/bitcoin/cancel", {})
+                    print("Local Bitcoin key derivation, one-time signature, no private-key persistence and cleanup: PASS")
                     print("Bitcoin P2WPKH address derivation, one-time ECDSA challenge, public-only persistence and replay rejection: PASS")
 
                 catalog_response = request_json(base_url + "/api/certificates", tls_expected)
