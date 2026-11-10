@@ -13,7 +13,9 @@ This directory contains eight Node Core OS security-assessment certificate produ
 7. [IPFS Content Integrity](./07-ipfs-content-integrity/README.md) — `ipfs-content-integrity`
 8. [Privilege Control and Pool Isolation](./08-privilege-control-and-pool-isolation/README.md) — `privilege-and-pool-isolation`
 
-9. [Bitcoin Conflict Declaration and Resolution Certificate](./09-bitcoin-conflict-declaration-and-resolution/README.md) — `bitcoin-conflict-declaration` (proposed application-level case credential; not a node identity profile)\n\n## Evidence and status
+9. [Bitcoin Conflict Declaration and Resolution Certificate](./09-bitcoin-conflict-declaration-and-resolution/README.md) — `bitcoin-conflict-declaration` (proposed application-level case credential; not a node identity profile)
+
+## Evidence and status
 
 - [Certificate test and evidence matrix](../CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md)
 - [Audit and CI index](../AUDIT-AND-CI-INDEX.md)
