@@ -44,8 +44,8 @@ jobs:
       - name: Run signed certificate envelope tests
         run: |
           python -m pip install --disable-pip-version-check -r requirements.txt
-          python -m pip install --disable-pip-version-check pytest
-          python -m pytest -q tests/test_node_identity_certificate.py
+          python -m pip install --disable-pip-version-check pytest jsonschema
+          python -m pytest -q tests/test_node_identity_certificate.py tests/test_bicdn_schemas.py
       - name: Publish scope limitation
         if: always()
         run: |
