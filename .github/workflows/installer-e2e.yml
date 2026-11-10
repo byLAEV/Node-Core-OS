@@ -55,6 +55,9 @@ jobs:
       - name: Make installer executable
         run: chmod +x installer/install.sh installer/uninstall.sh installer/lib/*.sh
 
+      - name: Test user-mode filesystem and persistent-data contract
+        run: bash installer/tests/user-mode-persistence.sh
+
       - name: Syntax-check installer
         run: |
           set -euo pipefail
