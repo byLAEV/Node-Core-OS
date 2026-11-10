@@ -45,14 +45,17 @@ fail() {
 command -v curl >/dev/null 2>&1 || fail "curl is required for the post-restart Lobby health check."
 
 NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPOSITORY_ROOT="$(cd -- "$SCRIPT_DIR/../../.." && pwd)"
 APP_DIR="$NODE_CORE_DATA_DIR/app"
 RUNTIME_DIR="$NODE_CORE_DATA_DIR/runtime"
 EVIDENCE_DIR="$RUNTIME_DIR/termux-device-acceptance"
 
 [[ ! -L "$NODE_CORE_DATA_DIR" ]] || fail "Node Core data directory must not be a symlink."
-[[ -d "$NODE_CORE_DATA_DIR" ]] || fail "Node Core is not installed under $NODE_CORE_DATA_DIR."
+[[ -d "$NODE_CORE_DATA_DIR" ]] || fail "Node Core data directory is not initialized under $NODE_CORE_DATA_DIR."
 [[ ! -L "$RUNTIME_DIR" ]] || fail "Runtime directory must not be a symlink."
-[[ -d "$APP_DIR" && ! -L "$APP_DIR" ]] || fail "Installed Node Core application directory is missing or unsafe."
+[[ -d "$RUNTIME_DIR" ]] || fail "Node Core runtime directory is missing; complete the official installation first."
+[[ -d "$APP_DIR" || -d "$REPOSITORY_ROOT/node_core" ]] || fail "Neither installed application nor repository checkout contains node_core modules."
 
 PYTHON_BIN="$RUNTIME_DIR/node-core-venv/bin/python"
 if [[ ! -x "$PYTHON_BIN" ]]; then
@@ -60,7 +63,11 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
 fi
 [[ -n "$PYTHON_BIN" && -x "$PYTHON_BIN" ]] || fail "Python 3 is required."
 export NODE_CORE_DATA_DIR
-export PYTHONPATH="$APP_DIR${PYTHONPATH:+:$PYTHONPATH}"
+MODULE_ROOT="$APP_DIR"
+if [[ ! -d "$MODULE_ROOT/node_core" ]]; then
+  MODULE_ROOT="$REPOSITORY_ROOT"
+fi
+export PYTHONPATH="$MODULE_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "$EVIDENCE_DIR"
 chmod 700 "$EVIDENCE_DIR"
