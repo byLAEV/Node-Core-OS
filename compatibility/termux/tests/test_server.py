@@ -21,6 +21,7 @@ import urllib.request
 SERVER = pathlib.Path(sys.argv[1]).resolve()
 LOBBY_DIR = SERVER.parent
 sys.path.insert(0, str(LOBBY_DIR))
+from host_environment import detect_host_environment, create_installation_snapshot, read_installation_snapshot
 PORT = 18765
 
 
@@ -88,6 +89,10 @@ def main() -> int:
             encoding="utf-8",
         )
         fake_launcher.chmod(0o700)
+
+        host_snapshot = create_installation_snapshot({"TERMUX_VERSION":"0.118-test","PREFIX":"/data/data/com.termux/files/usr","SHELL":"/data/data/com.termux/files/usr/bin/bash"})
+        (state / "host-environment.json").write_text(json.dumps(host_snapshot), encoding="utf-8")
+        (state / "host-environment.json").chmod(0o600)
 
         config = {
             "bind": "127.0.0.1",
@@ -159,6 +164,11 @@ def main() -> int:
                 assert report["summary"]["total"] == len(report["checks"]), report
                 assert report["privacy"]["read_only"] is True, report
                 assert "environment" in report and "node_core" in report and "network" in report
+                assert report["environment"]["profile"] == "termux"
+                environment_api = request_json(base_url + "/api/environment", tls_expected)
+                assert environment_api["current"]["profile"] == "termux", environment_api
+                assert environment_api["installation_compatibility"]["compatible"] is True, environment_api
+                print("Linux host detection, persisted installation environment and compatibility API: PASS")
                 print("Official read-only Termux report API and export controls: PASS")
                 assert headers.get("Cache-Control") == "no-store"
                 assert headers.get("Content-Security-Policy")
@@ -548,6 +558,34 @@ def main() -> int:
             finally:
                 stop(process)
 
+    # Deterministic unit coverage for GNU/Linux, Termux, WSL, architecture and prerequisites.
+    with tempfile.TemporaryDirectory(prefix="node-core-host-profile-") as profile_temp:
+        profile_root = pathlib.Path(profile_temp)
+        os_release = profile_root / "os-release"
+        os_release.write_text('NAME="Debian GNU/Linux"\nID=debian\nVERSION_ID="12"\nPRETTY_NAME="Debian GNU/Linux 12"\n', encoding="utf-8")
+        common = dict(
+            os_release_path=os_release,
+            proc_version_path=profile_root / "missing-proc-version",
+            cgroup_path=profile_root / "missing-cgroup",
+            container_marker_paths=(),
+            command_lookup=lambda name: "/usr/bin/" + name if name in {
+                "bash","python3","tar","sha512sum","mkdir","cp","rm","mktemp","uname","awk",
+                "realpath","stat","id","find","grep","sed","nohup","curl","apt-get","pkg"
+            } else None,
+            python_version=(3,12,1),
+        )
+        linux = detect_host_environment({"SHELL":"/bin/bash","TERM_PROGRAM":"GNOME Terminal"},system="Linux",machine="x86_64",kernel_release="6.1",**common)
+        assert linux["profile"] == "gnu_linux" and linux["distribution"]["id"] == "debian"
+        assert linux["terminal"]["emulator"] == "GNOME Terminal" and linux["preflight_status"] == "ready"
+        termux = detect_host_environment({"TERMUX_VERSION":"0.118","PREFIX":"/data/data/com.termux/files/usr"},system="Linux",machine="aarch64",**common)
+        assert termux["profile"] == "termux" and termux["package_manager"]["id"] == "pkg"
+        wsl = detect_host_environment({"WSL_DISTRO_NAME":"Ubuntu"},system="Linux",machine="x86_64",kernel_release="microsoft WSL2",**common)
+        assert wsl["environment_type"] == "wsl"
+        unsupported = detect_host_environment({},system="Linux",machine="riscv64",**common)
+        assert unsupported["preflight_status"] == "unsupported"
+        incomplete = detect_host_environment({},system="Linux",machine="x86_64",command_lookup=lambda name:None,python_version=(3,12,1),**{k:v for k,v in common.items() if k!="command_lookup"})
+        assert incomplete["preflight_status"] == "requires_preparation"
+        print("GNU/Linux distribution, Termux, WSL, architecture and capability detection: PASS")
     return 0
 
 
