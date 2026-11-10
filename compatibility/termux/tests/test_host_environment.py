@@ -30,7 +30,7 @@ class DetectionTests(unittest.TestCase):
   self.assertEqual(x["profile"],"gnu_linux"); self.assertEqual(x["distribution"]["id"],"ubuntu")
   self.assertEqual(x["terminal"]["emulator"],"GNOME Terminal"); self.assertEqual(x["preflight_status"],"ready")
  def test_debian_distribution(self):
-  self.osr.write_text('NAME="Debian GNU/Linux"\\nID=debian\\nVERSION_ID="13"\\nPRETTY_NAME="Debian GNU/Linux 13"\\n')
+  self.osr.write_text('NAME="Debian GNU/Linux"\nID=debian\nVERSION_ID="13"\nPRETTY_NAME="Debian GNU/Linux 13"\n')
   x=detect_host_environment({},system="Linux",machine="x86_64",**self.kw)
   self.assertEqual(x["profile"],"gnu_linux")
   self.assertEqual(x["distribution"]["id"],"debian")
@@ -51,7 +51,7 @@ class DetectionTests(unittest.TestCase):
   self.assertTrue(x["profile_supported"])
  def test_container_cgroup_marker(self):
   cgroup=Path(self.tmp.name)/"cgroup"
-  cgroup.write_text("0::/docker/0123456789abcdef\\n")
+  cgroup.write_text("0::/docker/0123456789abcdef\n")
   x=detect_host_environment({},system="Linux",machine="x86_64",cgroup_path=cgroup,**{k:v for k,v in self.kw.items() if k!="cgroup_path"})
   self.assertEqual(x["environment_type"],"linux_container")
   self.assertEqual(x["container"],"docker")
