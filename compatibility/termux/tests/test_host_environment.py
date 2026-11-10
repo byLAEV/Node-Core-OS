@@ -10,15 +10,45 @@ class DetectionTests(unittest.TestCase):
   self.osr=Path(self.tmp.name)/"os-release"
   self.osr.write_text('NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\nPRETTY_NAME="Ubuntu 24.04 LTS"\n')
   self.commands={"bash","python3","tar","sha512sum","mkdir","cp","rm","mktemp","uname","awk","realpath","stat","id","find","grep","sed","nohup","curl","apt-get","pkg"}
-  self.kw=dict(os_release_path=self.osr,command_lookup=lambda c:"/usr/bin/"+c if c in self.commands else None,python_version=(3,12,1))
+  self.kw=dict(
+   os_release_path=self.osr,
+   proc_version_path=Path(self.tmp.name)/"missing-proc-version",
+   cgroup_path=Path(self.tmp.name)/"missing-cgroup",
+   container_marker_paths=(),
+   command_lookup=lambda c:"/usr/bin/"+c if c in self.commands else None,
+   python_version=(3,12,1),
+  )
  def tearDown(self): self.tmp.cleanup()
  def test_linux_distro_and_terminal(self):
   x=detect_host_environment({"TERM_PROGRAM":"GNOME Terminal","SHELL":"/bin/bash"},system="Linux",machine="x86_64",**self.kw)
   self.assertEqual(x["profile"],"gnu_linux"); self.assertEqual(x["distribution"]["id"],"ubuntu")
   self.assertEqual(x["terminal"]["emulator"],"GNOME Terminal"); self.assertEqual(x["preflight_status"],"ready")
+ def test_debian_distribution(self):
+  self.osr.write_text('NAME="Debian GNU/Linux"\\nID=debian\\nVERSION_ID="13"\\nPRETTY_NAME="Debian GNU/Linux 13"\\n')
+  x=detect_host_environment({},system="Linux",machine="x86_64",**self.kw)
+  self.assertEqual(x["profile"],"gnu_linux")
+  self.assertEqual(x["distribution"]["id"],"debian")
+  self.assertEqual(x["installer"]["entry_point"],"bash installer/install.sh")
  def test_termux(self):
   x=detect_host_environment({"TERMUX_VERSION":"0.118","PREFIX":"/data/data/com.termux/files/usr"},system="Linux",machine="aarch64",**self.kw)
   self.assertEqual(x["profile"],"termux"); self.assertEqual(x["package_manager"]["id"],"pkg")
+  self.assertEqual(x["installer"]["entry_point"],"bash installer/install.sh")
+ def test_termux_rejects_non_arm64(self):
+  x=detect_host_environment({"TERMUX_VERSION":"0.118","PREFIX":"/data/data/com.termux/files/usr"},system="Linux",machine="x86_64",**self.kw)
+  self.assertEqual(x["profile"],"termux")
+  self.assertFalse(x["supported_architecture"])
+  self.assertEqual(x["preflight_status"],"unsupported")
+ def test_container_environment_variable(self):
+  x=detect_host_environment({"container":"docker"},system="Linux",machine="x86_64",**self.kw)
+  self.assertEqual(x["environment_type"],"linux_container")
+  self.assertEqual(x["container"],"docker")
+  self.assertTrue(x["profile_supported"])
+ def test_container_cgroup_marker(self):
+  cgroup=Path(self.tmp.name)/"cgroup"
+  cgroup.write_text("0::/docker/0123456789abcdef\\n")
+  x=detect_host_environment({},system="Linux",machine="x86_64",cgroup_path=cgroup,**{k:v for k,v in self.kw.items() if k!="cgroup_path"})
+  self.assertEqual(x["environment_type"],"linux_container")
+  self.assertEqual(x["container"],"docker")
  def test_wsl(self):
   x=detect_host_environment({"WSL_DISTRO_NAME":"Ubuntu"},system="Linux",machine="x86_64",kernel_release="microsoft WSL2",**self.kw)
   self.assertEqual(x["environment_type"],"wsl")
