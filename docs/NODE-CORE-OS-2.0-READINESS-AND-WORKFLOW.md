@@ -157,3 +157,8 @@
 7. Release candidate: v2.0.0-rc.1 en entorno de prueba; luego release v2.0.0.
 
 Este documento describe el estado comprobado y el trabajo propuesto. No declara implementadas las capacidades que aún no tienen código y evidencia.
+
+
+## Priority execution register
+
+See [PR priority register and fastest safe path](NODE-CORE-OS-2.0-PRIORITY-REGISTER.md) for the current per-PR audit, concrete conflicts/errors, check results, release blockers, and ordered execution plan.
