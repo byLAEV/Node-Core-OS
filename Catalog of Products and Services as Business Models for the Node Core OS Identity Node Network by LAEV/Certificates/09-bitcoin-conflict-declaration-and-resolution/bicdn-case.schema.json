@@ -207,7 +207,8 @@
           "evidence_id",
           "description",
           "classification",
-          "digest"
+          "digest",
+          "access_policy"
         ],
         "properties": {
           "evidence_id": {
