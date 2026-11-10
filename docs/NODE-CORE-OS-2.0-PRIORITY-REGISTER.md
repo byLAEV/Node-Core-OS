@@ -1,6 +1,6 @@
 # Node Core OS byLAEV 2.0 — Priority register and fastest safe path
 
-**Audit timestamp:** 2026-11-09 20:46 America/Costa_Rica (UTC-06:00)  
+**Audit timestamp:** 2026-11-09 22:29 America/Mexico_City (UTC-06:00)  
 **Main baseline:** `2c2ef95521d60dfbdda05b2c55e1b80ac707bf03`  
 **Published baseline:** `v1.5.6`; repository `VERSION` remains `1.5.6`.  
 **Release decision:** 2.0 is **not ready to publish**.
@@ -11,7 +11,7 @@ This register prioritizes work by (a) blocking dependency, (b) amount of reusabl
 
 | Priority | Work item | Current evidence | Required result |
 |---|---|---|---|
-| **P0** | Finish PR #220 readiness control | Readiness audit job passes; 3 distro E2E jobs were still running at audit time | Finish checks, merge the audit/spec PR, keep release gate strict |
+| **P0** | Finish PR #220 readiness control | Readiness audit and all active CI workflows pass on head `2746c163`; Ubuntu 24.04, Debian 13 and Fedora 44 non-root E2E jobs pass; two suspended multi-VM workflows are skipped | Integrate the audit/spec PR; keep strict mode as the final release gate |
 | **P1** | Port PR #214 relay reliability fix | Targeted relay, two-node Kubo, Linux distro tests and packaging pass on old head; branch 4 commits behind | Rebase/port to latest main; targeted tests green on new SHA; integrate |
 | **P1** | Rebuild PR #217 as the real Lobby 2.0 foundation | 4 Python versions, static validation, installer E2E, Linux distro E2E, Termux Lobby CI and certificate catalog checks pass; physical Android job is skipped | Port to new main-based PRs, remove feature-ref and identity gate, add generic Linux support, device acceptance |
 | **P1** | Implement Lobby-to-core install and repair workflow | Existing core installer/updater are reusable; complete Lobby control path not present in main | Preflight → approved package preparation → core install (incl. Kubo) → certificates → launch/status/repair/update |
@@ -23,11 +23,11 @@ This register prioritizes work by (a) blocking dependency, (b) amount of reusabl
 ## B. Exact PR conflict/error register
 
 ### PR #220 — readiness audit and workflow
-- Head: `d831ac6b047bfa3250549a6a079b8df91c19c8e4`; base is current main; compare was 4 commits ahead and 0 behind.
+- Head: `2746c163ab8068378e4f2a141d389b3cc73813b1`; base is current main; compare is 6 commits ahead and 0 behind.
 - The readiness audit job passed. This is a **non-strict schema/evidence audit**, not proof that the product meets 2.0 acceptance.
-- At audit time the Ubuntu 24.04, Debian 13 and Fedora 44 non-root install/update/uninstall jobs were still in progress.
+- Current validation on this exact head: the readiness audit, Web2 acceptance report, certificate adversarial tests, native Linux P2P E2E, user-only Kubo integration, installer packaging, GNU/Linux terminal CI, BIOS release packaging, and Ubuntu installer E2E all completed successfully. The Ubuntu 24.04, Debian 13 and Fedora 44 non-root install/update/uninstall jobs also completed successfully.
 - Ubuntu installer, GNU/Linux terminal, package build, certificate adversarial tests, Web2 report and two-node Kubo jobs had completed successfully.
-- Several suspended cross-VM jobs were skipped. Those skips must not be reported as successful executions.
+- The two suspended three-node cross-VM workflows were skipped. Those skips are not passes and remain outside the evidence claim.
 - **Action:** wait for the 3 distro jobs, review the resulting head SHA, then merge this documentation/control PR only when every applicable check on the exact head finishes satisfactorily. Keep strict mode for final release authorization.
 
 ### PR #214 — relay persistence and signed receipt timeout
