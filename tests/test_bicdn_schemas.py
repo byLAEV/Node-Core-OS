@@ -20,7 +20,7 @@ CERTIFICATE_DIR = (
     / "Certificates"
     / "09-bitcoin-conflict-declaration-and-resolution"
 )
-FORMAT_CHECKER = FormatChecker()
+FORMAT_CHECKER = FormatChecker() if FormatChecker is not None else None
 
 
 def load_json(path: Path):
