@@ -52,3 +52,10 @@ See the [Eight-Certificate Audit and CI Index](./AUDIT-AND-CI-INDEX.md) for work
 - [Certificate adversarial tests #40500173588](https://github.com/byLAEV/Node-Core-OS/actions/runs/40500173588) — successful for catalog PR head `a3ed04eb22deee5d4488d28dd7dd359d7bb77e0b`; not proof of eight dedicated product suites.
 - [Web2 acceptance report #40500173557](https://github.com/byLAEV/Node-Core-OS/actions/runs/40500173557) — 36 synthetic tests passed; volumetric DDoS and production deployment are explicitly outside scope.
 - [Shield comparative campaign plan](https://github.com/byLAEV/Node-Core-OS/blob/main/docs/shield/COMPARATIVE-GITHUB-ACTIONS-PLAN.md) — full A/B campaign remains NOT RUN / NOT COMPARABLE.
+
+
+## Separate BICDN application-level certificate proposal
+
+BICDN-01 (`bitcoin-conflict-declaration`) is intentionally outside the eight node-identity security profiles. Its proposed schemas and requirements are located in [Certificates/09-bitcoin-conflict-declaration-and-resolution](./Certificates/09-bitcoin-conflict-declaration-and-resolution/README.md).
+
+No BICDN-specific executable test suite or production implementation is included in this documentation change. Existing node identity envelope tests do not establish BICDN form validation, anonymous intake, legal confidentiality, jurisdiction handling, institutional integration, or distributed synchronization.

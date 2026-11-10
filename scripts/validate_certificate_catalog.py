@@ -123,6 +123,7 @@ def main() -> int:
             if not (BICDN_DIR / name).is_file():
                 errors.append(f"missing BICDN file: {name}")
         try:
+            import json
             for name in ("bicdn-case.schema.json", "bicdn-contribution.schema.json", "examples/anonymous-legal-contact-request.json"):
                 with (BICDN_DIR / name).open(encoding="utf-8") as handle:
                     json.load(handle)
@@ -137,8 +138,9 @@ def main() -> int:
         return 1
 
     print("Certificate catalog integrity: PASS")
-    print(f"- {len(PRODUCTS)} profiles align with the implementation and catalog index")
-    print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} per-product documentation files exist under Certificates/")
+    print(f"- {len(PRODUCTS)} node-identity profiles align with the implementation and catalog index")
+    print("- BICDN proposal documents and JSON files are present and parseable")
+    print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} security-profile documentation files exist under Certificates/")
     print(f"- {len(SHARED)} shared catalog documents exist")
     print("- Lobby technical certificate inventory and eight security profiles match the canonical product catalog")
     print("- This is a documentation consistency check, not a security effectiveness test")

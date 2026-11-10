@@ -81,7 +81,12 @@ def detect_environment(
     prefix = env_values.get("PREFIX", "")
     termux_marker = bool(env_values.get("TERMUX_VERSION") and prefix)
     termux_pkg = bool(lookup("pkg") or (prefix and (Path(prefix) / "bin" / "pkg").is_file()))
-    is_termux = active_system == "Linux" and termux_marker
+    # Termux reports either Linux or Android depending on the Python build.
+    # Require both Termux markers and its native package manager; plain Android
+    # must remain unsupported.
+    is_termux = termux_marker and (
+        active_system == "Linux" or (active_system == "Android" and termux_pkg)
+    )
     family = "termux" if is_termux else ("gnu_linux" if active_system == "Linux" else "unsupported")
     architecture = normalize_architecture(active_machine)
 
@@ -100,6 +105,9 @@ def detect_environment(
     distro_id = os_release.get("ID", "").lower()
     if not libc_name and distro_id == "alpine":
         libc_name = "musl"
+    if active_system == "Android" and not libc_name:
+        # Android uses Bionic; platform.libc_ver() often returns an empty name.
+        libc_name = "bionic"
     libc_name = libc_name or "unknown"
 
     uid = current_uid

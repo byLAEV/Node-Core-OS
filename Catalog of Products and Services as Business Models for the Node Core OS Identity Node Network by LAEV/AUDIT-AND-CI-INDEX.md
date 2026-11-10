@@ -110,3 +110,13 @@ See [Certificate Profiles — Evidence-Based Audit Snapshot](../docs/CERTIFICATE
 - [Catalog integrity run](https://github.com/byLAEV/Node-Core-OS/actions/runs/40623347474): SUCCESS on the audited commit.
 - [Certificate adversarial tests](https://github.com/byLAEV/Node-Core-OS/actions/runs/40623347487): SUCCESS on the audited commit; synthetic bounded test scope only.
 - [Three-node Kubo/P2P integration](https://github.com/byLAEV/Node-Core-OS/actions/runs/40622724911): SUCCESS on an earlier commit; cross-VM jobs were skipped and are not counted as passes.
+
+
+## Separate application-level certificate proposal — BICDN-01
+
+[BICDN Bitcoin Conflict Declaration and Resolution Certificate](./Certificates/09-bitcoin-conflict-declaration-and-resolution/README.md) is a separate application-level case credential proposal. It is not a ninth node-identity security assessment profile and is not added to the node identity certificate allowlist.
+
+- Scope: declaration form, append-only case events, anonymous contributions, jurisdiction relationships, institutional receipts/responses, confidential legal-contact requests, and external resolution access.
+- Added artifacts: service specification, two JSON Schemas, synthetic legal-contact example, evidence/testing guide, and traceability record.
+- Evidence status: documentation/schema proposal only. No BICDN issuance, anonymous ingress, encrypted storage service, institutional adapter, distributed case ledger, or resolution engine is implemented by this change.
+- Required next step: implement and test the application-level BICDN envelope and services independently; do not reuse node identity profile tests as evidence of BICDN behavior.

@@ -1,6 +1,6 @@
 # Certificates
 
-This directory contains the eight separate Node Core OS byLAEV certificate product profiles. The product folders retain their individual specifications, evidence guides, and test traceability documents.
+This directory contains eight Node Core OS security-assessment certificate products and the separate BICDN conflict-declaration certificate proposal. The product folders retain their individual specifications, evidence guides, and test traceability documents.
 
 ## Certificate products
 
@@ -12,6 +12,8 @@ This directory contains the eight separate Node Core OS byLAEV certificate produ
 6. [Availability and DDoS Resilience](./06-availability-and-ddos-resilience/README.md) — `availability-ddos-resistance`
 7. [IPFS Content Integrity](./07-ipfs-content-integrity/README.md) — `ipfs-content-integrity`
 8. [Privilege Control and Pool Isolation](./08-privilege-control-and-pool-isolation/README.md) — `privilege-and-pool-isolation`
+
+9. [Bitcoin Conflict Declaration and Resolution Certificate](./09-bitcoin-conflict-declaration-and-resolution/README.md) — `bitcoin-conflict-declaration` (proposed application-level case credential; not a node identity profile)
 
 ## Evidence and status
 
