@@ -102,7 +102,7 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertIn("Nationality: Costa Rican", displayed)
         self.assertIn("Issuing country: Costa Rica", displayed)
         self.assertIn("Document type: National identity document", displayed)
-        self.assertIn("Document number: ********0001", displayed)
+        self.assertRegex(displayed, r"Document number: \*+0001")
         self.assertNotIn("SYNTHETIC-TEST-0001", displayed)
         self.assertIn("Date of birth: 12/05/1990", displayed)
         self.assertIn("Height: 178 cm", displayed)
@@ -122,11 +122,19 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertEqual(profile["birth_date"], "1990-05-12")
         self.assertEqual(profile["height_cm"], 178)
 
-    def test_birth_date_and_height_are_required(self):
-        with self.assertRaisesRegex(ValueError, "Date of birth"):
-            self.store.save_declared_profile(full_name="Sample Person", birth_date="", height_cm=178)
-        with self.assertRaisesRegex(ValueError, "Height"):
-            self.store.save_declared_profile(full_name="Sample Person", birth_date="12/05/1990", height_cm="")
+    def test_general_profile_store_preserves_legacy_optional_birth_date_and_height(self):
+        profile = self.store.save_declared_profile(full_name="Sample Person")
+        self.assertEqual(profile["birth_date"], "")
+        self.assertIsNone(profile["height_cm"])
+
+    def test_document_number_and_nationality_remain_optional(self):
+        profile = self.store.save_declared_profile(
+            full_name="Sample Person",
+            birth_date="12/05/1990",
+            height_cm=178,
+        )
+        self.assertEqual(profile["document_number"], "")
+        self.assertEqual(profile["nationality"], "")
 
     def test_profile_rejects_private_key_material(self):
         self.save_sample()
@@ -155,6 +163,7 @@ class IdentityProfileStoreTests(unittest.TestCase):
                 issuing_country="Costa Rica",
                 document_type="National identity document",
                 document_number="SYNTHETIC-TEST-0001",
+                birth_date="1990-05-12",
                 height_cm="not-a-number",
             )
 

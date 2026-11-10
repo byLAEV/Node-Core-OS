@@ -56,7 +56,9 @@ class IdentityProfileStore:
         """Save declared fields locally, preserving values omitted during an edit.
 
         None means "not supplied; preserve the previous value". An empty string
-        explicitly clears an optional text field. Required fields cannot be empty.
+        explicitly clears an optional text field. Full name is required. Date of
+        birth and height remain optional in this general-purpose store for backward
+        compatibility; the first-install Lobby enforces both before installation.
         This method does not verify the truth of any user-entered value.
         """
         previous = self.load()
@@ -81,24 +83,23 @@ class IdentityProfileStore:
         }
         if not normalized["full_name"] or len(normalized["full_name"].split()) < 2:
             raise ValueError("Full name and at least one surname are required.")
-        if not normalized["birth_date"]:
-            raise ValueError("Date of birth is required.")
         birth_text = normalized["birth_date"]
-        if "/" in birth_text:
-            try:
-                parsed_birth_date = datetime.strptime(birth_text, "%d/%m/%Y").date()
-            except ValueError as exc:
-                raise ValueError("Birth date must be valid in DD/MM/YYYY format.") from exc
-            normalized["birth_date"] = parsed_birth_date.isoformat()
-        else:
-            try:
-                parsed_birth_date = date.fromisoformat(birth_text)
-            except ValueError as exc:
-                raise ValueError("Birth date must be DD/MM/YYYY or YYYY-MM-DD.") from exc
-            if parsed_birth_date.isoformat() != birth_text:
-                raise ValueError("Birth date format is invalid.")
-        if parsed_birth_date > date.today():
-            raise ValueError("Birth date cannot be in the future.")
+        if birth_text:
+            if "/" in birth_text:
+                try:
+                    parsed_birth_date = datetime.strptime(birth_text, "%d/%m/%Y").date()
+                except ValueError as exc:
+                    raise ValueError("Birth date must be valid in DD/MM/YYYY format.") from exc
+                normalized["birth_date"] = parsed_birth_date.isoformat()
+            else:
+                try:
+                    parsed_birth_date = date.fromisoformat(birth_text)
+                except ValueError as exc:
+                    raise ValueError("Birth date must be DD/MM/YYYY or YYYY-MM-DD.") from exc
+                if parsed_birth_date.isoformat() != birth_text:
+                    raise ValueError("Birth date format is invalid.")
+            if parsed_birth_date > date.today():
+                raise ValueError("Birth date cannot be in the future.")
 
         if height_cm is None:
             parsed_height = previous.get("height_cm")
@@ -109,9 +110,7 @@ class IdentityProfileStore:
                 parsed_height = int(str(height_cm).strip())
             except ValueError as exc:
                 raise ValueError("Height must be a whole number of centimeters.") from exc
-        if parsed_height is None:
-            raise ValueError("Height in centimeters is required.")
-        if not 1 <= parsed_height <= 300:
+        if parsed_height is not None and not 1 <= parsed_height <= 300:
             raise ValueError("Height must be between 1 and 300 centimeters.")
 
         now = self._now()
