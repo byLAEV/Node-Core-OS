@@ -57,7 +57,7 @@ class DetectionTests(unittest.TestCase):
   self.assertEqual(x["container"],"docker")
  def test_container_marker_paths_have_string_labels(self):
   marker=Path(self.tmp.name)/".dockerenv"; marker.touch()
-  x=detect_host_environment({},system="Linux",machine="x86_64",container_marker_paths=((marker,"docker"),),**self.kw)
+  x=detect_host_environment({},system="Linux",machine="x86_64",container_marker_paths=((marker,"docker"),),**{k:v for k,v in self.kw.items() if k!="container_marker_paths"})
   self.assertEqual(x["container"],"docker")
   self.assertIsInstance(x["container"],str)
  def test_wsl(self):
