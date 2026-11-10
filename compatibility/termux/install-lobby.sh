@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
 
@@ -10,7 +10,7 @@ Usage:
   bash compatibility/termux/install-lobby.sh [--yes]
 
 Options:
-  --yes   Approve installation of the missing openssl-tool package.
+  --yes   Approve installation of the missing OpenSSL package on Termux.
 EOF
 }
 
@@ -27,8 +27,8 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 info() { printf '[LOBBY INSTALL] %s\n' "$*"; }
 warn() { printf '[LOBBY INSTALL] WARNING: %s\n' "$*" >&2; }
 
-if [[ -z "${PREFIX:-}" || "$PREFIX" != /data/data/com.termux/files/usr ]]; then
-  fail "This installer must run inside native Termux."
+if [[ "$(uname -s)" != "Linux" ]]; then
+  fail "The Lobby currently supports Linux terminal environments only."
 fi
 if [[ "$(id -u)" == "0" ]]; then
   fail "Do not run this installer as root."
@@ -36,9 +36,14 @@ fi
 [[ -n "${HOME:-}" && -d "$HOME" ]] || fail "HOME is missing or unavailable."
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+HOST_MODULE="$SOURCE/lobby/host_environment.py"
 SOURCE="$ROOT/compatibility/termux"
 DEST="$HOME/.node-core/lobby"
-SHORTCUTS="$HOME/.shortcuts"
+if [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
+  SHORTCUTS="$HOME/.shortcuts"
+else
+  SHORTCUTS="$HOME/.local/bin"
+fi
 SHORTCUT="$SHORTCUTS/node-core-lobby"
 PORT=8765
 
@@ -46,6 +51,7 @@ for file in \
   "$SOURCE/lobby/server.py" \
   "$SOURCE/lobby/certificate_manager.py" \
   "$SOURCE/lobby/bitcoin_identity.py" \
+  "$SOURCE/lobby/host_environment.py" \
   "$SOURCE/lobby/certificates/catalog.json" \
   "$ROOT/installer/layout-manifest.json" \
   "$SOURCE/lobby/launcher.sh" \
@@ -58,11 +64,18 @@ done
 command -v python >/dev/null 2>&1 || fail "Python is required. Run: pkg install python"
 command -v curl >/dev/null 2>&1 || fail "curl is required. Run: pkg install curl"
 command -v bash >/dev/null 2>&1 || fail "Bash is required."
-command -v pkg >/dev/null 2>&1 || fail "Termux package manager 'pkg' was not found."
+if [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
+  command -v pkg >/dev/null 2>&1 || fail "Termux package manager pkg was not found."
+fi
+command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1 || fail "Python 3 is required."
 
-if ! python -c 'import cryptography' >/dev/null 2>&1; then
-  info "Installing the required Termux Python cryptography package."
-  pkg install -y python-cryptography || fail "Could not install python-cryptography."
+if ! python3 -c 'import cryptography' >/dev/null 2>&1 && ! python -c 'import cryptography' >/dev/null 2>&1; then
+  if [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
+    info "Installing the required Termux Python cryptography package."
+    pkg install -y python-cryptography || fail "Could not install python-cryptography."
+  else
+    fail "Python cryptography is required. Install it using your distribution policy before installing the Lobby."
+  fi
 fi
 
 # Never follow an unexpected symlink into an existing user data directory.
@@ -83,10 +96,10 @@ if ! command -v openssl >/dev/null 2>&1; then
     read -r answer
     case "$answer" in y|Y|yes|YES) install_openssl=1 ;; esac
   fi
-  if (( install_openssl )); then
+  if (( install_openssl )) && [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
     pkg install openssl-tool -y || warn "Package installation failed; the server will use HTTP loopback fallback."
   else
-    warn "Skipped OpenSSL installation. Install later with: pkg install openssl-tool"
+    warn "OpenSSL is unavailable. Install it with the native package manager for this environment; HTTP loopback fallback will be used."
   fi
 fi
 
@@ -101,6 +114,7 @@ TARGETS=(
   "$DEST/server.py"
   "$DEST/certificate_manager.py"
   "$DEST/bitcoin_identity.py"
+  "$DEST/host_environment.py"
   "$DEST/certificates/catalog.json"
   "$DEST/manifests/layout-manifest.json"
   "$DEST/web/index.html"
@@ -112,6 +126,7 @@ SOURCES=(
   "$SOURCE/lobby/server.py"
   "$SOURCE/lobby/certificate_manager.py"
   "$SOURCE/lobby/bitcoin_identity.py"
+  "$SOURCE/lobby/host_environment.py"
   "$SOURCE/lobby/certificates/catalog.json"
   "$ROOT/installer/layout-manifest.json"
   "$SOURCE/lobby/web/index.html"
@@ -143,7 +158,7 @@ cleanup() {
 trap cleanup EXIT
 
 info "Checking Python syntax before installation."
-python -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); ast.parse((root/"server.py").read_text(encoding="utf-8")); ast.parse((root/"certificate_manager.py").read_text(encoding="utf-8")); ast.parse((root/"bitcoin_identity.py").read_text(encoding="utf-8")); json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager, Bitcoin identity module or certificate catalog validation failed."
+python3 -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); [ast.parse((root/name).read_text(encoding="utf-8")) for name in ("server.py","certificate_manager.py","bitcoin_identity.py","host_environment.py")]; json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager, Bitcoin identity module or certificate catalog validation failed."
 
 info "Staging Lobby files."
 for i in "${!TARGETS[@]}"; do
@@ -171,8 +186,27 @@ chmod 700 "$DEST" "$DEST/web" "$DEST/certificates" "$DEST/manifests"
 chmod 600 "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/bitcoin_identity.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
 
 info "Validating the installed server configuration."
-python "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
+python3 "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
 
+info "Recording the Linux terminal environment used for this Lobby installation."
+python3 "$DEST/host_environment.py" --snapshot > "$STAGE/host-environment.json" || fail "Could not detect the Linux installation environment."
+python3 - "$STAGE/host-environment.json" "$DEST/host-environment.json" <<'PY'
+import json, os, pathlib, sys, tempfile
+source, target = map(pathlib.Path, sys.argv[1:])
+payload = json.loads(source.read_text(encoding="utf-8"))
+if payload["host"]["preflight_status"] != "ready":
+    raise SystemExit("The current Linux environment does not meet Lobby compatibility prerequisites: " + ", ".join(payload["host"]["missing_capabilities"]))
+target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+fd, temporary = tempfile.mkstemp(prefix=".host-environment.", dir=target.parent)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as output:
+        json.dump(payload, output, indent=2, sort_keys=True)
+        output.write("\\n")
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, target)
+finally:
+    if os.path.exists(temporary): os.unlink(temporary)
+PY
 info "Lobby files staged and configuration validated."
 info "Existing server.json, certificates, logs and PID state were preserved."
 info "Starting/restarting the local Lobby service."
@@ -191,3 +225,5 @@ fi
 
 COMMITTED=1
 info "Installation complete. No Node Core OS install/update/repair operation was executed."
+info "Detected environment saved at ~/.node-core/lobby/host-environment.json"
+info "Lobby launcher: $SHORTCUT"
