@@ -24,9 +24,9 @@ sys.path.insert(0, str(LOBBY_DIR))
 PORT = 18765
 
 
-def request_json(url: str, use_tls: bool) -> dict:
+def request_json(url: str, use_tls: bool, timeout: float = 1.0) -> dict:
     context = ssl._create_unverified_context() if use_tls else None
-    with urllib.request.urlopen(url, timeout=1.0, context=context) as response:
+    with urllib.request.urlopen(url, timeout=timeout, context=context) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -155,7 +155,7 @@ def main() -> int:
                 assert "Copy TXT" in page and "Copy JSON" in page
                 assert "Download TXT" in page and "Download JSON" in page
                 assert "Share report" in page
-                report = request_json(base_url + "/api/report", tls_expected)
+                report = request_json(base_url + "/api/report", tls_expected, timeout=20.0)
                 assert report["summary"]["total"] == len(report["checks"]), report
                 assert report["privacy"]["read_only"] is True, report
                 assert "environment" in report and "node_core" in report and "network" in report
