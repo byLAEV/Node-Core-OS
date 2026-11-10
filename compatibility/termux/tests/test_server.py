@@ -319,7 +319,8 @@ def main() -> int:
                     assert local_verified["status"] == "verified", local_verified
                     assert local_verified["identity"]["address"] == address, local_verified
                     assert local_verified["identity"]["full_name"] == "Synthetic Local Key Identity"
-                    assert local_verified["identity"]["document_number_masked"] == "********0002", local_verified
+                    expected_mask = "*" * (len("SYNTHETIC-LOCAL-0002") - 4) + "0002"
+                    assert local_verified["identity"]["document_number_masked"] == expected_mask, local_verified
                     assert local_verified["identity"]["installation_gate_ready"] is True, local_verified
                     pending_text = pending_file.read_text(encoding="utf-8")
                     assert local_key_hex not in pending_text
