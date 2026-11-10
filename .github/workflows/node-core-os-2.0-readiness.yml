@@ -7,6 +7,7 @@ on:
       - "docs/NODE-CORE-OS-2.0-READINESS-AND-WORKFLOW.md"
       - "release/2.0.0-readiness.json"
       - "scripts/audit_release_2_0.py"
+      - "tests/test_release_2_0_readiness.py"
       - ".github/workflows/node-core-os-2.0-readiness.yml"
   push:
     branches: [main]
@@ -40,6 +41,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Test evidence validation and tamper rejection
+        run: |
+          set -euo pipefail
+          python3 tests/test_release_2_0_readiness.py
 
       - name: Validate readiness contract and produce report
         id: audit
