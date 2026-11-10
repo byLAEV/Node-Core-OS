@@ -72,7 +72,7 @@ jobs:
       - name: Validate Python sources
         run: |
           set -euo pipefail
-          python -m compileall -q main.py node_core tests
+          python -m compileall -q main.py node_core tests ci/linux/real_multi_node_mesh.py
 
       - name: Validate installer shell syntax
         run: |

@@ -1,0 +1,124 @@
+name: Node Core OS — Real Linux 20–100 node full-mesh synchronization
+on:
+  push:
+    branches:
+      - "feat/real-linux-100-200-node-mesh"
+    paths:
+      - ".github/workflows/real-linux-multi-node-mesh.yml"
+      - "ci/linux/real_multi_node_mesh.py"
+      - "docs/REAL-LINUX-MULTI-NODE-MESH.md"
+  pull_request:
+    paths:
+      - ".github/workflows/real-linux-multi-node-mesh.yml"
+      - "ci/linux/real_multi_node_mesh.py"
+      - "docs/REAL-LINUX-MULTI-NODE-MESH.md"
+  workflow_dispatch:
+    inputs:
+      node_count:
+        description: Independent Ubuntu 24.04 Linux VMs
+        required: true
+        type: choice
+        options: ["20", "50", "100"]
+        default: "20"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate mesh participant Python syntax
+        run: python3 -m py_compile ci/linux/real_multi_node_mesh.py
+
+  prepare:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.nodes }}
+      count: ${{ steps.matrix.outputs.count }}
+    steps:
+      - id: matrix
+        env:
+          NODE_COUNT: ${{ inputs.node_count }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          n=int(os.environ["NODE_COUNT"])
+          if n not in (20,50,100): raise SystemExit("Unsupported node count")
+          print("nodes="+json.dumps(list(range(n))))
+          print("count="+str(n))
+          PY
+  nodes:
+    if: github.event_name == 'workflow_dispatch'
+    needs: prepare
+    name: Independent Linux node ${{ matrix.node }} / ${{ needs.prepare.outputs.count }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 100
+      matrix:
+        node: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      NODE_CORE_HOME: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}
+      NODE_CORE_DATA_DIR: ${{ runner.temp }}/node-core-${{ github.run_id }}-${{ matrix.node }}/.node-core
+    steps:
+      - name: Verify independent Linux VM and non-root user
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID" = ubuntu && test "$VERSION_ID" = "24.04"
+          test "$(uname -s)" = Linux && test "$(id -u)" -ne 0
+          mkdir -p "$NODE_CORE_HOME"
+          printf 'node=%s\nrunner=%s\nuid=%s\nos=%s\nhostname=%s\n' \
+            "${{ matrix.node }}" "$RUNNER_NAME" "$(id -u)" "$PRETTY_NAME" "$(hostname)" \
+            | tee "$RUNNER_TEMP/linux-node-identity.txt"
+      - name: Checkout Node Core OS
+        uses: actions/checkout@v4
+      - name: Join ephemeral private Tailscale network
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:node-core-ci
+          hostname: ncore-${{ github.run_id }}-${{ matrix.node }}
+          version: "1.104.5"
+      - name: Verify private Tailscale interface
+        run: |
+          set -euo pipefail
+          tailscale status
+          test -n "$(tailscale ip -4)"
+      - name: Install Node Core OS as normal Linux user
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          chmod +x installer/install.sh installer/uninstall.sh installer/lib/*.sh
+          bash installer/install.sh
+          test -d "$NODE_CORE_DATA_DIR/app"
+          test -x "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python"
+          test "$(stat -c %u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
+          test -z "$(find "$NODE_CORE_DATA_DIR" -xdev -uid 0 -print -quit)"
+      - name: Run real native Node Core OS P2P participant
+        env:
+          NODE_INDEX: ${{ matrix.node }}
+          NODE_COUNT: ${{ needs.prepare.outputs.count }}
+          MESH_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          export PYTHONPATH="$NODE_CORE_DATA_DIR/app"
+          "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m py_compile ci/linux/real_multi_node_mesh.py
+          "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" \
+            ci/linux/real_multi_node_mesh.py \
+            --index "$NODE_INDEX" --count "$NODE_COUNT" --run-id "$MESH_RUN_ID"
+      - name: Upload per-node evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-real-linux-node-${{ matrix.node }}
+          path: |
+            ${{ runner.temp }}/node-core-mesh-evidence/
+            ${{ runner.temp }}/linux-node-identity.txt
+          if-no-files-found: warn
+          retention-days: 30
