@@ -31,6 +31,7 @@ if root.is_symlink() or (root.exists() and not root.is_dir()):
     raise SystemExit(f"Unsafe Node Core OS root: {root}")
 if not root.exists():
     root.mkdir(mode=0o700)
+os.chmod(root, 0o700)
 
 for entry in data.get("directories", []):
     if entry.get("provisioner") != "node-core-installer":
