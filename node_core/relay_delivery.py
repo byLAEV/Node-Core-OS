@@ -114,7 +114,7 @@ def persist_and_sign_receipt(
                 raise RuntimeError("run_id already exists with different content; refusing overwrite.")
             stored = existing
         else:
-            encoded = canonical_json_bytes(stored) + b"\\n"
+            encoded = canonical_json_bytes(stored) + b"\n"
             fd, temporary = tempfile.mkstemp(
                 prefix=f".{run_id}-", suffix=".tmp", dir=inbox
             )
