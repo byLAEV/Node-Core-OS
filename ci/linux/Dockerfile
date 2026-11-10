@@ -6,14 +6,14 @@ USER root
 RUN set -eux; \
     if command -v apt-get >/dev/null 2>&1; then \
       apt-get -o Acquire::Retries=3 update; \
-      if ! DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
+      if ! DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install --no-upgrade -y --no-install-recommends \
         bash ca-certificates curl wget tar coreutils findutils grep gawk git \
         python3 python3-venv python3-pip python3-dev build-essential \
         libssl-dev libffi-dev procps util-linux; then \
         echo 'APT package index may have changed during download; refreshing once and retrying.' >&2; \
         rm -rf /var/lib/apt/lists/*; \
         apt-get -o Acquire::Retries=3 update; \
-        DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install -y --no-install-recommends \
+        DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 install --no-upgrade -y --no-install-recommends \
           bash ca-certificates curl wget tar coreutils findutils grep gawk git \
           python3 python3-venv python3-pip python3-dev build-essential \
           libssl-dev libffi-dev procps util-linux; \
