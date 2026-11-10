@@ -36,7 +36,6 @@ fi
 [[ -n "${HOME:-}" && -d "$HOME" ]] || fail "HOME is missing or unavailable."
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-HOST_MODULE="$SOURCE/lobby/host_environment.py"
 SOURCE="$ROOT/compatibility/termux"
 DEST="$HOME/.node-core/lobby"
 if [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
@@ -61,15 +60,16 @@ for file in \
   [[ -f "$file" && ! -L "$file" ]] || fail "Required source file is missing or is a symlink: $file"
 done
 
-command -v python >/dev/null 2>&1 || fail "Python is required. Run: pkg install python"
+PYTHON="$(command -v python3 || command -v python || true)"
+[[ -n "$PYTHON" ]] || fail "Python 3 is required."
 command -v curl >/dev/null 2>&1 || fail "curl is required. Run: pkg install curl"
 command -v bash >/dev/null 2>&1 || fail "Bash is required."
 if [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
   command -v pkg >/dev/null 2>&1 || fail "Termux package manager pkg was not found."
 fi
-command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1 || fail "Python 3 is required."
 
-if ! python3 -c 'import cryptography' >/dev/null 2>&1 && ! python -c 'import cryptography' >/dev/null 2>&1; then
+
+if ! "$PYTHON" -c 'import cryptography' >/dev/null 2>&1; then
   if [[ -n "${TERMUX_VERSION:-}" && "${PREFIX:-}" == /data/data/com.termux/files/usr ]]; then
     info "Installing the required Termux Python cryptography package."
     pkg install -y python-cryptography || fail "Could not install python-cryptography."
@@ -158,7 +158,7 @@ cleanup() {
 trap cleanup EXIT
 
 info "Checking Python syntax before installation."
-python3 -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); [ast.parse((root/name).read_text(encoding="utf-8")) for name in ("server.py","certificate_manager.py","bitcoin_identity.py","host_environment.py")]; json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager, Bitcoin identity module or certificate catalog validation failed."
+"$PYTHON" -c 'import ast,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); [ast.parse((root/name).read_text(encoding="utf-8")) for name in ("server.py","certificate_manager.py","bitcoin_identity.py","host_environment.py")]; json.loads((root/"certificates/catalog.json").read_text(encoding="utf-8"))' "$SOURCE/lobby" || fail "Lobby server, certificate manager, Bitcoin identity module or certificate catalog validation failed."
 
 info "Staging Lobby files."
 for i in "${!TARGETS[@]}"; do
@@ -186,11 +186,11 @@ chmod 700 "$DEST" "$DEST/web" "$DEST/certificates" "$DEST/manifests"
 chmod 600 "$DEST/server.py" "$DEST/certificate_manager.py" "$DEST/bitcoin_identity.py" "$DEST/certificates/catalog.json" "$DEST/web/index.html" "$DEST/web/manifest.webmanifest" "$DEST/web/icon.svg"
 
 info "Validating the installed server configuration."
-python3 "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
+"$PYTHON" "$DEST/server.py" --check >/dev/null || fail "Installed server configuration validation failed."
 
 info "Recording the Linux terminal environment used for this Lobby installation."
-python3 "$DEST/host_environment.py" --snapshot > "$STAGE/host-environment.json" || fail "Could not detect the Linux installation environment."
-python3 - "$STAGE/host-environment.json" "$DEST/host-environment.json" <<'PY'
+"$PYTHON" "$DEST/host_environment.py" --snapshot > "$STAGE/host-environment.json" || fail "Could not detect the Linux installation environment."
+"$PYTHON" - "$STAGE/host-environment.json" "$DEST/host-environment.json" <<'PY'
 import json, os, pathlib, sys, tempfile
 source, target = map(pathlib.Path, sys.argv[1:])
 payload = json.loads(source.read_text(encoding="utf-8"))
