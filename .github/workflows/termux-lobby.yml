@@ -110,6 +110,7 @@ jobs:
         run: |
           python compatibility/termux/tests/test_release_metadata.py
           python compatibility/termux/tests/test_certificate_manager.py
+          python compatibility/termux/tests/test_host_environment.py
           python compatibility/termux/tests/test_server.py compatibility/termux/lobby/server.py
 
   installer-package-validation:
