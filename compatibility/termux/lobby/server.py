@@ -1323,9 +1323,6 @@ def _run_official_installer(job_id, kind, root, work, expected_version):
 def start_official_installer(kind):
     if kind not in ("install", "update"):
         raise ValueError("Installer operation must be install or update.")
-    compatibility = installation_compatibility()
-    if not compatibility["compatible"]:
-        raise ValueError(compatibility["message"] + " " + compatibility["current"].get("preflight_status", "unknown"))
     if os.getuid() == 0:
         raise ValueError("The official installer must run as the unprivileged Termux user.")
     node = detect_node_core()
@@ -1342,6 +1339,9 @@ def start_official_installer(kind):
                 "First installation is locked. Complete the required local profile and "
                 "64-character Bitcoin HEX private-key proof in the Lobby first."
             )
+    compatibility = installation_compatibility()
+    if not compatibility["compatible"]:
+        raise ValueError(compatibility["message"] + " " + compatibility["current"].get("preflight_status", "unknown"))
     if kind == "update" and not node["installed"]:
         raise ValueError("Update requires a complete detected Node Core OS installation.")
     if kind == "update":
