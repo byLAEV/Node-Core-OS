@@ -75,6 +75,7 @@ jobs:
         run: |
           bash installer/tests/update-preservation.sh
           bash installer/tests/termux-update-preservation.sh
+          bash installer/tests/unsupported-architecture-guard.sh
       - name: Upload static validation logs
         if: always()
         uses: actions/upload-artifact@v4
