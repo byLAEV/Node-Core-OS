@@ -53,6 +53,7 @@ class NodePeerService:
         rsa_identity_store: NodeRSAIdentityStore | None = None,
         trusted_rsa_public_keys: Mapping[str, bytes] | None = None,
         on_message: MessageHandler | None = None,
+        message_timeout_seconds: float = 30.0,
     ) -> None:
         if not trusted_peers:
             raise ValueError("At least one explicitly trusted peer is required.")
@@ -60,6 +61,8 @@ class NodePeerService:
             raise ValueError("port must be between 0 and 65535.")
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be greater than zero.")
+        if message_timeout_seconds <= 0:
+            raise ValueError("message_timeout_seconds must be greater than zero.")
         for node_id, certificate in trusted_peers.items():
             if not isinstance(node_id, str) or not node_id.startswith("sha256:"):
                 raise ValueError("Every trusted peer must have a sha256 node ID.")
@@ -71,6 +74,7 @@ class NodePeerService:
         self.host = host
         self.port = port
         self.timeout_seconds = timeout_seconds
+        self.message_timeout_seconds = message_timeout_seconds
         self.on_peer = on_peer
         self.rsa_identity_store = rsa_identity_store
         self.trusted_rsa_public_keys = dict(trusted_rsa_public_keys or {})
@@ -493,6 +497,9 @@ class NodePeerService:
                     self.identity_store, self.tls_transport, expected_peer_node_id,
                     timeout_seconds=self.timeout_seconds,
                 ).establish(tls_socket, "initiator")
+                # RSA decryption and signed receipt generation happen on the remote
+                # peer; allow that application work more time than TCP/TLS setup.
+                tls_socket.settimeout(self.message_timeout_seconds)
                 send_application_message(tls_socket, envelope)
                 ack = receive_application_message(tls_socket)
                 if not verify_ack(
