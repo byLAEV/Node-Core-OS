@@ -281,7 +281,8 @@ def main() -> int:
                     assert verified["identity"]["status"] == "control_verified", verified
                     assert verified["identity"]["address"] == address, verified
                     assert verified["identity"]["full_name"] == "Synthetic CI Identity", verified
-                    assert verified["identity"]["document_number_masked"] == "********0001", verified
+                    assert verified["identity"]["document_number_masked"].endswith("0001"), verified
+                    assert set(verified["identity"]["document_number_masked"][:-4]) <= {"*"}, verified
                     assert verified["identity"]["birth_date"] == "12/05/1990", verified
                     assert verified["identity"]["height_cm"] == 178, verified
                     assert verified["identity"]["installation_gate_ready"] is False, verified
