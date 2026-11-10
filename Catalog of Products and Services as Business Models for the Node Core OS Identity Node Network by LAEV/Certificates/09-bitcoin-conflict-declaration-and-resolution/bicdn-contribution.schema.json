@@ -140,7 +140,26 @@
           },
           "maxItems": 100
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "content": {
+                "const": "private"
+              }
+            },
+            "required": ["content"]
+          },
+          "then": {
+            "properties": {
+              "content": {
+                "required": ["encrypted_message_reference"]
+              }
+            }
+          }
+        }
+      ]
     },
     "supersedes_event_id": {
       "type": "string",
