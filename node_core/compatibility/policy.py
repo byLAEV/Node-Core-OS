@@ -56,8 +56,8 @@ def evaluate_environment(environment: dict[str, Any], manifest: dict[str, Any] |
     warnings: list[str] = []
     missing: list[str] = []
 
-    if os_info["system"] != "Linux":
-        reasons.append("Node Core OS requiere un entorno Linux.")
+    if os_info["system"] != "Linux" and not (os_info["system"] == "Android" and family == "termux"):
+        reasons.append("Node Core OS requiere GNU/Linux o un entorno Termux identificado.")
     elif family not in {"gnu_linux", "termux"}:
         reasons.append("El entorno Linux no pudo clasificarse como GNU/Linux o Termux.")
     else:

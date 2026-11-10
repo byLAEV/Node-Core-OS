@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Node Core OS Global Identity Mapping Data Model",
+  "oneOf": [
+    {"$ref": "#/$defs/jurisdiction"},
+    {"$ref": "#/$defs/institution"},
+    {"$ref": "#/$defs/issuer"},
+    {"$ref": "#/$defs/procedure"},
+    {"$ref": "#/$defs/evidenceSource"}
+  ],
+  "$defs": {
+    "jurisdiction": {
+      "type": "object",
+      "required": ["m49_country_or_area_code", "official_name", "record_type", "source_url", "source_checked_date"],
+      "properties": {
+        "m49_country_or_area_code": {"type": "string", "pattern": "^[0-9]{3}$"},
+        "iso3166_alpha2": {"type": ["string", "null"], "pattern": "^[A-Z]{2}$"},
+        "official_name": {"type": "string", "minLength": 1},
+        "record_type": {"type": "string"},
+        "parent_jurisdiction_code": {"type": ["string", "null"]},
+        "source_url": {"type": "string", "format": "uri"},
+        "source_checked_date": {"type": "string", "format": "date"}
+      },
+      "additionalProperties": true
+    },
+    "institution": {
+      "type": "object",
+      "required": ["institution_record_id", "m49_country_or_area_code", "official_name", "mandate_categories", "research_status", "node_core_os_connector_status", "evidence_source_urls", "last_checked_utc"],
+      "properties": {
+        "institution_record_id": {"type": "string", "pattern": "^[A-Z0-9-]+$"},
+        "m49_country_or_area_code": {"type": "string", "pattern": "^[0-9]{3}$"},
+        "iso3166_alpha2": {"type": ["string", "null"], "pattern": "^[A-Z]{2}$"},
+        "official_name": {"type": "string", "minLength": 1},
+        "mandate_categories": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "authority_roles": {"type": "array", "items": {"enum": ["DECISION_MAKER", "REGISTRAR", "DOCUMENT_ISSUER", "PROCESSING_AUTHORITY", "SECRETARIAT", "COORDINATOR", "SUPPORT_BODY", "UNKNOWN"]}, "uniqueItems": true},
+        "api_status": {"enum": ["PUBLIC_API_CONFIRMED", "RESTRICTED_API", "PUBLIC_PORTAL_ONLY", "RESTRICTED_INSTITUTIONAL_SERVICE", "NO_PUBLIC_API_FOUND", "NOT_RESEARCHED", "UNKNOWN"]},
+        "research_status": {"type": "string"},
+        "node_core_os_connector_status": {"enum": ["NOT_CREATED", "SPECIFIED", "IMPLEMENTED_TEST_ONLY", "SANDBOX_TESTED", "AUTHORIZED_INTEGRATION_VALIDATED"]},
+        "evidence_source_urls": {"type": "array", "items": {"type": "string", "format": "uri"}, "minItems": 1},
+        "last_checked_utc": {"type": "string", "format": "date"}
+      },
+      "additionalProperties": true
+    },
+    "issuer": {
+      "type": "object",
+      "required": ["issuer_record_id", "institution_record_id", "country_or_area_code", "document_category", "issuer_official_name"],
+      "properties": {
+        "issuer_record_id": {"type": "string"},
+        "institution_record_id": {"type": "string"},
+        "country_or_area_code": {"type": "string", "pattern": "^[0-9]{3}$"},
+        "document_category": {"type": "string"},
+        "issuer_official_name": {"type": "string"},
+        "api_base_url": {"type": ["string", "null"], "format": "uri"},
+        "api_documentation_url": {"type": ["string", "null"], "format": "uri"}
+      },
+      "additionalProperties": true
+    },
+    "procedure": {
+      "type": "object",
+      "required": ["procedure_record_id", "m49_country_or_area_code", "procedure_category", "competent_institution_record_ids", "procedure_status", "source_urls", "last_checked_utc"],
+      "properties": {
+        "procedure_record_id": {"type": "string"},
+        "m49_country_or_area_code": {"type": "string", "pattern": "^[0-9]{3}$"},
+        "procedure_category": {"enum": ["BIRTH_REGISTRATION", "CIVIL_RECORD_CORRECTION", "NATIONALITY_CONFIRMATION", "CITIZENSHIP_BY_DESCENT", "CITIZENSHIP_BY_BIRTH", "NATURALIZATION", "NATIONAL_ID_ENROLLMENT", "PASSPORT_APPLICATION", "ASYLUM_APPLICATION", "REFUGEE_STATUS_DETERMINATION", "STATELESSNESS_DETERMINATION", "LEGAL_AID_OR_REFERRAL"]},
+        "competent_institution_record_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "decision_maker_institution_record_id": {"type": ["string", "null"]},
+        "procedure_status": {"enum": ["IDENTIFIED", "OFFICIAL_PROCEDURE_CONFIRMED", "LEGAL_REVIEW_REQUIRED", "PRIMARY_SOURCE_CONFIRMATION_REQUIRED", "NOT_RESEARCHED"]},
+        "source_urls": {"type": "array", "items": {"type": "string", "format": "uri"}, "minItems": 1},
+        "last_checked_utc": {"type": "string", "format": "date"}
+      },
+      "additionalProperties": true
+    },
+    "evidenceSource": {
+      "type": "object",
+      "required": ["evidence_source_id", "source_url", "source_type", "retrieved_or_checked_date", "supports_entity_ids"],
+      "properties": {
+        "evidence_source_id": {"type": "string"},
+        "source_url": {"type": "string", "format": "uri"},
+        "source_type": {"enum": ["OFFICIAL_LEGISLATION", "OFFICIAL_GOVERNMENT_PAGE", "OFFICIAL_INSTITUTIONAL_PORTAL", "OFFICIAL_REPORT", "INTERNATIONAL_ORGANIZATION", "SECONDARY_SOURCE"]},
+        "retrieved_or_checked_date": {"type": "string", "format": "date"},
+        "supports_entity_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      },
+      "additionalProperties": true
+    }
+  }
+}

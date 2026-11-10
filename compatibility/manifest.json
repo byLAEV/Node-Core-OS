@@ -39,6 +39,10 @@
     },
     "termux": {
       "operating_system": "Linux",
+      "host_platforms": [
+        "Linux",
+        "Android"
+      ],
       "architectures": [
         "aarch64"
       ],

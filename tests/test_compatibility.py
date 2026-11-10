@@ -69,6 +69,28 @@ class TerminalCompatibilityTests(unittest.TestCase):
         result=evaluate_environment(env,self.manifest,mode="prepare")
         self.assertEqual(result["status"],"requires_preparation")
         self.assertIn("pkg",result["missing_requirements"])
+    def test_android_termux_arm64_profile(self):
+        names=BASE_COMMANDS|{"pkg","ipfs"}
+        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"googleplay.2026.10.09","PREFIX":"/mock/termux","TERM":"xterm-256color"},
+            system="Android",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,os_release_text="",
+            command_lookup=lookup_from(names),current_uid=10292,libc_info=("", ""))
+        self.assertEqual(env["os"]["system"],"Android")
+        self.assertEqual(env["target"]["family"],"termux")
+        self.assertEqual(env["target"]["libc"]["name"],"bionic")
+        self.assertEqual(evaluate_environment(env,self.manifest,mode="install")["status"],"ready")
+    def test_android_without_termux_markers_remains_unsupported(self):
+        env=detect_environment(env={"PATH":"/mock/bin","TERM":"xterm-256color"},
+            system="Android",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,
+            command_lookup=lookup_from(BASE_COMMANDS|{"ipfs"}),current_uid=10292)
+        self.assertEqual(env["target"]["family"],"unsupported")
+        result=evaluate_environment(env,self.manifest,mode="install")
+        self.assertEqual(result["status"],"unsupported")
+        self.assertEqual(result["exit_code"],3)
+    def test_android_termux_markers_without_pkg_remain_unsupported(self):
+        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
+            system="Android",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,
+            command_lookup=lookup_from(BASE_COMMANDS-{"pkg"}),current_uid=10292)
+        self.assertEqual(env["target"]["family"],"unsupported")
     def test_termux_x86_64_is_unsupported(self):
         names=BASE_COMMANDS|{"pkg","ipfs"}
         env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
