@@ -140,26 +140,7 @@
           },
           "maxItems": 100
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "content": {
-                "const": "private"
-              }
-            },
-            "required": ["content"]
-          },
-          "then": {
-            "properties": {
-              "content": {
-                "required": ["encrypted_message_reference"]
-              }
-            }
-          }
-        }
-      ]
+      }
     },
     "supersedes_event_id": {
       "type": "string",
@@ -169,5 +150,29 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "visibility": {
+            "properties": {
+              "content": {
+                "const": "private"
+              }
+            },
+            "required": ["content"]
+          }
+        },
+        "required": ["visibility"]
+      },
+      "then": {
+        "properties": {
+          "content": {
+            "required": ["encrypted_message_reference"]
+          }
+        }
+      }
+    }
+  ]
 }
