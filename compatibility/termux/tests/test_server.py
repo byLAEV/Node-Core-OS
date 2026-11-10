@@ -538,6 +538,50 @@ def main() -> int:
                     assert recovered["status"] == "success", recovered
                     assert recovered["result"]["after"]["status"] in ("valid", "valid_self_signed"), recovered
                     print("Authenticated Lobby TLS backup recovery: PASS")
+
+                    # Restart the actual Lobby process and compare private persistent
+                    # state. The test uses synthetic identity fixtures only.
+                    (home / ".node-core" / "storage").mkdir(parents=True, exist_ok=True)
+                    (home / ".node-core" / "storage" / "restart-fixture.txt").write_text(
+                        "synthetic persistent local data\n", encoding="utf-8"
+                    )
+                    (home / ".node-core" / "ipfs" / "blocks").mkdir(parents=True, exist_ok=True)
+                    (home / ".node-core" / "ipfs" / "config").write_text(
+                        '{"Identity":{"PeerID":"synthetic-restart-fixture"}}\n',
+                        encoding="utf-8",
+                    )
+                    from node_core.persistence_integrity import (
+                        capture_persistence_manifest,
+                        compare_persistence_manifests,
+                    )
+                    data_root = home / ".node-core"
+                    before_restart = capture_persistence_manifest(data_root)
+                    before_node = NodeIdentityStore(data_root).load()
+                    before_profile = IdentityProfileStore(data_root).load()
+                    before_entity = registry.get_entity(local_verified["identity"]["entity_id"])
+
+                    stop(process)
+                    with log.open("a", encoding="utf-8") as output:
+                        process = subprocess.Popen(
+                            [sys.executable, str(SERVER)],
+                            env=env,
+                            stdout=output,
+                            stderr=subprocess.STDOUT,
+                        )
+                    restarted_health = wait_for(
+                        f"https://127.0.0.1:{PORT}/health", True, process, log
+                    )
+                    assert restarted_health["status"] == "ok", restarted_health
+                    after_node = NodeIdentityStore(data_root).load()
+                    after_profile = IdentityProfileStore(data_root).load()
+                    after_entity = registry.get_entity(local_verified["identity"]["entity_id"])
+                    after_restart = capture_persistence_manifest(data_root)
+                    comparison = compare_persistence_manifests(before_restart, after_restart)
+                    assert comparison["matches"], comparison
+                    assert after_node["node_id"] == before_node["node_id"]
+                    assert after_profile == before_profile
+                    assert after_entity == before_entity
+                    print("Lobby process restart, NODE ID/profile/entity recovery and SHA-256 persistence: PASS")
             finally:
                 stop(process)
 
