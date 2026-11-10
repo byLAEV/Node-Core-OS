@@ -43,6 +43,12 @@ class EntityIdentityRegistry:
         self.identity_dir = self.data_dir / "identity"
         self.path = self.identity_dir / "entity-registry.json"
 
+    def initialize(self) -> dict[str, Any]:
+        """Create an empty registry when absent; validate and preserve existing state."""
+        if not self.path.exists():
+            self._write_state({"schema_version": self.SCHEMA_VERSION, "entities": []})
+        return self._read_state()
+
     @staticmethod
     def _now() -> str:
         return datetime.now(timezone.utc).isoformat(timespec="seconds")
