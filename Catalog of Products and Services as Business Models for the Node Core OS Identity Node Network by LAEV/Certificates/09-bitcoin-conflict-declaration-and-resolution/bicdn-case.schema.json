@@ -248,7 +248,22 @@
               "private"
             ]
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "access_policy": {
+                  "enum": ["restricted", "private"]
+                }
+              },
+              "required": ["access_policy"]
+            },
+            "then": {
+              "required": ["encrypted_storage_reference"]
+            }
+          }
+        ]
       }
     },
     "visibility": {
