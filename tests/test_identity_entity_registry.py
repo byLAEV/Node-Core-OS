@@ -17,6 +17,27 @@ class EntityIdentityRegistryTests(unittest.TestCase):
         self.root = Path(self.temporary_directory.name)
         self.registry = EntityIdentityRegistry(self.root)
 
+    def test_initialize_creates_empty_registry_idempotently(self):
+        first = self.registry.initialize()
+        original_bytes = self.registry.path.read_bytes()
+        second = self.registry.initialize()
+        self.assertEqual(first, {"schema_version": 1, "entities": []})
+        self.assertEqual(second, first)
+        self.assertEqual(self.registry.path.read_bytes(), original_bytes)
+        if os.name == "posix":
+            self.assertEqual(self.registry.path.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(self.registry.identity_dir.stat().st_mode & 0o777, 0o700)
+
+    def test_initialize_preserves_existing_registry_and_fails_closed_if_corrupt(self):
+        entity = self.registry.register_entity("device")
+        original_bytes = self.registry.path.read_bytes()
+        self.assertEqual(self.registry.initialize()["entities"][0]["entity_id"], entity["entity_id"])
+        self.assertEqual(self.registry.path.read_bytes(), original_bytes)
+        self.registry.path.write_text("{broken", encoding="utf-8")
+        with self.assertRaises(EntityIdentityRegistryError):
+            self.registry.initialize()
+        self.assertEqual(self.registry.path.read_text(encoding="utf-8"), "{broken")
+
     def test_registers_person_without_document_requirement(self):
         entity = self.registry.register_entity("person")
         self.assertEqual(entity["entity_type"], "person")
