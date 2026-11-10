@@ -109,6 +109,7 @@ def associate_pending_bitcoin_identity_with_node():
             EntityIdentityRegistryError,
         )
         from node_core.identity.node_identity import NodeIdentityStore
+        from node_core.identity.profile import IdentityProfileStore
     except ImportError as exc:
         raise ValueError("The installed Node Core OS identity modules could not be loaded.") from exc
 
@@ -170,12 +171,12 @@ def associate_pending_bitcoin_identity_with_node():
             raise
         entity = registry.register_entity(
             "person",
-            display_name=pending["full_name"],
+            display_name="Local operator",
             entity_id=entity_id,
         )
 
-    if entity.get("entity_type") != "person" or entity.get("display_name") != pending["full_name"]:
-        raise ValueError("The existing entity record conflicts with the staged Bitcoin identity.")
+    if entity.get("entity_type") != "person" or entity.get("display_name") != "Local operator":
+        raise ValueError("The existing entity record conflicts with the staged local operator identity.")
     if entity.get("status") != "active":
         raise ValueError("The staged Bitcoin entity is revoked in the local entity registry.")
 
@@ -201,6 +202,24 @@ def associate_pending_bitcoin_identity_with_node():
     )
     if node_reference not in evidence_refs:
         registry.add_evidence_reference(entity_id, "other", node_reference)
+
+    declared_profile = pending.get("profile")
+    if not isinstance(declared_profile, dict):
+        raise BitcoinIdentityError("The verified personal profile is missing.")
+    profile_store = IdentityProfileStore(data_dir)
+    profile_store.save_declared_profile(
+        full_name=declared_profile["full_name"],
+        document_number=declared_profile.get("document_number", ""),
+        nationality=declared_profile.get("nationality", ""),
+        issuing_country="",
+        document_type="",
+        birth_date=declared_profile["birth_date"],
+        height_cm=declared_profile["height_cm"],
+        bitcoin_address=pending["bitcoin"]["address"],
+        bitcoin_network=pending["bitcoin"]["network"],
+        bitcoin_key_control_status="control_verified",
+    )
+    profile_store.associate_node(node_id)
 
     return {
         "status": "associated",
@@ -1282,8 +1301,17 @@ def start_official_installer(kind):
     node = detect_node_core()
     if kind == "install" and (node["installed"] or node["partial_or_residual"]):
         raise ValueError("A complete or partial Node Core OS installation already exists. Use the updater or resolve the partial installation first.")
-    if kind == "install" and BITCOIN_IDENTITY.read_pending() is None:
-        raise ValueError("First installation is locked. Verify the Bitcoin mainnet P2WPKH key-control proof and declared full name in the Lobby first.")
+    if kind == "install":
+        pending_identity = BITCOIN_IDENTITY.read_pending()
+        if (
+            pending_identity is None
+            or pending_identity.get("proof", {}).get("method")
+            != "node-core-os-local-bitcoin-key-control/v1"
+        ):
+            raise ValueError(
+                "First installation is locked. Complete the required local profile and "
+                "64-character Bitcoin HEX private-key proof in the Lobby first."
+            )
     if kind == "update" and not node["installed"]:
         raise ValueError("Update requires a complete detected Node Core OS installation.")
     if kind == "update":
@@ -1414,7 +1442,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "message": "Request body must be a JSON object"})
                 return
             if path == "/api/identity/bitcoin/challenge":
-                result = BITCOIN_IDENTITY.issue_challenge(payload.get("full_name"))
+                result = BITCOIN_IDENTITY.issue_challenge(
+                    full_name=payload.get("full_name"),
+                    document_number=payload.get("document_number"),
+                    nationality=payload.get("nationality"),
+                    birth_date=payload.get("birth_date"),
+                    height_cm=payload.get("height_cm"),
+                )
                 self.send_json({"status": "challenge_issued", "challenge": result})
                 return
             if path == "/api/identity/bitcoin/verify":

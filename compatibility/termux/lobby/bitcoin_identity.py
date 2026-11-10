@@ -10,7 +10,7 @@ persisted in the local pending record.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import hmac
 import json
@@ -125,35 +125,107 @@ class BitcoinIdentityGate:
     @staticmethod
     def _normalize_name(value: Any) -> str:
         if not isinstance(value, str):
-            raise BitcoinIdentityError("Full name is required.")
+            raise BitcoinIdentityError("Full name and surname are required.")
         normalized = " ".join(value.split())
-        if not 2 <= len(normalized) <= 120:
-            raise BitcoinIdentityError("Full name must contain between 2 and 120 characters.")
+        if len(normalized) > 160 or len(normalized.split()) < 2:
+            raise BitcoinIdentityError("Enter the full name and at least one surname.")
         if any(ord(char) < 32 or ord(char) == 127 for char in normalized):
             raise BitcoinIdentityError("Full name contains unsupported control characters.")
         return normalized
 
     @staticmethod
-    def _proof_message(challenge_id: str, nonce: str, full_name: str) -> bytes:
+    def _normalize_profile(
+        *,
+        full_name: Any,
+        document_number: Any,
+        nationality: Any,
+        birth_date: Any,
+        height_cm: Any,
+    ) -> dict[str, Any]:
+        name = BitcoinIdentityGate._normalize_name(full_name)
+
+        def optional_text(value: Any, label: str, maximum: int) -> str:
+            if value is None:
+                return ""
+            if not isinstance(value, str):
+                raise BitcoinIdentityError(label + " must be text.")
+            normalized = " ".join(value.split())
+            if len(normalized) > maximum or any(ord(char) < 32 or ord(char) == 127 for char in normalized):
+                raise BitcoinIdentityError(label + " is invalid or too long.")
+            return normalized
+
+        document = optional_text(document_number, "Document number", 80)
+        national = optional_text(nationality, "Nationality", 80)
+        if not isinstance(birth_date, str):
+            raise BitcoinIdentityError("Date of birth is required in DD/MM/YYYY format.")
+        birth_text = birth_date.strip()
+        if re.fullmatch(r"[0-3][0-9]/[01][0-9]/[0-9]{4}", birth_text) is None:
+            raise BitcoinIdentityError("Date of birth must use DD/MM/YYYY.")
+        try:
+            parsed_birth = datetime.strptime(birth_text, "%d/%m/%Y").date()
+        except ValueError as exc:
+            raise BitcoinIdentityError("Date of birth is not a valid calendar date.") from exc
+        if parsed_birth.strftime("%d/%m/%Y") != birth_text or parsed_birth > date.today():
+            raise BitcoinIdentityError("Date of birth is invalid or in the future.")
+
+        if isinstance(height_cm, bool) or height_cm is None:
+            raise BitcoinIdentityError("Height in centimeters is required.")
+        height_text = str(height_cm).strip()
+        if re.fullmatch(r"[0-9]{1,3}", height_text) is None:
+            raise BitcoinIdentityError("Height must be a whole number of centimeters.")
+        height = int(height_text)
+        if not 1 <= height <= 300:
+            raise BitcoinIdentityError("Height must be between 1 and 300 centimeters.")
+
+        return {
+            "full_name": name,
+            "document_number": document,
+            "nationality": national,
+            "birth_date": parsed_birth.isoformat(),
+            "height_cm": height,
+        }
+
+    @staticmethod
+    def _profile_digest(profile: dict[str, Any]) -> str:
+        canonical = json.dumps(profile, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _proof_message(challenge_id: str, nonce: str, profile: dict[str, Any]) -> bytes:
         message = (
             PURPOSE + "\n"
             + "challenge_id:" + challenge_id + "\n"
             + "nonce:" + nonce + "\n"
             + "network:" + NETWORK + "\n"
             + "address_type:" + ADDRESS_TYPE + "\n"
-            + "full_name_sha256:" + hashlib.sha256(full_name.encode("utf-8")).hexdigest() + "\n"
+            + "profile_sha256:" + BitcoinIdentityGate._profile_digest(profile) + "\n"
         )
         return message.encode("utf-8")
 
-    def issue_challenge(self, full_name: Any) -> dict[str, Any]:
-        normalized_name = self._normalize_name(full_name)
+    def issue_challenge(
+        self,
+        *,
+        full_name: Any,
+        document_number: Any = None,
+        nationality: Any = None,
+        birth_date: Any,
+        height_cm: Any,
+    ) -> dict[str, Any]:
+        profile = self._normalize_profile(
+            full_name=full_name,
+            document_number=document_number,
+            nationality=nationality,
+            birth_date=birth_date,
+            height_cm=height_cm,
+        )
         challenge_id = str(uuid.uuid4())
         nonce = secrets.token_hex(32)
         issued_at = datetime.now(timezone.utc)
-        message = self._proof_message(challenge_id, nonce, normalized_name)
+        message = self._proof_message(challenge_id, nonce, profile)
         challenge = {
             "challenge_id": challenge_id,
-            "full_name": normalized_name,
+            "full_name": profile["full_name"],
+            "profile": profile,
             "nonce": nonce,
             "message": message,
             "issued_monotonic": time.monotonic(),
@@ -216,6 +288,7 @@ class BitcoinIdentityGate:
             "installation_id": str(uuid.uuid4()),
             "entity_id": str(uuid.uuid4()),
             "full_name": challenge["full_name"],
+            "profile": dict(challenge["profile"]),
             "identity_status": "declared",
             "bitcoin": {
                 "network": NETWORK,
@@ -227,6 +300,8 @@ class BitcoinIdentityGate:
                 "method": "node-core-os-bitcoin-key-control/v1",
                 "challenge_id": challenge_id,
                 "message_sha256": hashlib.sha256(message).hexdigest(),
+                "profile_sha256": self._profile_digest(challenge["profile"]),
+                "nonce": challenge["nonce"],
                 "signature_hex": signature.hex(),
                 "verified_at": now.isoformat(),
                 "status": "control_verified",
@@ -296,6 +371,7 @@ class BitcoinIdentityGate:
             "installation_id": str(uuid.uuid4()),
             "entity_id": str(uuid.uuid4()),
             "full_name": challenge["full_name"],
+            "profile": dict(challenge["profile"]),
             "identity_status": "declared",
             "bitcoin": {
                 "network": NETWORK,
@@ -307,6 +383,8 @@ class BitcoinIdentityGate:
                 "method": "node-core-os-local-bitcoin-key-control/v1",
                 "challenge_id": challenge_id,
                 "message_sha256": hashlib.sha256(message).hexdigest(),
+                "profile_sha256": self._profile_digest(challenge["profile"]),
+                "nonce": challenge["nonce"],
                 "signature_hex": signature.hex(),
                 "verified_at": now.isoformat(),
                 "status": "control_verified",
@@ -324,10 +402,21 @@ class BitcoinIdentityGate:
         if pending is None:
             return {"status": "not_verified", "pending": False}
         association = pending.get("node_association")
+        profile = pending["profile"]
+        document_number = profile.get("document_number", "")
+        masked_document = (
+            ("*" * max(0, len(document_number) - 4) + document_number[-4:])
+            if document_number else ""
+        )
         return {
             "status": "control_verified",
             "pending": not (isinstance(association, dict) and association.get("status") == "associated"),
             "full_name": pending["full_name"],
+            "document_number_masked": masked_document,
+            "nationality": profile.get("nationality", ""),
+            "birth_date": datetime.strptime(profile["birth_date"], "%Y-%m-%d").strftime("%d/%m/%Y"),
+            "height_cm": profile["height_cm"],
+            "installation_gate_ready": pending["proof"].get("method") == "node-core-os-local-bitcoin-key-control/v1",
             "network": pending["bitcoin"]["network"],
             "address_type": pending["bitcoin"]["address_type"],
             "address": pending["bitcoin"]["address"],
@@ -433,12 +522,54 @@ class BitcoinIdentityGate:
             return None
         bitcoin = payload.get("bitcoin")
         proof = payload.get("proof")
-        if not isinstance(bitcoin, dict) or not isinstance(proof, dict):
-            raise BitcoinIdentityError("Pending Bitcoin proof is incomplete.")
+        profile = payload.get("profile")
+        if not isinstance(bitcoin, dict) or not isinstance(proof, dict) or not isinstance(profile, dict):
+            raise BitcoinIdentityError("Pending Bitcoin proof and personal profile are incomplete.")
         if bitcoin.get("network") != NETWORK or bitcoin.get("address_type") != ADDRESS_TYPE:
             raise BitcoinIdentityError("Pending Bitcoin proof uses an unsupported network or address type.")
         if proof.get("status") != "control_verified":
             raise BitcoinIdentityError("Pending Bitcoin proof is not verified.")
+        try:
+            birth_text = datetime.strptime(profile.get("birth_date", ""), "%Y-%m-%d").strftime("%d/%m/%Y")
+            normalized_profile = self._normalize_profile(
+                full_name=profile.get("full_name"),
+                document_number=profile.get("document_number"),
+                nationality=profile.get("nationality"),
+                birth_date=birth_text,
+                height_cm=profile.get("height_cm"),
+            )
+        except (TypeError, ValueError) as exc:
+            raise BitcoinIdentityError("Pending personal profile is invalid.") from exc
+        if normalized_profile != profile or payload.get("full_name") != profile.get("full_name"):
+            raise BitcoinIdentityError("Pending personal profile is inconsistent.")
+        challenge_id = proof.get("challenge_id")
+        nonce = proof.get("nonce")
+        public_key_hex = bitcoin.get("public_key_hex")
+        signature_hex = proof.get("signature_hex")
+        if (
+            not isinstance(challenge_id, str)
+            or not isinstance(nonce, str)
+            or re.fullmatch(r"[0-9a-f]{64}", nonce) is None
+            or not isinstance(public_key_hex, str)
+            or not isinstance(signature_hex, str)
+        ):
+            raise BitcoinIdentityError("Pending Bitcoin signature material is incomplete.")
+        try:
+            public_key = bytes.fromhex(public_key_hex)
+            signature = bytes.fromhex(signature_hex)
+        except ValueError as exc:
+            raise BitcoinIdentityError("Pending Bitcoin signature encoding is invalid.") from exc
+        if public_key.hex() != public_key_hex.lower():
+            raise BitcoinIdentityError("Pending Bitcoin public key encoding is not canonical.")
+        message = self._proof_message(challenge_id, nonce, profile)
+        if (
+            proof.get("profile_sha256") != self._profile_digest(profile)
+            or proof.get("message_sha256") != hashlib.sha256(message).hexdigest()
+        ):
+            raise BitcoinIdentityError("Pending profile or challenge digest does not match.")
+        verify_challenge_signature(public_key, message, signature)
+        if bitcoin.get("address") != encode_p2wpkh_address(public_key):
+            raise BitcoinIdentityError("Pending Bitcoin address does not match its public key.")
 
         association = payload.get("node_association")
         if association is not None:
