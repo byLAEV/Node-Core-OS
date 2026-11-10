@@ -13,23 +13,25 @@
 - `bicdn-case.schema.json`: initial case declaration and certificate claims.
 - `bicdn-contribution.schema.json`: append-only contribution event.
 - `examples/anonymous-legal-contact-request.json`: synthetic example for the requested anonymous lawyer-contact contribution.
+- `tests/test_bicdn_schemas.py`: executable JSON Schema contract tests for schema validity, valid case/contribution fixtures, rejection of missing encrypted references for restricted/private content, and rejection of undeclared fields.
 - `EVIDENCE-AND-TESTING.md`: required test groups and evidence boundaries.
 
 ## Existing implementation evidence
 
-No BICDN-specific issuance, schema-validation, anonymous ingress, encrypted evidence store, legal gateway, institutional adapter, or distributed case ledger test was added by this documentation change. Existing Node Core OS identity certificate tests cover a separate certificate envelope and must not be presented as BICDN implementation evidence.
+BICDN-specific JSON Schema contract tests now exist in `tests/test_bicdn_schemas.py`. They validate the Draft 2020-12 schemas, the synthetic anonymous legal-contact example, required encrypted references for restricted/private content, and rejection of undeclared case properties. The certificate-catalog CI workflow runs these tests alongside the separate Node Core OS identity certificate-envelope tests.
+
+These schema tests validate data contracts only. They do not implement or prove BICDN issuance, signatures, anonymous ingress, encrypted evidence storage, a legal gateway, institutional adapters, or a distributed case ledger. Existing Node Core OS identity certificate tests cover a separate certificate envelope and must not be presented as BICDN credential-signing evidence.
 
 ## Required next tests
 
-1. Add JSON Schema validation tests for valid and invalid case/contribution fixtures.
-2. Add canonical signing and issuer-verification tests for the application-level BICDN credential.
-3. Add append-only ledger, event-link, replay, and correction-event tests.
-4. Add anonymous intake privacy, abuse-control, and metadata-leakage tests.
-5. Add encryption/access-control tests for restricted messages and evidence.
-6. Add jurisdiction-status validation and no-inference tests.
-7. Add institution receipt/response signature tests.
-8. Add multi-node idempotent synchronization and conflict-reconciliation tests.
-9. Add legal-contact and external-resolution workflow tests with synthetic participants.
+1. Add canonical signing and issuer-verification tests for the application-level BICDN credential.
+2. Add append-only ledger, event-link, replay, and correction-event tests.
+3. Add anonymous intake privacy, abuse-control, and metadata-leakage tests.
+4. Add encryption/access-control tests against an actual storage implementation for restricted messages and evidence.
+5. Add jurisdiction-status validation and no-inference tests beyond JSON enum validation.
+6. Add institution receipt/response signature tests.
+7. Add multi-node idempotent synchronization and conflict-reconciliation tests.
+8. Add legal-contact and external-resolution workflow tests with synthetic participants.
 
 ## CI acceptance
 
