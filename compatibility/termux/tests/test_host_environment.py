@@ -55,6 +55,11 @@ class DetectionTests(unittest.TestCase):
   x=detect_host_environment({},system="Linux",machine="x86_64",cgroup_path=cgroup,**{k:v for k,v in self.kw.items() if k!="cgroup_path"})
   self.assertEqual(x["environment_type"],"linux_container")
   self.assertEqual(x["container"],"docker")
+ def test_container_marker_paths_have_string_labels(self):
+  marker=Path(self.tmp.name)/".dockerenv"; marker.touch()
+  x=detect_host_environment({},system="Linux",machine="x86_64",container_marker_paths=((marker,"docker"),),**self.kw)
+  self.assertEqual(x["container"],"docker")
+  self.assertIsInstance(x["container"],str)
  def test_wsl(self):
   x=detect_host_environment({"WSL_DISTRO_NAME":"Ubuntu"},system="Linux",machine="x86_64",kernel_release="microsoft WSL2",**self.kw)
   self.assertEqual(x["environment_type"],"wsl")
