@@ -616,6 +616,7 @@ PY
   "$python_environment/bin/python" -m compileall -q "$NODE_CORE_APP_DIR/main.py" "$NODE_CORE_APP_DIR/node_core" || return 1
   (cd "$NODE_CORE_APP_DIR" && "$python_environment/bin/python" -m unittest discover -s tests -v) || return 1
   printf '✓ Node Core OS core tests validated.\n'
+  NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR" PYTHONPATH="$NODE_CORE_APP_DIR" "$python_environment/bin/python" -c 'import os; from pathlib import Path; from node_core.identity.entity_registry import EntityIdentityRegistry; registry = EntityIdentityRegistry(Path(os.environ["NODE_CORE_DATA_DIR"])); state = registry.initialize(); assert state["schema_version"] == 1 and isinstance(state["entities"], list); print("Verified persistent entity registry:", registry.path)' || return 1
 )
 
 backup_commit_marker() {
