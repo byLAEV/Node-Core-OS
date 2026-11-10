@@ -39,9 +39,7 @@ fail() { printf 'NODE CORE OS Lobby bootstrap ERROR: %s\n' "$*" >&2; exit 1; }
 info() { printf '[NODE CORE OS Lobby] %s\n' "$*"; }
 
 [[ -n "${HOME:-}" && -d "$HOME" ]] || fail "HOME is missing or unavailable."
-[[ -n "${PREFIX:-}" && "$PREFIX" == "/data/data/com.termux/files/usr" ]] || \
-  fail "Run this bootstrap inside native Termux."
-[[ -n "${TERMUX_VERSION:-}" ]] || fail "TERMUX_VERSION is not set; native Termux was not confirmed."
+[[ "$(uname -s)" == "Linux" ]] || fail "Run this bootstrap inside a Linux terminal environment."
 [[ "$(id -u)" != "0" ]] || fail "Do not run the Lobby installer as root."
 
 ARCH="$(uname -m)"
@@ -50,10 +48,11 @@ case "$ARCH" in
   *) fail "Unsupported Linux architecture for the Lobby: $ARCH" ;;
 esac
 
-for command_name in curl python3 tar bash; do
+for command_name in curl tar bash; do
   command -v "$command_name" >/dev/null 2>&1 || \
-    fail "Missing command '$command_name'. Install it in Termux before retrying."
+    fail "Missing command '$command_name'. Install it using your Linux distribution policy before retrying."
 done
+command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1 || fail "Python 3 is required."
 
 [[ "$SOURCE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || fail "Invalid source ref."
 [[ "$SOURCE_REF" != *".."* && "$SOURCE_REF" != *"//"* && "$SOURCE_REF" != */ ]] || \
