@@ -1,15 +1,15 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
 
 REPOSITORY_OWNER="byLAEV"
 REPOSITORY_NAME="Node-Core-OS"
-DEFAULT_REF="feature/termux-local-lobby"
+DEFAULT_REF="feature/lobby-2.0-clean-main"
 SOURCE_REF="${NODE_CORE_LOBBY_REF:-$DEFAULT_REF}"
 
 usage() {
   cat <<'EOF'
-NODE CORE OS Lobby — remote Termux bootstrap
+NODE CORE OS Lobby — remote Linux terminal bootstrap
 
 Usage:
   bash bootstrap-lobby.sh [--yes]
@@ -46,11 +46,11 @@ info() { printf '[NODE CORE OS Lobby] %s\n' "$*"; }
 
 ARCH="$(uname -m)"
 case "$ARCH" in
-  aarch64|arm64) ;;
-  *) fail "This installer profile currently supports Android ARM64; detected: $ARCH" ;;
+  aarch64|arm64|x86_64|amd64) ;;
+  *) fail "Unsupported Linux architecture for the Lobby: $ARCH" ;;
 esac
 
-for command_name in curl python tar pkg bash; do
+for command_name in curl python3 tar bash; do
   command -v "$command_name" >/dev/null 2>&1 || \
     fail "Missing command '$command_name'. Install it in Termux before retrying."
 done
