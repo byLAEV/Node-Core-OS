@@ -13,7 +13,7 @@ Run from the Node Core OS candidate checkout as the ordinary Termux user:
   bash compatibility/termux/tests/device-persistence-evidence.sh capture-before
   # Execute the official updater from the Lobby and wait for success.
   bash compatibility/termux/tests/device-persistence-evidence.sh compare-update
-  # Stop and restart the Lobby service using its normal launcher.
+  # Reboot the Android device, reopen Termux, and start the Lobby normally.
   bash compatibility/termux/tests/device-persistence-evidence.sh compare-restart
 
 Private SHA-256 manifests are stored only in:
