@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 set -Eeuo pipefail
 umask 077
 
@@ -12,7 +12,8 @@ HOST=127.0.0.1
 fail() { printf 'NODE CORE OS Lobby: %s\n' "$*" >&2; exit 1; }
 
 [[ -f "$SERVER" && ! -L "$SERVER" ]] || fail "server.py is not installed at $SERVER"
-command -v python >/dev/null 2>&1 || fail "Python is unavailable."
+PYTHON="$(command -v python3 || command -v python || true)"
+[[ -n "$PYTHON" ]] || fail "Python 3 is unavailable."
 command -v curl >/dev/null 2>&1 || fail "curl is unavailable."
 mkdir -p "$BASE"
 chmod 700 "$BASE"
@@ -69,7 +70,7 @@ for _ in {1..20}; do
   sleep 0.25
 done
 
-nohup python "$SERVER" >>"$LOG" 2>&1 </dev/null &
+nohup "$PYTHON" "$SERVER" >>"$LOG" 2>&1 </dev/null &
 server_pid=$!
 printf '%s\n' "$server_pid" > "$PIDFILE"
 chmod 600 "$PIDFILE"
