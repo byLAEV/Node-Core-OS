@@ -5,6 +5,7 @@ import argparse, datetime as dt, hashlib, hmac, json, os, platform, pty, re, sec
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from certificate_manager import CertificateManager, CertificateManagerError
 from bitcoin_identity import BitcoinIdentityGate, BitcoinIdentityError
+from host_environment import detect_host_environment, create_installation_snapshot, read_installation_snapshot
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -40,21 +41,48 @@ def command_info(name, version_args=None):
             version = text.splitlines()[0][:180]
     return {"available": True, "path": path, "version": version}
 
+HOST_SNAPSHOT = STATE / "host-environment.json"
+
 def termux_info():
-    prefix = os.environ.get("PREFIX", "")
-    marker = bool(os.environ.get("TERMUX_VERSION")) and prefix.startswith("/data/data/com.termux")
-    release = run_command(["getprop", "ro.build.version.release"], 1.5)["stdout"]
-    sdk = run_command(["getprop", "ro.build.version.sdk"], 1.5)["stdout"]
-    shell = os.environ.get("SHELL", "")
+    """Backward-compatible environment endpoint backed by real host detection."""
+    detected = detect_host_environment()
+    detected["generated_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    detected["installation_snapshot"] = read_installation_snapshot(HOST_SNAPSHOT)
+    return detected
+
+def installation_compatibility():
+    current = detect_host_environment()
+    installed = read_installation_snapshot(HOST_SNAPSHOT)
+    if installed is None:
+        return {
+            "status": "installation_environment_not_recorded",
+            "compatible": current["preflight_status"] == "ready",
+            "current": current,
+            "installed": None,
+            "message": "The Lobby predates host-environment recording. Reinstall/update the Lobby to record its installation environment."
+        }
+    original = installed["host"]
+    same_profile = original.get("profile") == current.get("profile")
+    same_architecture = original.get("architecture") == current.get("architecture")
+    same_distribution = original.get("distribution", {}).get("id") == current.get("distribution", {}).get("id")
+    supported = current.get("preflight_status") == "ready"
+    compatible = supported and same_profile and same_architecture
     return {
-        "platform": "Android / Termux" if marker else platform.platform(),
-        "is_termux": marker, "android_release": release or None, "android_sdk": sdk or None,
-        "kernel": platform.release(), "machine": platform.machine(),
-        "architecture": platform.architecture()[0], "python": sys.version.split()[0],
-        "python_executable": sys.executable, "shell": Path(shell).name if shell else None,
-        "shell_path": shell or None, "term": os.environ.get("TERM"),
-        "termux_version": os.environ.get("TERMUX_VERSION"), "prefix": prefix or None,
-        "home": str(HOME), "uid": os.getuid() if hasattr(os, "getuid") else None
+        "status": "compatible" if compatible else "environment_changed_or_unsupported",
+        "compatible": compatible,
+        "current": current,
+        "installed": installed,
+        "comparison": {
+            "same_profile": same_profile,
+            "same_architecture": same_architecture,
+            "same_distribution": same_distribution,
+            "distribution_change_is_blocking": False
+        },
+        "message": (
+            "Current Linux environment matches the Lobby installation profile and architecture."
+            if compatible else
+            "Current environment differs from the recorded installation environment or is missing required capabilities. Review compatibility before proceeding."
+        )
     }
 
 def detect_node_core():
@@ -339,11 +367,11 @@ def tree_node(path, depth, counter):
 
 def directory_report():
     targets = [
-        ("Termux HOME", HOME, 2), ("Node Core OS data", HOME / ".node-core", 4),
+        ("User HOME", HOME, 2), ("Node Core OS data", HOME / ".node-core", 4),
         ("Node Core OS Lobby checkout", HOME / "Node-Core-OS-termux-lobby", 3),
         ("Node Core OS checkout", HOME / "Node-Core-OS", 3),
-        ("Termux PREFIX top level", Path(os.environ.get("PREFIX", "/nonexistent")), 1),
-        ("Termux shortcuts", HOME / ".shortcuts", 2)
+        ("Platform prefix", Path(os.environ.get("PREFIX", "/nonexistent")), 1),
+        ("User launchers", HOME / ".local" / "bin", 2), ("Termux shortcuts", HOME / ".shortcuts", 2)
     ]
     output = []
     for label, path, depth in targets:
@@ -372,11 +400,12 @@ def diagnostics():
     checks = []
     def add(name, ok, detail, severity="required"):
         checks.append({"name": name, "ok": bool(ok), "detail": str(detail), "severity": severity})
-    add("Native Termux markers", info["is_termux"], info["platform"])
-    add("Supported architecture", info["machine"] in ("aarch64", "arm64"), info["machine"])
-    add("Python >= 3.10", sys.version_info >= (3, 10), sys.version.split()[0])
-    add("Termux package manager", tools["pkg"]["available"], tools["pkg"]["path"] or "Not found")
-    add("Git", tools["git"]["available"], tools["git"]["path"] or "Not found")
+    add("Supported Linux terminal profile", info["profile_supported"], info["platform"] + " · " + info["profile"])
+    add("Supported architecture", info["supported_architecture"], info["architecture"])
+    add("Python >= 3.10", info["python_supported"], info["python"])
+    add("Platform package manager", bool(info["package_manager"]), (info["package_manager"] or {}).get("name", "Not required / not detected"), "informational")
+    add("Required Linux capabilities", not info["missing_capabilities"], ", ".join(info["missing_capabilities"]) or "All required commands available")
+    add("Git", tools["git"]["available"], tools["git"]["path"] or "Not found", "recommended")
     add("curl", tools["curl"]["available"], tools["curl"]["path"] or "Not found")
     add("OpenSSL executable", tools["openssl"]["available"], tools["openssl"]["path"] or "Install package openssl-tool", "recommended")
     add("DNS resolution", network["dns"]["github_com_resolves"], network["dns"]["error"] or ", ".join(network["dns"]["resolved_addresses"]), "recommended")
@@ -1294,8 +1323,9 @@ def _run_official_installer(job_id, kind, root, work, expected_version):
 def start_official_installer(kind):
     if kind not in ("install", "update"):
         raise ValueError("Installer operation must be install or update.")
-    if not os.environ.get("TERMUX_VERSION") or not os.environ.get("PREFIX", "").startswith("/data/data/com.termux"):
-        raise ValueError("The official Lobby installer runner is restricted to native Termux.")
+    compatibility = installation_compatibility()
+    if not compatibility["compatible"]:
+        raise ValueError(compatibility["message"] + " " + compatibility["current"].get("preflight_status", "unknown"))
     if os.getuid() == 0:
         raise ValueError("The official installer must run as the unprivileged Termux user.")
     node = detect_node_core()
@@ -1358,6 +1388,8 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path == "/api/termux/commands":
             self.send_json(termux_command_catalog())
+        elif path == "/api/environment":
+            self.send_json({"current": termux_info(), "installation_compatibility": installation_compatibility()})
         elif path == "/api/layout/manifest":
             try:
                 payload = json.loads(LAYOUT_MANIFEST.read_text(encoding="utf-8"))
@@ -1371,7 +1403,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/status":
             self.send_json({
                 "status": "running", "transport": "https" if self.server.is_https else "http",
-                "environment": termux_info(), "node_core": detect_node_core()
+                "environment": termux_info(), "installation_compatibility": installation_compatibility(), "node_core": detect_node_core()
             })
         elif path == "/api/packages/status":
             self.send_json(package_receipts())
@@ -1603,7 +1635,7 @@ def main():
     if args.check:
         print(json.dumps({
             "config": str(CONFIG), "bind": cfg["bind"], "port": cfg["port"],
-            "https": cfg["https"], "environment": termux_info()
+            "https": cfg["https"], "environment": termux_info(), "installation_compatibility": installation_compatibility()
         }, indent=2))
         return 0
     httpd = ThreadingHTTPServer((cfg["bind"], cfg["port"]), Handler)
