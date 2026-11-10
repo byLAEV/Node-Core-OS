@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "release": "2.0.0",
+  "source_branch": "main",
+  "requirements": {
+    "lobby_bootstrap_linux": false,
+    "lobby_bootstrap_termux": false,
+    "loopback_service_127_0_0_1_8765": false,
+    "desktop_and_mobile_launchers": false,
+    "read_only_preflight_and_consent": false,
+    "linux_dependency_preparation": false,
+    "official_package_signature_and_digest_verification": false,
+    "core_installation_with_kubo": false,
+    "core_certificate_installation_and_trust_validation": false,
+    "open_node_core_from_lobby": false,
+    "node_status_repair_maintenance": false,
+    "update_preserves_identity_storage_ipfs_certificates": false,
+    "ubuntu_debian_fedora_e2e": false,
+    "termux_physical_device_acceptance": false,
+    "all_required_prs_merged": false,
+    "main_required_checks_green": false,
+    "release_assets_and_checksums_verified": false
+  },
+  "evidence": {
+    "acceptance_report": "",
+    "termux_device_report": "",
+    "release_artifact_manifest": "",
+    "sbom": ""
+  }
+}
