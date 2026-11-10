@@ -24,7 +24,7 @@ after-update.json or after-lobby-restart.json: they contain hashes of identity f
 EOF
 }
 
-ACTION="\${1:-}"
+ACTION="${1:-}"
 case "$ACTION" in
   capture-before|compare-update|compare-restart) ;;
   -h|--help|"") usage; exit 0 ;;
@@ -38,13 +38,13 @@ fail() {
 
 [[ "$(uname -s)" == "Linux" ]] || fail "This acceptance script requires native Termux on Android."
 [[ "$(id -u)" -ne 0 ]] || fail "Run as the normal Termux user, never root."
-[[ -n "\${TERMUX_VERSION:-}" ]] || fail "TERMUX_VERSION is missing; this is not a native Termux session."
-[[ "\${PREFIX:-}" == "/data/data/com.termux/files/usr" ]] || fail "PREFIX is not the native Termux prefix."
+[[ -n "${TERMUX_VERSION:-}" ]] || fail "TERMUX_VERSION is missing; this is not a native Termux session."
+[[ "${PREFIX:-}" == "/data/data/com.termux/files/usr" ]] || fail "PREFIX is not the native Termux prefix."
 [[ "$(uname -m)" == "aarch64" ]] || fail "Native Termux acceptance requires uname -m=aarch64."
-[[ -n "\${HOME:-}" && -d "$HOME" ]] || fail "HOME is missing or unavailable."
+[[ -n "${HOME:-}" && -d "$HOME" ]] || fail "HOME is missing or unavailable."
 command -v curl >/dev/null 2>&1 || fail "curl is required for the post-restart Lobby health check."
 
-NODE_CORE_DATA_DIR="\${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
+NODE_CORE_DATA_DIR="${NODE_CORE_DATA_DIR:-$HOME/.node-core}"
 APP_DIR="$NODE_CORE_DATA_DIR/app"
 RUNTIME_DIR="$NODE_CORE_DATA_DIR/runtime"
 EVIDENCE_DIR="$RUNTIME_DIR/termux-device-acceptance"
@@ -60,7 +60,7 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
 fi
 [[ -n "$PYTHON_BIN" && -x "$PYTHON_BIN" ]] || fail "Python 3 is required."
 export NODE_CORE_DATA_DIR
-export PYTHONPATH="$APP_DIR\${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$APP_DIR${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "$EVIDENCE_DIR"
 chmod 700 "$EVIDENCE_DIR"
@@ -196,13 +196,16 @@ def write_private_json(path: Path, payload: dict) -> None:
 def safe_metadata() -> dict:
     version_path = app_dir / "VERSION"
     commit_path = data_root / "runtime" / "node-core-commit"
+    boot_id_path = Path("/proc/sys/kernel/random/boot_id")
     version = version_path.read_text(encoding="utf-8").strip() if version_path.is_file() else "unknown"
     commit = commit_path.read_text(encoding="utf-8").strip() if commit_path.is_file() else "unknown"
+    boot_id = boot_id_path.read_text(encoding="ascii").strip() if boot_id_path.is_file() else "unavailable"
     return {
         "device_architecture": os.uname().machine,
         "termux_version": os.environ.get("TERMUX_VERSION", "unknown"),
         "prefix": os.environ.get("PREFIX", "unknown"),
         "uid": uid,
+        "boot_id": boot_id,
         "node_core_version": version,
         "node_core_commit": commit,
     }
@@ -271,6 +274,14 @@ try:
                 raise SystemExit("Run capture-before and compare-update before checking Lobby restart recovery.")
         before = read_persistence_manifest(before_path)
         after_update = read_persistence_manifest(update_path)
+        before_summary_path = evidence_dir / "summary-before.json"
+        if not before_summary_path.is_file() or before_summary_path.is_symlink():
+            raise SystemExit("The baseline device summary is missing or unsafe.")
+        before_summary = json.loads(before_summary_path.read_text(encoding="utf-8"))
+        before_boot_id = before_summary.get("host", {}).get("boot_id")
+        current_boot_id = safe_metadata().get("boot_id")
+        if not before_boot_id or before_boot_id == "unavailable" or not current_boot_id or current_boot_id == before_boot_id:
+            raise SystemExit("The Android kernel boot ID did not change. Perform a real device reboot before recovery acceptance.")
         after_restart = capture()
         compare_or_fail(before, after_restart, "after Lobby restart")
         compare_or_fail(after_update, after_restart, "between update and Lobby restart")
@@ -283,6 +294,7 @@ try:
             "scopes": scope_summary(after_restart),
             "comparison": "match_all_five_scopes_before_update_after_update_and_after_restart",
             "lobby_health": "ok",
+            "device_reboot_confirmed": True,
             "private_manifest": manifest_name,
             "private_manifest_mode": "0600",
         }
