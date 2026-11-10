@@ -637,7 +637,7 @@ def main() -> int:
         assert wsl["environment_type"] == "wsl"
         unsupported = detect_host_environment({},system="Linux",machine="riscv64",**common)
         assert unsupported["preflight_status"] == "unsupported"
-        incomplete = detect_host_environment({},system="Linux",machine="x86_64",command_lookup=lambda name:None,python_version=(3,12,1),**{k:v for k,v in common.items() if k!="command_lookup"})
+        incomplete = detect_host_environment({},system="Linux",machine="x86_64",**{**common,"command_lookup":lambda name:None})
         assert incomplete["preflight_status"] == "requires_preparation"
         print("GNU/Linux distribution, Termux, WSL, architecture and capability detection: PASS")
     return 0
