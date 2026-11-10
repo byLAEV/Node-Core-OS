@@ -27,7 +27,7 @@ def detect_host_environment(environ=None, *, system=None, machine=None, kernel_r
                             os_release_path=Path("/etc/os-release"),
                             proc_version_path=Path("/proc/version"),
                             cgroup_path=Path("/proc/1/cgroup"),
-                            container_marker_paths=(Path("/.dockerenv"), Path("/run/.containerenv")),
+                            container_marker_paths=((Path("/.dockerenv"), "docker"), (Path("/run/.containerenv"), "podman")),
                             command_lookup=None, python_version=None):
     env=dict(os.environ if environ is None else environ)
     system=system or platform.system()
