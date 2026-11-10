@@ -36,11 +36,11 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 </style></head>
 <body>
 <header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div><div id="identity-header" class="identity-header" aria-live="polite" hidden></div><div id="bitcoin-address-header" class="bitcoin-address-header" aria-live="polite" hidden></div></header>
-<div class="launch-area"><button id="open-node-core-top" class="launch-button" type="button" aria-label="Open Node Core OS in an interactive terminal">▶ OPEN NODE CORE OS</button><p class="launch-note">Start Node Core OS directly in a live Termux terminal. Output is displayed here and keyboard input remains available.</p></div>
+<div class="launch-area"><div id="environment-summary" class="result" aria-live="polite">Detecting Linux terminal environment…</div><button id="open-node-core-top" class="launch-button" type="button" aria-label="Open Node Core OS in an interactive terminal">▶ OPEN NODE CORE OS</button><p class="launch-note">Start Node Core OS directly in a live Termux terminal. Output is displayed here and keyboard input remains available.</p></div>
 <p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels can stage, verify and explicitly execute the official Node Core OS installer or updater.</p>
 <div class="grid">
 <button class="card" data-panel="termux"><h2>00 · Termux Commands</h2><small>Reveal approved Termux commands and execute them in a live local terminal window.</small></button>
-<button class="card" data-panel="report"><h2>Generate Report</h2><small>Generate, copy, download or share the official Termux status report in TXT or JSON.</small></button>
+<button class="card" data-panel="environment"><h2>00 · Linux terminal compatibility</h2><small>Identify the current distribution, terminal, architecture, package manager and installation environment.</small></button><button class="card" data-panel="report"><h2>Generate Report</h2><small>Generate, copy, download or share the local system report in TXT or JSON.</small></button>
 <button class="card" data-panel="layout"><h2>Node Core OS Directory Manifest</h2><small>View the canonical directory structure that every standard installation must follow.</small></button>
 <button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Full report: environment, installation, packages, network and directories.</small></button>
 <button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites, missing tools and possible blockers.</small></button>
@@ -59,7 +59,7 @@ summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;ov
 <script>
 const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
 let selected='diagnosis';
-const labels={termux:'00 · Termux Commands',layout:'Node Core OS · Canonical directory manifest',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager',identity:'Bitcoin identity · public proof status'};
+const labels={environment:'00 · Linux terminal compatibility',termux:'Termux / approved terminal commands',layout:'Node Core OS · Canonical directory manifest',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager',identity:'Bitcoin identity · public proof status'};
 function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':(name==='identity'?'Refresh Bitcoin identity':'Generate report'))));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});if(name==='install'){fetch('/api/identity/bitcoin',{cache:'no-store'}).then(r=>r.json()).then(renderBitcoinIdentityStatus).catch(()=>renderBitcoinIdentityStatus({status:'not_verified'}));}}
 document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
 document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
@@ -335,12 +335,12 @@ state.className='bad';
 function formatReportText(d){
 const lines=[];
 const add=(label,value)=>lines.push(label+': '+String(value??'NOT_CHECKED'));
-lines.push('NODE CORE OS byLAEV — OFFICIAL TERMUX ENVIRONMENT REPORT');
+lines.push('NODE CORE OS byLAEV — LINUX TERMINAL ENVIRONMENT REPORT');
 lines.push('=====================================================');
 add('Generated (UTC)',d.generated_at);add('Report schema',d.report_schema||'1.0.0');
 lines.push('');lines.push('SUMMARY');add('Checks passed',d.summary.passed);add('Required failures',d.summary.failed_required);add('Warnings',d.summary.warnings);add('Total checks',d.summary.total);
 lines.push('');lines.push('COMPATIBILITY CHECKS');for(const c of d.checks)lines.push((c.ok?'PASS':(c.severity==='required'?'FAIL':'WARN'))+' | '+c.name+' | '+c.detail);
-lines.push('');lines.push('TERMUX / ANDROID ENVIRONMENT');lines.push(JSON.stringify(d.environment,null,2));
+lines.push('');lines.push('LINUX TERMINAL / DISTRIBUTION ENVIRONMENT');lines.push(JSON.stringify(d.environment,null,2));
 lines.push('');lines.push('NODE CORE OS DETECTION');lines.push(JSON.stringify(d.node_core,null,2));
 lines.push('');lines.push('COMMAND-LINE TOOLS');lines.push(JSON.stringify(d.tools,null,2));
 lines.push('');lines.push('INSTALLED PACKAGES');add('Inventory source',d.packages.source);add('Detected',d.packages.total_detected);add('Truncated',d.packages.truncated);lines.push(JSON.stringify(d.packages.packages,null,2));if(d.packages.error)add('Inventory error',d.packages.error);
@@ -369,7 +369,7 @@ window.NODE_CORE_LAST_REPORT=d;
 let out='<p><b>Generated:</b> '+esc(d.generated_at)+'</p><p><b>Summary:</b> <span class="ok">'+d.summary.passed+' passed</span> · <span class="bad">'+d.summary.failed_required+' required failures</span> · <span class="warn">'+d.summary.warnings+' warnings</span> · '+d.summary.total+' checks</p>';
 let checks='';for(const c of d.checks)checks+='<div class="result"><b class="'+(c.ok?'ok':c.severity==='required'?'bad':'warn')+'">'+(c.ok?'PASS':c.severity.toUpperCase())+' · '+esc(c.name)+'</b><br><small>'+esc(c.detail)+'</small></div>';
 out+=section('Compatibility checks',checks);
-out+=section('Terminal and Android environment','<pre>'+esc(JSON.stringify(d.environment,null,2))+'</pre>');
+out+=section('Linux terminal and distribution environment','<pre>'+esc(JSON.stringify(d.environment,null,2))+'</pre>');
 let n=d.node_core;let nc='<p><b>Status:</b> '+esc(n.status.toUpperCase())+'</p><p><b>Version:</b> '+esc(n.version||'Not detected')+'</p><p><b>Data directory:</b> '+esc(n.data_directory)+'</p><pre>'+esc(JSON.stringify(n.layout,null,2))+'</pre>';
 if(n.repository_checkouts.length)nc+='<p><b>Repository checkouts:</b></p><pre>'+esc(JSON.stringify(n.repository_checkouts,null,2))+'</pre>';
 out+=section('Node Core OS installation detection',nc);
@@ -534,6 +534,34 @@ pollInstallerJob(result.job.job_id,terminal,state,output);
 }catch(error){state.textContent='ERROR: '+error.message;state.className='bad';}
 finally{button.disabled=false;button.textContent='EJECUTAR '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL';}
 }
+function renderEnvironment(data){
+const host=data.current||data, compatibility=data.installation_compatibility||{};
+const distro=host.distribution||{},terminal=host.terminal||{},manager=host.package_manager||{};
+const rows=[
+["Environment",host.platform],
+["Environment type",host.environment_type],
+["Distribution",distro.pretty_name||distro.name],
+["Distribution ID / version",(distro.id||"unknown")+" / "+(distro.version_id||"unknown")],
+["Terminal emulator",terminal.emulator],
+["Shell",terminal.shell],
+["Architecture",host.architecture],
+["Kernel",host.kernel],
+["Package manager",manager.name||"Not detected"],
+["Python",host.python],
+["Container / WSL",(host.container||"none")+" / "+(host.wsl?"yes":"no")],
+["Compatibility preflight",host.preflight_status],
+["Installed Lobby profile",((compatibility.installed||{}).host||{}).profile||"Not recorded"],
+["Installation match",compatibility.status]
+];
+let out="<p><b>Environment detection is read-only.</b> The emulator name is informational; compatibility is based on Linux capabilities, architecture and the official installer preflight.</p>";
+for(const [key,value] of rows)out+='<div class="result"><b>'+esc(key)+'</b><p>'+esc(value||"unknown")+'</p></div>';
+out+=section("Available capabilities",'<pre>'+esc(JSON.stringify(host.available_commands||{},null,2))+'</pre>');
+out+=section("Missing prerequisites",'<pre>'+esc(JSON.stringify(host.missing_capabilities||[],null,2))+'</pre>');
+out+=section("Installation environment comparison",'<pre>'+esc(JSON.stringify(compatibility.comparison||{},null,2))+'</pre>');
+out+='<p class="muted">'+esc(compatibility.message||"No compatibility message.")+'</p>';
+out+='<p class="muted">Official Node Core OS entry point: <code>bash installer/install.sh</code>. Lobby does not select or execute a distribution-specific installer.</p>';
+return out;
+}
 async function checkLobbyConnection(){
 statusEl.textContent='Checking local Lobby service…';
 try{
@@ -543,6 +571,7 @@ const data=await response.json();
 if(data.status!=='ok')throw new Error('Unexpected health response');
 const transport=data.transport||location.protocol.replace(':','');
 statusEl.textContent='Connected to local Lobby service · '+transport.toUpperCase()+' · 127.0.0.1:8765';
+fetch('/api/environment',{cache:'no-store'}).then(r=>r.json()).then(env=>{const h=env.current||{};const box=document.getElementById('environment-summary');if(box)box.textContent=(h.platform||'Linux')+' · '+(h.architecture||'unknown')+' · '+(h.terminal?.emulator||'terminal unknown')+' · Compatibility: '+(env.installation_compatibility?.status||'not checked');}).catch(()=>{});
 statusEl.style.background='#192b25';
 statusEl.style.color='#9ce2b8';
 return true;
@@ -562,7 +591,9 @@ async function runSelected(){
 runBtn.disabled=true;runBtn.textContent='Checking…';
 content.textContent='Collecting fresh local and official release information. No device changes are made.';
 try{
-if(selected==='layout'){
+if(selected==='environment'){
+const r=await fetch('/api/environment',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);content.innerHTML=renderEnvironment(await r.json());
+}else if(selected==='layout'){
 const r=await fetch('/api/layout/manifest',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d.status==='unavailable')throw new Error(d.message);content.innerHTML=renderLayoutManifest(d);
 }else if(selected==='termux'){
 const r=await fetch('/api/termux/commands',{cache:'no-store'});
