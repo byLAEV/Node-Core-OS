@@ -1,4 +1,4 @@
-# Node Core OS — Termux Lobby
+# Node Core OS — Linux Terminal Lobby
 
 **Status:** experimental; physical-device validation is required.  
 **Target:** native Termux on Android, ARM64 first.
@@ -380,3 +380,12 @@ The detailed Android ARM64 acceptance procedure is maintained in [DEVICE-ACCEPTA
 - End-to-end execution of both official release packages on physical Termux,
   including a clean install, an update, rollback behavior and persistent-data
   preservation.
+
+
+## Linux terminal and host detection
+
+The Lobby detects the host independently from the terminal emulator. It reports the Linux distribution and version from `/etc/os-release`, kernel, architecture, terminal emulator (when discoverable), shell, package manager, WSL/container markers, Python version and required command capabilities.
+
+The installation-time, non-secret environment snapshot is stored at `~/.node-core/lobby/host-environment.json` with private file permissions. It survives Lobby restarts and is compared with the current environment before an official Node Core OS install/update is started. Distribution-name changes are informational; supported Linux profile, architecture and required capabilities determine compatibility.
+
+Node Core OS still has one canonical installer: `bash installer/install.sh`. The Lobby does not choose or maintain a separate Node Core installer for each Linux distribution. Termux-only integrations such as Termux:Widget are enabled only in native Termux.
