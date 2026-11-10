@@ -201,7 +201,7 @@ fd, temporary = tempfile.mkstemp(prefix=".host-environment.", dir=target.parent)
 try:
     with os.fdopen(fd, "w", encoding="utf-8") as output:
         json.dump(payload, output, indent=2, sort_keys=True)
-        output.write("\\n")
+        output.write("\n")
     os.chmod(temporary, 0o600)
     os.replace(temporary, target)
 finally:
