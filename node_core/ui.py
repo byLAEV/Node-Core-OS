@@ -1,5 +1,6 @@
 """Terminal interface for Node Core OS."""
 
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 import subprocess
@@ -450,20 +451,29 @@ class MainMenu:
             print("Identity: Not configured (Node Core BIOS > Identity Profile).")
             return
 
-        print(f"Name: {profile['full_name']}")
+        document_number = str(profile.get("document_number") or "")
+        masked_document = ("*" * max(0, len(document_number) - 4) + document_number[-4:]) if document_number else "Not provided"
+        birth_value = profile.get("birth_date") or ""
+        try:
+            birth_display = date.fromisoformat(birth_value).strftime("%d/%m/%Y") if birth_value else "Not provided"
+        except ValueError:
+            birth_display = birth_value or "Not provided"
+        print(f"Name: {profile.get('full_name') or '-'}")
         print(f"Alias: {profile.get('alias') or '-'}")
-        print(f"Nationality: {profile.get('nationality') or '-'}")
-        print(f"Issuing country: {profile['issuing_country']}")
-        print(f"Document type: {profile['document_type']}")
-        print(f"Document number: {profile['document_number']}")
-        print(f"Date of birth: {profile.get('birth_date') or '-'}")
+        print(f"Nationality: {profile.get('nationality') or 'Not provided'}")
+        print(f"Issuing country: {profile.get('issuing_country') or '-'}")
+        print(f"Document type: {profile.get('document_type') or '-'}")
+        print(f"Document number: {masked_document}")
+        print(f"Date of birth: {birth_display}")
         print(f"Height: {str(profile.get('height_cm')) + ' cm' if profile.get('height_cm') else '-'}")
-        print(f"Gender: {profile.get('gender') or '-'}")
+        print(f"Bitcoin address: {profile.get('bitcoin_address') or 'Not associated'}")
+        print(f"Bitcoin key control: {profile.get('bitcoin_key_control_status') or 'Not verified'}")
         print(f"Identity data first entered (UTC): {profile.get('created_at') or '-'}")
         print(f"Identity data last updated (UTC): {profile.get('updated_at') or '-'}")
-        print(f"Logical identity ID: {profile['identity_id']}")
+        print(f"Logical identity ID: {profile.get('identity_id', '-')}")
         print(f"Node ID: {profile.get('node_id') or 'Not associated'}")
-        print(f"Identity data status: {profile['identity_status'].capitalize()}")
+        print(f"Identity data status: {profile.get('identity_status', 'declared').capitalize()}")
+        print("Civil identity issuer verification: Not performed")
         print("Node Core OS network consensus verification: Not verified")
 
     def identity_bios(self) -> None:
@@ -518,15 +528,20 @@ class MainMenu:
                     f"Document type [{previous.get('document_type', 'National identity document')}]: "
                 ).strip() or previous.get("document_type", "National identity document")
                 document_number = input(
-                    "Document number (leave blank to keep the saved value): "
+                    "Document number (optional; leave blank if not provided): "
                 ).strip() or previous.get("document_number", "")
+                previous_birth_date = previous.get("birth_date", "")
+                try:
+                    birth_default = date.fromisoformat(previous_birth_date).strftime("%d/%m/%Y") if previous_birth_date else ""
+                except ValueError:
+                    birth_default = previous_birth_date
                 birth_date = input(
-                    f"Date of birth YYYY-MM-DD [{previous.get('birth_date', '')}]: "
-                ).strip() or previous.get("birth_date", "")
+                    f"Date of birth DD/MM/YYYY [{birth_default}]: "
+                ).strip() or birth_default
                 previous_height = previous.get("height_cm")
                 height_default = str(previous_height) if previous_height else ""
                 height_cm = input(
-                    f"Height in centimeters (optional) [{height_default}]: "
+                    f"Height in centimeters (required) [{height_default}]: "
                 ).strip() or height_default
                 gender = input(
                     f"Gender (optional, self-described) [{previous.get('gender', '')}]: "

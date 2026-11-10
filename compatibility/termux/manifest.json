@@ -82,7 +82,17 @@
       "private_key_transmission": "sent only over the authenticated HTTPS loopback connection to the local Lobby process; never sent to a remote service or written to disk",
       "proof": "single-use ECDSA challenge verified against compressed secp256k1 public key and derived P2WPKH address",
       "identity_assurance": "declared name plus proof of control of the supplied Bitcoin key; not civil-identity verification",
-      "first_install_gate": "server-side first-install execution is blocked unless a non-expired verified Bitcoin proof is staged",
+      "first_install_gate": "server-side first-install execution is blocked unless a non-expired local-private-key proof and mandatory personal profile are staged",
+      "required_personal_profile": {
+        "full_name": "required; full name and at least one surname",
+        "document_number": "optional; masked in menu headers",
+        "nationality": "optional",
+        "birth_date": "required; DD/MM/YYYY input",
+        "height_cm": "required; integer 1-300",
+        "bitcoin_private_key_hex": "required; exactly 64 hexadecimal characters; local HTTPS loopback proof only"
+      },
+      "personal_data_storage": "local-only ~/.node-core/identity/profile.json; directory mode 0700 and file mode 0600; not published to IPFS or remote services; not encrypted at rest",
+      "bitcoin_private_key_storage": false,
       "local_key_proof_endpoint": "POST /api/identity/bitcoin/verify-local-key",
       "local_key_handling": "Accepted only by the HTTPS loopback API after session token and Host/Origin checks; used transiently in memory, omitted from the pending identity JSON, and request payload is cleared on success or failure. Memory zeroization is best-effort and cannot be guaranteed.",
       "browser_form_status": "implemented",

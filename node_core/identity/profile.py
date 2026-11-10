@@ -32,6 +32,9 @@ class IdentityProfileStore:
         payload = json.loads(self.profile_path.read_text(encoding="utf-8"))
         if not isinstance(payload, dict) or payload.get("schema_version") != 1:
             raise ValueError("Unsupported or invalid identity profile format.")
+        forbidden = {"bitcoin_private_key", "private_key_hex", "private_key"}
+        if forbidden.intersection(payload):
+            raise ValueError("Identity profile must never contain a Bitcoin private key.")
         return payload
 
     def save_declared_profile(
@@ -46,6 +49,9 @@ class IdentityProfileStore:
         birth_date: str | None = None,
         height_cm: str | int | None = None,
         gender: str | None = None,
+        bitcoin_address: str | None = None,
+        bitcoin_network: str | None = None,
+        bitcoin_key_control_status: str | None = None,
     ) -> dict[str, Any]:
         """Save declared fields locally, preserving values omitted during an edit.
 
@@ -73,19 +79,26 @@ class IdentityProfileStore:
             "birth_date": text_value("birth_date", birth_date),
             "gender": text_value("gender", gender),
         }
-        for key in ("full_name", "issuing_country", "document_type", "document_number"):
-            if not normalized[key]:
-                raise ValueError(f"{key.replace('_', ' ').capitalize()} is required.")
-
-        if normalized["birth_date"]:
+        if not normalized["full_name"] or len(normalized["full_name"].split()) < 2:
+            raise ValueError("Full name and at least one surname are required.")
+        if not normalized["birth_date"]:
+            raise ValueError("Date of birth is required.")
+        birth_text = normalized["birth_date"]
+        if "/" in birth_text:
             try:
-                parsed_birth_date = date.fromisoformat(normalized["birth_date"])
+                parsed_birth_date = datetime.strptime(birth_text, "%d/%m/%Y").date()
             except ValueError as exc:
-                raise ValueError("Birth date must be a valid date in YYYY-MM-DD format.") from exc
-            if parsed_birth_date.isoformat() != normalized["birth_date"]:
-                raise ValueError("Birth date must use YYYY-MM-DD format.")
-            if parsed_birth_date > date.today():
-                raise ValueError("Birth date cannot be in the future.")
+                raise ValueError("Birth date must be valid in DD/MM/YYYY format.") from exc
+            normalized["birth_date"] = parsed_birth_date.isoformat()
+        else:
+            try:
+                parsed_birth_date = date.fromisoformat(birth_text)
+            except ValueError as exc:
+                raise ValueError("Birth date must be DD/MM/YYYY or YYYY-MM-DD.") from exc
+            if parsed_birth_date.isoformat() != birth_text:
+                raise ValueError("Birth date format is invalid.")
+        if parsed_birth_date > date.today():
+            raise ValueError("Birth date cannot be in the future.")
 
         if height_cm is None:
             parsed_height = previous.get("height_cm")
@@ -95,9 +108,11 @@ class IdentityProfileStore:
             try:
                 parsed_height = int(str(height_cm).strip())
             except ValueError as exc:
-                raise ValueError("Height must be entered as a whole number of centimeters.") from exc
-            if not 1 <= parsed_height <= 300:
-                raise ValueError("Height must be between 1 and 300 centimeters.")
+                raise ValueError("Height must be a whole number of centimeters.") from exc
+        if parsed_height is None:
+            raise ValueError("Height in centimeters is required.")
+        if not 1 <= parsed_height <= 300:
+            raise ValueError("Height must be between 1 and 300 centimeters.")
 
         now = self._now()
         payload: dict[str, Any] = {
@@ -112,6 +127,12 @@ class IdentityProfileStore:
             "birth_date": normalized["birth_date"],
             "height_cm": parsed_height,
             "gender": normalized["gender"],
+            "bitcoin_address": bitcoin_address.strip() if bitcoin_address is not None else previous.get("bitcoin_address", ""),
+            "bitcoin_network": bitcoin_network.strip() if bitcoin_network is not None else previous.get("bitcoin_network", ""),
+            "bitcoin_key_control_status": (
+                bitcoin_key_control_status.strip() if bitcoin_key_control_status is not None
+                else previous.get("bitcoin_key_control_status", "")
+            ),
             "identity_status": "declared",
             "node_id": previous.get("node_id"),
             "created_at": previous.get("created_at") or now,

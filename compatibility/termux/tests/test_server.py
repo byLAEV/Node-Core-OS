@@ -238,7 +238,7 @@ def main() -> int:
 
                     challenge_response = identity_post(
                         "/api/identity/bitcoin/challenge",
-                        {"full_name": "Synthetic CI Identity"},
+                        {"full_name": "Synthetic CI Identity", "document_number": "SYNTHETIC-CI-0001", "nationality": "Costa Rican", "birth_date": "12/05/1990", "height_cm": 178},
                     )
                     assert challenge_response["status"] == "challenge_issued", challenge_response
                     challenge = challenge_response["challenge"]
@@ -267,6 +267,10 @@ def main() -> int:
                     assert verified["identity"]["status"] == "control_verified", verified
                     assert verified["identity"]["address"] == address, verified
                     assert verified["identity"]["full_name"] == "Synthetic CI Identity", verified
+                    assert verified["identity"]["document_number_masked"] == "********0001", verified
+                    assert verified["identity"]["birth_date"] == "12/05/1990", verified
+                    assert verified["identity"]["height_cm"] == 178, verified
+                    assert verified["identity"]["installation_gate_ready"] is False, verified
                     pending_file = home / ".node-core" / "lobby" / "bitcoin-identity-pending.json"
                     pending_text = pending_file.read_text(encoding="utf-8")
                     assert private_key.private_numbers().private_value.to_bytes(32, "big").hex() not in pending_text
@@ -286,7 +290,7 @@ def main() -> int:
 
                     local_challenge_response = identity_post(
                         "/api/identity/bitcoin/challenge",
-                        {"full_name": "Synthetic Local Key Identity"},
+                        {"full_name": "Synthetic Local Key Identity", "document_number": "SYNTHETIC-LOCAL-0002", "nationality": "Costa Rican", "birth_date": "08/11/1991", "height_cm": 175},
                     )
                     local_challenge = local_challenge_response["challenge"]
                     local_key_hex = (1).to_bytes(32, "big").hex()
@@ -300,6 +304,8 @@ def main() -> int:
                     assert local_verified["status"] == "verified", local_verified
                     assert local_verified["identity"]["address"] == address, local_verified
                     assert local_verified["identity"]["full_name"] == "Synthetic Local Key Identity"
+                    assert local_verified["identity"]["document_number_masked"] == "********0002", local_verified
+                    assert local_verified["identity"]["installation_gate_ready"] is True, local_verified
                     pending_text = pending_file.read_text(encoding="utf-8")
                     assert local_key_hex not in pending_text
                     assert "private_key_hex" not in pending_text
@@ -314,6 +320,7 @@ def main() -> int:
                         sys.path.insert(0, str(repository_root))
                     from node_core.identity.entity_registry import EntityIdentityRegistry
                     from node_core.identity.node_identity import NodeIdentityStore
+                    from node_core.identity.profile import IdentityProfileStore
                     node_metadata = NodeIdentityStore(home / ".node-core").initialize()
 
                     association_response = identity_post("/api/identity/bitcoin/associate-node", {})
@@ -323,6 +330,16 @@ def main() -> int:
                     assert association["node_id"] == node_metadata["node_id"], association
                     assert association["node_key_possession_verified"] is True, association
                     assert association["relationship_status"] == "declared", association
+                    saved_profile = IdentityProfileStore(home / ".node-core").load()
+                    assert saved_profile["full_name"] == "Synthetic Local Key Identity", saved_profile
+                    assert saved_profile["document_number"] == "SYNTHETIC-LOCAL-0002", saved_profile
+                    assert saved_profile["nationality"] == "Costa Rican", saved_profile
+                    assert saved_profile["birth_date"] == "1991-11-08", saved_profile
+                    assert saved_profile["height_cm"] == 175, saved_profile
+                    assert saved_profile["bitcoin_address"] == address, saved_profile
+                    assert saved_profile["node_id"] == node_metadata["node_id"], saved_profile
+                    profile_text = IdentityProfileStore(home / ".node-core").profile_path.read_text(encoding="utf-8")
+                    assert local_key_hex not in profile_text and "private_key_hex" not in profile_text
                     repeated_association = identity_post("/api/identity/bitcoin/associate-node", {})
                     assert repeated_association["status"] == "associated", repeated_association
                     assert repeated_association["association"]["node_id"] == node_metadata["node_id"], repeated_association
