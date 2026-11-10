@@ -25,6 +25,24 @@ class EntityIdentityRegistryTests(unittest.TestCase):
         self.assertEqual(entity["node_links"], [])
         self.assertEqual(entity["evidence_references"], [])
 
+    def test_registers_entity_with_existing_canonical_uuid(self):
+        entity_id = "12345678-1234-5678-1234-567812345678"
+        entity = self.registry.register_entity(
+            "person", display_name="Synthetic identity", entity_id=entity_id
+        )
+        self.assertEqual(entity["entity_id"], entity_id)
+        self.assertEqual(self.registry.get_entity(entity_id)["display_name"], "Synthetic identity")
+
+    def test_rejects_duplicate_supplied_entity_id(self):
+        entity_id = "12345678-1234-5678-1234-567812345678"
+        self.registry.register_entity("person", entity_id=entity_id)
+        with self.assertRaisesRegex(EntityIdentityRegistryError, "already exists"):
+            self.registry.register_entity("device", entity_id=entity_id)
+
+    def test_rejects_noncanonical_supplied_entity_id(self):
+        with self.assertRaisesRegex(EntityIdentityRegistryError, "canonical UUID"):
+            self.registry.register_entity("person", entity_id="not-a-uuid")
+
     def test_supports_non_person_entities(self):
         for entity_type in ("organization", "device", "object", "service", "program", "resource"):
             self.registry.register_entity(entity_type)
