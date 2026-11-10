@@ -1,0 +1,59 @@
+name: Node Core OS 2.0 readiness audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/NODE-CORE-OS-2.0-READINESS-AND-WORKFLOW.md"
+      - "release/2.0.0-readiness.json"
+      - "scripts/audit_release_2_0.py"
+      - ".github/workflows/node-core-os-2.0-readiness.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/NODE-CORE-OS-2.0-READINESS-AND-WORKFLOW.md"
+      - "release/2.0.0-readiness.json"
+      - "scripts/audit_release_2_0.py"
+      - ".github/workflows/node-core-os-2.0-readiness.yml"
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: Fail unless every 2.0 acceptance requirement is evidenced
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node-core-os-2.0-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit 2.0 evidence and report remaining blockers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate readiness contract and produce report
+        id: audit
+        env:
+          STRICT: ${{ inputs.strict || 'false' }}
+        run: |
+          set -euo pipefail
+          python3 scripts/audit_release_2_0.py --readiness release/2.0.0-readiness.json --summary "$GITHUB_STEP_SUMMARY" --strict "$STRICT"
+
+      - name: Upload readiness report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-os-2.0-readiness-${{ github.sha }}
+          path: release/2.0.0-readiness.json
+          if-no-files-found: error
+          retention-days: 30
