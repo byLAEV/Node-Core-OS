@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -47,6 +49,29 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertIsNone(profile["node_id"])
         stored = json.loads(self.store.profile_path.read_text(encoding="utf-8"))
         self.assertEqual(stored["document_number"], "SYNTHETIC-TEST-0001")
+
+    def test_profile_survives_a_new_process_restart(self):
+        saved = self.save_sample()
+        self.store.associate_node("12D3KooWExamplePeerId")
+        reader = (
+            "import json, sys; "
+            "from pathlib import Path; "
+            "from node_core.identity.profile import IdentityProfileStore; "
+            "store = IdentityProfileStore(Path(sys.argv[1])); "
+            "print(json.dumps(store.load(), sort_keys=True))"
+        )
+        restarted = subprocess.run(
+            [sys.executable, "-c", reader, str(self.root)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        loaded = json.loads(restarted.stdout)
+        self.assertEqual(loaded["identity_id"], saved["identity_id"])
+        self.assertEqual(loaded["node_id"], "12D3KooWExamplePeerId")
+        self.assertEqual(loaded["full_name"], "Sample Person")
+        self.assertEqual(loaded["document_number"], "SYNTHETIC-TEST-0001")
+        self.assertEqual(loaded["bitcoin_address"], "bc1qsyntheticaddress")
 
     def test_edit_preserves_logical_identity_and_node_association(self):
         original = self.save_sample()
