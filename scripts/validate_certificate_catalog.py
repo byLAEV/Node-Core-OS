@@ -28,7 +28,17 @@ SHARED = (
     "CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md",
     "AUDIT-AND-CI-INDEX.md",
 )
-BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"\nBICDN_FILES = (\n    "README.md",\n    "SERVICE-SPECIFICATION.md",\n    "EVIDENCE-AND-TESTING.md",\n    "TEST-TRACEABILITY.md",\n    "bicdn-case.schema.json",\n    "bicdn-contribution.schema.json",\n    "examples/anonymous-legal-contact-request.json",\n)\nPRODUCT_FILES = (
+BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"
+BICDN_FILES = (
+    "README.md",
+    "SERVICE-SPECIFICATION.md",
+    "EVIDENCE-AND-TESTING.md",
+    "TEST-TRACEABILITY.md",
+    "bicdn-case.schema.json",
+    "bicdn-contribution.schema.json",
+    "examples/anonymous-legal-contact-request.json",
+)
+PRODUCT_FILES = (
     "README.md",
     "SERVICE-SPECIFICATION.md",
     "EVIDENCE-AND-TESTING.md",
@@ -81,7 +91,8 @@ def main() -> int:
         return 1
 
     print("Certificate catalog integrity: PASS")
-    print(f"- {len(PRODUCTS)} node-identity profiles align with the implementation and catalog index")\n    print("- BICDN proposal documents and JSON files are present and parseable")
+    print(f"- {len(PRODUCTS)} node-identity profiles align with the implementation and catalog index")
+    print("- BICDN proposal documents and JSON files are present and parseable")
     print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} security-profile documentation files exist under Certificates/")
     print(f"- {len(SHARED)} shared catalog documents exist")
     print("- This is a documentation consistency check, not a security effectiveness test")
