@@ -26,7 +26,7 @@ before_ipfs="$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')"
 source "$REPOSITORY_ROOT/installer/lib/filesystem.sh"
 prepare_filesystem
 
-test "$(id -u "$NODE_CORE_DATA_DIR")" = "$(id -u)"
+test "$(stat -c '%u' "$NODE_CORE_DATA_DIR")" = "$(id -u)"
 test "$(stat -c '%a' "$NODE_CORE_DATA_DIR")" = "700"
 test "$(sha256sum "$NODE_CORE_DATA_DIR/storage/user-data.txt" | awk '{print $1}')" = "$before_storage"
 test "$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')" = "$before_ipfs"
