@@ -28,6 +28,16 @@ SHARED = (
     "CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md",
     "AUDIT-AND-CI-INDEX.md",
 )
+BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"
+BICDN_FILES = (
+    "README.md",
+    "SERVICE-SPECIFICATION.md",
+    "EVIDENCE-AND-TESTING.md",
+    "TEST-TRACEABILITY.md",
+    "bicdn-case.schema.json",
+    "bicdn-contribution.schema.json",
+    "examples/anonymous-legal-contact-request.json",
+)
 PRODUCT_FILES = (
     "README.md",
     "SERVICE-SPECIFICATION.md",
@@ -74,6 +84,21 @@ def main() -> int:
                 if linked not in readme:
                     errors.append(f"Certificates/{folder}/README.md missing link to {linked}")
 
+    # BICDN is a separate application-level proposal, not a node-identity profile.
+    if not BICDN_DIR.is_dir():
+        errors.append("missing BICDN certificate directory")
+    else:
+        for name in BICDN_FILES:
+            if not (BICDN_DIR / name).is_file():
+                errors.append(f"missing BICDN file: {name}")
+        try:
+            import json
+            for name in ("bicdn-case.schema.json", "bicdn-contribution.schema.json", "examples/anonymous-legal-contact-request.json"):
+                with (BICDN_DIR / name).open(encoding="utf-8") as handle:
+                    json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"invalid BICDN JSON document: {exc}")
+
     if errors:
         print("Certificate catalog integrity: FAIL")
         for error in errors:
@@ -81,8 +106,9 @@ def main() -> int:
         return 1
 
     print("Certificate catalog integrity: PASS")
-    print(f"- {len(PRODUCTS)} profiles align with the implementation and catalog index")
-    print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} per-product documentation files exist under Certificates/")
+    print(f"- {len(PRODUCTS)} node-identity profiles align with the implementation and catalog index")
+    print("- BICDN proposal documents and JSON files are present and parseable")
+    print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} security-profile documentation files exist under Certificates/")
     print(f"- {len(SHARED)} shared catalog documents exist")
     print("- This is a documentation consistency check, not a security effectiveness test")
     return 0

@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "event_id": "BICDN-EVENT-DEMO-000001",
+  "case_id": "BICDN-DEMO-2026-000001",
+  "event_type": "LEGAL_CONFIDENTIAL_CONTACT_REQUEST",
+  "created_at": "2026-11-09T18:00:00-06:00",
+  "contributor": {
+    "identity_mode": "anonymous"
+  },
+  "content": {
+    "type": "legal_contact_request",
+    "description": "Tengo información sobre el certificado. Solicito comunicarme por medio de abogados mediante un mensaje bajo este protocolo.",
+    "encrypted_message_reference": "private://demo/encrypted-message-000001",
+    "evidence_references": []
+  },
+  "visibility": {
+    "event_metadata": "public",
+    "content": "private",
+    "authorized_recipients": []
+  }
+}

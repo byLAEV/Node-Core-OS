@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/Catalog%20of%20Products%20and%20Services%20as%20Business%20Models%20for%20the%20Node%20Core%20OS%20Identity%20Node%20Network%20by%20LAEV/Certificates/09-bitcoin-conflict-declaration-and-resolution/bicdn-case.schema.json",
+  "title": "BICDN Case Declaration",
+  "description": "Draft application-level case declaration schema. This is not the Node Core OS node-identity certificate schema and does not assert truth or legal jurisdiction.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product_id",
+    "profile",
+    "case_id",
+    "created_at",
+    "declaration",
+    "identity",
+    "jurisdictions",
+    "evidence",
+    "visibility",
+    "resolution_access"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "product_id": {
+      "const": "BICDN-01"
+    },
+    "profile": {
+      "const": "bitcoin-conflict-declaration"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^BICDN-[A-Z0-9-]{8,80}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "statement"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "category": {
+          "enum": [
+            "exchange_or_custody",
+            "transaction_or_payment",
+            "scam_or_fraud",
+            "theft_or_unauthorized_access",
+            "service_or_contract",
+            "identity_or_account",
+            "mining_or_network",
+            "other"
+          ]
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000
+        },
+        "requested_assistance": {
+          "type": "string",
+          "maxLength": 5000
+        },
+        "bitcoin_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "network": {
+              "enum": [
+                "mainnet",
+                "testnet",
+                "signet",
+                "regtest",
+                "unknown"
+              ]
+            },
+            "transaction_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{64}$"
+              },
+              "maxItems": 100
+            },
+            "addresses": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "maxItems": 100
+            },
+            "services": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "maxItems": 100
+            },
+            "event_time_start": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "event_time_end": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "assurance"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "identified",
+            "pseudonymous",
+            "anonymous"
+          ]
+        },
+        "assurance": {
+          "enum": [
+            "not_verified",
+            "key_control_verified",
+            "organization_verified",
+            "civil_identity_verified"
+          ]
+        },
+        "identity_reference": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "public_display_name": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    },
+    "jurisdictions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "country_or_territory",
+          "relationship",
+          "status"
+        ],
+        "properties": {
+          "country_or_territory": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,3}$"
+          },
+          "relationship": {
+            "enum": [
+              "claimant_residence",
+              "respondent_incorporation",
+              "place_of_event",
+              "contractual_law",
+              "asset_or_service_location",
+              "authority_receiving_report",
+              "proceeding_venue",
+              "other"
+            ]
+          },
+          "status": {
+            "enum": [
+              "declared",
+              "documented",
+              "recognized"
+            ]
+          },
+          "source_reference": {
+            "type": "string",
+            "maxLength": 1024
+          },
+          "authority_or_document": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_id",
+          "description",
+          "classification",
+          "digest",
+          "access_policy"
+        ],
+        "properties": {
+          "evidence_id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "classification": {
+            "enum": [
+              "declarant_assertion",
+              "document",
+              "on_chain_reference",
+              "expert_report",
+              "institutional_record",
+              "other"
+            ]
+          },
+          "media_type": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "encrypted_storage_reference": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "access_policy": {
+            "enum": [
+              "public",
+              "restricted",
+              "private"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "access_policy": {
+                  "enum": ["restricted", "private"]
+                }
+              },
+              "required": ["access_policy"]
+            },
+            "then": {
+              "required": ["encrypted_storage_reference"]
+            }
+          }
+        ]
+      }
+    },
+    "visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_metadata",
+        "declaration",
+        "evidence"
+      ],
+      "properties": {
+        "case_metadata": {
+          "enum": [
+            "public",
+            "restricted",
+            "private"
+          ]
+        },
+        "declaration": {
+          "enum": [
+            "public",
+            "restricted",
+            "private"
+          ]
+        },
+        "evidence": {
+          "enum": [
+            "public",
+            "restricted",
+            "private"
+          ]
+        },
+        "allow_anonymous_contributions": {
+          "type": "boolean"
+        }
+      }
+    },
+    "resolution_access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested"
+      ],
+      "properties": {
+        "requested": {
+          "type": "boolean"
+        },
+        "service_reference": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "service_types": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "technical_review",
+              "expert_consensus",
+              "mediation",
+              "arbitration"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "participation_policy_reference": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      }
+    }
+  }
+}
