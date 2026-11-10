@@ -17,7 +17,7 @@ This register prioritizes work by (a) blocking dependency, (b) amount of reusabl
 | **P1** | Implement Lobby-to-core install and repair workflow | Existing core installer/updater are reusable; complete Lobby control path not present in main | Preflight → approved package preparation → core install (incl. Kubo) → certificates → launch/status/repair/update |
 | **P1** | Replace the release packaging contract | Current release workflow is hard-coded to v1.5.6 and exactly two legacy installer/updater assets | Lobby bootstrap + Lobby package + Core package + updater + checksums/SBOM/provenance |
 | **P2** | Retire or supersede PR #213 | 16 commits ahead, 103 behind, dirty merge; proposes obsolete 1.5.7 bump | Do not merge branch; confirm useful changes already in main, close as superseded or port only a proven missing fix |
-| **P2** | Decide on PR #218 Android APK | 7 commits ahead, 617 behind, draft; build failed due obsolete SDK package `tools`; APK contains a small read-only Lobby only | Not a 2.0 blocker because #217 already provides Termux:Widget; defer or port only if a native APK icon is explicitly retained |
+| **P2** | Complete supported Lobby launch paths | The Lobby is the selected local administration interface; platform launchers are evaluated independently from the core runtime | Provide a stable, commit-pinned bootstrap and tested Termux, desktop and headless launch paths |
 | **P2** | Enforce repository governance | Branch-protection/ruleset read was unavailable to this connection | Verify main protection and require the release-critical checks |
 
 ## B. Exact PR conflict/error register
@@ -62,11 +62,13 @@ This register prioritizes work by (a) blocking dependency, (b) amount of reusabl
 - Main already detects Termux on Android Python and includes regression tests for Android/Termux markers; the core detection fix is not a reason to merge this stale 1.5.7 release branch.
 - **Action:** no direct merge and no 1.5.7 tag. Verify every unique code fix against main; port only a genuinely missing test or fix into the relevant 2.0 PR. Once verified superseded, close #213 as superseded rather than rebasing 103 commits.
 
-### PR #218 — standalone Android APK launcher
-- Head: `889f1e01ef5dd668b5bc2b786147ecad2475dce3`; 7 commits ahead, 617 behind; draft; 13 files.
-- The historical build job `Build NODE Lobby Installer APK` failed in Android SDK setup: `sdkmanager tools` returned `Warning: Failed to find package 'tools'`. The workflow must stop requesting the removed SDK `tools` package and explicitly install only current platform/build-tools packages if APK is retained.
-- Its own description says the APK launches a standalone read-only Lobby; full Node Core install/update/repair remains disconnected. The separate `termux-lobby/` server is HTTP-only, so it must not be treated as the production administrative service without equivalent authentication/transport protection.
-- **Action:** defer from the 2.0 critical path. #217's Termux:Widget and the planned XDG/CLI launchers cover the current quick-launch requirement. If a native APK is retained as an optional add-on, rebase/port it to current main, fix SDK package selection, secure the transport, and validate on a physical Android device separately. It must not delay the CLI/Lobby release.
+### Platform launch contract
+- The Lobby is the local administration interface for installation, status, repair, update and maintenance of Node Core OS.
+- Android/Termux and GNU/Linux are runtime environments with their own appropriate launch paths; they are not separate core products.
+- Termux uses a native Termux bootstrap and launcher; graphical GNU/Linux uses an XDG desktop entry where available; headless environments retain a stable CLI command.
+- Every bootstrap must resolve an immutable release tag or commit, verify downloaded content, and install only the Lobby before the user approves any core installation or host package changes.
+- Physical Android/Termux acceptance is a required device test; CI skips do not satisfy it.
+
 
 ## C. Fastest safe execution order
 
