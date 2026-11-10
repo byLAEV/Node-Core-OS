@@ -52,7 +52,8 @@ for command_name in curl tar bash; do
   command -v "$command_name" >/dev/null 2>&1 || \
     fail "Missing command '$command_name'. Install it using your Linux distribution policy before retrying."
 done
-command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1 || fail "Python 3 is required."
+PYTHON="$(command -v python3 || command -v python || true)"
+[[ -n "$PYTHON" ]] || fail "Python 3 is required."
 
 [[ "$SOURCE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] || fail "Invalid source ref."
 [[ "$SOURCE_REF" != *".."* && "$SOURCE_REF" != *"//"* && "$SOURCE_REF" != */ ]] || \
@@ -69,7 +70,7 @@ ARCHIVE="$WORK_DIR/source.tar.gz"
 EXTRACT_DIR="$WORK_DIR/source"
 mkdir -m 700 "$EXTRACT_DIR"
 
-ENCODED_REF="$(python -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$SOURCE_REF")"
+ENCODED_REF="$("$PYTHON" -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$SOURCE_REF")"
 BRANCH_URL="https://api.github.com/repos/$REPOSITORY_OWNER/$REPOSITORY_NAME/branches/$ENCODED_REF"
 
 info "Resolving the official source ref: $SOURCE_REF"
@@ -79,7 +80,7 @@ curl --http1.1 --fail --location --silent --show-error \
   --header "User-Agent: Node-Core-OS-Lobby-Installer" \
   --output "$BRANCH_JSON" "$BRANCH_URL" || fail "Could not resolve the source ref from GitHub after 5 retries. Check GitHub/network connectivity and retry."
 
-COMMIT="$(python - "$BRANCH_JSON" <<'PY'
+COMMIT="$("$PYTHON" - "$BRANCH_JSON" <<'PY'
 import json
 import re
 import sys
@@ -103,7 +104,7 @@ curl --http1.1 --fail --location --silent --show-error \
   --output "$ARCHIVE" "$ARCHIVE_URL" || fail "Could not download the official source snapshot after 5 retries."
 
 info "Extracting the source snapshot into a private temporary directory."
-python - "$ARCHIVE" "$EXTRACT_DIR" <<'PY'
+"$PYTHON" - "$ARCHIVE" "$EXTRACT_DIR" <<'PY'
 import os
 import shutil
 import sys
