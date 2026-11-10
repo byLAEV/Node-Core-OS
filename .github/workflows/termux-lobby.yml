@@ -44,6 +44,7 @@ jobs:
           bash -n compatibility/termux/bootstrap-lobby.sh
           bash -n compatibility/termux/install-lobby.sh
           bash -n compatibility/termux/lobby/launcher.sh
+          bash -n compatibility/termux/tests/device-persistence-evidence.sh
           bash installer/tests/syntax.sh
           bash installer/tests/user-context.sh
       - name: Lint installer and Lobby shell scripts
@@ -51,6 +52,7 @@ jobs:
           shellcheck -x compatibility/termux/bootstrap-lobby.sh
           shellcheck -x compatibility/termux/install-lobby.sh
           shellcheck -x compatibility/termux/lobby/launcher.sh
+          shellcheck -x compatibility/termux/tests/device-persistence-evidence.sh
       - name: Compile Python and validate JSON manifests
         run: |
           python -m compileall -q compatibility/termux/lobby
