@@ -88,7 +88,7 @@ assert "associate-bitcoin-identity" in html
 assert "/api/identity/bitcoin/associate-node" in html
 assert "localStorage.setItem('bitcoin-private-key'" not in html
 assert "sessionStorage.setItem('bitcoin-private-key'" not in html
-assert "Browser and Python memory cleanup is best-effort" in html
+assert "cleanup is best-effort only" in server
 assert manifest["lobby"]["bitcoin_identity"]["enabled"] is True
 for endpoint in ("/api/identity/bitcoin", "/api/identity/bitcoin/challenge", "/api/identity/bitcoin/verify", "/api/identity/bitcoin/verify-local-key", "/api/identity/bitcoin/associate-node", "/api/identity/bitcoin/cancel"):
     assert endpoint in server, f"Missing Bitcoin identity endpoint: {endpoint}"
