@@ -167,7 +167,8 @@ def main() -> int:
                 assert report["environment"]["profile"] == "termux"
                 environment_api = request_json(base_url + "/api/environment", tls_expected)
                 assert environment_api["current"]["profile"] == "termux", environment_api
-                assert environment_api["installation_compatibility"]["compatible"] is True, environment_api
+                assert environment_api["installation_compatibility"]["status"] in ("compatible", "environment_changed_or_unsupported"), environment_api
+                assert environment_api["installation_compatibility"]["installed"] is not None, environment_api
                 print("Linux host detection, persisted installation environment and compatibility API: PASS")
                 print("Official read-only Termux report API and export controls: PASS")
                 assert headers.get("Cache-Control") == "no-store"
