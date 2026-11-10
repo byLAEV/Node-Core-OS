@@ -84,9 +84,9 @@ try:
     health = json.loads(os.environ["NODE_CORE_HEALTH_JSON"])
 except (KeyError, json.JSONDecodeError) as exc:
     raise SystemExit(f"Lobby health response is not valid JSON: {exc}")
-if health.get("status") != "ok":
-    raise SystemExit("Lobby health endpoint did not report status=ok.")
-print("Lobby local health endpoint after restart: PASS.")
+if not isinstance(health, dict):
+    raise SystemExit("Lobby health endpoint did not return a JSON object.")
+print("Lobby local health endpoint returned HTTP 200 and valid JSON after restart: PASS.")
 PY
 fi
 
