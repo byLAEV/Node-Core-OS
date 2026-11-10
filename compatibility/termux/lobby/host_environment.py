@@ -24,8 +24,11 @@ def _os_release(path):
     return values
 
 def detect_host_environment(environ=None, *, system=None, machine=None, kernel_release=None,
-                            os_release_path=Path("/etc/os-release"), command_lookup=None,
-                            python_version=None):
+                            os_release_path=Path("/etc/os-release"),
+                            proc_version_path=Path("/proc/version"),
+                            cgroup_path=Path("/proc/1/cgroup"),
+                            container_marker_paths=(Path("/.dockerenv"), Path("/run/.containerenv")),
+                            command_lookup=None, python_version=None):
     env=dict(os.environ if environ is None else environ)
     system=system or platform.system()
     machine=machine or platform.machine()
@@ -36,11 +39,27 @@ def detect_host_environment(environ=None, *, system=None, machine=None, kernel_r
     termux=bool(env.get("TERMUX_VERSION") and env.get("PREFIX","").startswith("/data/data/com.termux/"))
     linux=system=="Linux"
     osr=_os_release(Path(os_release_path))
-    wsl=bool(env.get("WSL_DISTRO_NAME") or env.get("WSL_INTEROP") or "microsoft" in kernel.lower() or "wsl" in kernel.lower())
+    def read_text(path):
+        try:
+            return Path(path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return ""
+    proc_version=read_text(proc_version_path).lower()
+    cgroup=read_text(cgroup_path).lower()
+    wsl_text=" ".join((kernel.lower(), proc_version))
+    wsl=bool(env.get("WSL_DISTRO_NAME") or env.get("WSL_INTEROP") or "microsoft" in wsl_text or "wsl" in wsl_text)
     container=env.get("container")
     if not container:
-        for marker,label in ((Path("/.dockerenv"),"docker"),(Path("/run/.containerenv"),"podman")):
-            if marker.exists(): container=label; break
+        for marker,label in (("docker","docker"),("containerd","containerd"),("kubepods","kubernetes"),
+                             ("podman","podman"),("lxc","lxc"),("libpod","podman")):
+            if marker in cgroup:
+                container=label
+                break
+    if not container:
+        for marker,label in container_marker_paths:
+            if Path(marker).exists():
+                container=label
+                break
     if termux:
         profile="termux"; kind="native_termux"; distro={"id":"termux","name":"Termux","version_id":env.get("TERMUX_VERSION"),"pretty_name":"Termux on Android"}
     elif linux:
@@ -60,7 +79,8 @@ def detect_host_environment(environ=None, *, system=None, machine=None, kernel_r
     if not downloaders: missing.append("curl or wget")
     if py<(3,10,0): missing.append("Python 3.10 or newer")
     if termux and not manager: missing.append("pkg")
-    arch_ok=arch in SUPPORTED_ARCHITECTURES
+    # GNU/Linux supports x86_64 and aarch64; native Termux is Android ARM64 only.
+    arch_ok=(arch == "aarch64") if termux else (arch in SUPPORTED_ARCHITECTURES)
     supported=linux and arch_ok and profile in ("termux","gnu_linux")
     readiness="unsupported" if not supported else ("requires_preparation" if missing else "ready")
     fingerprint_data={"profile":profile,"kind":kind,"distribution":distro["id"],"version":distro.get("version_id"),"architecture":arch}
