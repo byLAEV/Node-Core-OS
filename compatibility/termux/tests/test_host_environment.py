@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """Tests for Lobby Linux distribution and terminal detection."""
+import sys
 import tempfile, unittest
 from pathlib import Path
+
+LOBBY_DIRECTORY = Path(__file__).resolve().parents[1] / "lobby"
+if str(LOBBY_DIRECTORY) not in sys.path:
+ sys.path.insert(0, str(LOBBY_DIRECTORY))
+
 from host_environment import detect_host_environment, create_installation_snapshot, read_installation_snapshot
 
 class DetectionTests(unittest.TestCase):

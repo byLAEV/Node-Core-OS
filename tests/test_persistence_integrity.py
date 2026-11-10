@@ -55,7 +55,7 @@ class PersistenceIntegrityTests(unittest.TestCase):
         (self.kubo / "datastore" / "LOCK").write_text("volatile lock\n", encoding="utf-8")
 
     def capture(self) -> dict:
-        return capture_persistence_manifest(self.data)
+        return capture_persistence_manifest(self.data, kubo_repo=self.kubo)
 
     def test_manifest_covers_all_required_persistence_scopes(self) -> None:
         manifest = self.capture()

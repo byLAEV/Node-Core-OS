@@ -69,7 +69,7 @@ for endpoint in ("/api/termux/execute", "/api/termux/output"):
     assert f'if path == "{endpoint}"' in server, f"Lobby server is missing endpoint handler: {endpoint}"
 assert "TERMUX_COMMANDS" in server and "shell=False" in server
 assert "BitcoinIdentityGate" in server
-assert "BITCOIN_IDENTITY.read_pending() is None" in server
+assert "pending = BITCOIN_IDENTITY.read_pending()" in server
 assert "request dictionary even when validation fails" in server
 assert "finally:" in server and "payload.clear()" in server
 assert "First installation is locked" in server

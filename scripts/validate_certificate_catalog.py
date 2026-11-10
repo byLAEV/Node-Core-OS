@@ -123,7 +123,6 @@ def main() -> int:
             if not (BICDN_DIR / name).is_file():
                 errors.append(f"missing BICDN file: {name}")
         try:
-            import json
             for name in ("bicdn-case.schema.json", "bicdn-contribution.schema.json", "examples/anonymous-legal-contact-request.json"):
                 with (BICDN_DIR / name).open(encoding="utf-8") as handle:
                     json.load(handle)

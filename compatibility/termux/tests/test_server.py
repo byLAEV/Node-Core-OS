@@ -20,6 +20,8 @@ import urllib.request
 
 SERVER = pathlib.Path(sys.argv[1]).resolve()
 LOBBY_DIR = SERVER.parent
+REPOSITORY_ROOT = SERVER.parents[3]
+sys.path.insert(0, str(REPOSITORY_ROOT))
 sys.path.insert(0, str(LOBBY_DIR))
 from host_environment import detect_host_environment, create_installation_snapshot, read_installation_snapshot
 PORT = 18765
@@ -109,6 +111,7 @@ def main() -> int:
         # reach the installer policy without running a real Android installer.
         env["TERMUX_VERSION"] = "0.118-test"
         env["PREFIX"] = "/data/data/com.termux/files/usr"
+        env["IPFS_PATH"] = str(home / ".node-core" / "ipfs")
 
         with log.open("w", encoding="utf-8") as output:
             process = subprocess.Popen(
@@ -555,7 +558,9 @@ def main() -> int:
                         compare_persistence_manifests,
                     )
                     data_root = home / ".node-core"
-                    before_restart = capture_persistence_manifest(data_root)
+                    before_restart = capture_persistence_manifest(
+                        data_root, kubo_repo=data_root / "ipfs"
+                    )
                     before_node = NodeIdentityStore(data_root).load()
                     before_profile = IdentityProfileStore(data_root).load()
                     before_entity = registry.get_entity(local_verified["identity"]["entity_id"])
@@ -575,7 +580,9 @@ def main() -> int:
                     after_node = NodeIdentityStore(data_root).load()
                     after_profile = IdentityProfileStore(data_root).load()
                     after_entity = registry.get_entity(local_verified["identity"]["entity_id"])
-                    after_restart = capture_persistence_manifest(data_root)
+                    after_restart = capture_persistence_manifest(
+                        data_root, kubo_repo=data_root / "ipfs"
+                    )
                     comparison = compare_persistence_manifests(before_restart, after_restart)
                     assert comparison["matches"], comparison
                     assert after_node["node_id"] == before_node["node_id"]
