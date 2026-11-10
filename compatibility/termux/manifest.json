@@ -1,12 +1,13 @@
 {
-  "profile_id": "termux-native-aarch64",
-  "contract": "NCTCL-TERMUX-1",
-  "platform": "android-termux",
+  "profile_id": "linux-terminal-auto-detected",
+  "contract": "NCTCL-LOBBY-HOST-1",
+  "platform": "linux-terminal",
   "architectures": [
+    "x86_64",
     "aarch64"
   ],
   "status": "experimental",
-  "package_manager": "pkg",
+  "package_manager": "detected-read-only; only Termux pkg may be invoked by Lobby installer",
   "shells": [
     "bash"
   ],
@@ -52,7 +53,8 @@
         "max_files": 12000,
         "max_runtime_seconds": 1800,
         "max_output_bytes": 262144,
-        "arbitrary_shell_commands": false
+        "arbitrary_shell_commands": false,
+        "environment_guard": "Re-detect the host and compare profile and architecture with the persisted Lobby installation snapshot before executing the official package."
       }
     },
     "certificate_manager": {
@@ -100,7 +102,21 @@
       "browser_signing_model": "The browser submits the raw HEX scalar only to the authenticated HTTPS loopback API; the local Lobby derives the address and signs the one-time challenge.",
       "node_association_endpoint": "POST /api/identity/bitcoin/associate-node",
       "node_association": "After successful first installation, the Lobby loads and validates the installed Ed25519 NODE ID, signs a one-time local association challenge, verifies the signature, and links the existing entity_id to that node in ~/.node-core/identity/entity-registry.json. The registry relationship remains declared; node-key possession is recorded as cryptographically verified."
-    }
+    },
+    "supported_host_profiles": [
+      "native_termux_aarch64",
+      "gnu_linux_x86_64",
+      "gnu_linux_aarch64",
+      "wsl_linux_x86_64",
+      "wsl_linux_aarch64",
+      "linux_container_x86_64",
+      "linux_container_aarch64"
+    ],
+    "canonical_node_core_installer": "bash installer/install.sh",
+    "installer_selection": "The single official Node Core OS installer evaluates the detected platform and capabilities; Lobby does not maintain per-distribution Node Core installers.",
+    "environment_compatibility_api": "GET /api/environment",
+    "installation_environment_record": "~/.node-core/lobby/host-environment.json",
+    "native_android_features": "Termux:Widget and Android intents are enabled only when native Termux is detected."
   },
   "verification_required": [
     "official-installer-execution",
@@ -149,5 +165,30 @@
     ],
     "package_validation_workflow": ".github/workflows/package-installers.yml",
     "offline_updater_e2e": "installer/tests/offline-updater-e2e.sh"
+  },
+  "environment_detection": {
+    "module": "~/.node-core/lobby/host_environment.py",
+    "snapshot": "~/.node-core/lobby/host-environment.json",
+    "api": "GET /api/environment",
+    "detected_fields": [
+      "operating_system",
+      "distribution",
+      "distribution_version",
+      "architecture",
+      "kernel",
+      "terminal_emulator",
+      "shell",
+      "package_manager",
+      "container",
+      "wsl",
+      "python_version",
+      "required_commands"
+    ],
+    "terminal_emulator_is_informational": true,
+    "distribution_policy": "capability_based",
+    "architecture_policy": "fail_closed_outside_x86_64_and_aarch64",
+    "recheck_before_official_install_or_update": true,
+    "installation_snapshot_persists_across_lobby_restarts": true,
+    "snapshot_contains_secrets": false
   }
 }
