@@ -70,6 +70,7 @@ jobs:
         run: |
           bash compatibility/termux/tests/test-lobby.sh
           python -m unittest discover -s tests -p "test_identity_entity_registry.py" -v
+          python -m unittest discover -s tests -p "test_persistence_integrity.py" -v
       - name: Verify application updater preserves identity, local storage and Kubo data
         run: |
           bash installer/tests/update-preservation.sh
