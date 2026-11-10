@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/Catalog%20of%20Products%20and%20Services%20as%20Business%20Models%20for%20the%20Node%20Core%20OS%20Identity%20Node%20Network%20by%20LAEV/Certificates/09-bitcoin-conflict-declaration-and-resolution/bicdn-contribution.schema.json",
+  "title": "BICDN Case Contribution Event",
+  "description": "Draft append-only contribution schema. Anonymous means no public identity is required; it is not a guarantee of network-level anonymity.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "case_id",
+    "event_type",
+    "created_at",
+    "contributor",
+    "content",
+    "visibility"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^BICDN-EVENT-[A-Z0-9-]{6,80}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^BICDN-[A-Z0-9-]{8,80}$"
+    },
+    "event_type": {
+      "enum": [
+        "ANONYMOUS_CONTRIBUTION_RECEIVED",
+        "LEGAL_CONFIDENTIAL_CONTACT_REQUEST",
+        "EVIDENCE_ADDED",
+        "INSTITUTIONAL_RECEIPT_RECORDED",
+        "INSTITUTIONAL_RESPONSE_ADDED",
+        "EXPERT_REPORT_ADDED",
+        "MEDIATION_STARTED",
+        "CONSENSUS_REPORT_ADDED",
+        "RESOLUTION_OUTCOME_RECORDED",
+        "CORRECTION_OR_SUPERSEDING_EVENT_ADDED"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "contributor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity_mode"
+      ],
+      "properties": {
+        "identity_mode": {
+          "enum": [
+            "anonymous",
+            "pseudonymous",
+            "identified"
+          ]
+        },
+        "identity_reference": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "ingress_attestation": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "description"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "testimony",
+            "technical_information",
+            "documentary_evidence",
+            "correction",
+            "legal_contact_request",
+            "other"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "encrypted_message_reference": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "content_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "evidence_references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "maxItems": 100
+        }
+      }
+    },
+    "visibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_metadata",
+        "content"
+      ],
+      "properties": {
+        "event_metadata": {
+          "enum": [
+            "public",
+            "restricted",
+            "private"
+          ]
+        },
+        "content": {
+          "enum": [
+            "public",
+            "restricted",
+            "private"
+          ]
+        },
+        "authorized_recipients": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "maxItems": 100
+        }
+      }
+    },
+    "supersedes_event_id": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "previous_event_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

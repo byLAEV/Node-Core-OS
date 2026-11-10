@@ -54,11 +54,11 @@ A personal or technical identity can help attribute work to a key or node. It do
 | 7 | IPFS Content-Integrity and Malicious-Content Controls Assessment | `ipfs-content-integrity` | Assess content addressing, retrieval integrity, and controls for handling potentially malicious content. |
 | 8 | Privilege-Control and Enterprise-Pool Isolation Assessment | `privilege-and-pool-isolation` | Assess access boundaries, least privilege, and separation between organizational or service pools. |
 
-Each product has its own folder with a customer-facing overview, a service specification, and an evidence/testing guide.
+Each security product has its own folder with a customer-facing overview, a service specification, and an evidence/testing guide. BICDN is documented separately as an application-level conflict declaration and resolution-access certificate; it is not one of the eight node-identity security profiles.
 
-## Catalog sections
+| 9 | Bitcoin Conflict Declaration and Resolution Certificate | `bitcoin-conflict-declaration` | Portable conflict declaration, append-only case history, anonymous contributions, jurisdiction links, institutional integration, and external resolution access. (Proposed; separate from node-identity profiles.) |\n\n## Catalog sections
 
-- [Certificates — eight individual certificate products](./Certificates/README.md)
+- [Certificates — eight security-assessment profiles plus BICDN conflict-declaration proposal](./Certificates/README.md)
 - [Cybercrime (Information Security) — decentralized technology and IPFS](./Cybercrime/README.md)
 
 ## Product directory
@@ -77,7 +77,7 @@ Shared governance and verification documents:
 - [Business model and economic consensus](./BUSINESS-MODEL-AND-CONSENSUS.md)
 - [Certificate test and evidence matrix](./CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md)
 
-## Certificate implementation and automated testing
+## BICDN conflict declaration and resolution certificate\n\n[BICDN-01 specification](./Certificates/09-bitcoin-conflict-declaration-and-resolution/README.md) defines a portable case declaration for Bitcoin-related conflicts, intended for integration by existing exchanges, custodians, law firms, and institutions. It includes append-only case events, anonymous contributions, jurisdiction relationships, confidential legal-contact requests, and access references to external resolution services. This is a documentation/schema proposal only; no BICDN production issuance or network service is implemented.\n\n## Certificate implementation and automated testing
 
 The current certificate implementation is located at:
 - [Node identity certificate implementation](https://github.com/byLAEV/Node-Core-OS/blob/main/node_core/security/node_identity_certificate.py)
