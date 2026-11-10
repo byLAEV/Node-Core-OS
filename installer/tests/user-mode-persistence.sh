@@ -32,7 +32,8 @@ test "$(sha256sum "$NODE_CORE_DATA_DIR/storage/user-data.txt" | awk '{print $1}'
 test "$(sha256sum "$NODE_CORE_DATA_DIR/ipfs/config" | awk '{print $1}')" = "$before_ipfs"
 test -d "$NODE_CORE_DATA_DIR/app"
 test -d "$NODE_CORE_DATA_DIR/bin"
-test -d "$NODE_CORE_DATA_DIR/lobby"
+# The Lobby is installed independently; the core filesystem helper must not create it.
+test ! -e "$NODE_CORE_DATA_DIR/lobby"
 test -d "$NODE_CORE_DATA_DIR/runtime"
 test -d "$NODE_CORE_DATA_DIR/services"
 
