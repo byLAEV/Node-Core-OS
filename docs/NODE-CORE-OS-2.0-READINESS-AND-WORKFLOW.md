@@ -41,7 +41,7 @@
 9. El flujo documentado de #217 condiciona la primera instalación a una prueba/identidad Bitcoin. Esto es ajeno al alcance de release 2.0 definido aquí y debe separarse. La 2.0 conserva la identidad técnica Ed25519 que el núcleo ya inicializa; no exige onboarding Bitcoin ni nuevas funciones de identidad.
 10. El gestor de certificados del Lobby gestiona TLS local del Lobby y confianza explícita de peers; no equivale a instalar certificados de identidad firmados en el núcleo. Debe conectarse con el formato/verificador existente de `node_core/security/node_identity_certificate.py`, con trust anchors configurados explícitamente, validación de firma, emisor, vigencia, perfil y revocación. No inventar una CA raíz ni confiar en certificados por estar en el catálogo.
 11. El workflow `termux-lobby.yml` invoca `package-installers.yml` como reusable; se debe mantener `workflow_call` y verificar que los artefactos correspondan al mismo SHA candidato.
-12. #218 agrega una app APK/Android separada, no es el bootstrap CLI multiplataforma pedido. Su check de build falló porque solicita el paquete Android SDK obsoleto `tools` y licencia SDK preview. No es un bloqueo para la ruta Termux/CLI de 2.0 salvo que se declare APK como plataforma soportada.
+12. El Lobby es la interfaz local oficial para administrar Node Core OS; Android/Termux y GNU/Linux utilizan mecanismos de lanzamiento adecuados a cada entorno, con un bootstrap fijado a una referencia inmutable y validación física donde corresponda.
 13. #213 diverge 103 commits detrás de main y trata de preparar 1.5.7. No fusionar esa rama antigua directamente ni introducir release 1.5.7 como paso obligatorio para 2.0; seleccionar cambios útiles y portarlos en una rama actual.
 14. #214 trata correcciones de relay/P2P, es draft y diverge 4 commits detrás. Integrar solo si las correcciones son necesarias para la estabilidad de 2.0 y tras ejecutar sus pruebas específicas.
 15. La consulta de rulesets no devolvió reglas; el conector no pudo leer branch protection. Confirmar en GitHub UI que main exige checks, review y conversación resuelta. No asumir que están configurados.
@@ -52,7 +52,7 @@
 - #213: congelar como fuente histórica. Comparar cambios uno por uno; portar solo detección Android/Termux, actualización y pruebas que sigan siendo necesarias. Descartar VERSION/CHANGELOG 1.5.7 obsoletos para esta entrega.
 - #214: mantener draft hasta que sus cambios relay/P2P se validen sobre main actual. Portar por commit si procede.
 - #217: conservar como fuente funcional del Lobby, no fusionar su rama divergente en bloque. Extraer por módulos: server/UI, bootstrap, instalador, manifest, pruebas y workflow. Separar Bitcoin identity onboarding del flujo de instalación 2.0. Eliminar dependencias de branch feature.
-- #218: mantener separado del objetivo de CLI/Lobby. Corregir Android SDK build solo si se decide expresamente que APK es un entregable 2.0; Termux:Widget y accesos XDG son el objetivo inmediato.
+- Mantener un único flujo de producto basado en Lobby: Termux utiliza sus accesos nativos y GNU/Linux utiliza XDG o CLI según el entorno; no acoplar el núcleo a un mecanismo de lanzamiento específico.
 - Todo cambio portado se implementa en PR nuevo basado en main actualizado. Un PR se fusiona solo cuando no sea draft, esté actualizado, tenga revisión requerida, threads resueltos, checks aplicables verdes y mergeabilidad limpia.
 
 ## 4. Fases del Workflow de entrega
