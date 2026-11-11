@@ -17,20 +17,32 @@ prepare_filesystem() {
   python3 - "$manifest" "$NODE_CORE_DATA_DIR" "$HOME" <<'PY'
 import json
 import os
-import re
+import stat
 import sys
 from pathlib import Path, PurePosixPath
 
 manifest_path, root_arg, home_arg = map(Path, sys.argv[1:])
 data = json.loads(manifest_path.read_text(encoding="utf-8"))
-root = Path(os.path.abspath(root_arg))
 home = Path(os.path.realpath(home_arg))
-if root == home or home not in root.parents:
+root = Path(os.path.abspath(root_arg))
+try:
+    root_relative = root.relative_to(home)
+except ValueError:
     raise SystemExit("Unsafe NODE_CORE_DATA_DIR: it must be inside HOME.")
-if root.is_symlink() or (root.exists() and not root.is_dir()):
-    raise SystemExit(f"Unsafe Node Core OS root: {root}")
-if not root.exists():
-    root.mkdir(mode=0o700)
+if not root_relative.parts:
+    raise SystemExit("Unsafe NODE_CORE_DATA_DIR: it cannot equal HOME.")
+
+# Check every existing component below HOME, not just the final root. A
+# symlink in ~/.node-core could otherwise redirect all later mkdir calls.
+current = home
+for part in root_relative.parts:
+    current = current / part
+    try:
+        current.mkdir(mode=0o700)
+    except FileExistsError:
+        info = current.lstat()
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise SystemExit(f"Refusing unsafe data-root component: {current}")
 
 for entry in data.get("directories", []):
     if entry.get("provisioner") != "node-core-installer":
@@ -45,7 +57,7 @@ for entry in data.get("directories", []):
             current.mkdir(mode=0o700)
         except FileExistsError:
             info = current.lstat()
-            if not current.is_dir() or current.is_symlink():
+            if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
                 raise SystemExit(f"Refusing unsafe directory component: {current}")
         if current.is_symlink():
             raise SystemExit(f"Refusing symbolic link in runtime layout: {current}")
