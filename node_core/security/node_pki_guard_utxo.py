@@ -1,15 +1,23 @@
-"""Contract and orchestration boundary for NODE-PKI-GUARD UTXO consumption.
+"""Shared UTXO spend coordinator for NODE-PKI-GUARD.
 
-A backend implementation must provide atomic outpoint consumption and durable
-idempotency. This module does not implement a ledger or claim distributed
-consensus. It only coordinates a backend that supplies those guarantees.
+This module delegates persistence and commit guarantees to the injected backend.
+It does not implement or emulate a ledger, consensus, or network finality.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Protocol
 
 from node_core.security.node_pki_guard import AuthorizationDecision, NodePKIGuardError
+from node_core.security.node_pki_guard_backend import (
+    BackendContractError,
+    CommitEvidence,
+    CommitKind,
+    IdempotencyConflict,
+    SpendRequest,
+    SpendState,
+    SpendSubmission,
+    UTXOAuthorizationBackend,
+)
 
 
 class UTXOBackendError(NodePKIGuardError):
@@ -17,66 +25,9 @@ class UTXOBackendError(NodePKIGuardError):
 
 
 @dataclass(frozen=True)
-class SpendRequest:
-    operation_id: str
-    idempotency_key: str
-    operation_hash: str
-    authorization_id: str
-    outpoint: str
-    binding_id: str
-    policy_id: str
-    policy_version: str
-
-    def __post_init__(self) -> None:
-        for name, value in vars(self).items():
-            if not isinstance(value, str) or not value:
-                raise ValueError(name + " is required")
-
-
-@dataclass(frozen=True)
-class SpendSubmission:
-    transaction_id: str
-    outpoint: str
-    operation_id: str
-    operation_hash: str
-    state: str
-
-
-@dataclass(frozen=True)
-class FinalityProof:
-    transaction_id: str
-    block_id: str
-    finalized_height: int
-    proof_format: str
-    proof_data: Mapping[str, Any]
-
-
-@dataclass(frozen=True)
 class FinalizedAuthorization:
     submission: SpendSubmission
-    finality: FinalityProof
-
-
-class UTXOAuthorizationBackend(Protocol):
-    """Required contract for a real, authoritative UTXO backend.
-
-    submit_spend_atomic MUST atomically validate and consume the outpoint,
-    reject concurrent double spends, and durably bind the idempotency key to
-    the request hash. Repeated identical requests MUST return the same result.
-    Reusing an idempotency key with different content MUST raise a conflict.
-    """
-
-    def get_idempotent_result(self, idempotency_key: str) -> SpendSubmission | None:
-        """Return the durable result for a previously accepted request."""
-
-    def submit_spend_atomic(self, request: SpendRequest) -> SpendSubmission:
-        """Atomically consume the outpoint and persist the idempotency mapping."""
-
-    def wait_for_finality(self, transaction_id: str, timeout_seconds: float) -> FinalityProof:
-        """Wait until the transaction reaches the backend's documented finality."""
-
-    def verify_finality_proof(self, proof: FinalityProof, transaction_id: str) -> bool:
-        """Independently verify that proof finalizes the specified transaction."""
+    evidence: CommitEvidence
 
 
 def consume_authorization(
@@ -86,58 +37,76 @@ def consume_authorization(
     backend: UTXOAuthorizationBackend,
     finality_timeout_seconds: float = 60.0,
 ) -> FinalizedAuthorization:
-    """Submit a PROTECTED authorization spend and require verified finality.
+    """Consume only a PROTECTED decision and verify backend-specific commit evidence.
 
-    This function does not execute the protected external operation. The caller
-    may invoke its idempotent executor only after this function returns.
+    For Standalone this proves a local ACID commit, not distributed finality.
+    For Network this can return only after the concrete adapter verifies its
+    consensus proof. A protected external executor must run after this returns.
     """
     if decision.decision != "PROTECTED":
         raise UTXOBackendError("Only a PROTECTED decision may submit a UTXO spend")
     if decision.operation_hash != request.operation_hash:
-        raise UTXOBackendError("Spend request operation hash does not match policy decision")
+        raise UTXOBackendError("Operation hash does not match policy decision")
     if decision.authorization_id != request.authorization_id:
-        raise UTXOBackendError("Spend request authorization ID does not match policy decision")
+        raise UTXOBackendError("Authorization ID does not match policy decision")
     if decision.outpoint != request.outpoint:
-        raise UTXOBackendError("Spend request outpoint does not match policy decision")
-    if finality_timeout_seconds <= 0 or finality_timeout_seconds > 3600:
+        raise UTXOBackendError("Outpoint does not match policy decision")
+    if not 0 < finality_timeout_seconds <= 3600:
         raise ValueError("finality_timeout_seconds must be greater than 0 and at most 3600")
 
-    previous = backend.get_idempotent_result(request.idempotency_key)
-    if previous is not None:
+    try:
+        previous = backend.get_idempotent_result(request.idempotency_key)
+        if previous is not None:
+            if (
+                previous.operation_id != request.operation_id
+                or previous.request_hash != request.request_hash
+                or previous.operation_hash != request.operation_hash
+                or previous.outpoint != request.outpoint
+                or previous.authorization_id != request.authorization_id
+            ):
+                raise IdempotencyConflict(
+                    "Idempotency key is already bound to different request content"
+                )
+            submission = previous
+        else:
+            submission = backend.submit_spend_atomic(request)
+
         if (
-            previous.operation_id != request.operation_id
-            or previous.operation_hash != request.operation_hash
-            or previous.outpoint != request.outpoint
+            submission.operation_id != request.operation_id
+            or submission.request_hash != request.request_hash
+            or submission.operation_hash != request.operation_hash
+            or submission.outpoint != request.outpoint
+            or submission.authorization_id != request.authorization_id
         ):
-            raise UTXOBackendError("Idempotency key is already bound to different request content")
-        submission = previous
-    else:
-        submission = backend.submit_spend_atomic(request)
+            raise UTXOBackendError("Backend returned a result inconsistent with the spend request")
 
-    if (
-        submission.operation_id != request.operation_id
-        or submission.operation_hash != request.operation_hash
-        or submission.outpoint != request.outpoint
-        or not submission.transaction_id
-    ):
-        raise UTXOBackendError("Backend returned a spend result inconsistent with the request")
+        if submission.state not in {
+            SpendState.SUBMITTED,
+            SpendState.PENDING_FINALITY,
+            SpendState.LOCAL_COMMITTED,
+            SpendState.NETWORK_FINALIZED,
+        }:
+            raise UTXOBackendError("Backend did not accept the authorization spend")
 
-    if submission.state not in {"SUBMITTED", "FINALIZED"}:
-        raise UTXOBackendError("Backend did not accept the authorization spend")
+        evidence = backend.wait_for_commit(
+            submission.transaction_id, finality_timeout_seconds
+        )
+        if evidence.transaction_id != submission.transaction_id:
+            raise UTXOBackendError("Commit evidence refers to a different transaction")
+        if not backend.verify_commit_evidence(evidence, submission.transaction_id):
+            raise UTXOBackendError("Backend commit evidence verification failed")
 
-    proof = backend.wait_for_finality(submission.transaction_id, finality_timeout_seconds)
-    if proof.transaction_id != submission.transaction_id:
-        raise UTXOBackendError("Finality proof refers to a different transaction")
-    if proof.finalized_height < 0 or not proof.block_id or not proof.proof_format:
-        raise UTXOBackendError("Finality proof is incomplete")
-    if not backend.verify_finality_proof(proof, submission.transaction_id):
-        raise UTXOBackendError("Backend finality proof verification failed")
+        if evidence.commit_kind is CommitKind.LOCAL_ACID:
+            if submission.state is not SpendState.LOCAL_COMMITTED:
+                raise UTXOBackendError("Local ACID evidence does not match submission state")
+        elif evidence.commit_kind is CommitKind.NETWORK_CONSENSUS:
+            if submission.state not in {
+                SpendState.PENDING_FINALITY, SpendState.NETWORK_FINALIZED
+            }:
+                raise UTXOBackendError("Network finality evidence does not match submission state")
+        else:
+            raise UTXOBackendError("Unsupported backend commit evidence kind")
 
-    finalized_submission = SpendSubmission(
-        transaction_id=submission.transaction_id,
-        outpoint=submission.outpoint,
-        operation_id=submission.operation_id,
-        operation_hash=submission.operation_hash,
-        state="FINALIZED",
-    )
-    return FinalizedAuthorization(finalized_submission, proof)
+        return FinalizedAuthorization(submission=submission, evidence=evidence)
+    except (BackendContractError, TimeoutError) as exc:
+        raise UTXOBackendError(str(exc)) from exc
