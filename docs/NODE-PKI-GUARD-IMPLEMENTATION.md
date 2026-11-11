@@ -51,3 +51,34 @@ Run the following commands from the repository root:
     python -m unittest tests.test_node_identity_certificate -v
 
 No test in this module proves multi-node consensus or production interoperability.
+
+
+## v1.1 adapters added
+
+### OpenSSL X.509 adapter
+
+- Module: node_core/security/node_pki_guard_x509.py
+- Uses the OpenSSL verify command with an explicit caller-supplied CA bundle.
+- Requires exactly one expected peer identity: DNS hostname or IP address.
+- Applies sslserver or sslclient purpose checks, strict X.509 path checks, authentication level, and chain depth.
+- Accepts caller-supplied intermediate certificates.
+- Supports caller-supplied CRL bundles and explicit leaf-only or full-chain CRL checking.
+- Does not download CRLs, perform OCSP, or refresh revocation data. Revocation is only checked when a CRL bundle is provided. Deployments that require revocation must set require_crl and provide a current CRL bundle.
+- Uses a temporary directory with restrictive file permissions and a subprocess timeout. OpenSSL 3 disables implicit CA store sources so only the configured CA file is used.
+
+The adapter is an explicit validation boundary. Applications must call it before dual proof verification and pass the public key extracted from the validated certificate. A valid result is not a binding authorization.
+
+### UTXO backend contract
+
+- Module: node_core/security/node_pki_guard_utxo.py
+- Defines the UTXOAuthorizationBackend protocol, spend request/result structures, finality proof structure, and consume_authorization coordinator.
+- Requires backend-side atomic outpoint consumption, concurrent double-spend rejection, durable idempotency, conflict detection for reused idempotency keys, and independently verifiable finality proofs.
+- The coordinator rejects non-PROTECTED decisions and mismatched operation hashes, authorization IDs, and outpoints.
+- A protected external operation MUST NOT execute until consume_authorization returns a verified finalized result.
+
+No production ledger adapter, consensus algorithm, distributed storage, or network finality implementation is included. The unit-test fake backend is not a ledger and proves no distributed guarantees.
+
+### v1.1 test commands
+
+    python -m unittest tests.test_node_pki_guard tests.test_node_pki_guard_x509 tests.test_node_pki_guard_utxo -v
+    python -m unittest tests.test_node_identity_certificate -v
