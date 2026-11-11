@@ -10,11 +10,50 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 import re
+import hashlib
+import json
 from typing import Any, Mapping
 
 
 HEX_32 = re.compile(r"^[0-9a-f]{64}$")
+SPEND_REQUEST_DOMAIN = "NODE-PKI-GUARD-SPEND-REQUEST-v1"
 OUTPOINT_RE = re.compile(r"^([0-9a-f]{64}):([0-9]{1,10})$")
+
+
+def compute_spend_request_hash(
+    *,
+    operation_id: str,
+    idempotency_key: str,
+    operation_hash: str,
+    authorization_id: str,
+    outpoint: str,
+    binding_id: str,
+    node_id: str,
+    owner_key_id: str,
+    policy_id: str,
+    policy_version: str,
+    fee_amount: int = 0,
+    fee_asset: str = "NONE",
+) -> str:
+    """Compute the domain-separated digest for every immutable spend field."""
+    payload = {
+        "domain": SPEND_REQUEST_DOMAIN,
+        "operation_id": operation_id,
+        "idempotency_key": idempotency_key,
+        "operation_hash": operation_hash,
+        "authorization_id": authorization_id,
+        "outpoint": outpoint,
+        "binding_id": binding_id,
+        "node_id": node_id,
+        "owner_key_id": owner_key_id,
+        "policy_id": policy_id,
+        "policy_version": policy_version,
+        "fee_amount": fee_amount,
+        "fee_asset": fee_asset,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"),
+                         ensure_ascii=True, allow_nan=False).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 class BackendContractError(RuntimeError):
@@ -113,6 +152,22 @@ class SpendRequest:
             raise ValueError("outpoint must use canonical lowercase txid:vout form")
         if type(self.fee_amount) is not int or self.fee_amount < 0:
             raise ValueError("fee_amount must be a non-negative integer")
+        expected_hash = compute_spend_request_hash(
+            operation_id=self.operation_id,
+            idempotency_key=self.idempotency_key,
+            operation_hash=self.operation_hash,
+            authorization_id=self.authorization_id,
+            outpoint=self.outpoint,
+            binding_id=self.binding_id,
+            node_id=self.node_id,
+            owner_key_id=self.owner_key_id,
+            policy_id=self.policy_id,
+            policy_version=self.policy_version,
+            fee_amount=self.fee_amount,
+            fee_asset=self.fee_asset,
+        )
+        if self.request_hash != expected_hash:
+            raise ValueError("request_hash does not match the canonical spend request")
 
 
 @dataclass(frozen=True)
@@ -156,10 +211,12 @@ class UTXOAuthorizationBackend(ABC):
         """Return the authoritative status of one canonical outpoint."""
 
     @abstractmethod
-    def get_idempotent_result(
-        self, operation_id: str, idempotency_key: str
-    ) -> SpendSubmission | None:
-        """Return the durable result for this scoped idempotency key, if present."""
+    def get_authorization(self, outpoint: str) -> AuthorizationUTXO | None:
+        """Return immutable authorization metadata for an outpoint, if known."""
+
+    @abstractmethod
+    def get_idempotent_result(self, idempotency_key: str) -> SpendSubmission | None:
+        """Return the durable result for a globally unique idempotency key."""
 
     @abstractmethod
     def submit_spend_atomic(self, request: SpendRequest) -> SpendSubmission:
