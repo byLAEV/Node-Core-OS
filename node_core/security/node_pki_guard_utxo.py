@@ -5,7 +5,7 @@ It does not implement or emulate a ledger, consensus, or network finality.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from node_core.security.node_pki_guard import AuthorizationDecision, NodePKIGuardError
 from node_core.security.node_pki_guard_backend import (
@@ -17,12 +17,26 @@ from node_core.security.node_pki_guard_backend import (
     SpendState,
     SpendSubmission,
     UTXOAuthorizationBackend,
+    UTXOStatus,
     compute_spend_request_hash,
 )
 
 
 class UTXOBackendError(NodePKIGuardError):
     """Backend failure while submitting or reconciling an authorization spend."""
+
+
+class BackendUTXOView:
+    """Expose the shared backend contract to the policy evaluator's read-only view."""
+
+    def __init__(self, backend: UTXOAuthorizationBackend):
+        self.backend = backend
+
+    def get_unspent_authorization(self, outpoint: str):
+        if self.backend.get_utxo_status(outpoint) is not UTXOStatus.UNSPENT:
+            return None
+        authorization = self.backend.get_authorization(outpoint)
+        return None if authorization is None else asdict(authorization)
 
 
 @dataclass(frozen=True)
