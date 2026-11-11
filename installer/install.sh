@@ -51,6 +51,8 @@ main() {
     cd "$NODE_CORE_DATA_DIR/app"
     "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest tests.test_node_identity -v
     NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import os; from pathlib import Path; from node_core.identity.node_identity import NodeIdentityStore; store = NodeIdentityStore(Path(os.environ["NODE_CORE_DATA_DIR"])); identity = store.initialize(); assert store.load()["node_id"] == identity["node_id"]; print("Initialized persistent Ed25519 node identity:", identity["node_id"])'
+    "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -m unittest tests.test_identity_entity_registry -v
+    NODE_CORE_DATA_DIR="$NODE_CORE_DATA_DIR" "$NODE_CORE_DATA_DIR/runtime/node-core-venv/bin/python" -c 'import os; from pathlib import Path; from node_core.identity.entity_registry import EntityIdentityRegistry; registry = EntityIdentityRegistry(Path(os.environ["NODE_CORE_DATA_DIR"])); state = registry.initialize(); assert state["schema_version"] == 1 and isinstance(state["entities"], list); print("Initialized persistent entity registry:", registry.path)'
   )
   # HashPaper and P2P Contracts are suspended and must not ship as active Node Core OS applications.
   rm -rf "$NODE_CORE_DATA_DIR/app/applications/hashpaper" "$NODE_CORE_DATA_DIR/app/applications/p2p_contracts"

@@ -2,6 +2,7 @@
 """Validate eight-certificate catalog completeness, not security effectiveness."""
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -12,6 +13,7 @@ CATALOG = ROOT / (
 )
 CERTIFICATES = CATALOG / "Certificates"
 IMPLEMENTATION = ROOT / "node_core/security/node_identity_certificate.py"
+LOBBY_CATALOG = ROOT / "compatibility/termux/lobby/certificates/catalog.json"
 PRODUCTS = {
     "01-sybil-and-fake-node-resistance": "sybil-resistance",
     "02-p2p-partition-and-eclipse-resistance": "p2p-partition-eclipse-resistance",
@@ -51,6 +53,35 @@ def main() -> int:
     if not CATALOG.is_dir() or not CERTIFICATES.is_dir() or not IMPLEMENTATION.is_file():
         print("ERROR: catalog directory, Certificates directory, or certificate implementation is missing")
         return 1
+    if not LOBBY_CATALOG.is_file() or LOBBY_CATALOG.is_symlink():
+        print("ERROR: Lobby security certificate catalog is missing or unsafe")
+        return 1
+    try:
+        lobby_catalog = json.loads(LOBBY_CATALOG.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        print(f"ERROR: Lobby security certificate catalog is unreadable: {exc}")
+        return 1
+    if not isinstance(lobby_catalog, dict) or lobby_catalog.get("schema_version") != 1:
+        print("ERROR: unsupported Lobby security certificate catalog schema")
+        return 1
+    lobby_profiles = lobby_catalog.get("security_profiles")
+    if not isinstance(lobby_profiles, list):
+        print("ERROR: Lobby security profiles must be a list")
+        return 1
+    lobby_profile_ids = [
+        item.get("id") for item in lobby_profiles if isinstance(item, dict)
+    ]
+    if len(lobby_profile_ids) != len(lobby_profiles) or set(lobby_profile_ids) != set(PRODUCTS.values()) or len(lobby_profile_ids) != len(set(lobby_profile_ids)):
+        errors.append("Lobby security profile IDs do not exactly match the canonical eight-profile catalog")
+    if any(item.get("installable_certificate") is not False for item in lobby_profiles if isinstance(item, dict)):
+        errors.append("security evaluation profiles must not be marked as installable X.509 certificates")
+    technical = lobby_catalog.get("technical_certificates")
+    if not isinstance(technical, list):
+        errors.append("Lobby technical_certificates must be a list")
+    elif any(not isinstance(item, dict) or not isinstance(item.get("id"), str) for item in technical):
+        errors.append("Lobby technical certificate entries must have unique string IDs")
+    elif len({item["id"] for item in technical}) != len(technical):
+        errors.append("Lobby technical certificate IDs must be unique")
 
     for name in SHARED:
         if not (CATALOG / name).is_file():
@@ -92,12 +123,12 @@ def main() -> int:
             if not (BICDN_DIR / name).is_file():
                 errors.append(f"missing BICDN file: {name}")
         try:
-            import json
             for name in ("bicdn-case.schema.json", "bicdn-contribution.schema.json", "examples/anonymous-legal-contact-request.json"):
                 with (BICDN_DIR / name).open(encoding="utf-8") as handle:
                     json.load(handle)
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"invalid BICDN JSON document: {exc}")
+
 
     if errors:
         print("Certificate catalog integrity: FAIL")
@@ -110,6 +141,7 @@ def main() -> int:
     print("- BICDN proposal documents and JSON files are present and parseable")
     print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} security-profile documentation files exist under Certificates/")
     print(f"- {len(SHARED)} shared catalog documents exist")
+    print("- Lobby technical certificate inventory and eight security profiles match the canonical product catalog")
     print("- This is a documentation consistency check, not a security effectiveness test")
     return 0
 

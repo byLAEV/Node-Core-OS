@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#15191f"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml"><title>NODE CORE OS Lobby</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101419;color:#edf2f7}
+*{box-sizing:border-box}body{margin:0;padding:24px;max-width:900px;margin-inline:auto}
+header{padding:12px 0 24px;border-bottom:1px solid #35404b}h1{font-size:2rem;letter-spacing:.08em;margin:0}
+.sub{color:#9eb4c5;letter-spacing:.12em;font-size:.75rem}
+.bitcoin-address-header{margin-top:8px;color:#9ce2b8;font-size:.78rem;overflow-wrap:anywhere;line-height:1.55}
+.identity-header{margin-top:8px;padding:10px;border:1px solid #35404b;border-radius:10px;background:#121a22;font-size:.82rem;line-height:1.5;overflow-wrap:anywhere}
+.identity-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.identity-form-grid label{display:block;font-size:.9rem}
+.identity-form-grid input{margin:4px 0 12px}
+p{line-height:1.55;color:#c6d0d9}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
+.card{display:block;width:100%;text-align:left;border:1px solid #35404b;border-radius:14px;padding:16px;background:#171e25;color:inherit;cursor:pointer}
+.card:active{transform:scale(.99);background:#202b35}.card:focus-visible,button:focus-visible{outline:2px solid #8dceff;outline-offset:3px}
+h2{font-size:1rem;margin:0 0 8px;color:#8dceff}small{color:#aab7c2;font-size:.9rem}
+.status{margin-top:20px;padding:14px;border-radius:12px;background:#192b25;color:#9ce2b8}
+.launch-area{margin:18px 0 8px;padding:16px;border:1px solid #52718a;border-radius:14px;background:#16222c}
+.launch-button{display:block;width:100%;border:1px solid #8dceff;border-radius:12px;padding:16px 18px;background:#203d52;color:#eff8ff;font-size:1rem;font-weight:800;letter-spacing:.04em;cursor:pointer}
+.launch-button:disabled{opacity:.65;cursor:wait}
+.launch-note{margin:8px 2px 0;color:#aab7c2;font-size:.88rem}
+.panel{display:none;margin-top:18px;padding:18px;border:1px solid #35404b;border-radius:14px;background:#151c23}
+.panel.open{display:block}.panel h2{font-size:1.2rem}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+button.action{border:1px solid #52718a;border-radius:9px;padding:10px 14px;background:#203345;color:#eaf5ff;font-weight:650}
+button.secondary{background:#20262d;border-color:#414b55}.result{padding:10px;border-bottom:1px solid #303b45}
+.ok{color:#8fe0aa}.bad{color:#ffb38f}.warn{color:#f4cc78}.muted{color:#9aa9b5}
+textarea,input{width:100%;background:#0d1217;color:#edf2f7;border:1px solid #46535f;border-radius:8px;padding:10px;margin:6px 0 12px}
+pre code{overflow-wrap:anywhere}.certificate-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+footer{margin-top:30px;color:#8795a1;font-size:.8rem}details{border:1px solid #35404b;border-radius:10px;margin:10px 0;padding:10px;background:#11171d}
+summary{cursor:pointer;color:#8dceff;font-weight:650}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.78rem;color:#c9d5df;max-height:420px;overflow:auto}
+</style></head>
+<body>
+<header><h1>NODE</h1><div style="color:#8dceff;font-weight:700">CORE OS</div><div class="sub">ID NETWORK · byLAEV</div><div id="identity-header" class="identity-header" aria-live="polite" hidden></div><div id="bitcoin-address-header" class="bitcoin-address-header" aria-live="polite" hidden></div></header>
+<div class="launch-area"><div id="environment-summary" class="result" aria-live="polite">Detecting Linux terminal environment…</div><button id="open-node-core-top" class="launch-button" type="button" aria-label="Open Node Core OS in an interactive terminal">▶ OPEN NODE CORE OS</button><p class="launch-note">Start Node Core OS directly in a live Termux terminal. Output is displayed here and keyboard input remains available.</p></div>
+<p>Termux environment manager. Run a read-only inventory to identify Node Core OS installations, packages, network conditions and relevant directory structure. The report does not read file contents or modify the device. Install and update panels can stage, verify and explicitly execute the official Node Core OS installer or updater.</p>
+<div class="grid">
+<button class="card" data-panel="termux"><h2>00 · Termux Commands</h2><small>Reveal approved Termux commands and execute them in a live local terminal window.</small></button>
+<button class="card" data-panel="environment"><h2>00 · Linux terminal compatibility</h2><small>Identify the current distribution, terminal, architecture, package manager and installation environment.</small></button><button class="card" data-panel="report"><h2>Generate Report</h2><small>Generate, copy, download or share the local system report in TXT or JSON.</small></button>
+<button class="card" data-panel="layout"><h2>Node Core OS Directory Manifest</h2><small>View the canonical directory structure that every standard installation must follow.</small></button>
+<button class="card" data-panel="diagnosis"><h2>01 · System diagnosis</h2><small>Full report: environment, installation, packages, network and directories.</small></button>
+<button class="card" data-panel="prepare"><h2>02 · Prepare environment</h2><small>Review prerequisites, missing tools and possible blockers.</small></button>
+<button class="card" data-panel="install"><h2>03 · Install Node Core OS</h2><small>Detect existing installation and review installation readiness.</small></button>
+<button class="card" data-panel="update"><h2>04 · Update Node Core OS</h2><small>Detect installed version and repository checkouts.</small></button>
+<button class="card" data-panel="repair"><h2>05 · Repair configuration</h2><small>Inspect known directories and environment risks without changes.</small></button>
+<button class="card" data-panel="status"><h2>06 · Node status</h2><small>View Lobby service and detected Node Core OS state.</small></button>
+<button class="card" data-panel="identity"><h2>08 · Bitcoin identity</h2><small>View the locally verified Bitcoin address and proof status.</small></button>
+<button class="card" data-panel="certificates"><h2>07 · Security certificates</h2><small>Official catalog, local TLS, peer trust and certificate status.</small></button>
+</div>
+<section id="panel" class="panel" aria-live="polite"><h2 id="panel-title">Module</h2><div id="panel-content" class="muted">Select an action.</div>
+<div class="actions"><button id="run" class="action">Generate report</button><button id="close" class="action secondary">Close</button></div></section>
+<div id="status" class="status">Connecting to local Lobby service…</div>
+<footer>NODE CORE OS byLAEV · Termux compatibility preview · Loopback only · Read-only inventory · Release metadata verification</footer>
+<!-- NODE_CORE_LOBBY_SESSION -->
+<script>
+const panel=document.getElementById('panel'),title=document.getElementById('panel-title'),content=document.getElementById('panel-content'),statusEl=document.getElementById('status'),runBtn=document.getElementById('run');
+let selected='diagnosis';
+const labels={environment:'00 · Linux terminal compatibility',termux:'Termux / approved terminal commands',layout:'Node Core OS · Canonical directory manifest',report:'Generate Report · Official Termux status',diagnosis:'Full system diagnosis',prepare:'Environment preparation report',install:'Installation readiness',update:'Update readiness',repair:'Read-only repair inspection',status:'Node status',certificates:'Security certificate catalog and manager',identity:'Bitcoin identity · public proof status'};
+function showPanel(name){selected=name;title.textContent=labels[name];content.textContent='Ready. Press the action button to collect a fresh local report.';runBtn.textContent=name==='termux'?'REVEAL COMMANDS':(name==='status'?'Refresh status':(name==='install'||name==='update'?'Check official stable release':(name==='certificates'?'Refresh catalog':(name==='identity'?'Refresh Bitcoin identity':'Generate report'))));panel.classList.add('open');panel.scrollIntoView({behavior:'smooth',block:'start'});if(name==='install'){fetch('/api/identity/bitcoin',{cache:'no-store'}).then(r=>r.json()).then(renderBitcoinIdentityStatus).catch(()=>renderBitcoinIdentityStatus({status:'not_verified'}));}}
+document.querySelectorAll('[data-panel]').forEach(b=>b.addEventListener('click',()=>showPanel(b.dataset.panel)));
+document.getElementById('close').addEventListener('click',()=>panel.classList.remove('open'));
+const openNodeCoreTopButton=document.getElementById('open-node-core-top');
+if(openNodeCoreTopButton)openNodeCoreTopButton.addEventListener('click',()=>openNodeCoreTerminal(openNodeCoreTopButton));
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function section(name,body){return '<details open><summary>'+esc(name)+'</summary>'+body+'</details>';}
+function updateBitcoinIdentityHeader(identity){
+const header=document.getElementById('bitcoin-address-header');
+const profileHeader=document.getElementById('identity-header');
+if(!header||!profileHeader)return;
+if(identity&&identity.status==='control_verified'&&identity.address){
+profileHeader.textContent=[
+'Nombre: '+(identity.full_name||'No informado'),
+'Documento: '+(identity.document_number_masked||'No informado'),
+'Nacionalidad: '+(identity.nationality||'No informada'),
+'Nacimiento: '+(identity.birth_date||'No informado'),
+'Estatura: '+(identity.height_cm?identity.height_cm+' cm':'No informada')
+].join(' · ');
+profileHeader.hidden=false;
+header.textContent='BITCOIN MAINNET · '+identity.address;
+header.hidden=false;
+}else{
+profileHeader.textContent='';profileHeader.hidden=true;header.textContent='';header.hidden=true;
+}
+}
+async function refreshBitcoinIdentityHeader(){
+try{
+const response=await fetch('/api/identity/bitcoin',{cache:'no-store',credentials:'same-origin',referrerPolicy:'no-referrer'});
+if(!response.ok)throw new Error('HTTP '+response.status);
+updateBitcoinIdentityHeader(await response.json());
+}catch(_){
+updateBitcoinIdentityHeader(null);
+}
+}
+async function postBitcoinIdentity(path,payload){
+if(window.location.protocol!=='https:')throw new Error('Bitcoin identity setup requires the HTTPS local Lobby connection.');
+if(!window.NODE_CORE_LOBBY_SESSION)throw new Error('Local Lobby session token is unavailable. Reload the Lobby.');
+const response=await fetch(path,{
+method:'POST',
+headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},
+body:JSON.stringify(payload),
+cache:'no-store',
+credentials:'same-origin',
+referrerPolicy:'no-referrer'
+});
+const result=await response.json();
+if(!response.ok||result.status==='error'||result.status==='forbidden')throw new Error(result.message||'Bitcoin identity request failed.');
+return result;
+}
+function renderBitcoinIdentityStatus(identity){
+if(identity&&identity.status==='control_verified'){
+updateBitcoinIdentityHeader(identity);
+content.innerHTML='<p class="ok"><b>Perfil local completado · control de clave Bitcoin verificado</b></p><div class="result"><b>Nombre y apellidos</b><p>'+esc(identity.full_name)+'</p></div><div class="result"><b>Documento</b><p>'+esc(identity.document_number_masked||'No informado')+'</p></div><div class="result"><b>Nacionalidad</b><p>'+esc(identity.nationality||'No informada')+'</p></div><div class="result"><b>Fecha de nacimiento</b><p>'+esc(identity.birth_date)+'</p></div><div class="result"><b>Estatura</b><p>'+esc(identity.height_cm)+' cm</p></div><div class="result"><b>Dirección Bitcoin mainnet</b><p><code>'+esc(identity.address)+'</code></p></div><div class="result"><b>Estado</b><p>'+(identity.installation_gate_ready?'<span class="ok">Prueba local de clave HEX aprobada · instalación habilitada</span>':'<span class="warn">La prueba de clave privada local aún es obligatoria</span>')+'</p></div>'+(identity.node_id?'<div class="result"><b>NODE ID</b><p><code>'+esc(identity.node_id)+'</code></p></div>':'<p class="muted">Los datos son declarados por el operador; no existe verificación civil ante el emisor del documento.</p><button id="associate-bitcoin-identity" class="action" type="button">ASOCIAR CON NODE ID INSTALADO</button>')+(identity.pending?'<button id="cancel-bitcoin-identity" class="action secondary" type="button">CANCELAR PERFIL PENDIENTE</button>':'')+(selected==='install'&&identity.installation_gate_ready?'<button id="continue-installation" class="action" type="button">CONTINUAR A LA INSTALACIÓN OFICIAL</button>':'');
+const associate=content.querySelector('#associate-bitcoin-identity');
+if(associate)associate.addEventListener('click',async()=>{
+associate.disabled=true;
+try{
+const result=await postBitcoinIdentity('/api/identity/bitcoin/associate-node',{});
+if(result.status!=='associated'||!result.association||!result.association.identity)throw new Error('The local service did not confirm the NODE ID association.');
+renderBitcoinIdentityStatus(result.association.identity);
+}catch(error){
+content.insertAdjacentHTML('afterbegin','<p class="bad">NODE ID association failed: '+esc(error.message)+'</p>');
+associate.disabled=false;
+}
+});
+const continueButton=content.querySelector('#continue-installation');
+if(continueButton)continueButton.addEventListener('click',()=>runSelected());
+const cancel=content.querySelector('#cancel-bitcoin-identity');
+if(cancel)cancel.addEventListener('click',async()=>{
+if(!confirm('Cancel the pending Bitcoin identity proof?'))return;
+cancel.disabled=true;
+try{
+await postBitcoinIdentity('/api/identity/bitcoin/cancel',{});
+updateBitcoinIdentityHeader(null);
+renderBitcoinIdentityStatus({status:'not_verified'});
+}catch(error){
+content.insertAdjacentHTML('afterbegin','<p class="bad">'+esc(error.message)+'</p>');
+cancel.disabled=false;
+}
+});
+return;
+}
+if(identity&&identity.status==='unavailable'){
+content.innerHTML='<p class="bad">'+esc(identity.message||'Bitcoin identity service is unavailable.')+'</p>';
+return;
+}
+content.innerHTML='<p class="muted">Completa este perfil local para habilitar la primera instalación. Los datos personales se guardan en el almacenamiento local de Node Core OS.</p><form id="bitcoin-identity-form" autocomplete="off"><div class="identity-form-grid"><div><label for="bitcoin-full-name">Nombre y apellidos (obligatorio, como en el documento)</label><input id="bitcoin-full-name" type="text" maxlength="160" autocomplete="name" required placeholder="Nombre y apellidos"></div><div><label for="bitcoin-document-number">Número del documento (opcional)</label><input id="bitcoin-document-number" type="text" maxlength="80" autocomplete="off" placeholder="Opcional"></div><div><label for="bitcoin-nationality">Nacionalidad del documento (opcional)</label><input id="bitcoin-nationality" type="text" maxlength="80" autocomplete="country-name" placeholder="Opcional"></div><div><label for="bitcoin-birth-date">Fecha de nacimiento (obligatorio · DD/MM/AAAA)</label><input id="bitcoin-birth-date" type="text" maxlength="10" minlength="10" pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/[0-9]{4}" inputmode="numeric" placeholder="00/00/0000" required></div><div><label for="bitcoin-height">Estatura en centímetros (obligatorio)</label><input id="bitcoin-height" type="number" min="1" max="300" step="1" required placeholder="Ej. 175"></div><div><label for="bitcoin-private-key">Clave privada Bitcoin · HEX 64 (obligatorio)</label><input id="bitcoin-private-key" type="password" maxlength="64" minlength="64" pattern="[0-9a-fA-F]{64}" autocomplete="off" autocapitalize="off" spellcheck="false" required placeholder="64 caracteres hexadecimales"></div></div><p class="warn">Usa una clave dedicada sin fondos. No introduzcas una frase semilla, WIF ni una clave de una cartera con fondos.</p><p class="muted">La clave se envía exclusivamente por HTTPS al servicio local con token de sesión y validación Host/Origin. No se guarda, no aparece en el encabezado y no se envía a IPFS, GitHub ni servicios remotos. La limpieza de memoria es de mejor esfuerzo. Los datos personales se guardan localmente con permisos restrictivos; esta versión no cifra el perfil en reposo.</p><div class="actions"><button id="bitcoin-identity-submit" class="action" type="submit">VERIFICAR PERFIL Y CLAVE · HABILITAR INSTALACIÓN</button></div><p id="bitcoin-identity-feedback" class="muted" role="status" aria-live="polite"></p></form>';
+const form=content.querySelector('#bitcoin-identity-form');
+form.addEventListener('submit',async event=>{
+event.preventDefault();
+const fullName=content.querySelector('#bitcoin-full-name').value.trim();
+const documentNumber=content.querySelector('#bitcoin-document-number').value.trim();
+const nationality=content.querySelector('#bitcoin-nationality').value.trim();
+const birthDate=content.querySelector('#bitcoin-birth-date').value.trim();
+const heightCm=content.querySelector('#bitcoin-height').value.trim();
+const privateKeyInput=content.querySelector('#bitcoin-private-key');
+let privateKey=privateKeyInput.value.trim();
+const submit=content.querySelector('#bitcoin-identity-submit');
+const feedback=content.querySelector('#bitcoin-identity-feedback');
+if(!/^[^\s]+(?:\s+[^\s]+)+$/.test(fullName)||fullName.length>160){feedback.textContent='Introduce nombre y al menos un apellido.';return;}
+if(!/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/[0-9]{4}$/.test(birthDate)){feedback.textContent='La fecha debe tener formato DD/MM/AAAA.';return;}
+const dateParts=birthDate.split('/').map(Number), birthObject=new Date(dateParts[2],dateParts[1]-1,dateParts[0]);
+if(birthObject.getFullYear()!==dateParts[2]||birthObject.getMonth()!==dateParts[1]-1||birthObject.getDate()!==dateParts[0]||birthObject>new Date()){feedback.textContent='La fecha no es válida o está en el futuro.';return;}
+if(!/^[0-9]{1,3}$/.test(heightCm)||Number(heightCm)<1||Number(heightCm)>300){feedback.textContent='La estatura debe estar entre 1 y 300 cm.';return;}
+if(!/^[0-9a-fA-F]{64}$/.test(privateKey)){feedback.textContent='La clave debe tener 64 caracteres hexadecimales.';return;}
+if(window.location.protocol!=='https:'){
+feedback.textContent='HTTPS is required. The key will not be submitted over HTTP.';
+privateKeyInput.value='';
+privateKey='';
+return;
+}
+submit.disabled=true;
+feedback.textContent='Requesting a one-time challenge and verifying the key locally…';
+privateKeyInput.value='';
+try{
+const challengeResult=await postBitcoinIdentity('/api/identity/bitcoin/challenge',{full_name:fullName,document_number:documentNumber,nationality:nationality,birth_date:birthDate,height_cm:Number(heightCm)});
+const challenge=challengeResult.challenge;
+if(!challenge||!challenge.challenge_id)throw new Error('The local service did not return a valid challenge.');
+const verified=await postBitcoinIdentity('/api/identity/bitcoin/verify-local-key',{
+challenge_id:challenge.challenge_id,
+private_key_hex:privateKey
+});
+privateKey='';
+renderBitcoinIdentityStatus(verified.identity);
+}catch(error){
+privateKey='';
+feedback.textContent='Verification failed: '+error.message+' Request a new challenge and try again.';
+}finally{
+privateKey='';
+privateKeyInput.value='';
+submit.disabled=false;
+}
+});
+}
+function renderLayoutManifest(d){
+let out="<p><b>Layout:</b> "+esc(d.layout_id)+" · <b>Schema:</b> "+esc(d.schema_version)+"</p>";
+out+="<p><b>Canonical root:</b> <code>"+esc(d.root.default)+"</code><br>"+esc(d.root.policy)+"</p>";
+out+="<h3>Directories</h3>";
+for(const item of d.directories||[])out+='<div class="result"><b>~/.node-core/'+esc(item.path)+'/</b><p>'+esc(item.purpose)+'</p><small>Owner: '+esc(item.provisioner)+' · Persistence: '+esc(item.persistence)+'</small></div>';
+out+="<h3>Managed files</h3>";for(const item of d.files||[])out+='<div class="result"><b>~/.node-core/'+esc(item.path)+'</b><p>'+esc(item.purpose)+'</p></div>';
+out+="<h3>External platform paths</h3>";for(const item of d.external_paths||[])out+='<div class="result"><b>'+esc(item.path)+'</b><p>'+esc(item.purpose)+'</p></div>';
+out+="<h3>Installation invariants</h3><ul>";for(const item of d.invariants||[])out+="<li>"+esc(item)+"</li>";out+="</ul>";
+out+='<p class="muted">This manifest is descriptive and versioned. The canonical installer creates directories from this file; updates must preserve persistent storage and IPFS data.</p>';
+return out;
+}
+function renderTree(node,depth=0){
+if(!node)return '';
+let out='<div class="result" style="padding-left:'+(depth*12)+'px">'+(node.type==='file'?'📄 ':'📁 ')+esc(node.name);
+if(node.note)out+=' <small>('+esc(node.note)+')</small>';
+if(node.error)out+=' <small class="warn">'+esc(node.error)+'</small>';
+out+='</div>';
+for(const child of (node.children||[]))out+=renderTree(child,depth+1);
+return out;
+}
+
+function renderTermuxCommands(data){
+const groups=new Map();
+for(const item of data.commands||[]){
+const category=item.category||'Basic commands';
+if(!groups.has(category))groups.set(category,[]);
+groups.get(category).push(item);
+}
+let out='<p>Basic Termux environment commands. Each item shows the exact command and runs locally with read-only intent. No arbitrary shell text is accepted.</p><div class="result"><b>NODE CORE OS</b><p>Launch it with the OPEN NODE CORE OS button at the top of this interface. The command runs in an interactive local PTY.</p><pre><code>cd "$HOME/Node-Core-OS" && python main.py</code></pre></div>';
+for(const [category,items] of groups){
+out+='<h3>'+esc(category)+'</h3>';
+for(const item of items){
+out+='<div class="result"><b>'+esc(item.label)+'</b><p>'+esc(item.description)+'</p><pre><code>'+esc(item.command)+'</code></pre>';
+out+='<div class="actions"><button class="action" data-termux-execute="'+esc(item.id)+'" '+(item.available?'':'disabled')+'><span aria-hidden="true">▶</span> EXECUTE</button>';
+if(!item.available)out+='<small class="warn">Command unavailable in this Termux installation</small>';
+out+='</div></div>';
+}
+}
+out+='<p class="muted">Execution limits: 30 seconds per command, 64 KiB output per command, maximum two simultaneous commands. No root privileges and no shell interpreter. Package listings and process lists may be truncated by the output limit.</p>';
+return out;
+}
+async function executeTermuxCommand(commandId,button){
+if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token unavailable. Reload the Lobby.</p>');return;}
+button.disabled=true;
+try{
+const response=await fetch('/api/termux/execute',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({command_id:commandId}),cache:'no-store'});
+const data=await response.json();
+if(!response.ok||data.status!=='started')throw new Error(data.message||'Unable to start command');
+const job=data.job;
+const terminal=document.createElement('section');
+terminal.className='panel open';
+terminal.style.display='block';
+terminal.innerHTML='<h2>TERMUX · LIVE EXECUTION</h2><p><b>Command:</b></p><pre></pre><p class="muted">Starting local process…</p><pre class="termux-output" style="background:#080d11;padding:14px;border:1px solid #35404b;border-radius:8px;min-height:100px"></pre><button class="action secondary" type="button">Close terminal window</button>';
+const pres=terminal.querySelectorAll('pre');
+pres[0].textContent=job.command;
+const state=terminal.querySelector('p.muted'),output=terminal.querySelector('.termux-output');
+const close=terminal.querySelector('button');
+close.addEventListener('click',()=>terminal.remove());
+content.appendChild(terminal);
+terminal.scrollIntoView({behavior:'smooth',block:'start'});
+await pollTermuxJob(job.job_id,terminal,state,output);
+}catch(error){
+content.insertAdjacentHTML('afterbegin','<p class="bad">Command execution failed: '+esc(error.message)+'</p>');
+button.disabled=false;
+}
+}
+async function openNodeCoreTerminal(button){
+const panelActions=runBtn.parentElement;
+selected='terminal';title.textContent='NODE CORE OS · INTERACTIVE TERMINAL';content.replaceChildren();panel.classList.add('open');
+if(panelActions)panelActions.style.display='none';
+if(!window.NODE_CORE_LOBBY_SESSION){
+const message=document.createElement('p');message.className='bad';message.textContent='Local session token unavailable. Reload the Lobby.';content.appendChild(message);
+if(panelActions)panelActions.style.display='';
+return;
+}
+button.disabled=true;
+const notice=document.createElement('p');notice.className='muted';notice.textContent='Connecting to the Node Core OS interactive terminal…';content.appendChild(notice);
+panel.scrollIntoView({behavior:'smooth',block:'start'});
+try{
+const response=await fetch('/api/terminal/start',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({}),cache:'no-store'});
+const data=await response.json();
+if(!response.ok||data.status!=='started')throw new Error(data.message||'Unable to open Node Core OS terminal');
+content.replaceChildren();
+const terminal=document.createElement('section');
+terminal.className='panel open';terminal.style.display='block';
+terminal.innerHTML='<h2>NODE CORE OS · INTERACTIVE TERMINAL</h2><p class="muted">Starting interactive shell and Node Core OS…</p><pre class="termux-output" style="background:#080d11;padding:14px;border:1px solid #35404b;border-radius:8px;min-height:180px;max-height:55vh;overflow:auto;white-space:pre-wrap"></pre><form class="terminal-form"><label for="node-core-terminal-input">Terminal input</label><input id="node-core-terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type a command and press Enter"><div class="actions"><button class="action" type="submit">SEND / ENTER</button><button class="action secondary terminal-close" type="button">CLOSE TERMINAL</button></div></form><p class="muted">This is a real local PTY session. The requested command runs in the Termux environment.</p>';
+content.appendChild(terminal);terminal.scrollIntoView({behavior:'smooth',block:'start'});
+const output=terminal.querySelector('.termux-output'),state=terminal.querySelector('.muted'),form=terminal.querySelector('form'),input=terminal.querySelector('input');
+let closed=false,lastOutput='';
+form.addEventListener('submit',async event=>{
+event.preventDefault();if(closed||!input.value)return;
+const value=input.value+'\n';input.value='';
+try{const sent=await fetch('/api/terminal/input',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id,input:value}),cache:'no-store'});const result=await sent.json();if(!sent.ok||result.status!=='ok')throw new Error(result.message||'Input failed');}
+catch(error){state.textContent='Input error: '+error.message;state.className='bad';}
+});
+terminal.querySelector('.terminal-close').addEventListener('click',async()=>{
+closed=true;try{await fetch('/api/terminal/close',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id}),cache:'no-store'});}catch(_){}
+terminal.remove();panel.classList.remove('open');if(panelActions)panelActions.style.display='';button.disabled=false;
+});
+async function poll(){
+if(closed||!terminal.isConnected)return;
+try{
+const response=await fetch('/api/terminal/output',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({session_id:data.terminal.session_id}),cache:'no-store'});
+const result=await response.json();if(!response.ok||result.status!=='ok')throw new Error(result.message||'Terminal stream failed');
+const session=result.terminal;
+if(session.output!==lastOutput){output.textContent=session.output+(session.output_truncated?'\\n[OUTPUT LIMIT REACHED]':'');lastOutput=session.output;output.scrollTop=output.scrollHeight;}
+state.textContent=session.status==='running'?'CONNECTED · Interactive Node Core OS terminal':'PROCESS EXITED · code '+session.returncode;
+if(session.status==='running')window.setTimeout(poll,250);
+else {input.disabled=true;terminal.querySelector('button[type=submit]').disabled=true;button.disabled=false;}
+}catch(error){state.textContent='Terminal connection error: '+error.message;state.className='bad';button.disabled=false;}
+}
+input.focus();poll();
+}catch(error){content.replaceChildren();const errorNotice=document.createElement('p');errorNotice.className='bad';errorNotice.textContent='Unable to open Node Core OS: '+error.message;content.appendChild(errorNotice);if(panelActions)panelActions.style.display='';button.disabled=false;}
+}
+async function pollTermuxJob(jobId,terminal,state,output){
+try{
+const response=await fetch('/api/termux/output',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({job_id:jobId}),cache:'no-store'});
+const data=await response.json();
+if(!response.ok||data.status!=='ok')throw new Error(data.message||'Unable to read command output');
+const job=data.job;
+output.textContent=job.output||'(waiting for command output…)';
+if(job.output_truncated)output.textContent+='\n[OUTPUT TRUNCATED: 64 KiB limit reached]';
+output.scrollTop=output.scrollHeight;
+if(job.status==='running'){
+state.textContent='RUNNING · local PID '+(job.pid||'starting');
+window.setTimeout(()=>{if(terminal.isConnected)pollTermuxJob(jobId,terminal,state,output);},350);
+}else{
+state.textContent=job.status.toUpperCase()+' · exit code '+job.returncode+(job.status==='timed_out'?' · time limit reached':'');
+state.className=job.status==='completed'?'ok':(job.status==='failed'||job.status==='timed_out'?'bad':'muted');
+}
+}catch(error){
+state.textContent='Output stream error: '+error.message;
+state.className='bad';
+}
+}
+
+
+function formatReportText(d){
+const lines=[];
+const add=(label,value)=>lines.push(label+': '+String(value??'NOT_CHECKED'));
+lines.push('NODE CORE OS byLAEV — LINUX TERMINAL ENVIRONMENT REPORT');
+lines.push('=====================================================');
+add('Generated (UTC)',d.generated_at);add('Report schema',d.report_schema||'1.0.0');
+lines.push('');lines.push('SUMMARY');add('Checks passed',d.summary.passed);add('Required failures',d.summary.failed_required);add('Warnings',d.summary.warnings);add('Total checks',d.summary.total);
+lines.push('');lines.push('COMPATIBILITY CHECKS');for(const c of d.checks)lines.push((c.ok?'PASS':(c.severity==='required'?'FAIL':'WARN'))+' | '+c.name+' | '+c.detail);
+lines.push('');lines.push('LINUX TERMINAL / DISTRIBUTION ENVIRONMENT');lines.push(JSON.stringify(d.environment,null,2));
+lines.push('');lines.push('NODE CORE OS DETECTION');lines.push(JSON.stringify(d.node_core,null,2));
+lines.push('');lines.push('COMMAND-LINE TOOLS');lines.push(JSON.stringify(d.tools,null,2));
+lines.push('');lines.push('INSTALLED PACKAGES');add('Inventory source',d.packages.source);add('Detected',d.packages.total_detected);add('Truncated',d.packages.truncated);lines.push(JSON.stringify(d.packages.packages,null,2));if(d.packages.error)add('Inventory error',d.packages.error);
+lines.push('');lines.push('NETWORK AND LOCAL SERVICES');lines.push(JSON.stringify(d.network,null,2));
+lines.push('');lines.push('DIRECTORY STRUCTURE');lines.push(JSON.stringify(d.directories,null,2));
+lines.push('');lines.push('PRIVACY / SCAN LIMITS');lines.push(JSON.stringify(d.privacy,null,2));
+lines.push('');lines.push('RESULT INTERPRETATION');lines.push('PASS = verified condition met. FAIL = required condition not met. WARN = recommended condition not met. NOT_CHECKED = not verified.');
+lines.push('This is a read-only local inventory. It is not a security certification or proof that every application component works.');
+return lines.join('\n')+'\n';
+}
+function wireReportExports(d){
+const txt=formatReportText(d),json=JSON.stringify(d,null,2);
+const copy=async value=>{if(!navigator.clipboard||!navigator.clipboard.writeText)throw new Error('Clipboard API unavailable; use Download.');await navigator.clipboard.writeText(value);};
+const download=(name,type,value)=>{const blob=new Blob([value],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
+const bind=(id,fn)=>{const el=content.querySelector('#'+id);if(el)el.addEventListener('click',async()=>{el.disabled=true;try{await fn();statusEl.textContent='Report action completed: '+id;}catch(e){statusEl.textContent='Report action unavailable: '+e.message;}finally{el.disabled=false;}});};
+const actions=document.createElement('div');actions.className='actions';actions.dataset.reportExport='true';
+actions.innerHTML='<button id="copy-report-txt" class="action">Copy TXT</button><button id="copy-report-json" class="action">Copy JSON</button><button id="download-report-txt" class="action">Download TXT</button><button id="download-report-json" class="action">Download JSON</button><button id="share-report" class="action secondary">Share report</button>';
+content.insertBefore(actions,content.firstChild);
+bind('copy-report-txt',()=>copy(txt));bind('copy-report-json',()=>copy(json));
+bind('download-report-txt',()=>download('node-core-termux-report.txt','text/plain;charset=utf-8',txt));
+bind('download-report-json',()=>download('node-core-termux-report.json','application/json;charset=utf-8',json));
+bind('share-report',async()=>{const shareFiles=[new File([txt],'node-core-termux-report.txt',{type:'text/plain'}),new File([json],'node-core-termux-report.json',{type:'application/json'})];if(navigator.share&&navigator.canShare&&navigator.canShare({files:shareFiles})){await navigator.share({title:'Node Core OS — Termux report',text:'Official read-only Termux environment report.',files:shareFiles});}else if(navigator.share){await navigator.share({title:'Node Core OS — Termux report',text:txt});}else{await copy(txt);statusEl.textContent='Native sharing unavailable. TXT report copied to clipboard.';}});
+}
+function renderReport(d){
+window.NODE_CORE_LAST_REPORT=d;
+let out='<p><b>Generated:</b> '+esc(d.generated_at)+'</p><p><b>Summary:</b> <span class="ok">'+d.summary.passed+' passed</span> · <span class="bad">'+d.summary.failed_required+' required failures</span> · <span class="warn">'+d.summary.warnings+' warnings</span> · '+d.summary.total+' checks</p>';
+let checks='';for(const c of d.checks)checks+='<div class="result"><b class="'+(c.ok?'ok':c.severity==='required'?'bad':'warn')+'">'+(c.ok?'PASS':c.severity.toUpperCase())+' · '+esc(c.name)+'</b><br><small>'+esc(c.detail)+'</small></div>';
+out+=section('Compatibility checks',checks);
+out+=section('Linux terminal and distribution environment','<pre>'+esc(JSON.stringify(d.environment,null,2))+'</pre>');
+let n=d.node_core;let nc='<p><b>Status:</b> '+esc(n.status.toUpperCase())+'</p><p><b>Version:</b> '+esc(n.version||'Not detected')+'</p><p><b>Data directory:</b> '+esc(n.data_directory)+'</p><pre>'+esc(JSON.stringify(n.layout,null,2))+'</pre>';
+if(n.repository_checkouts.length)nc+='<p><b>Repository checkouts:</b></p><pre>'+esc(JSON.stringify(n.repository_checkouts,null,2))+'</pre>';
+out+=section('Node Core OS installation detection',nc);
+let tools='';for(const [name,t] of Object.entries(d.tools))tools+='<div class="result"><b class="'+(t.available?'ok':'warn')+'">'+esc(name)+'</b><br><small>'+(t.available?esc(t.path)+' · '+esc(t.version||'version not queried'):'Not available')+'</small></div>';
+out+=section('Command-line tools',tools);
+let p=d.packages;let pkg='<p><b>'+p.total_detected+'</b> installed packages detected using '+esc(p.source)+'.'+(p.truncated?' Display limited to '+p.limit+'.':'')+'</p><pre>'+esc(p.packages.map(x=>x.name+'  '+x.version).join('\n'))+'</pre>';
+if(p.error)pkg+='<p class="warn">'+esc(p.error)+'</p>';out+=section('Installed packages',pkg);
+out+=section('Network and local services','<pre>'+esc(JSON.stringify(d.network,null,2))+'</pre>');
+let dirs='';for(const t of d.directories.targets){dirs+='<h3>'+esc(t.label)+' — '+(t.exists?'present':'not found')+'</h3>';dirs+=t.tree?renderTree(t.tree):'<small>'+esc(t.path)+'</small>';}
+dirs+='<p class="muted">'+esc(d.directories.policy)+'</p>';out+=section('Directory structure',dirs);
+out+=section('Privacy and scan limits','<pre>'+esc(JSON.stringify(d.privacy,null,2))+'</pre>');
+return out;
+}
+function renderCertificates(d){
+if(d.status==='unavailable')return '<p class="bad">'+esc(d.message||'Certificate catalog unavailable')+'</p>';
+let out='<p><b>Catalog:</b> '+esc(d.catalog_version)+' · <b>Generated:</b> '+esc(d.generated_at)+'</p>';
+out+='<p class="muted">The eight security profiles are evaluation/product profiles, not eight installable X.509 certificates. Lobby manages its own loopback TLS and exposes controlled peer trust administration. It never reads or exports private keys.</p>';
+for(const item of d.technical_certificates||[]){
+const rt=item.runtime||{},status=rt.status||'unknown';
+let body='<p><b>Type:</b> '+esc(item.type)+'</p><p><b>Manager:</b> '+esc(item.manager)+'</p><p>'+esc(item.purpose)+'</p><p><b>Status:</b> <span class="'+(['valid','valid_self_signed','configured'].includes(status)?'ok':['invalid','incomplete','expired_or_not_yet_valid'].includes(status)?'bad':'warn')+'">'+esc(status)+'</span></p>';
+if(rt.detail)body+='<p>'+esc(rt.detail)+'</p>';
+if(rt.fingerprint_sha256)body+='<p><b>SHA-256:</b> <code>'+esc(rt.fingerprint_sha256)+'</code></p>';
+if(rt.not_after)body+='<p><b>Expires:</b> '+esc(rt.not_after)+' · '+esc(rt.expires_in_days)+' days remaining</p>';
+if(rt.node_id)body+='<p><b>NODE ID:</b> <code>'+esc(rt.node_id)+'</code></p>';
+if(rt.path)body+='<p><b>Store:</b> <code>'+esc(rt.path)+'</code></p>';
+if(rt.trusted_count!==undefined)body+='<p>Trusted: '+esc(rt.trusted_count)+' · Revoked: '+esc(rt.revoked_count)+'</p>';
+if(item.id==='lobby-localhost-tls'){
+body+='<div class="certificate-actions">';
+if(status==='missing')body+='<button class="action" data-cert-action="tls_install">Install local TLS</button>';
+if(['valid','valid_self_signed'].includes(status))body+='<button class="action" data-cert-action="tls_renew">Renew TLS</button>';
+if(['invalid','incomplete','expired_or_not_yet_valid'].includes(status))body+='<button class="action" data-cert-action="tls_repair">Repair TLS</button>';
+if(rt.backup_available)body+='<button class="action secondary" data-cert-action="tls_recover">Recover backup</button>';
+body+='</div><p class="muted">Changes require a Lobby restart to activate. This self-signed certificate does not install Android system/browser trust.</p>';
+}
+if(item.id==='node-core-peer-trust-store'){
+body+='<div class="result"><b>Import public Node Core OS peer certificate</b><p>Paste exactly one PEM certificate. Verify the displayed NODE ID and SHA-256 fingerprint with the peer through an independent channel before trusting it.</p><label for="peer-label">Peer label (optional)</label><input id="peer-label" maxlength="128" placeholder="Trusted peer label"><label for="peer-pem">Public PEM certificate only</label><textarea id="peer-pem" rows="6" placeholder="-----BEGIN CERTIFICATE-----"></textarea><label for="peer-fingerprint">SHA-256 fingerprint confirmed out of band (required to trust)</label><input id="peer-fingerprint" maxlength="64" placeholder="64 lowercase hexadecimal characters"><div class="certificate-actions"><button class="action" id="peer-inspect">Inspect only</button><button class="action" id="peer-trust">Trust peer</button></div></div>';
+for(const peer of rt.peers||[]){
+body+='<div class="result"><b>'+esc(peer.label||'Peer')+'</b><p><code>'+esc(peer.node_id)+'</code></p><p>SHA-256: <code>'+esc(peer.fingerprint_sha256)+'</code></p><p>Status: '+esc(peer.status)+'</p>';
+if(peer.status==='trusted')body+='<button class="action secondary" data-peer-revoke="'+esc(peer.node_id)+'">Revoke trust</button>';
+body+='</div>';
+}
+}
+out+=section(item.name,body);
+}
+let profiles='';for(const p of d.security_profiles||[])profiles+='<div class="result"><b>'+esc(p.name)+'</b><br><code>'+esc(p.id)+'</code><br><small>Status: '+esc(p.status)+' · Installable certificate: no</small></div>';
+out+=section('Eight Node Core OS security profiles',profiles);
+out+=section('Security policies','<pre>'+esc(JSON.stringify(d.policies,null,2))+'</pre>');
+out+='<p class="muted">Audit log: '+esc(d.audit_log_path)+'</p>';
+return out;
+}
+async function certificateAction(action,payload={}){
+if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token is unavailable. Reload Lobby.</p>');return;}
+if((action==='peer_inspect'||action==='peer_trust')&&String(payload.certificate_pem||'').includes('PRIVATE KEY')){content.insertAdjacentHTML('afterbegin','<p class="bad">Private-key material is rejected and must never be submitted.</p>');return;}
+const descriptions={tls_install:'Generate and install the local Lobby TLS certificate?',tls_renew:'Renew the current Lobby TLS certificate? A protected local backup will be created.',tls_repair:'Generate a replacement TLS pair and quarantine invalid files?',tls_recover:'Restore the last verified TLS backup?',peer_trust:'Add this peer certificate to the Node Core OS explicit trust allowlist?',peer_revoke:'Revoke this peer from the local Node Core OS trust allowlist?'};
+if(!window.confirm(descriptions[action]||'Perform this certificate operation?'))return;
+try{
+const response=await fetch('/api/certificates/action',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({action,...payload}),cache:'no-store'});
+const result=await response.json();
+if(!response.ok||result.status!=='success')throw new Error(result.message||'Certificate operation failed');
+let html='<div class="result"><b class="ok">Operation completed</b><pre>'+esc(JSON.stringify(result.result,null,2))+'</pre>';
+if(result.result?.restart_required)html+='<p class="warn">Restart the Lobby to activate the new TLS certificate. In Termux run:</p><pre>bash "$HOME/.shortcuts/node-core-lobby"</pre>';
+if(result.result?.effective_after_core_reload)html+='<p class="warn">The peer revocation takes effect after the Node Core OS P2P service reloads. No core process was stopped by the Lobby.</p>';
+html+='</div>';
+content.insertAdjacentHTML('afterbegin',html);
+}catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Certificate operation failed: '+esc(error.message)+'</p>');}
+}
+function wireCertificateActions(){
+content.querySelectorAll('[data-cert-action]').forEach(button=>button.addEventListener('click',()=>certificateAction(button.dataset.certAction)));
+content.querySelectorAll('[data-peer-revoke]').forEach(button=>button.addEventListener('click',()=>certificateAction('peer_revoke',{node_id:button.dataset.peerRevoke})));
+const inspect=document.getElementById('peer-inspect'),trust=document.getElementById('peer-trust');
+const getPeerPayload=()=>({certificate_pem:document.getElementById('peer-pem')?.value||'',label:document.getElementById('peer-label')?.value||'',expected_fingerprint_sha256:document.getElementById('peer-fingerprint')?.value.trim().toLowerCase()||''});
+if(inspect)inspect.addEventListener('click',()=>certificateAction('peer_inspect',getPeerPayload()));
+if(trust)trust.addEventListener('click',()=>{
+const payload=getPeerPayload();
+if(payload.certificate_pem.includes('PRIVATE KEY')){content.insertAdjacentHTML('afterbegin','<p class="bad">Never paste a private key. Only public PEM certificates are accepted.</p>');return;}
+if(!/^[0-9a-f]{64}$/.test(payload.expected_fingerprint_sha256)){content.insertAdjacentHTML('afterbegin','<p class="warn">Inspect the certificate first, verify its SHA-256 fingerprint with the peer through an independent channel, then enter the exact 64-character fingerprint.</p>');return;}
+certificateAction('peer_trust',payload);
+});
+}
+function renderRelease(r, mode, packageStatus){
+if(r.status==='unavailable')return '<p class="bad"><b>Release verification unavailable.</b></p><p>'+esc(r.message||r.error||'No verified release metadata.')+'</p>';
+const a=r.assets||{};
+let out='<p><b>Latest stable release:</b> <span class="ok">'+esc(r.name)+' ('+esc(r.tag)+')</span></p>';
+out+='<p><b>Published:</b> '+esc(r.published_at)+'</p>';
+out+='<p><b>Official release:</b> <a href="'+esc(r.release_url)+'" target="_blank" rel="noopener noreferrer">Open GitHub Release</a></p>';
+out+='<p><b>Installed version:</b> '+esc(r.installed_version||'No complete installation detected')+'</p>';
+if(r.installation_detected)out+='<p class="warn">An existing Node Core OS installation was detected. Only the official updater is available.</p>';
+else if(r.partial_installation)out+='<p class="bad">A partial or residual installation was detected. Neither installation nor update will run automatically; repair the installation state first.</p>';
+else out+='<p class="muted">No complete Node Core OS installation was detected. The official installer is available after package verification.</p>';
+out+='<p><b>SHA-256 metadata:</b> '+(r.verification?.release_notes_checksums_match_asset_digests?'<span class="ok">Release notes match GitHub asset digests</span>':'<span class="bad">Not verified</span>')+'</p>';
+for(const kind of ['install','update']){
+const item=a[kind];if(!item)continue;
+out+='<div class="result"><b>'+esc(kind==='install'?'New installation package':'Update package')+'</b><br><small>'+esc(item.name)+'</small><br><small>SHA-256: <code>'+esc(item.sha256)+'</code></small><br><small>Size: '+esc(item.size_bytes)+' bytes</small></div>';
+}
+const eligible=r.local_transport==='https'&&(mode==='install'?!r.installation_detected&&!r.partial_installation:!!r.installation_detected&&r.update_available);
+const staged=(packageStatus?.packages||[]).find(p=>p.kind===mode&&p.version===r.version&&p.asset_name===a[mode]?.name&&p.actual_sha256===a[mode]?.sha256);
+const actionName=mode==='install'?'INSTALADOR':'ACTUALIZADOR';
+if(!eligible)out+='<p class="warn">'+(mode==='install'?'La instalación nueva no está disponible porque ya existe una instalación o hay restos de una instalación anterior.':'La actualización requiere una instalación completa y una versión oficial compatible.')+'</p>';
+else if(r.local_transport!=='https')out+='<p class="warn">La ejecución requiere HTTPS en la conexión local del Lobby. Transporte actual: '+esc(r.local_transport||'unknown')+'.</p>';
+else{
+ if(staged)out+='<div class="result"><b class="ok">Paquete oficial verificado y preparado</b><p>'+esc(staged.asset_name)+'</p><p>SHA-256: <code>'+esc(staged.actual_sha256)+'</code></p></div>';
+ else out+='<p class="muted">Primero descarga y verifica el paquete oficial. El botón EJECUTAR estará disponible después de verificarlo.</p>';
+ out+='<div class="actions"><button class="action" id="execute-package" '+(staged?'':'disabled')+'>EJECUTAR '+actionName+' OFICIAL</button><button class="action secondary" id="prepare-package">'+(staged?'DESCARGAR Y VERIFICAR DE NUEVO':'DESCARGAR Y VERIFICAR PAQUETE')+'</button></div>';
+}
+out+='<p class="muted">La ejecución requiere una segunda confirmación. Se ejecuta únicamente el script oficial y se muestra la salida real. La instalación inicial crea la identidad Ed25519; no se solicitan claves privadas Bitcoin/Ethereum. La actualización no vuelve a solicitar claves de identidad.</p>';
+return out;
+}
+async function preparePackage(kind,button){
+if(!window.NODE_CORE_LOBBY_SESSION){content.insertAdjacentHTML('afterbegin','<p class="bad">Local session token is unavailable. Reload the Lobby.</p>');return;}
+const promptText=kind==='install'
+?'Download the official new-install archive and verify its complete SHA-256? No installer will run until you separately confirm EJECUTAR.'
+:'Download the official update archive and verify its complete SHA-256? No updater will run until you separately confirm EJECUTAR.';
+if(!window.confirm(promptText))return;
+button.disabled=true;button.textContent='Downloading and verifying…';
+try{
+const response=await fetch('/api/packages/prepare',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({kind}),cache:'no-store'});
+const result=await response.json();
+if(!response.ok||result.status!=='verified')throw new Error(result.message||'Package preparation failed');
+const r=result.receipt;
+content.insertAdjacentHTML('afterbegin','<div class="result"><b class="ok">Paquete oficial descargado y SHA-256 verificado</b><p>'+esc(r.asset_name)+'</p><p>Versión: '+esc(r.version)+'</p><p>Tamaño: '+esc(r.size_bytes)+' bytes</p><p>SHA-256: <code>'+esc(r.actual_sha256)+'</code></p><p class="muted">Guardado localmente con permisos privados. Todavía no se ha ejecutado.</p></div>');
+const execute=content.querySelector('#execute-package');
+if(execute){execute.disabled=false;execute.addEventListener('click',()=>executeOfficialInstaller(kind,execute));}
+button.disabled=false;
+}catch(error){content.insertAdjacentHTML('afterbegin','<p class="bad">Package preparation failed: '+esc(error.message)+'</p>');}
+finally{button.disabled=false;button.textContent='DESCARGAR Y VERIFICAR PAQUETE';}
+}
+
+async function pollInstallerJob(jobId,terminal,state,output){
+try{
+const response=await fetch('/api/packages/output',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({job_id:jobId}),cache:'no-store'});
+const data=await response.json();
+if(!response.ok||data.status!=='ok')throw new Error(data.message||'Unable to read installer output');
+const job=data.job;
+output.textContent=job.output||'(waiting for installer output…)';
+if(job.output_truncated)output.textContent+='\\n[OUTPUT TRUNCATED: 256 KiB limit reached]';
+output.scrollTop=output.scrollHeight;
+if(job.status==='running'){
+state.textContent='EJECUTANDO · proceso local '+(job.pid||'iniciando');
+window.setTimeout(()=>{if(terminal.isConnected)pollInstallerJob(jobId,terminal,state,output);},500);
+}else{
+state.textContent=job.status.toUpperCase()+' · código de salida '+job.returncode+(job.status==='timed_out'?' · límite de tiempo alcanzado':'');
+state.className=job.status==='completed'?'ok':(job.status==='failed'||job.status==='timed_out'?'bad':'muted');
+}
+}catch(error){state.textContent='Error leyendo la salida: '+error.message;state.className='bad';}
+}
+async function executeOfficialInstaller(kind,button){
+const promptText=kind==='install'
+?'¿Ejecutar el instalador oficial de Node Core OS? Se creará la identidad Ed25519 durante la primera instalación. No introduzcas claves privadas Bitcoin/Ethereum aquí.'
+:'¿Ejecutar el instalador oficial? Ejecutará directamente installer/update.sh del paquete oficial verificado. Se conservarán los datos persistentes según las garantías del actualizador.';
+if(!window.confirm(promptText))return;
+button.disabled=true;button.textContent='INICIANDO '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+'…';
+const terminal=document.createElement('details');terminal.open=true;
+terminal.innerHTML='<summary>Consola del instalador oficial</summary><p class="muted" data-installer-state>Preparando proceso…</p><pre data-installer-output></pre>';
+content.insertBefore(terminal,content.firstChild);
+const state=terminal.querySelector('[data-installer-state]'),output=terminal.querySelector('[data-installer-output]');
+try{
+const response=await fetch('/api/packages/execute',{method:'POST',headers:{'Content-Type':'application/json','X-Node-Core-Lobby-Token':window.NODE_CORE_LOBBY_SESSION},body:JSON.stringify({kind}),cache:'no-store'});
+const result=await response.json();
+if(!response.ok||result.status!=='started')throw new Error(result.message||'No se pudo iniciar el instalador oficial');
+state.textContent='EJECUTANDO · trabajo '+result.job.job_id;
+pollInstallerJob(result.job.job_id,terminal,state,output);
+}catch(error){state.textContent='ERROR: '+error.message;state.className='bad';}
+finally{button.disabled=false;button.textContent='EJECUTAR '+(kind==='install'?'INSTALADOR':'ACTUALIZADOR')+' OFICIAL';}
+}
+function renderEnvironment(data){
+const host=data.current||data, compatibility=data.installation_compatibility||{};
+const distro=host.distribution||{},terminal=host.terminal||{},manager=host.package_manager||{};
+const rows=[
+["Environment",host.platform],
+["Environment type",host.environment_type],
+["Distribution",distro.pretty_name||distro.name],
+["Distribution ID / version",(distro.id||"unknown")+" / "+(distro.version_id||"unknown")],
+["Terminal emulator",terminal.emulator],
+["Shell",terminal.shell],
+["Architecture",host.architecture],
+["Kernel",host.kernel],
+["Package manager",manager.name||"Not detected"],
+["Python",host.python],
+["Container / WSL",(host.container||"none")+" / "+(host.wsl?"yes":"no")],
+["Compatibility preflight",host.preflight_status],
+["Installed Lobby profile",((compatibility.installed||{}).host||{}).profile||"Not recorded"],
+["Installation match",compatibility.status]
+];
+let out="<p><b>Environment detection is read-only.</b> The emulator name is informational; compatibility is based on Linux capabilities, architecture and the official installer preflight.</p>";
+for(const [key,value] of rows)out+='<div class="result"><b>'+esc(key)+'</b><p>'+esc(value||"unknown")+'</p></div>';
+out+=section("Available capabilities",'<pre>'+esc(JSON.stringify(host.available_commands||{},null,2))+'</pre>');
+out+=section("Missing prerequisites",'<pre>'+esc(JSON.stringify(host.missing_capabilities||[],null,2))+'</pre>');
+out+=section("Installation environment comparison",'<pre>'+esc(JSON.stringify(compatibility.comparison||{},null,2))+'</pre>');
+out+='<p class="muted">'+esc(compatibility.message||"No compatibility message.")+'</p>';
+out+='<p class="muted">Official Node Core OS entry point: <code>bash installer/install.sh</code>. Lobby does not select or execute a distribution-specific installer.</p>';
+return out;
+}
+async function checkLobbyConnection(){
+statusEl.textContent='Checking local Lobby service…';
+try{
+const response=await fetch('/health',{method:'GET',cache:'no-store',headers:{'Accept':'application/json'}});
+if(!response.ok)throw new Error('HTTP '+response.status);
+const data=await response.json();
+if(data.status!=='ok')throw new Error('Unexpected health response');
+const transport=data.transport||location.protocol.replace(':','');
+statusEl.textContent='Connected to local Lobby service · '+transport.toUpperCase()+' · 127.0.0.1:8765';
+fetch('/api/environment',{cache:'no-store'}).then(r=>r.json()).then(env=>{const h=env.current||{};const box=document.getElementById('environment-summary');if(box)box.textContent=(h.platform||'Linux')+' · '+(h.architecture||'unknown')+' · '+(h.terminal?.emulator||'terminal unknown')+' · Compatibility: '+(env.installation_compatibility?.status||'not checked');}).catch(()=>{});
+statusEl.style.background='#192b25';
+statusEl.style.color='#9ce2b8';
+return true;
+}catch(error){
+statusEl.textContent='Local Lobby connection failed: '+error.message+' · Confirm that the service is running and reload this page.';
+statusEl.style.background='#38231f';
+statusEl.style.color='#ffb38f';
+return false;
+}
+}
+runBtn.addEventListener('click',runSelected);
+window.addEventListener('pageshow',()=>{checkLobbyConnection();});
+window.addEventListener('online',()=>{checkLobbyConnection();});
+checkLobbyConnection();
+refreshBitcoinIdentityHeader();
+async function runSelected(){
+runBtn.disabled=true;runBtn.textContent='Checking…';
+content.textContent='Collecting fresh local and official release information. No device changes are made.';
+try{
+if(selected==='environment'){
+const r=await fetch('/api/environment',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);content.innerHTML=renderEnvironment(await r.json());
+}else if(selected==='layout'){
+const r=await fetch('/api/layout/manifest',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d.status==='unavailable')throw new Error(d.message);content.innerHTML=renderLayoutManifest(d);
+}else if(selected==='termux'){
+const r=await fetch('/api/termux/commands',{cache:'no-store'});
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+content.innerHTML=renderTermuxCommands(d);
+content.querySelectorAll('[data-termux-execute]').forEach(button=>button.addEventListener('click',()=>executeTermuxCommand(button.dataset.termuxExecute,button)));
+}else if(selected==='identity'){
+const r=await fetch('/api/identity/bitcoin',{cache:'no-store'});
+if(!r.ok)throw new Error('HTTP '+r.status);
+renderBitcoinIdentityStatus(await r.json());
+}else if(selected==='certificates'){
+const r=await fetch('/api/certificates',{cache:'no-store'});
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+content.innerHTML=renderCertificates(d);
+wireCertificateActions();
+}else if(selected==='install'||selected==='update'){
+if(selected==='install'){
+const identityResponse=await fetch('/api/identity/bitcoin',{cache:'no-store'}), identity=await identityResponse.json();
+if(!identityResponse.ok||identity.status!=='control_verified'||identity.installation_gate_ready!==true){renderBitcoinIdentityStatus(identity);return;}
+}
+const r=await fetch('/api/releases/latest',{cache:'no-store'});
+if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+const packageResponse=await fetch('/api/packages/status',{cache:'no-store'});
+if(!packageResponse.ok)throw new Error('Unable to read verified package inventory');
+const packageStatus=await packageResponse.json();
+content.innerHTML=renderRelease(d,selected,packageStatus);
+const prepareButton=content.querySelector('#prepare-package');
+if(prepareButton)prepareButton.addEventListener('click',()=>preparePackage(selected==='install'?'install':'update',prepareButton));
+const executeButton=content.querySelector('#execute-package');
+if(executeButton)executeButton.addEventListener('click',()=>executeOfficialInstaller(selected==='install'?'install':'update',executeButton));
+}else{
+const r=await fetch(selected==='status'?'/api/status':'/api/report',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+const d=await r.json();
+if(selected==='status')content.innerHTML='<pre>'+esc(JSON.stringify(d,null,2))+'</pre>';
+else {content.innerHTML=renderReport(d);wireReportExports(d);
+if(selected==='prepare')content.insertAdjacentHTML('afterbegin','<p class="muted">Preparation report only: no packages or configuration were changed.</p>');
+if(selected==='repair')content.insertAdjacentHTML('afterbegin','<p class="muted">Read-only inspection only: no files or settings were repaired.</p>');}
+}
+}catch(e){content.textContent='Unable to generate report: '+e.message;}
+finally{runBtn.disabled=false;runBtn.textContent=selected==='termux'?'REVEAL COMMANDS':(selected==='status'?'Refresh status':(selected==='install'||selected==='update'?'Check official stable release':(selected==='certificates'?'Refresh catalog':(selected==='identity'?'Refresh Bitcoin identity':'Generate report'))));}
+}
+</script></body>
+</html>

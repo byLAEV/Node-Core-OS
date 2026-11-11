@@ -1,6 +1,7 @@
 """Authenticated relay request validation and durable local receipt handling."""
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import hmac
 import json
@@ -66,9 +67,16 @@ def verify_request(envelope: dict[str, Any], key_hex: str) -> dict[str, Any]:
 def persist_and_sign_receipt(
     data_dir: Path, verified: dict[str, Any], identity_store: Any
 ) -> dict[str, Any]:
-    """Persist a verified payload atomically, then sign a receipt with this node's Ed25519 key."""
+    """Persist a verified payload atomically, then sign a receipt with this node's Ed25519 key.
+
+    An advisory exclusive lock serializes writers for a run ID. The final
+    os.replace() is atomic on the inbox filesystem; the lock ensures that an
+    existing receipt is checked before publication and never overwritten by
+    a conflicting concurrent request. This avoids requiring os.link(), which
+    is unavailable in some Android/Termux Python builds.
+    """
     run_id = verified["run_id"]
-    if not _RUN_ID.fullmatch(run_id):
+    if not isinstance(run_id, str) or not _RUN_ID.fullmatch(run_id):
         raise ValueError("Invalid run_id.")
     inbox = Path(data_dir).expanduser() / "storage" / "relay" / "inbox"
     inbox.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -76,63 +84,60 @@ def persist_and_sign_receipt(
         os.chmod(inbox, 0o700)
     except OSError:
         pass
+
     target = inbox / f"{run_id}.json"
-    stored = {
-        "schema": SCHEMA,
-        "run_id": run_id,
-        "payload": verified["payload"],
-        "payload_sha256": verified["payload_sha256"],
-        "received_at_utc": datetime.now(timezone.utc).isoformat(),
-    }
-    encoded = canonical_json_bytes(stored) + b"\n"
-    if target.exists():
-        if target.read_bytes() != encoded:
-            # A retry may arrive at a later timestamp; compare the immutable content instead.
+    lock_path = inbox / f".{run_id}.lock"
+    lock_fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        try:
+            os.fchmod(lock_fd, 0o600)
+        except OSError:
+            pass
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        stored = {
+            "schema": SCHEMA,
+            "run_id": run_id,
+            "payload": verified["payload"],
+            "payload_sha256": verified["payload_sha256"],
+            "received_at_utc": datetime.now(timezone.utc).isoformat(),
+        }
+        if target.exists():
             try:
                 existing = json.loads(target.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError) as exc:
                 raise RuntimeError("Existing relay inbox file is unreadable; refusing overwrite.") from exc
-            if (existing.get("run_id") != run_id or
-                    existing.get("payload_sha256") != verified["payload_sha256"] or
-                    existing.get("payload") != verified["payload"]):
+            if (
+                existing.get("run_id") != run_id
+                or existing.get("payload_sha256") != verified["payload_sha256"]
+                or existing.get("payload") != verified["payload"]
+            ):
                 raise RuntimeError("run_id already exists with different content; refusing overwrite.")
             stored = existing
+        else:
             encoded = canonical_json_bytes(stored) + b"\n"
-    else:
-        fd, temporary = tempfile.mkstemp(prefix=f".{run_id}-", suffix=".tmp", dir=inbox)
-        try:
-            os.fchmod(fd, 0o600)
-            with os.fdopen(fd, "wb") as handle:
-                handle.write(encoded)
-                handle.flush()
-                os.fsync(handle.fileno())
-            # A hard link publishes the fully-written file atomically without
-            # replacing a file created concurrently for the same run ID.
+            fd, temporary = tempfile.mkstemp(
+                prefix=f".{run_id}-", suffix=".tmp", dir=inbox
+            )
             try:
-                os.link(temporary, target)
-            except FileExistsError:
-                try:
-                    existing = json.loads(target.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError) as exc:
-                    raise RuntimeError("Concurrent relay inbox file is unreadable; refusing overwrite.") from exc
-                if (existing.get("run_id") != run_id or
-                        existing.get("payload_sha256") != verified["payload_sha256"] or
-                        existing.get("payload") != verified["payload"]):
-                    raise RuntimeError("run_id already exists with different content; refusing overwrite.")
-                stored = existing
-            else:
-                try:
-                    os.chmod(target, 0o600)
-                except OSError:
-                    pass
+                os.fchmod(fd, 0o600)
+                with os.fdopen(fd, "wb") as handle:
+                    handle.write(encoded)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.replace(temporary, target)
                 directory_fd = os.open(inbox, os.O_RDONLY)
                 try:
                     os.fsync(directory_fd)
                 finally:
                     os.close(directory_fd)
+            finally:
+                if os.path.exists(temporary):
+                    os.unlink(temporary)
+    finally:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
         finally:
-            if os.path.exists(temporary):
-                os.unlink(temporary)
+            os.close(lock_fd)
 
     metadata = identity_store.initialize()
     receipt = {

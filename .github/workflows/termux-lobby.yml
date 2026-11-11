@@ -1,0 +1,157 @@
+name: Termux Lobby validation
+
+on:
+  pull_request:
+    paths:
+      - "compatibility/termux/**"
+      - "installer/**"
+      - ".github/workflows/termux-lobby.yml"
+  push:
+    branches:
+      - "feature/termux-local-lobby"
+    paths:
+      - "compatibility/termux/**"
+      - "installer/**"
+      - ".github/workflows/termux-lobby.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: termux-lobby-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-and-contract:
+    name: Static checks and repository contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install system test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssl shellcheck
+          python -m pip install --disable-pip-version-check "cryptography>=42.0.0"
+      - name: Validate Bash syntax and installer guards
+        run: |
+          bash -n compatibility/termux/bootstrap-lobby.sh
+          bash -n compatibility/termux/install-lobby.sh
+          bash -n compatibility/termux/lobby/launcher.sh
+          bash -n compatibility/termux/tests/device-persistence-evidence.sh
+          bash installer/tests/syntax.sh
+          bash installer/tests/user-context.sh
+      - name: Lint installer and Lobby shell scripts
+        run: |
+          shellcheck -x compatibility/termux/bootstrap-lobby.sh
+          shellcheck -x compatibility/termux/install-lobby.sh
+          shellcheck -x compatibility/termux/lobby/launcher.sh
+          shellcheck -x compatibility/termux/tests/device-persistence-evidence.sh
+      - name: Compile Python and validate JSON manifests
+        run: |
+          python -m compileall -q compatibility/termux/lobby
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          paths = [
+              Path("compatibility/termux/manifest.json"),
+              Path("compatibility/termux/lobby/certificates/catalog.json"),
+              Path("installer/layout-manifest.json"),
+          ]
+          for path in paths:
+              json.loads(path.read_text(encoding="utf-8"))
+              print(f"JSON PASS: {path}")
+          PY
+      - name: Validate Termux Lobby contracts and local server integration
+        run: |
+          bash compatibility/termux/tests/test-lobby.sh
+          python -m unittest discover -s tests -p "test_identity_entity_registry.py" -v
+          python -m unittest discover -s tests -p "test_persistence_integrity.py" -v
+      - name: Verify application updater preserves identity, local storage and Kubo data
+        run: |
+          bash installer/tests/update-preservation.sh
+          bash installer/tests/termux-update-preservation.sh
+          bash installer/tests/unsupported-architecture-guard.sh
+      - name: Upload static validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: termux-lobby-static-logs
+          path: |
+            compatibility/termux/**/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  python-compatibility:
+    name: Lobby Python compatibility (${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install OpenSSL and supported cryptography runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssl
+          python -m pip install --disable-pip-version-check "cryptography>=42.0.0"
+      - name: Compile Lobby modules
+        run: python -m compileall -q compatibility/termux/lobby
+      - name: Run Lobby unit and authenticated server integration tests
+        run: |
+          python compatibility/termux/tests/test_release_metadata.py
+          python compatibility/termux/tests/test_certificate_manager.py
+          python compatibility/termux/tests/test_host_environment.py
+          python compatibility/termux/tests/test_server.py compatibility/termux/lobby/server.py
+
+  installer-package-validation:
+    name: Official installer and updater package validation
+    uses: ./.github/workflows/package-installers.yml
+
+  android-termux-device:
+    name: Native Android Termux device validation
+    if: vars.TERMUX_DEVICE_RUNNER == 'enabled'
+    runs-on: [self-hosted, linux, ARM64, termux]
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Verify native Termux environment
+        run: |
+          test -n "$PREFIX"
+          test "$PREFIX" = "/data/data/com.termux/files/usr"
+          test "$(uname -m)" = "aarch64"
+          python --version
+          pkg list-installed
+      - name: Validate Lobby installer
+        run: |
+          bash compatibility/termux/install-lobby.sh --yes
+          curl --fail --silent --show-error "http://127.0.0.1:8765/health" || curl --insecure --fail --silent --show-error "https://127.0.0.1:8765/health"
+      - name: Collect native Termux diagnostic report
+        if: always()
+        run: |
+          mkdir -p termux-device-report
+          uname -a > termux-device-report/uname.txt
+          python --version > termux-device-report/python.txt 2>&1
+          pkg list-installed > termux-device-report/packages.txt 2>&1 || true
+      - name: Upload native Termux report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-termux-arm64-report
+          path: termux-device-report/
+          if-no-files-found: ignore
+          retention-days: 14
