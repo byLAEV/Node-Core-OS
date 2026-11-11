@@ -404,10 +404,10 @@ class BitcoinIdentityGate:
         association = pending.get("node_association")
         profile = pending["profile"]
         document_number = profile.get("document_number", "")
-        masked_document = (
-            ("*" * max(0, len(document_number) - 4) + document_number[-4:])
-            if document_number else ""
-        )
+        # Keep the mask length constant so the public status response does
+        # not disclose the original document-number length. Only the final
+        # four characters are intentionally retained for recognition.
+        masked_document = ("********" + document_number[-4:]) if document_number else ""
         return {
             "status": "control_verified",
             "pending": not (isinstance(association, dict) and association.get("status") == "associated"),
