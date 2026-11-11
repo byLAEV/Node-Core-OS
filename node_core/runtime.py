@@ -400,7 +400,9 @@ class NodeRuntime:
         with self._p2p_discovery_lock:
             discovery, self.p2p_discovery = self.p2p_discovery, None
             if discovery is not None:
-                discovery.stop()
+                stop = getattr(discovery, "stop", None)
+                if callable(stop):
+                    stop()
 
     def shutdown(self) -> None:
         """Stop all native P2P services owned by this runtime."""
