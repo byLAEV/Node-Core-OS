@@ -29,6 +29,7 @@ class OpenSSLX509Tests(unittest.TestCase):
             .not_valid_before(self.now - timedelta(days=1))
             .not_valid_after(self.now + timedelta(days=365))
             .add_extension(x509.BasicConstraints(ca=True, path_length=1), critical=True)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(self.ca_key.public_key()), critical=False)
             .add_extension(x509.KeyUsage(
                 digital_signature=True, content_commitment=False, key_encipherment=False,
                 data_encipherment=False, key_agreement=False, key_cert_sign=True,
@@ -48,6 +49,8 @@ class OpenSSLX509Tests(unittest.TestCase):
             .not_valid_before(self.now - timedelta(minutes=1))
             .not_valid_after(self.now + timedelta(days=30))
             .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(self.ca_key.public_key()), critical=False)
+            .add_extension(x509.SubjectKeyIdentifier.from_public_key(self.leaf_key.public_key()), critical=False)
             .add_extension(x509.SubjectAlternativeName([x509.DNSName("service.example.test")]), critical=False)
             .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
             .add_extension(x509.KeyUsage(
