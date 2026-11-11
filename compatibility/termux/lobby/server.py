@@ -1355,6 +1355,11 @@ def get_official_installer_job(job_id):
 class Handler(BaseHTTPRequestHandler):
     server_version = "NodeCoreLobby/0.3"
     def do_GET(self):
+        try:
+            self.require_local_host()
+        except PermissionError:
+            self.send_error(403, "Host header is not the local Lobby host")
+            return
         path = urlparse(self.path).path
         if path == "/api/termux/commands":
             self.send_json(termux_command_catalog())
@@ -1539,6 +1544,16 @@ class Handler(BaseHTTPRequestHandler):
                 "operation_started": False
             })
 
+    def require_local_host(self):
+        """Reject DNS-rebinding and non-loopback Host headers on every endpoint."""
+        host = self.headers.get("Host", "").lower()
+        allowed = {
+            "127.0.0.1:" + str(self.server.server_port),
+            "localhost:" + str(self.server.server_port),
+        }
+        if host not in allowed:
+            raise PermissionError("Host header is not the local Lobby host")
+
     def require_local_authorization(self):
         if not getattr(self.server, "is_https", False):
             raise PermissionError("Package staging requires HTTPS on the local Lobby connection")
@@ -1549,11 +1564,7 @@ class Handler(BaseHTTPRequestHandler):
         ):
             raise PermissionError("Local Lobby authorization failed")
 
-        host = self.headers.get("Host", "")
-        hostname = host.rsplit(":", 1)[0].strip("[]").lower() if ":" in host else host.lower()
-        port_text = host.rsplit(":", 1)[1] if ":" in host else ""
-        if hostname not in ("127.0.0.1", "localhost") or port_text != str(self.server.server_port):
-            raise PermissionError("Host header is not the local Lobby host")
+        self.require_local_host()
 
         origin = self.headers.get("Origin", "")
         scheme = "https" if getattr(self.server, "is_https", False) else "http"
