@@ -135,6 +135,19 @@ def main() -> int:
                       else "HTTP fallback startup and status API: PASS")
 
                 base_url = f"{'https' if tls_expected else 'http'}://127.0.0.1:{PORT}"
+
+                # Reject DNS-rebinding requests whose Host does not identify
+                # the local Lobby, including otherwise public GET endpoints.
+                hostile_host = urllib.request.Request(
+                    base_url + "/api/identity/bitcoin",
+                    headers={"Host": "attacker.example"},
+                )
+                try:
+                    urllib.request.urlopen(hostile_host, timeout=2.0, context=context)
+                except urllib.error.HTTPError as error:
+                    assert error.code == 403, error.code
+                else:
+                    raise AssertionError("Lobby accepted a non-local Host header")
                 context = ssl._create_unverified_context() if tls_expected else None
                 with urllib.request.urlopen(base_url + "/", timeout=2.0, context=context) as response:
                     page = response.read().decode("utf-8")
