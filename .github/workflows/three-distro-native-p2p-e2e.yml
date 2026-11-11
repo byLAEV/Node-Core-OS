@@ -28,9 +28,9 @@ jobs:
       - name: Build three Linux distribution images
         run: |
           set -euo pipefail
-          docker build --build-arg BASE_IMAGE=ubuntu:24.04 -f ci/linux/Dockerfile -t node-core-p2p:ubuntu .
-          docker build --build-arg BASE_IMAGE=debian:13 -f ci/linux/Dockerfile -t node-core-p2p:debian .
-          docker build --build-arg BASE_IMAGE=fedora:44 -f ci/linux/Dockerfile -t node-core-p2p:fedora .
+          docker build --network=host --build-arg BASE_IMAGE=ubuntu:24.04 -f ci/linux/Dockerfile -t node-core-p2p:ubuntu .
+          docker build --network=host --build-arg BASE_IMAGE=debian:13 -f ci/linux/Dockerfile -t node-core-p2p:debian .
+          docker build --network=host --build-arg BASE_IMAGE=fedora:44 -f ci/linux/Dockerfile -t node-core-p2p:fedora .
 
       - name: Create isolated three-node network and user-owned data directories
         run: |

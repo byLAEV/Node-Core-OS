@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "catalog_version": "1.0.0",
+  "project": "Node Core OS byLAEV",
+  "purpose": "Official inventory of technical certificates and security profiles used or evaluated by Node Core OS. Product security profiles are not installable X.509 certificates.",
+  "technical_certificates": [
+    {
+      "id": "lobby-localhost-tls",
+      "name": "Lobby loopback HTTPS",
+      "type": "X.509 TLS server certificate",
+      "manager": "Node Core OS Lobby",
+      "owner": "lobby",
+      "location": "~/.node-core/lobby/localhost.crt",
+      "private_key_location": "~/.node-core/lobby/localhost.key",
+      "purpose": "Encrypt the local browser-to-Lobby connection on localhost and 127.0.0.1.",
+      "trust_model": "Self-signed local certificate; browser trust is separate and requires user/platform action.",
+      "operations": [
+        "inspect",
+        "install",
+        "renew",
+        "repair",
+        "recover"
+      ],
+      "private_key_export": false,
+      "required_for": "HTTPS transport to the local Lobby; not required for Node Core OS core operation."
+    },
+    {
+      "id": "node-core-p2p-identity-tls",
+      "name": "Node Core OS P2P identity certificate",
+      "type": "X.509 self-signed Ed25519 identity certificate",
+      "manager": "Node Core OS core",
+      "owner": "core",
+      "location": "~/.node-core/identity/node-cert.pem",
+      "private_key_location": "~/.node-core/identity/private/node.key",
+      "purpose": "Bind the node's Ed25519 public key and NODE ID for explicitly pinned P2P TLS 1.3.",
+      "trust_model": "Explicit peer pinning; not a public Web PKI certificate.",
+      "operations": [
+        "inspect"
+      ],
+      "private_key_export": false,
+      "required_for": "Native P2P when that service is enabled; the Lobby must not rotate or replace it."
+    },
+    {
+      "id": "node-core-peer-trust-store",
+      "name": "Node Core OS trusted peer certificate store",
+      "type": "Local trust registry of public X.509 peer certificates",
+      "manager": "Node Core OS core; Lobby administrative interface",
+      "owner": "core",
+      "location": "~/.node-core/p2p/trusted-peers.json",
+      "purpose": "Explicit allowlist and revocation status for remote Node Core OS peer certificates.",
+      "trust_model": "Operator verifies peer NODE ID and SHA-256 fingerprint out of band before trust.",
+      "operations": [
+        "inspect",
+        "import-public-certificate",
+        "revoke"
+      ],
+      "private_key_export": false,
+      "required_for": "Native P2P connections to explicitly trusted peers."
+    },
+    {
+      "id": "node-core-jws-identity",
+      "name": "Node Core OS signed identity credential",
+      "type": "Project-defined compact JWS EdDSA/Ed25519",
+      "manager": "Node Core OS core",
+      "owner": "core",
+      "location": "Issued credential and external issuer trust configuration",
+      "purpose": "Portable signed identity/profile claims; not an X.509 certificate.",
+      "trust_model": "Explicit trusted issuer public key and issuer-ID binding; revocation data supplied by deployment.",
+      "operations": [
+        "inspect-format"
+      ],
+      "private_key_export": false,
+      "required_for": "Only workflows that explicitly issue or verify Node Core OS identity credentials."
+    },
+    {
+      "id": "node-core-web-tls-binding",
+      "name": "Node Core OS Web TLS identity binding",
+      "type": "Ed25519-signed binding to an externally issued X.509 certificate",
+      "manager": "Node Core OS core / external Web PKI",
+      "owner": "external",
+      "location": "Deployment-managed web certificate and signed binding",
+      "purpose": "Bind a node identity to an exact DNS name and the fingerprint of an already-issued TLS certificate.",
+      "trust_model": "Web PKI chain and browser trust are checked independently from the Node Core OS signature.",
+      "operations": [
+        "inspect-format"
+      ],
+      "private_key_export": false,
+      "required_for": "Only when a node publishes a public HTTPS DNS service."
+    }
+  ],
+  "security_profiles": [
+    {
+      "id": "sybil-resistance",
+      "name": "Sybil and Fake-Node Resistance",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    },
+    {
+      "id": "p2p-partition-eclipse-resistance",
+      "name": "P2P Partition and Eclipse Resistance",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    },
+    {
+      "id": "byzantine-collusion-resistance",
+      "name": "Byzantine Fault and Collusion Resistance",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    },
+    {
+      "id": "identity-key-protection",
+      "name": "Identity Authenticity and Key Protection",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "partial-implementation"
+    },
+    {
+      "id": "software-supply-chain-integrity",
+      "name": "Software Supply-Chain Integrity",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    },
+    {
+      "id": "availability-ddos-resistance",
+      "name": "Availability and DDoS Resilience",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    },
+    {
+      "id": "ipfs-content-integrity",
+      "name": "IPFS Content Integrity",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    },
+    {
+      "id": "privilege-and-pool-isolation",
+      "name": "Privilege Control and Pool Isolation",
+      "classification": "security-evaluation-profile",
+      "installable_certificate": false,
+      "status": "proposed"
+    }
+  ],
+  "policies": {
+    "independent_from_core": true,
+    "lobby_can_start_before_core_installation": true,
+    "no_private_keys_in_reports_or_logs": true,
+    "node_identity_private_keys_are_never_managed_by_lobby": true,
+    "p2p_certificate_changes_require_core_owned_lifecycle": true,
+    "peer_trust_requires_out_of_band_fingerprint_verification": true,
+    "android_user_ca_installation_requires_explicit_user_action": true,
+    "public_web_pki_chain_validation_is_not_implemented_by_lobby": true,
+    "backups_are_local_and_mode_0600": true,
+    "mutation_requires_https_local_session_token_origin_and_host_validation": true,
+    "archive_execution_out_of_scope": true
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "profile_id": "termux-native-aarch64",
+  "contract": "NCTCL-TERMUX-1",
+  "platform": "android-termux",
+  "architectures": [
+    "aarch64"
+  ],
+  "status": "experimental",
+  "package_manager": "pkg",
+  "shells": [
+    "bash"
+  ],
+  "node_core_runtime_layout": {
+    "canonical_manifest": "installer/layout-manifest.json",
+    "installed_copy": "~/.node-core/lobby/manifests/layout-manifest.json",
+    "lobby_api": "GET /api/layout/manifest",
+    "runtime_root": "~/.node-core",
+    "installer_consumes_manifest": true,
+    "updates_preserve_persistent_directories": [
+      "storage",
+      "ipfs"
+    ]
+  },
+  "lobby": {
+    "implementation": "python-stdlib-http-server",
+    "bind": "127.0.0.1",
+    "port": 8765,
+    "transport_preference": [
+      "https",
+      "http-loopback"
+    ],
+    "home_screen_entry": "Termux:Widget",
+    "release_package_staging": {
+      "enabled": true,
+      "storage": "~/.node-core/lobby/packages",
+      "max_package_size_bytes": 314572800,
+      "integrity": "SHA-256 against official GitHub Release asset digest",
+      "extracts_archives": true,
+      "executes_installers": true,
+      "requires_local_session_token": true,
+      "execution": {
+        "canonical_scripts": {
+          "install": "installer/install.sh",
+          "update": "installer/update.sh"
+        },
+        "start_endpoint": "POST /api/packages/execute",
+        "output_endpoint": "POST /api/packages/output",
+        "confirmation": "explicit browser confirmation after official release SHA-256 verification",
+        "latest_release_revalidation": true,
+        "archive_safety": "reject absolute paths, parent traversal, symlinks and special files; enforce file-count and expanded-size limits",
+        "max_expanded_bytes": 1073741824,
+        "max_files": 12000,
+        "max_runtime_seconds": 1800,
+        "max_output_bytes": 262144,
+        "arbitrary_shell_commands": false
+      }
+    },
+    "certificate_manager": {
+      "enabled": true,
+      "catalog": "~/.node-core/lobby/certificates/catalog.json",
+      "module": "~/.node-core/lobby/certificate_manager.py",
+      "api_read": "GET /api/certificates",
+      "api_actions": "POST /api/certificates/action",
+      "authentication": "HTTPS + local session token + Origin/Host validation",
+      "private_key_export": false,
+      "manages_core_p2p_identity_certificate": false,
+      "manages_lobby_loopback_tls": true,
+      "manages_explicit_peer_trust": true
+    },
+    "bitcoin_identity": {
+      "enabled": true,
+      "module": "~/.node-core/lobby/bitcoin_identity.py",
+      "api_read": "GET /api/identity/bitcoin",
+      "challenge_endpoint": "POST /api/identity/bitcoin/challenge",
+      "verify_endpoint": "POST /api/identity/bitcoin/verify",
+      "cancel_endpoint": "POST /api/identity/bitcoin/cancel",
+      "network": "mainnet",
+      "address_type": "p2wpkh",
+      "challenge_ttl_seconds": 300,
+      "pending_ttl_seconds": 86400,
+      "private_key_storage": false,
+      "private_key_transmission": "sent only over the authenticated HTTPS loopback connection to the local Lobby process; never sent to a remote service or written to disk",
+      "proof": "single-use ECDSA challenge verified against compressed secp256k1 public key and derived P2WPKH address",
+      "identity_assurance": "declared name plus proof of control of the supplied Bitcoin key; not civil-identity verification",
+      "first_install_gate": "server-side first-install execution is blocked unless a non-expired local-private-key proof and mandatory personal profile are staged",
+      "required_personal_profile": {
+        "full_name": "required; full name and at least one surname",
+        "document_number": "optional; masked in menu headers",
+        "nationality": "optional",
+        "birth_date": "required; DD/MM/YYYY input",
+        "height_cm": "required; integer 1-300",
+        "bitcoin_private_key_hex": "required; exactly 64 hexadecimal characters; local HTTPS loopback proof only"
+      },
+      "personal_data_storage": "local-only ~/.node-core/identity/profile.json; directory mode 0700 and file mode 0600; not published to IPFS or remote services; not encrypted at rest",
+      "bitcoin_private_key_storage": false,
+      "local_key_proof_endpoint": "POST /api/identity/bitcoin/verify-local-key",
+      "local_key_handling": "Accepted only by the HTTPS loopback API after session token and Host/Origin checks; used transiently in memory, omitted from the pending identity JSON, and request payload is cleared on success or failure. Memory zeroization is best-effort and cannot be guaranteed.",
+      "browser_form_status": "implemented",
+      "transport": "HTTPS loopback only; local session token and Host/Origin validation required",
+      "browser_signing_model": "The browser submits the raw HEX scalar only to the authenticated HTTPS loopback API; the local Lobby derives the address and signs the one-time challenge.",
+      "node_association_endpoint": "POST /api/identity/bitcoin/associate-node",
+      "node_association": "After successful first installation, the Lobby loads and validates the installed Ed25519 NODE ID, signs a one-time local association challenge, verifies the signature, and links the existing entity_id to that node in ~/.node-core/identity/entity-registry.json. The registry relationship remains declared; node-key possession is recorded as cryptographically verified."
+    }
+  },
+  "verification_required": [
+    "official-installer-execution",
+    "official-updater-execution",
+    "persistent-identity-storage-preservation",
+    "storage-and-kubo-ipfs-preservation",
+    "updater-rollback",
+    "server-start-stop",
+    "https-browser-warning",
+    "http-loopback-fallback",
+    "widget-launch",
+    "android-background-lifecycle",
+    "lobby-bitcoin-identity-api-integration"
+  ],
+  "native_device_validation": {
+    "status": "pending_physical_device_execution",
+    "checklist": "compatibility/termux/DEVICE-ACCEPTANCE.md",
+    "target": "native Termux on Android ARM64 (aarch64)",
+    "runner": "self-hosted GitHub Actions runner gated by vars.TERMUX_DEVICE_RUNNER=enabled",
+    "scope": [
+      "clean Lobby bootstrap",
+      "loopback HTTPS and HTTP fallback",
+      "Termux:Widget launch",
+      "Android background lifecycle",
+      "first Node Core OS install",
+      "Bitcoin entity to Ed25519 NODE ID association",
+      "official update",
+      "identity and entity registry preservation",
+      "local storage preservation",
+      "Kubo/IPFS repository preservation",
+      "failure and rollback handling"
+    ],
+    "note": "Ubuntu CI and simulated updater fixtures do not substitute for physical Android validation."
+  },
+  "ci_validation": {
+    "python_matrix": [
+      "3.10",
+      "3.11",
+      "3.12",
+      "3.13"
+    ],
+    "integration_test": "compatibility/termux/tests/test_server.py",
+    "updater_preservation_tests": [
+      "installer/tests/update-preservation.sh",
+      "installer/tests/termux-update-preservation.sh"
+    ],
+    "package_validation_workflow": ".github/workflows/package-installers.yml",
+    "offline_updater_e2e": "installer/tests/offline-updater-e2e.sh"
+  }
+}

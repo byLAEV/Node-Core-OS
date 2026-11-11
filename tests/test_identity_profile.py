@@ -29,6 +29,9 @@ class IdentityProfileStoreTests(unittest.TestCase):
             birth_date="1990-05-12",
             height_cm=178,
             gender="Man",
+            bitcoin_address="bc1qsyntheticaddress",
+            bitcoin_network="mainnet",
+            bitcoin_key_control_status="control_verified",
         )
 
     def test_profile_is_saved_locally_and_marked_declared(self):
@@ -63,13 +66,11 @@ class IdentityProfileStoreTests(unittest.TestCase):
 
     def test_optional_fields_can_be_cleared_explicitly(self):
         self.save_sample()
-        updated = self.store.save_declared_profile(
-            birth_date="",
-            height_cm="",
-            gender="",
-        )
-        self.assertEqual(updated["birth_date"], "")
-        self.assertIsNone(updated["height_cm"])
+        updated = self.store.save_declared_profile(document_number="", nationality="", gender="")
+        self.assertEqual(updated["document_number"], "")
+        self.assertEqual(updated["nationality"], "")
+        self.assertEqual(updated["birth_date"], "1990-05-12")
+        self.assertEqual(updated["height_cm"], 178)
         self.assertEqual(updated["gender"], "")
 
     def test_association_requires_profile_and_nonempty_node_id(self):
@@ -85,9 +86,7 @@ class IdentityProfileStoreTests(unittest.TestCase):
                 full_name=" ",
                 alias="",
                 nationality="",
-                issuing_country="Costa Rica",
-                document_type="National identity document",
-                document_number="SYNTHETIC-TEST-0001",
+                document_number="",
             )
 
     def test_main_menu_shows_all_saved_identity_values_and_consensus_status(self):
@@ -103,16 +102,47 @@ class IdentityProfileStoreTests(unittest.TestCase):
         self.assertIn("Nationality: Costa Rican", displayed)
         self.assertIn("Issuing country: Costa Rica", displayed)
         self.assertIn("Document type: National identity document", displayed)
-        self.assertIn("Document number: SYNTHETIC-TEST-0001", displayed)
-        self.assertIn("Date of birth: 1990-05-12", displayed)
+        self.assertRegex(displayed, r"Document number: \*+0001")
+        self.assertNotIn("SYNTHETIC-TEST-0001", displayed)
+        self.assertIn("Date of birth: 12/05/1990", displayed)
         self.assertIn("Height: 178 cm", displayed)
-        self.assertIn("Gender: Man", displayed)
+        self.assertIn("Bitcoin address: bc1qsyntheticaddress", displayed)
+        self.assertIn("Bitcoin key control: control_verified", displayed)
         self.assertIn(f"Identity data first entered (UTC): {profile['created_at']}", displayed)
         self.assertIn(f"Identity data last updated (UTC): {profile['updated_at']}", displayed)
         self.assertIn(f"Logical identity ID: {profile['identity_id']}", displayed)
         self.assertIn("12D3KooWExamplePeerId", displayed)
         self.assertIn("Identity data status: Declared", displayed)
         self.assertIn("Node Core OS network consensus verification: Not verified", displayed)
+
+    def test_document_number_and_nationality_are_optional(self):
+        profile = self.store.save_declared_profile(full_name="Sample Person", birth_date="12/05/1990", height_cm=178)
+        self.assertEqual(profile["document_number"], "")
+        self.assertEqual(profile["nationality"], "")
+        self.assertEqual(profile["birth_date"], "1990-05-12")
+        self.assertEqual(profile["height_cm"], 178)
+
+    def test_general_profile_store_preserves_legacy_optional_birth_date_and_height(self):
+        profile = self.store.save_declared_profile(full_name="Sample Person")
+        self.assertEqual(profile["birth_date"], "")
+        self.assertIsNone(profile["height_cm"])
+
+    def test_document_number_and_nationality_remain_optional(self):
+        profile = self.store.save_declared_profile(
+            full_name="Sample Person",
+            birth_date="12/05/1990",
+            height_cm=178,
+        )
+        self.assertEqual(profile["document_number"], "")
+        self.assertEqual(profile["nationality"], "")
+
+    def test_profile_rejects_private_key_material(self):
+        self.save_sample()
+        stored = json.loads(self.store.profile_path.read_text(encoding="utf-8"))
+        stored["bitcoin_private_key"] = "synthetic"
+        self.store.profile_path.write_text(json.dumps(stored), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "private key"):
+            self.store.load()
 
     def test_invalid_birth_date_and_height_are_rejected(self):
         with self.assertRaises(ValueError):
@@ -133,6 +163,7 @@ class IdentityProfileStoreTests(unittest.TestCase):
                 issuing_country="Costa Rica",
                 document_type="National identity document",
                 document_number="SYNTHETIC-TEST-0001",
+                birth_date="1990-05-12",
                 height_cm="not-a-number",
             )
 
