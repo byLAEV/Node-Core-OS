@@ -13,6 +13,7 @@ from node_core.security.node_pki_guard_backend import (
     UTXOStatus,
 )
 from node_core.security.backends.standalone_sqlite import StandaloneSQLiteBackend
+from node_core.security.node_pki_guard_utxo import BackendUTXOView
 
 
 class StandaloneSQLiteBackendTests(unittest.TestCase):
@@ -51,6 +52,13 @@ class StandaloneSQLiteBackendTests(unittest.TestCase):
     def test_register_and_query_authorization(self):
         self.assertEqual(self.backend.get_utxo_status(self.request.outpoint), UTXOStatus.UNSPENT)
         self.assertEqual(self.backend.get_utxo_status("d" * 64 + ":1"), UTXOStatus.NOT_FOUND)
+
+    def test_shared_policy_view_reads_authorization_from_backend(self):
+        view = BackendUTXOView(self.backend)
+        record = view.get_unspent_authorization(self.request.outpoint)
+        self.assertEqual(record["authorization_id"], "auth-001")
+        self.assertEqual(record["binding_id"], "binding-001")
+        self.assertIsNone(view.get_unspent_authorization("d" * 64 + ":1"))
 
     def test_atomic_spend_and_local_commit_evidence(self):
         submission = self.backend.submit_spend_atomic(self.request)
