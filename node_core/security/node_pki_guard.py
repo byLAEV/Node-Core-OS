@@ -208,7 +208,7 @@ def validate_binding(binding: Mapping[str, Any]) -> None:
                 "x509_fingerprint_sha256", "spki_sha256", "purpose",
                 "allowed_operations", "denied_operations", "constraints",
                 "issuer_key_id", "issued_at", "expires_at", "binding_status",
-                "proof_of_possession"}
+                "proof_of_possession", "issuer_signature"}
     if set(binding) != required:
         raise NodePKIGuardError("Binding fields do not match the NODE-PKI-BINDING profile")
     if binding["format"] != BINDING_FORMAT or binding["version"] != PROTOCOL_VERSION:
@@ -226,6 +226,8 @@ def validate_binding(binding: Mapping[str, Any]) -> None:
             raise NodePKIGuardError(field + " must be an array of strings")
     if not isinstance(binding["constraints"], dict) or not isinstance(binding["proof_of_possession"], dict):
         raise NodePKIGuardError("constraints and proof_of_possession must be objects")
+    if not isinstance(binding["issuer_signature"], str) or not binding["issuer_signature"]:
+        raise NodePKIGuardError("issuer_signature is required")
     if type(binding["issued_at"]) is not int or type(binding["expires_at"]) is not int:
         raise NodePKIGuardError("Binding timestamps must be integer epoch seconds")
     if binding["expires_at"] <= binding["issued_at"]:
@@ -260,6 +262,17 @@ def validate_authorization(auth: Mapping[str, Any]) -> None:
         raise NodePKIGuardError("required_signatures must be a non-empty array")
 
 
+def verify_binding_signature(binding: Mapping[str, Any],
+                              trusted_issuer_keys: Mapping[str, Any]) -> None:
+    """Verify issuer signature over all binding fields except issuer_signature."""
+    key_id = binding.get("issuer_key_id")
+    if not isinstance(key_id, str) or key_id not in trusted_issuer_keys:
+        raise NodePKIGuardError("Binding issuer key is not trusted")
+    unsigned = {key: value for key, value in binding.items() if key != "issuer_signature"}
+    _verify_signature(trusted_issuer_keys[key_id], canonical_json(unsigned),
+                      _unb64u(binding["issuer_signature"]))
+
+
 class UTXOView(Protocol):
     def get_unspent_authorization(self, outpoint: str) -> Mapping[str, Any] | None:
         """Return an unspent authorization from an authoritative state view."""
@@ -283,8 +296,8 @@ def operation_digest(operation_context: Mapping[str, Any]) -> str:
 def evaluate_authorization(*, mode: str, operation_context: Mapping[str, Any],
                            binding: Mapping[str, Any] | None,
                            authorization: Mapping[str, Any] | None,
-                           utxo_view: UTXOView | None, now_epoch: int,
-                           current_epoch: int, x509_validated: bool,
+                           utxo_view: UTXOView | None, trusted_binding_issuers: Mapping[str, Any] | None,
+                           now_epoch: int, current_epoch: int, x509_validated: bool,
                            dual_proof_verified: bool) -> AuthorizationDecision:
     """Evaluate only; never spends a UTXO or executes an external operation."""
     try:
@@ -304,9 +317,10 @@ def evaluate_authorization(*, mode: str, operation_context: Mapping[str, Any],
             raise PolicyError("X.509 validation is required")
         if not dual_proof_verified:
             raise PolicyError("Dual proof-of-possession is required")
-        if binding is None or authorization is None or utxo_view is None:
-            raise PolicyError("Binding, authorization and authoritative UTXO view are required")
+        if binding is None or authorization is None or utxo_view is None or trusted_binding_issuers is None:
+            raise PolicyError("Binding, trusted issuer keys, authorization and authoritative UTXO view are required")
         validate_binding(binding)
+        verify_binding_signature(binding, trusted_binding_issuers)
         validate_authorization(authorization)
         if binding["binding_status"] != "ACTIVE":
             raise PolicyError("Binding is not active")
