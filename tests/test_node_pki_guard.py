@@ -30,6 +30,7 @@ class FakeUTXOView:
 class NodePKIGuardTests(unittest.TestCase):
     def setUp(self):
         self.node_key = ed25519.Ed25519PrivateKey.generate()
+        self.binding_issuer = ed25519.Ed25519PrivateKey.generate()
         self.x509_key = ec.generate_private_key(ec.SECP256R1())
         self.now = 1800000000
         self.challenge = {
@@ -135,6 +136,7 @@ class NodePKIGuardTests(unittest.TestCase):
             "proof_of_possession": {"challenge_id": "challenge-01", "challenge_hash": "e" * 64,
                                     "node_signature": "sig-node", "x509_signature": "sig-x509",
                                     "verified_at": self.now - 90}}
+        binding["issuer_signature"] = sign_challenge(self.binding_issuer, binding)
         auth = {
             "format": AUTH_FORMAT, "version": PROTOCOL_VERSION,
             "authorization_id": "auth-01", "outpoint": "f" * 64 + ":0",
@@ -149,22 +151,23 @@ class NodePKIGuardTests(unittest.TestCase):
 
     def evaluate(self, context, binding, auth, view, **overrides):
         args = dict(mode="PROTECTED", operation_context=context, binding=binding,
-                    authorization=auth, utxo_view=view, now_epoch=self.now,
-                    current_epoch=120, x509_validated=True, dual_proof_verified=True)
+                    authorization=auth, utxo_view=view,
+                    trusted_binding_issuers={"binding-issuer": self.binding_issuer.public_key()},
+                    now_epoch=self.now, current_epoch=120, x509_validated=True, dual_proof_verified=True)
         args.update(overrides)
         return evaluate_authorization(**args)
 
     def test_standard_path_does_not_consume_utxo(self):
         decision = evaluate_authorization(
             mode="STANDARD", operation_context={"node_id": "n", "operation": "READ"},
-            binding=None, authorization=None, utxo_view=None, now_epoch=self.now,
-            current_epoch=120, x509_validated=True, dual_proof_verified=False)
+            binding=None, authorization=None, utxo_view=None, trusted_binding_issuers=None,
+            now_epoch=self.now, current_epoch=120, x509_validated=True, dual_proof_verified=False)
         self.assertEqual(decision.decision, "STANDARD")
 
     def test_deny_policy_rejects(self):
         decision = evaluate_authorization(
             mode="DENY", operation_context={}, binding=None, authorization=None,
-            utxo_view=None, now_epoch=self.now, current_epoch=120,
+            utxo_view=None, trusted_binding_issuers=None, now_epoch=self.now, current_epoch=120,
             x509_validated=True, dual_proof_verified=True)
         self.assertEqual(decision.decision, "DENY")
 
