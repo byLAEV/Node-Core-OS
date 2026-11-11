@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -27,6 +28,8 @@ EXPECTED_REQUIREMENTS = {
     "main_required_checks_green",
     "release_assets_and_checksums_verified",
 }
+EVIDENCE_FIELDS = {"artifact", "sha256"}
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def load_contract(path: Path) -> dict:
@@ -48,12 +51,51 @@ def load_contract(path: Path) -> dict:
         raise ValueError(f"Requirement keys mismatch; missing={missing}, extra={extra}")
     if any(type(value) is not bool for value in requirements.values()):
         raise ValueError("Every requirement must be an explicit boolean")
+
     evidence = data.get("evidence")
     if not isinstance(evidence, dict):
         raise ValueError("evidence must be a JSON object")
-    for key in ("acceptance_report", "termux_device_report", "release_artifact_manifest", "sbom"):
-        if not isinstance(evidence.get(key), str):
-            raise ValueError(f"evidence.{key} must be a string")
+    unknown = set(evidence) - EXPECTED_REQUIREMENTS
+    if unknown:
+        raise ValueError(f"Evidence contains unknown requirement keys: {sorted(unknown)}")
+
+    # The readiness file is stored at <repository-root>/release/<file>.
+    repository_root = path.resolve().parent.parent
+    for requirement, approved in requirements.items():
+        record = evidence.get(requirement)
+        if not approved:
+            continue
+        if not isinstance(record, dict) or set(record) != EVIDENCE_FIELDS:
+            raise ValueError(
+                f"{requirement} is approved but lacks an artifact path and SHA-256 evidence"
+            )
+        artifact = record.get("artifact")
+        digest = record.get("sha256")
+        artifact_path = Path(artifact) if isinstance(artifact, str) else None
+        if (artifact_path is None or not artifact or artifact_path.is_absolute()
+                or any(part in ("", ".", "..") for part in artifact_path.parts)):
+            raise ValueError(f"{requirement} evidence artifact must be a normalized relative path without dot segments")
+        if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
+            raise ValueError(f"{requirement} evidence SHA-256 must be 64 lowercase hex characters")
+        candidate = repository_root / artifact_path
+        current = repository_root
+        for part in artifact_path.parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError(f"{requirement} evidence artifact path contains a symlink: {artifact}")
+        try:
+            resolved = candidate.resolve(strict=True)
+            resolved.relative_to(repository_root)
+        except (OSError, ValueError) as exc:
+            raise ValueError(f"{requirement} evidence artifact is missing or escapes repository: {artifact}") from exc
+        if not resolved.is_file():
+            raise ValueError(f"{requirement} evidence artifact must be a regular, non-symlink file")
+        actual_digest = hashlib.sha256(resolved.read_bytes()).hexdigest()
+        if actual_digest != digest:
+            raise ValueError(
+                f"{requirement} evidence digest mismatch for {artifact}: "
+                f"expected {digest}, got {actual_digest}"
+            )
     return data
 
 
@@ -81,7 +123,7 @@ def main() -> int:
         f"- Pending requirements: **{len(pending)}**",
         "",
         "## Passed evidence",
-        *(f"- [x] {key}" for key in passed),
+        *(f"- [x] {key} — `{data['evidence'][key]['artifact']}` (SHA-256 verified)" for key in passed),
         "",
         "## Pending blockers",
         *(f"- [ ] {key}" for key in pending),
