@@ -106,6 +106,8 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
 
                 CREATE INDEX IF NOT EXISTS idx_spend_operation
                     ON spend_records(operation_id);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_spend_idempotency_global
+                    ON spend_records(idempotency_key);
                 INSERT OR IGNORE INTO schema_metadata(key, value)
                     VALUES ('schema_version', '1');
             """)
@@ -191,14 +193,21 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
             return UTXOStatus.NOT_FOUND
         return UTXOStatus(row["status"])
 
-    def get_idempotent_result(
-        self, operation_id: str, idempotency_key: str
-    ) -> SpendSubmission | None:
+    def get_authorization(self, outpoint: str) -> AuthorizationUTXO | None:
         with self._connection() as conn:
-            row = conn.execute("""
-                SELECT * FROM spend_records
-                WHERE operation_id = ? AND idempotency_key = ?
-            """, (operation_id, idempotency_key)).fetchone()
+            row = conn.execute("SELECT * FROM authorization_utxos WHERE outpoint = ?", (outpoint,)).fetchone()
+        if row is None:
+            return None
+        return AuthorizationUTXO(
+            outpoint=row["outpoint"], authorization_id=row["authorization_id"],
+            binding_id=row["binding_id"], node_id=row["node_id"],
+            owner_key_id=row["owner_key_id"], operation_hash=row["operation_hash"],
+            policy_id=row["policy_id"], policy_version=row["policy_version"],
+        )
+
+    def get_idempotent_result(self, idempotency_key: str) -> SpendSubmission | None:
+        with self._connection() as conn:
+            row = conn.execute("SELECT * FROM spend_records WHERE idempotency_key = ?", (idempotency_key,)).fetchone()
         return None if row is None else self._submission(row)
 
     def submit_spend_atomic(self, request: SpendRequest) -> SpendSubmission:
@@ -232,10 +241,10 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
                 conn.execute("BEGIN IMMEDIATE")
                 previous = conn.execute("""
                     SELECT * FROM spend_records
-                    WHERE operation_id = ? AND idempotency_key = ?
-                """, (request.operation_id, request.idempotency_key)).fetchone()
+                    WHERE idempotency_key = ?
+                """, (request.idempotency_key,)).fetchone()
                 if previous is not None:
-                    if previous["request_hash"] != request.request_hash:
+                    if previous["request_hash"] != request.request_hash or previous["operation_id"] != request.operation_id:
                         raise IdempotencyConflict(
                             "Idempotency key was reused with different request content"
                         )
