@@ -118,7 +118,9 @@ jobs:
 
   android-termux-device:
     name: Native Android Termux device validation
-    if: vars.TERMUX_DEVICE_RUNNER == 'enabled'
+    # Never execute pull-request code on a persistent self-hosted Android device.
+    # Device validation is restricted to trusted main-branch pushes or manual runs on main.
+    if: vars.TERMUX_DEVICE_RUNNER == 'enabled' && github.repository == 'byLAEV/Node-Core-OS' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: [self-hosted, linux, ARM64, termux]
     timeout-minutes: 25
     steps:
