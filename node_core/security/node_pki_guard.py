@@ -166,7 +166,7 @@ class ChallengeRegistry:
 
 
 def verify_dual_proof(*, challenge: Mapping[str, Any], node_public_key: Any,
-                      x509_public_key: Any, node_signature: str,
+                      x509_public_key: Any, x509_certificate: bytes, node_signature: str,
                       x509_signature: str, registry: ChallengeRegistry,
                       now_epoch: int | None = None) -> str:
     """Verify both keys over one context-bound challenge and consume its local ID.
@@ -196,6 +196,13 @@ def verify_dual_proof(*, challenge: Mapping[str, Any], node_public_key: Any,
         raise NodePKIGuardError("Challenge lifetime must be between 1 and 600 seconds")
     if challenge["issued_at"] > now + 30 or challenge["expires_at"] <= now:
         raise NodePKIGuardError("Challenge is not currently valid")
+    cert_fingerprint, spki_fingerprint = certificate_fingerprints(x509_certificate)
+    if challenge["x509_fingerprint_sha256"] != cert_fingerprint:
+        raise NodePKIGuardError("Challenge X.509 fingerprint does not match supplied certificate")
+    if challenge["spki_sha256"] != spki_fingerprint:
+        raise NodePKIGuardError("Challenge SPKI fingerprint does not match supplied certificate")
+    if public_key_spki_sha256(x509_public_key) != spki_fingerprint:
+        raise NodePKIGuardError("Supplied X.509 public key does not match certificate SPKI")
     message = canonical_json(challenge)
     _verify_signature(node_public_key, message, _unb64u(node_signature))
     _verify_signature(x509_public_key, message, _unb64u(x509_signature))
