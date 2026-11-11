@@ -17,6 +17,7 @@ from node_core.security.node_pki_guard_backend import (
     SpendState,
     SpendSubmission,
     UTXOAuthorizationBackend,
+    compute_spend_request_hash,
 )
 
 
@@ -53,6 +54,23 @@ def consume_authorization(
         raise UTXOBackendError("Outpoint does not match policy decision")
     if not 0 < finality_timeout_seconds <= 3600:
         raise ValueError("finality_timeout_seconds must be greater than 0 and at most 3600")
+
+    expected_request_hash = compute_spend_request_hash(
+        operation_id=request.operation_id,
+        idempotency_key=request.idempotency_key,
+        operation_hash=request.operation_hash,
+        authorization_id=request.authorization_id,
+        outpoint=request.outpoint,
+        binding_id=request.binding_id,
+        node_id=request.node_id,
+        owner_key_id=request.owner_key_id,
+        policy_id=request.policy_id,
+        policy_version=request.policy_version,
+        fee_amount=request.fee_amount,
+        fee_asset=request.fee_asset,
+    )
+    if request.request_hash != expected_request_hash:
+        raise UTXOBackendError("Spend request hash does not match canonical request content")
 
     try:
         previous = backend.get_idempotent_result(request.idempotency_key)
