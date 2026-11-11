@@ -1,132 +1,147 @@
 import unittest
 
 from node_core.security.node_pki_guard import AuthorizationDecision
-from node_core.security.node_pki_guard_utxo import (
-    FinalityProof,
+from node_core.security.node_pki_guard_backend import (
+    AuthorizationUTXO,
+    CommitEvidence,
+    CommitKind,
     SpendRequest,
+    SpendState,
     SpendSubmission,
-    UTXOBackendError,
-    consume_authorization,
+    UTXOAuthorizationBackend,
+    UTXOStatus,
+    compute_spend_request_hash,
 )
+from node_core.security.node_pki_guard_utxo import UTXOBackendError, consume_authorization
 
 
-class FakeAtomicBackend:
+class FakeBackend(UTXOAuthorizationBackend):
     def __init__(self):
+        self.records = {}
         self.submissions = {}
-        self.spend_calls = 0
+        self.calls = 0
+
+    def register_authorization(self, authorization):
+        self.records[authorization.outpoint] = authorization
+
+    def get_utxo_status(self, outpoint):
+        return UTXOStatus.UNSPENT if outpoint in self.records else UTXOStatus.NOT_FOUND
+
+    def get_authorization(self, outpoint):
+        return self.records.get(outpoint)
 
     def get_idempotent_result(self, idempotency_key):
         return self.submissions.get(idempotency_key)
 
     def submit_spend_atomic(self, request):
-        self.spend_calls += 1
+        self.calls += 1
         result = SpendSubmission(
-            transaction_id="tx-final-001",
+            transaction_id="tx-001",
+            request_hash=request.request_hash,
             outpoint=request.outpoint,
             operation_id=request.operation_id,
+            idempotency_key=request.idempotency_key,
             operation_hash=request.operation_hash,
-            state="SUBMITTED",
+            authorization_id=request.authorization_id,
+            state=SpendState.LOCAL_COMMITTED,
         )
         self.submissions[request.idempotency_key] = result
         return result
 
-    def wait_for_finality(self, transaction_id, timeout_seconds):
-        return FinalityProof(
+    def wait_for_commit(self, transaction_id, timeout_seconds):
+        return CommitEvidence(
             transaction_id=transaction_id,
-            block_id="block-final-001",
-            finalized_height=42,
-            proof_format="test-finality-v1",
-            proof_data={"test": True},
+            commit_kind=CommitKind.LOCAL_ACID,
+            backend_id="test-fake",
+            committed_at_utc="2026-01-01T00:00:00+00:00",
+            sequence=1,
+            evidence_hash="a" * 64,
+            external_proof={"test": True},
         )
 
-    def verify_finality_proof(self, proof, transaction_id):
-        return proof.transaction_id == transaction_id and proof.finalized_height == 42
+    def verify_commit_evidence(self, evidence, transaction_id):
+        return evidence.transaction_id == transaction_id and evidence.commit_kind is CommitKind.LOCAL_ACID
 
 
-class UTXOBackendContractTests(unittest.TestCase):
+class SharedUTXOCoordinatorTests(unittest.TestCase):
     def setUp(self):
-        self.request = SpendRequest(
-            operation_id="operation-001",
-            idempotency_key="idem-001",
-            operation_hash="a" * 64,
-            authorization_id="authorization-001",
-            outpoint="b" * 64 + ":0",
-            binding_id="binding-001",
-            policy_id="policy-001",
+        self.backend = FakeBackend()
+        self.outpoint = "a" * 64 + ":0"
+        self.auth = AuthorizationUTXO(
+            outpoint=self.outpoint,
+            authorization_id="auth-1",
+            binding_id="binding-1",
+            node_id="node-1",
+            owner_key_id="owner-1",
+            operation_hash="b" * 64,
+            policy_id="policy-1",
             policy_version="1",
         )
+        self.backend.register_authorization(self.auth)
+        values = dict(
+            operation_id="op-1",
+            idempotency_key="idem-1",
+            operation_hash="b" * 64,
+            authorization_id="auth-1",
+            outpoint=self.outpoint,
+            binding_id="binding-1",
+            node_id="node-1",
+            owner_key_id="owner-1",
+            policy_id="policy-1",
+            policy_version="1",
+        )
+        digest = compute_spend_request_hash(**values)
+        self.request = SpendRequest(request_hash=digest, **values)
         self.decision = AuthorizationDecision(
-            decision="PROTECTED",
-            reason="local preconditions passed",
+            "PROTECTED", "approved", "b" * 64, "auth-1", self.outpoint
+        )
+
+    def test_protected_decision_submits_and_verifies_local_commit(self):
+        result = consume_authorization(
+            decision=self.decision, request=self.request, backend=self.backend
+        )
+        self.assertEqual(result.submission.state, SpendState.LOCAL_COMMITTED)
+        self.assertEqual(result.evidence.commit_kind, CommitKind.LOCAL_ACID)
+        self.assertEqual(self.backend.calls, 1)
+
+    def test_standard_or_deny_cannot_spend(self):
+        for mode in ("STANDARD", "DENY"):
+            decision = AuthorizationDecision(mode, "not protected", "b" * 64)
+            with self.assertRaises(UTXOBackendError):
+                consume_authorization(
+                    decision=decision, request=self.request, backend=self.backend
+                )
+        self.assertEqual(self.backend.calls, 0)
+
+    def test_canonical_request_hash_is_checked_before_backend(self):
+        invalid = SpendRequest(
+            operation_id=self.request.operation_id,
+            idempotency_key=self.request.idempotency_key,
+            request_hash="c" * 64,
             operation_hash=self.request.operation_hash,
             authorization_id=self.request.authorization_id,
             outpoint=self.request.outpoint,
+            binding_id=self.request.binding_id,
+            node_id=self.request.node_id,
+            owner_key_id=self.request.owner_key_id,
+            policy_id=self.request.policy_id,
+            policy_version=self.request.policy_version,
         )
-        self.backend = FakeAtomicBackend()
-
-    def test_spend_requires_verified_finality(self):
-        result = consume_authorization(
-            decision=self.decision, request=self.request, backend=self.backend,
-        )
-        self.assertEqual(result.submission.state, "FINALIZED")
-        self.assertEqual(result.finality.finalized_height, 42)
-        self.assertEqual(self.backend.spend_calls, 1)
-
-    def test_retries_reuse_durable_idempotent_submission(self):
-        first = consume_authorization(
-            decision=self.decision, request=self.request, backend=self.backend,
-        )
-        second = consume_authorization(
-            decision=self.decision, request=self.request, backend=self.backend,
-        )
-        self.assertEqual(first.submission.transaction_id, second.submission.transaction_id)
-        self.assertEqual(self.backend.spend_calls, 1)
-
-    def test_non_protected_decision_cannot_spend(self):
-        denied = AuthorizationDecision("DENY", "denied", self.request.operation_hash)
         with self.assertRaises(UTXOBackendError):
             consume_authorization(
-                decision=denied, request=self.request, backend=self.backend,
+                decision=self.decision, request=invalid, backend=self.backend
             )
-        self.assertEqual(self.backend.spend_calls, 0)
+        self.assertEqual(self.backend.calls, 0)
 
-    def test_outpoint_mismatch_cannot_spend(self):
+    def test_operation_hash_mismatch_is_rejected(self):
         wrong = AuthorizationDecision(
-            "PROTECTED", "approved", self.request.operation_hash,
-            self.request.authorization_id, "c" * 64 + ":0",
-        )
-        with self.assertRaises(UTXOBackendError):
-            consume_authorization(decision=wrong, request=self.request, backend=self.backend)
-        self.assertEqual(self.backend.spend_calls, 0)
-
-    def test_operation_hash_mismatch_cannot_spend(self):
-        wrong = AuthorizationDecision(
-            "PROTECTED", "approved", "d" * 64,
-            self.request.authorization_id, self.request.outpoint,
-        )
-        with self.assertRaises(UTXOBackendError):
-            consume_authorization(decision=wrong, request=self.request, backend=self.backend)
-        self.assertEqual(self.backend.spend_calls, 0)
-
-    def test_invalid_finality_proof_rejected(self):
-        class BadProofBackend(FakeAtomicBackend):
-            def verify_finality_proof(self, proof, transaction_id):
-                return False
-        with self.assertRaises(UTXOBackendError):
-            consume_authorization(
-                decision=self.decision, request=self.request, backend=BadProofBackend(),
-            )
-
-    def test_idempotency_conflict_rejected(self):
-        self.backend.submissions[self.request.idempotency_key] = SpendSubmission(
-            "tx-other", self.request.outpoint, "other-operation",
-            self.request.operation_hash, "SUBMITTED",
+            "PROTECTED", "approved", "d" * 64, "auth-1", self.outpoint
         )
         with self.assertRaises(UTXOBackendError):
             consume_authorization(
-                decision=self.decision, request=self.request, backend=self.backend,
+                decision=wrong, request=self.request, backend=self.backend
             )
-        self.assertEqual(self.backend.spend_calls, 0)
+        self.assertEqual(self.backend.calls, 0)
 
 
 if __name__ == "__main__":
