@@ -109,6 +109,7 @@ jobs:
       - name: Run Lobby unit and authenticated server integration tests
         run: |
           python compatibility/termux/tests/test_release_metadata.py
+          python compatibility/termux/tests/test_bitcoin_identity.py
           python compatibility/termux/tests/test_certificate_manager.py
           python compatibility/termux/tests/test_server.py compatibility/termux/lobby/server.py
 
