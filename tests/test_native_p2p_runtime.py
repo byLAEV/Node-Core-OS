@@ -65,6 +65,9 @@ class NativeP2PRuntimeTests(unittest.TestCase):
                     ),
                 )
 
+            def stop(self):
+                self.running = False
+
         self.runtime.p2p_discovery = FakeDiscovery()
         status = self.runtime.native_p2p_status()
 
