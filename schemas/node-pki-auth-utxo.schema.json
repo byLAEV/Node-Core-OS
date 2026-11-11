@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/schemas/node-pki-auth-utxo.schema.json",
+  "title": "NODE-PKI-AUTH-UTXO",
+  "description": "Single-use authorization capability metadata. Availability and spent state MUST come from authoritative consensus state, never this JSON document.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "authorization_id", "outpoint", "binding_id", "node_id", "operation", "operation_hash", "audience", "policy_id", "policy_version", "context_hash", "valid_from_epoch", "valid_until_epoch", "required_signatures", "single_use"],
+  "properties": {
+    "format": {"const": "NODE-PKI-AUTH-UTXO"},
+    "version": {"const": "1.0"},
+    "authorization_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "outpoint": {"type": "string", "pattern": "^[0-9a-f]{64}:[0-9]{1,10}$"},
+    "binding_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "node_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "operation": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$"},
+    "operation_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "audience": {"type": "string", "minLength": 1, "maxLength": 256},
+    "policy_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "policy_version": {"type": "string", "minLength": 1, "maxLength": 32},
+    "context_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "valid_from_epoch": {"type": "integer", "minimum": 0},
+    "valid_until_epoch": {"type": "integer", "minimum": 1},
+    "required_signatures": {
+      "type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["key_id", "algorithm"],
+        "properties": {
+          "key_id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "algorithm": {"enum": ["Ed25519", "RSA-PSS-SHA256", "ECDSA-SHA256"]}
+        }
+      }
+    },
+    "single_use": {"const": true}
+  }
+}
