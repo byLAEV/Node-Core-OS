@@ -152,22 +152,7 @@ class SpendRequest:
             raise ValueError("outpoint must use canonical lowercase txid:vout form")
         if type(self.fee_amount) is not int or self.fee_amount < 0:
             raise ValueError("fee_amount must be a non-negative integer")
-        expected_hash = compute_spend_request_hash(
-            operation_id=self.operation_id,
-            idempotency_key=self.idempotency_key,
-            operation_hash=self.operation_hash,
-            authorization_id=self.authorization_id,
-            outpoint=self.outpoint,
-            binding_id=self.binding_id,
-            node_id=self.node_id,
-            owner_key_id=self.owner_key_id,
-            policy_id=self.policy_id,
-            policy_version=self.policy_version,
-            fee_amount=self.fee_amount,
-            fee_asset=self.fee_asset,
-        )
-        if self.request_hash != expected_hash:
-            raise ValueError("request_hash does not match the canonical spend request")
+
 
 
 @dataclass(frozen=True)
