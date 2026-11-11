@@ -107,7 +107,7 @@ class NodePKIGuardTests(unittest.TestCase):
         with self.assertRaises(NodePKIGuardError):
             verify_dual_proof(
                 challenge=challenge, node_public_key=self.node_key.public_key(),
-                x509_public_key=self.x509_key.public_key(),
+                x509_public_key=self.x509_key.public_key(), x509_certificate=self.cert_pem,
                 node_signature=sign_challenge(self.node_key, challenge),
                 x509_signature=sign_challenge(self.x509_key, challenge),
                 registry=ChallengeRegistry(), now_epoch=self.now)
