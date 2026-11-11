@@ -59,3 +59,10 @@ See the [Eight-Certificate Audit and CI Index](./AUDIT-AND-CI-INDEX.md) for work
 BICDN-01 (`bitcoin-conflict-declaration`) is intentionally outside the eight node-identity security profiles. Its proposed schemas and requirements are located in [Certificates/09-bitcoin-conflict-declaration-and-resolution](./Certificates/09-bitcoin-conflict-declaration-and-resolution/README.md).
 
 No BICDN-specific executable test suite or production implementation is included in this documentation change. Existing node identity envelope tests do not establish BICDN form validation, anonymous intake, legal confidentiality, jurisdiction handling, institutional integration, or distributed synchronization.
+
+
+## Separate NODE-PKI-GUARD complementary PKI proposal
+
+[NODE-PKI-GUARD v1.0](./Certificates/10-node-pki-guard/README.md) is a proposed complementary authorization layer for existing X.509/PKI certificates. It is not one of the eight security-assessment profiles and is not an implementation of a production CA, X.509 issuer, UTXO ledger, or distributed consensus backend.
+
+No NODE-PKI-GUARD implementation tests are claimed by this documentation entry. Before declaring conformance, the implementation must add the positive and negative test cases in its specification, including X.509 chain/name/revocation validation, dual proof-of-possession, binding policy, one-time UTXO consumption, concurrent double-spend rejection across nodes, consensus finality, idempotent recovery, and receipt verification. A schema-validation test alone is insufficient.
