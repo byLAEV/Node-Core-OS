@@ -575,3 +575,19 @@ The implementation branch now includes the following additional modules:
 - \`tests/test_node_pki_guard_utxo.py\` — backend contract and finality orchestration tests.
 
 These adapters do not constitute a production ledger or distributed consensus implementation. Review the implementation and CI results in [Pull Request #227](https://github.com/byLAEV/Node-Core-OS/pull/227) before declaring conformance.
+
+
+---
+
+## Dual-Model Architecture — Revision 1.2
+
+The official implementation architecture is maintained in [ARCHITECTURE-DUAL-MODEL.md](./ARCHITECTURE-DUAL-MODEL.md).
+
+NODE-PKI-GUARD uses one shared cryptographic and policy core with two independent persistence adapters:
+
+- **Standalone:** SQLite 3, WAL, ACID transactions, atomic local outpoint consumption, and persistent idempotency.
+- **NODE Core OS Network:** native ledger integration, validator consensus, global UTXO state, independently verifiable finality, and protocol-defined network fees.
+
+Both adapters MUST preserve identical binding, authorization, Dual PoP, operation-hash, policy, and receipt semantics. Local SQLite commit MUST NOT be described as distributed consensus finality.
+
+Implementation status is tracked separately from this architecture specification. The SQLite production adapter and the NODE Core OS network adapter remain pending until their respective code and conformance tests are implemented.
