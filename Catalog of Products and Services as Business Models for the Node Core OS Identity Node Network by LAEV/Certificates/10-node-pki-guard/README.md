@@ -546,3 +546,18 @@ El principio de desarrollo será mantener transparencia sobre el estado real de 
 Este documento registra una propuesta de certificado complementario de PKI/X.509. No añade por sí solo un perfil al emisor de credenciales NODE existente, no crea una CA, no emite certificados X.509, no implementa un ledger UTXO y no demuestra consenso distribuido.
 
 La implementación deberá desarrollarse en componentes separados, con contratos explícitos y pruebas reproducibles. La incorporación futura de un identificador al formato de certificados de identidad de NODE requerirá una decisión de compatibilidad y cambios específicos en el código y sus pruebas.
+
+---
+
+## Implementation tracking — English
+
+The first local implementation is under review in [Pull Request #227](https://github.com/byLAEV/Node-Core-OS/pull/227).
+
+- [NODE-PKI-GUARD implementation module](../../../../node_core/security/node_pki_guard.py)
+- [NODE-PKI-BINDING JSON Schema](../../../../schemas/node-pki-binding.schema.json)
+- [NODE-PKI-AUTH-UTXO JSON Schema](../../../../schemas/node-pki-auth-utxo.schema.json)
+- [Local unit tests](../../../../tests/test_node_pki_guard.py)
+- [Implementation boundary and runbook](../../../../docs/NODE-PKI-GUARD-IMPLEMENTATION.md)
+- [GitHub Actions local conformance workflow](../../../../.github/workflows/node-pki-guard.yml)
+
+Current implementation scope: local cryptographic primitives and policy evaluation only. It does not yet provide a production X.509 trust validator, UTXO ledger, distributed consensus, transaction finality, or production executor. The pull request and CI results must be reviewed before this proposal is described as implemented or conformant.
