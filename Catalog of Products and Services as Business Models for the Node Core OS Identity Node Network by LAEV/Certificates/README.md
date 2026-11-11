@@ -1,6 +1,6 @@
 # Certificates
 
-This directory contains eight Node Core OS security-assessment certificate products and the separate BICDN conflict-declaration certificate proposal. The product folders retain their individual specifications, evidence guides, and test traceability documents.
+This directory contains eight Node Core OS security-assessment certificate products, the separate BICDN conflict-declaration certificate proposal, and the NODE-PKI-GUARD complementary X.509/PKI authorization proposal. The product folders retain their individual specifications, evidence guides, and test traceability documents.
 
 ## Certificate products
 
@@ -14,6 +14,7 @@ This directory contains eight Node Core OS security-assessment certificate produ
 8. [Privilege Control and Pool Isolation](./08-privilege-control-and-pool-isolation/README.md) — `privilege-and-pool-isolation`
 
 9. [Bitcoin Conflict Declaration and Resolution Certificate](./09-bitcoin-conflict-declaration-and-resolution/README.md) — `bitcoin-conflict-declaration` (proposed application-level case credential; not a node identity profile)
+10. [NODE-PKI-GUARD — Complementary X.509/PKI Authorization](./10-node-pki-guard/README.md) — `NODE-PKI-GUARD` (proposed UTXO-based authorization layer; does not replace X.509 or existing CAs)
 
 ## Evidence and status
 
