@@ -32,15 +32,27 @@ class NodePKIGuardTests(unittest.TestCase):
         self.node_key = ed25519.Ed25519PrivateKey.generate()
         self.binding_issuer = ed25519.Ed25519PrivateKey.generate()
         self.x509_key = ec.generate_private_key(ec.SECP256R1())
+        self.cert_pem = self.make_certificate(self.x509_key)
+        cert_fp, spki_fp = certificate_fingerprints(self.cert_pem)
         self.now = 1800000000
         self.challenge = {
             "domain": POP_DOMAIN, "version": PROTOCOL_VERSION,
             "challenge_id": "challenge-001", "nonce": b64u(b"N" * 32),
-            "node_id": "node-test-01", "x509_fingerprint_sha256": "a" * 64,
-            "spki_sha256": "b" * 64, "purpose": "TLS_CLIENT_AUTH",
+            "node_id": "node-test-01", "x509_fingerprint_sha256": cert_fp,
+            "spki_sha256": spki_fp, "purpose": "TLS_CLIENT_AUTH",
             "audience": "api.example.test", "operation_hash": "c" * 64,
             "issued_at": self.now - 5, "expires_at": self.now + 300,
         }
+
+
+    @staticmethod
+    def make_certificate(private_key):
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test.example")])
+        cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name)
+                .public_key(private_key.public_key()).serial_number(x509.random_serial_number())
+                .not_valid_before(datetime(2026, 1, 1)).not_valid_after(datetime(2030, 1, 1))
+                .sign(private_key, hashes.SHA256()))
+        return cert.public_bytes(serialization.Encoding.PEM)
 
     def test_canonical_json_is_deterministic(self):
         self.assertEqual(canonical_json({"z": 1, "a": "é"}), '{"a":"é","z":1}'.encode())
@@ -52,7 +64,7 @@ class NodePKIGuardTests(unittest.TestCase):
     def test_valid_dual_proof(self):
         digest = verify_dual_proof(
             challenge=self.challenge, node_public_key=self.node_key.public_key(),
-            x509_public_key=self.x509_key.public_key(),
+            x509_public_key=self.x509_key.public_key(), x509_certificate=self.cert_pem,
             node_signature=sign_challenge(self.node_key, self.challenge),
             x509_signature=sign_challenge(self.x509_key, self.challenge),
             registry=ChallengeRegistry(), now_epoch=self.now)
@@ -63,7 +75,7 @@ class NodePKIGuardTests(unittest.TestCase):
         with self.assertRaises(NodePKIGuardError):
             verify_dual_proof(
                 challenge=self.challenge, node_public_key=self.node_key.public_key(),
-                x509_public_key=self.x509_key.public_key(),
+                x509_public_key=self.x509_key.public_key(), x509_certificate=self.cert_pem,
                 node_signature=sign_challenge(other, self.challenge),
                 x509_signature=sign_challenge(self.x509_key, self.challenge),
                 registry=ChallengeRegistry(), now_epoch=self.now)
@@ -102,10 +114,13 @@ class NodePKIGuardTests(unittest.TestCase):
 
     def test_rsa_pop_supported(self):
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        challenge = dict(self.challenge, challenge_id="rsa-challenge")
+        rsa_cert = self.make_certificate(key)
+        cert_fp, spki_fp = certificate_fingerprints(rsa_cert)
+        challenge = dict(self.challenge, challenge_id="rsa-challenge",
+                         x509_fingerprint_sha256=cert_fp, spki_sha256=spki_fp)
         verify_dual_proof(
             challenge=challenge, node_public_key=self.node_key.public_key(),
-            x509_public_key=key.public_key(),
+            x509_public_key=key.public_key(), x509_certificate=rsa_cert,
             node_signature=sign_challenge(self.node_key, challenge),
             x509_signature=sign_challenge(key, challenge),
             registry=ChallengeRegistry(), now_epoch=self.now)
