@@ -561,3 +561,17 @@ The first local implementation is under review in [Pull Request #227](https://gi
 - [GitHub Actions local conformance workflow](../../../../.github/workflows/node-pki-guard.yml)
 
 Current implementation scope: local cryptographic primitives and policy evaluation only. It does not yet provide a production X.509 trust validator, UTXO ledger, distributed consensus, transaction finality, or production executor. The pull request and CI results must be reviewed before this proposal is described as implemented or conformant.
+
+
+---
+
+## NODE-PKI-GUARD v1.1 implementation adapters
+
+The implementation branch now includes the following additional modules:
+
+- \`node_core/security/node_pki_guard_x509.py\` — explicit OpenSSL X.509 chain, TLS purpose, hostname/IP, and optional CRL validation.
+- \`node_core/security/node_pki_guard_utxo.py\` — backend contract for atomic authorization spending, durable idempotency, and finality-proof verification.
+- \`tests/test_node_pki_guard_x509.py\` — OpenSSL-backed certificate validation tests.
+- \`tests/test_node_pki_guard_utxo.py\` — backend contract and finality orchestration tests.
+
+These adapters do not constitute a production ledger or distributed consensus implementation. Review the implementation and CI results in [Pull Request #227](https://github.com/byLAEV/Node-Core-OS/pull/227) before declaring conformance.
