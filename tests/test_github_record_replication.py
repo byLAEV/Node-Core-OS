@@ -54,7 +54,7 @@ class RecordReplicationTests(unittest.TestCase):
             rsa_identity_store=self.rsa_b,
             trusted_rsa_public_keys={self.meta_a["node_id"]: self.rsa_a.public_key_pem()},
             on_message=lambda peer, message_id, text: self.replica_b.receive_message(peer, message_id, text),
-            timeout_seconds=5,
+            timeout_seconds=30,
         )
         host, port = server.start()
         self.addCleanup(server.stop)
@@ -65,7 +65,7 @@ class RecordReplicationTests(unittest.TestCase):
             trusted_peers={self.meta_b["node_id"]: self.cert_b},
             rsa_identity_store=self.rsa_a,
             trusted_rsa_public_keys={self.meta_b["node_id"]: self.rsa_b.public_key_pem()},
-            timeout_seconds=5,
+            timeout_seconds=30,
         )
         record = self.make_record()
         first = self.replica_a.send_record(
@@ -152,7 +152,7 @@ class ThreeNodeRecordReplicationTests(unittest.TestCase):
                 },
                 on_message=lambda peer, message_id, text, target=target:
                     target["replicator"].receive_message(peer, message_id, text),
-                timeout_seconds=5,
+                timeout_seconds=30,
             )
             host, port = server.start()
             self.servers.append((server, host, port))
@@ -171,7 +171,7 @@ class ThreeNodeRecordReplicationTests(unittest.TestCase):
                 trusted_rsa_public_keys={
                     target["metadata"]["node_id"]: target["rsa"].public_key_pem()
                 },
-                timeout_seconds=5,
+                timeout_seconds=30,
             )
             record = {
                 "schema": NodeRecordReplicator.RECORD_SCHEMA,

@@ -36,7 +36,7 @@ jobs:
       - name: Build isolated distribution test image
         run: |
           set -euo pipefail
-          docker build \
+          docker build --network=host \
             --build-arg BASE_IMAGE="${{ matrix.image }}" \
             --file ci/linux/Dockerfile \
             --tag "node-core-linux-e2e:${{ matrix.os_id }}" \

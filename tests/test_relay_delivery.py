@@ -1,6 +1,8 @@
 import json
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from pathlib import Path
 
 from node_core.identity.node_identity import NodeIdentityStore
@@ -88,6 +90,70 @@ class RelayDeliveryTests(unittest.TestCase):
         second = persist_and_sign_receipt(self.root / "data", verified, self.identity)
         self.assertEqual(Path(second["persisted_path"]).read_bytes(), original)
         self.assertEqual(first["payload_sha256"], second["payload_sha256"])
+
+
+
+    def test_concurrent_same_run_id_is_idempotent(self):
+        verified = verify_request(create_request("concurrent-same", self.payload, KEY), KEY)
+        barrier = Barrier(8)
+
+        def publish(_index):
+            barrier.wait(timeout=10)
+            identity = NodeIdentityStore(self.root / "data")
+            return persist_and_sign_receipt(self.root / "data", verified, identity)
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            receipts = list(pool.map(publish, range(8)))
+
+        saved = Path(receipts[0]["persisted_path"])
+        self.assertTrue(saved.is_file())
+        self.assertEqual(len(list(saved.parent.glob("concurrent-same.json"))), 1)
+        self.assertEqual(list(saved.parent.glob("*.tmp")), [])
+        stored = saved.read_bytes()
+        self.assertTrue(all(Path(item["persisted_path"]).read_bytes() == stored for item in receipts))
+        self.assertTrue(all(item["payload_sha256"] == verified["payload_sha256"] for item in receipts))
+        for receipt in receipts:
+            signature = bytes.fromhex(receipt["signature_ed25519"])
+            unsigned = {key: value for key, value in receipt.items() if key != "signature_ed25519"}
+            self.assertTrue(NodeIdentityStore.verify(
+                receipt["public_key"], canonical_json_bytes(unsigned), signature
+            ))
+
+    def test_concurrent_different_payloads_never_overwrite_same_run_id(self):
+        for index in range(10):
+            run_id = f"concurrent-conflict-{index}"
+            payloads = [
+                {**self.payload, "message": f"concurrent writer {writer}"}
+                for writer in ("a", "b")
+            ]
+            verified_requests = [
+                verify_request(create_request(run_id, payload, KEY), KEY)
+                for payload in payloads
+            ]
+            barrier = Barrier(2)
+
+            def publish(verified):
+                barrier.wait(timeout=10)
+                identity = NodeIdentityStore(self.root / "data")
+                try:
+                    receipt = persist_and_sign_receipt(self.root / "data", verified, identity)
+                    return ("success", receipt)
+                except RuntimeError as exc:
+                    return ("rejected", str(exc))
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(publish, verified_requests))
+
+            successes = [value for state, value in results if state == "success"]
+            rejected = [value for state, value in results if state == "rejected"]
+            self.assertEqual(len(successes), 1, results)
+            self.assertEqual(len(rejected), 1, results)
+            self.assertIn("refusing overwrite", rejected[0])
+            persisted = json.loads(
+                (self.root / "data" / "storage" / "relay" / "inbox" / f"{run_id}.json")
+                .read_text(encoding="utf-8")
+            )
+            self.assertIn(persisted["payload"], payloads)
 
 
 if __name__ == "__main__":
