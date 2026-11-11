@@ -82,3 +82,19 @@ No production ledger adapter, consensus algorithm, distributed storage, or netwo
 
     python -m unittest tests.test_node_pki_guard tests.test_node_pki_guard_x509 tests.test_node_pki_guard_utxo -v
     python -m unittest tests.test_node_identity_certificate -v
+
+
+## v1.2 shared backend contract and coordinator
+
+- Module: `node_core/security/node_pki_guard_backend.py`
+- Defines the single abstract `UTXOAuthorizationBackend` contract and shared immutable authorization, spend request, submission, status and commit-evidence types.
+- `compute_spend_request_hash` uses the `NODE-PKI-GUARD-SPEND-REQUEST-v1` domain and binds the operation, idempotency key, authorization, outpoint, binding, node, owner key, policy version and fee fields.
+- Module: `node_core/security/node_pki_guard_utxo.py`
+- `consume_authorization` accepts only a `PROTECTED` decision, verifies the canonical request digest and matching authorization fields, checks idempotency, submits through the abstract backend, then verifies backend-specific commit evidence.
+- The coordinator does not implement ledger state, consensus or finality. `LOCAL_ACID` evidence means only a durable single-host SQLite commit. `NETWORK_CONSENSUS` evidence must be supplied and independently verified by a future real network adapter.
+- The Standalone SQLite backend implements the shared contract. Its idempotency key is globally unique in the local database; reuse with different request content or operation ID is rejected.
+- The future Network backend MUST implement the same abstract contract and preserve the same request checks. Consensus, fees, validator proofs and finality remain undefined until connected to actual Node Core OS ledger interfaces. No fake network backend is provided.
+
+### v1.2 tests
+
+    python -m unittest tests.test_node_pki_guard_utxo tests.test_node_pki_guard_standalone -v
