@@ -65,7 +65,7 @@ class StandaloneSQLiteBackendTests(unittest.TestCase):
         first = self.backend.submit_spend_atomic(self.request)
         second = self.backend.submit_spend_atomic(self.request)
         self.assertEqual(first.transaction_id, second.transaction_id)
-        self.assertEqual(self.backend.get_idempotent_result("operation-001", "idem-001"), first)
+        self.assertEqual(self.backend.get_idempotent_result("idem-001"), first)
 
     def test_idempotency_key_conflict_is_rejected(self):
         self.backend.submit_spend_atomic(self.request)
