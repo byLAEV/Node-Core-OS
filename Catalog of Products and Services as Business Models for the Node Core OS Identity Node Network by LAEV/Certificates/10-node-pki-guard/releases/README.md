@@ -16,10 +16,10 @@ Download the ZIP directly from the repository branch:
 
 ```sh
 curl -fL \
-  "https://raw.githubusercontent.com/byLAEV/Node-Core-OS/feature/node-pki-guard-implementation-v1/Catalog%20of%20Products%20and%20Services%20as%20Business%20Models%20for%20the%20Node%20Core%20OS%20Identity%20Node%20Network%20by%20LAEV/Certificates/10-node-pki-guard/releases/node-pki-guard-cli-1.0.0-source.zip" \
+  "https://raw.githubusercontent.com/byLAEV/Node-Core-OS/main/Catalog%20of%20Products%20and%20Services%20as%20Business%20Models%20for%20the%20Node%20Core%20OS%20Identity%20Node%20Network%20by%20LAEV/Certificates/10-node-pki-guard/releases/node-pki-guard-cli-1.0.0-source.zip" \
   -o node-pki-guard-cli-1.0.0-source.zip
 curl -fL \
-  "https://raw.githubusercontent.com/byLAEV/Node-Core-OS/feature/node-pki-guard-implementation-v1/Catalog%20of%20Products%20and%20Services%20as%20Business%20Models%20for%20the%20Node%20Core%20OS%20Identity%20Node%20Network%20by%20LAEV/Certificates/10-node-pki-guard/releases/SHA256SUMS-1.0.0-source.txt" \
+  "https://raw.githubusercontent.com/byLAEV/Node-Core-OS/main/Catalog%20of%20Products%20and%20Services%20as%20Business%20Models%20for%20the%20Node%20Core%20OS%20Identity%20Node%20Network%20by%20LAEV/Certificates/10-node-pki-guard/releases/SHA256SUMS-1.0.0-source.txt" \
   -o SHA256SUMS-1.0.0-source.txt
 sha256sum -c SHA256SUMS-1.0.0-source.txt
 unzip -t node-pki-guard-cli-1.0.0-source.zip
