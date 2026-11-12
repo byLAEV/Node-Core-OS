@@ -591,3 +591,24 @@ NODE-PKI-GUARD uses one shared cryptographic and policy core with two independen
 Both adapters MUST preserve identical binding, authorization, Dual PoP, operation-hash, policy, and receipt semantics. Local SQLite commit MUST NOT be described as distributed consensus finality.
 
 Implementation status is tracked separately from this architecture specification. The SQLite production adapter and the NODE Core OS network adapter remain pending until their respective code and conformance tests are implemented.
+
+---
+
+## Downloadable independent verifier — NODE-PKI-GUARD CLI
+
+A standalone Linux source bundle is available in the repository release directory.
+This is an **unsigned source snapshot for evaluation**, not a production release.
+
+- [Download node-pki-guard-cli-1.0.0-source.zip](./releases/node-pki-guard-cli-1.0.0-source.zip)
+- [Verify SHA-256](./releases/SHA256SUMS-1.0.0-source.txt)
+- [Release manifest](./releases/release-manifest-1.0.0-source.json)
+- [Installation and security status](./releases/README.md)
+
+Requirements: Linux/POSIX, Python 3.10+, and OpenSSL 1.1.1+.
+It verifies X.509 bundle integrity, certificate chains and peer identities,
+and detached NODE-PKI-GUARD administrative receipt signatures. It does not
+install NODE Core OS.
+
+**Trust notice:** this ZIP is not signed. A SHA-256 checksum detects
+corruption but does not authenticate the publisher. Use a signed GitHub
+Release and verify its Sigstore/Cosign bundle before production adoption.
