@@ -98,3 +98,23 @@ No production ledger adapter, consensus algorithm, distributed storage, or netwo
 ### v1.2 tests
 
     python -m unittest tests.test_node_pki_guard_utxo tests.test_node_pki_guard_standalone -v
+
+## v1.0 constrained X.509 issuer primitive
+
+- Module: `node_core/security/node_pki_guard_issuer.py`
+- Accepts one PKCS#10 CSR and verifies its proof-of-possession signature.
+- Requires a single pinned, self-signed CA certificate with CA BasicConstraints and keyCertSign KeyUsage, plus a matching private key.
+- Supports RSA (minimum 2048 bits), NIST P-256/P-384/P-521 EC, and Ed25519 subject and issuer keys.
+- Requires a profile allowlist for DNS SAN suffixes; IP SANs are rejected unless explicitly enabled.
+- Rejects wildcard DNS SANs, duplicate SANs, unsupported SAN types, and CSR extensions other than the permitted SAN.
+- Applies issuer-controlled BasicConstraints, KeyUsage and ExtendedKeyUsage; it does not copy caller-controlled CA or key-usage extensions from the CSR.
+- Caps leaf validity at both the configured profile duration and the pinned CA certificate expiry.
+- Returns the certificate PEM, serial, SHA-256 certificate/SPKI fingerprints, issuer fingerprint/key ID, profile version and validity timestamps.
+
+**Critical integration boundary:** `issue_x509_certificate()` is a cryptographic primitive only. It does not verify NODE-PKI-BINDING, NODE-PKI-AUTH-UTXO, policy constraints, required authorization signatures, UTXO consumption, durable idempotency, certificate persistence, revocation state, or signed receipts. It MUST NOT be exposed as a production issuance endpoint until a service layer consumes and verifies the matching authorization and implements durable operation recovery.
+
+### Issuer tests
+
+    python -m unittest tests.test_node_pki_guard_issuer -v
+
+The issuer tests are included in the NODE-PKI-GUARD Local Conformance workflow. A successful CI run is still required before treating this implementation as verified.
