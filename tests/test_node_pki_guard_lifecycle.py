@@ -14,7 +14,6 @@ class PKILifecycleReceiptTests(unittest.TestCase):
             "operation_id": "operation-001",
             "certificate_fingerprint_sha256": "a" * 64,
         }
-        pem = private_key.private_bytes_raw()
         # The production API accepts PEM, so serialize the test key in PKCS8.
         from cryptography.hazmat.primitives import serialization
         pem = private_key.private_bytes(
