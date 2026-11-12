@@ -3,8 +3,8 @@
   "version": "1.0.0-source",
   "artifact": "node-pki-guard-cli-1.0.0-source.zip",
   "artifact_type": "source bundle ZIP",
-  "artifact_sha256": "041f72b94d10d663e2e0fcd7e33e25ec01938eac3cf6343f1791a752ebab7a2b",
-  "archive_bytes": 51240,
+  "artifact_sha256": "33ff517e87c188030fb9c93cda6d7c63a8d1ee51f1a2c72ff3412365ede18e93",
+  "archive_bytes": 51258,
   "signature_status": "UNSIGNED — source snapshot only; use GitHub Release Sigstore bundle for authenticated releases",
   "runtime": {
     "python": ">=3.10",
