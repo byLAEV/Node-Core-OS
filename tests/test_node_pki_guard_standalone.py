@@ -48,6 +48,55 @@ class StandaloneSQLiteBackendTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+
+    def test_authorization_payload_hash_survives_restart(self):
+        from node_core.security.node_pki_guard_backend import AuthorizationUTXO
+
+        committed = AuthorizationUTXO(
+            outpoint="e" * 64 + ":1",
+            authorization_id="auth-hash-001",
+            binding_id="binding-001",
+            node_id="node-001",
+            owner_key_id="owner-key-001",
+            operation_hash="d" * 64,
+            policy_id="policy-001",
+            policy_version="1",
+            authorization_payload_hash="f" * 64,
+        )
+        self.backend.register_authorization(committed)
+        reopened = StandaloneSQLiteBackend(self.db)
+        stored = reopened.get_authorization(committed.outpoint)
+        self.assertEqual(stored, committed)
+
+    def test_conflicting_authorization_payload_hash_is_rejected(self):
+        from node_core.security.node_pki_guard_backend import AuthorizationUTXO
+
+        committed = AuthorizationUTXO(
+            outpoint="e" * 64 + ":1",
+            authorization_id="auth-hash-002",
+            binding_id="binding-001",
+            node_id="node-001",
+            owner_key_id="owner-key-001",
+            operation_hash="d" * 64,
+            policy_id="policy-001",
+            policy_version="1",
+            authorization_payload_hash="f" * 64,
+        )
+        self.backend.register_authorization(committed)
+        altered = AuthorizationUTXO(
+            outpoint=committed.outpoint,
+            authorization_id=committed.authorization_id,
+            binding_id=committed.binding_id,
+            node_id=committed.node_id,
+            owner_key_id=committed.owner_key_id,
+            operation_hash=committed.operation_hash,
+            policy_id=committed.policy_id,
+            policy_version=committed.policy_version,
+            authorization_payload_hash="0" * 64,
+        )
+        with self.assertRaises(BackendContractError):
+            self.backend.register_authorization(altered)
+
     def test_register_and_query_authorization(self):
         self.assertEqual(self.backend.get_utxo_status(self.request.outpoint), UTXOStatus.UNSPENT)
         self.assertEqual(self.backend.get_utxo_status("d" * 64 + ":1"), UTXOStatus.NOT_FOUND)
