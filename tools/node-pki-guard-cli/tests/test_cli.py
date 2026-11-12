@@ -33,6 +33,8 @@ class OpenSSLBundleVerifierTests(unittest.TestCase):
             "-subj", "/CN=NODE-PKI-GUARD Test Root", "-days", "2",
             "-sha256", "-addext", "basicConstraints=critical,CA:TRUE,pathlen:0",
             "-addext", "keyUsage=critical,keyCertSign,cRLSign",
+            "-addext", "subjectKeyIdentifier=hash",
+            "-addext", "authorityKeyIdentifier=keyid:always",
         ])
         self._openssl([
             "req", "-new", "-newkey", "rsa:2048", "-nodes",
@@ -158,6 +160,8 @@ class OpenSSLBundleVerifierTests(unittest.TestCase):
             "-subj", "/CN=Untrusted Root", "-days", "2", "-sha256",
             "-addext", "basicConstraints=critical,CA:TRUE",
             "-addext", "keyUsage=critical,keyCertSign,cRLSign",
+            "-addext", "subjectKeyIdentifier=hash",
+            "-addext", "authorityKeyIdentifier=keyid:always",
         ])
         with self.assertRaises(VerificationError):
             verify_bundle(
@@ -206,6 +210,19 @@ class OpenSSLBundleVerifierTests(unittest.TestCase):
             '{"format":"NODE-PKI-GUARD-X509-BUNDLE","format":"other"}',
             encoding="utf-8",
         )
+        with self.assertRaises(VerificationError):
+            verify_bundle(
+                bundle_dir=self.bundle,
+                ca_file=self.ca_cert,
+                hostname="service.example.test",
+                openssl_binary=OPENSSL or "openssl",
+            )
+
+
+    def test_invalid_encoding_type_is_rejected(self) -> None:
+        data = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        data["certificate"]["encoding"] = []
+        self.manifest_path.write_text(json.dumps(data), encoding="utf-8")
         with self.assertRaises(VerificationError):
             verify_bundle(
                 bundle_dir=self.bundle,
