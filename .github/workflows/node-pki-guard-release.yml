@@ -51,6 +51,7 @@ jobs:
           cp dist/*.tar.gz dist/node-pki-guard-cli/
           cp tools/node-pki-guard-cli/README.md dist/node-pki-guard-cli/
           cp tools/node-pki-guard-cli/pyproject.toml dist/node-pki-guard-cli/
+          cp tools/node-pki-guard-cli/install.sh dist/node-pki-guard-cli/
           cat > dist/node-pki-guard-cli/INSTALL.txt <<'EOF'
           NODE-PKI-GUARD CLI
           Requirements: Linux/POSIX, Python >= 3.10, OpenSSL >= 1.1.1.
