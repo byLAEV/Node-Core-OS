@@ -31,7 +31,7 @@ jobs:
         run: openssl version
       - name: Install build frontend
         run: python -m pip install --disable-pip-version-check build
-      - name: Build wheel and source distribution
+      - name: Prepare build directory
         run: mkdir -p dist
       - name: Build wheel and source distribution
         working-directory: tools/node-pki-guard-cli
@@ -83,30 +83,12 @@ jobs:
         run: |
           set -eu
           cd dist
-          identity='^https://github.com/byLAEV/Node-Core-OS/.github/workflows/node-pki-guard-release.yml@refs/tags/node-pki-guard-v[0-9]+\\.[0-9]+\\.[0-9]+
-        with:
-          subject-path: |
-            dist/node-pki-guard-cli-linux-x86_64.tar.gz
-            dist/*.whl
-            dist/*.tar.gz
-            dist/SHA256SUMS
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: NODE-PKI-GUARD ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            dist/node-pki-guard-cli-linux-x86_64.tar.gz
-            dist/*.whl
-            dist/*.tar.gz
-            dist/SHA256SUMS
-            dist/*.sigstore.json
-
+          identity='^https://github.com/byLAEV/Node-Core-OS/.github/workflows/node-pki-guard-release.yml@refs/tags/node-pki-guard-v[0-9]+\.[0-9]+\.[0-9]+$'
           for artifact in node-pki-guard-cli-linux-x86_64.tar.gz SHA256SUMS *.whl node_pki_guard_cli-*.tar.gz; do
-            cosign verify-blob \\
-              --bundle "${artifact}.sigstore.json" \\
-              --certificate-identity-regexp "${identity}" \\
-              --certificate-oidc-issuer https://token.actions.githubusercontent.com \\
+            cosign verify-blob \
+              --bundle "${artifact}.sigstore.json" \
+              --certificate-identity-regexp "${identity}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
               "${artifact}"
           done
       - name: Attest release artifact provenance
