@@ -1,0 +1,25 @@
+{
+  "format": "NODE-PKI-GUARD-X509-BUNDLE",
+  "version": "1.0",
+  "bundle_id": "example-service-certificate-2026-01",
+  "created_at": "2026-11-11T00:00:00Z",
+  "certificate": {
+    "path": "certs/certificate.pem",
+    "encoding": "PEM",
+    "sha256_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "spki_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "subject": "CN=service.example.com",
+    "issuer": "CN=Example Test CA",
+    "serial_number_hex": "01",
+    "not_before": "2026-11-11T00:00:00Z",
+    "not_after": "2026-12-11T00:00:00Z"
+  },
+  "files": [
+    {
+      "path": "certs/certificate.pem",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "media_type": "application/pem-certificate-chain"
+    }
+  ],
+  "trust_statement": "Example only. Replace all placeholder values with hashes and metadata computed from the actual files. Obtain trust anchors independently."
+}
