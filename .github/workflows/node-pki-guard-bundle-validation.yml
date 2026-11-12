@@ -1,0 +1,77 @@
+name: NODE-PKI-GUARD CLI Bundle Validation
+
+on:
+  pull_request:
+    paths:
+      - "tools/node-pki-guard-cli/**"
+      - "Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/Certificates/10-node-pki-guard/releases/**"
+      - ".github/workflows/node-pki-guard-bundle-validation.yml"
+  push:
+    branches:
+      - main
+      - feature/node-pki-guard-implementation-v1
+    paths:
+      - "tools/node-pki-guard-cli/**"
+      - "Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/Certificates/10-node-pki-guard/releases/**"
+      - ".github/workflows/node-pki-guard-bundle-validation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-source-bundle:
+    name: Validate ZIP, install and OpenSSL tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install system ZIP tools and inspect OpenSSL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip zip
+          openssl version
+      - name: Verify committed source bundle checksum
+        working-directory: Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/Certificates/10-node-pki-guard/releases
+        run: |
+          sha256sum -c SHA256SUMS-1.0.0-source.txt
+          unzip -t node-pki-guard-cli-1.0.0-source.zip
+      - name: Extract bundle and verify manifest contents
+        working-directory: Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/Certificates/10-node-pki-guard/releases
+        run: |
+          unzip -q node-pki-guard-cli-1.0.0-source.zip
+          cd node-pki-guard-cli
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("PACKAGE-MANIFEST.json").read_text())
+          assert manifest["artifact_format"] == "NODE-PKI-GUARD-CLI-SOURCE-BUNDLE"
+          for item in manifest["files"]:
+              path = Path(item["path"])
+              assert path.is_file(), f"missing package file: {path}"
+              digest = hashlib.sha256(path.read_bytes()).hexdigest()
+              assert digest == item["sha256"], f"SHA-256 mismatch: {path}"
+          print(f"Verified {len(manifest['files'])} manifest entries")
+          PY
+      - name: Install package from extracted source
+        working-directory: Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/Certificates/10-node-pki-guard/releases/node-pki-guard-cli
+        run: |
+          python -m pip install --disable-pip-version-check --no-deps .
+          node-pki-guard --version
+          node-pki-guard verify --help
+          node-pki-guard verify-receipt --help
+      - name: Run CLI and OpenSSL tests from extracted bundle
+        working-directory: Catalog of Products and Services as Business Models for the Node Core OS Identity Node Network by LAEV/Certificates/10-node-pki-guard/releases/node-pki-guard-cli
+        run: python -m unittest discover -s tests -v
