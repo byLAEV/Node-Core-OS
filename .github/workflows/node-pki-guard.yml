@@ -17,6 +17,9 @@ on:
       - "tests/test_node_pki_guard_standalone.py"
       - "schemas/node-pki-binding.schema.json"
       - "schemas/node-pki-auth-utxo.schema.json"
+      - "docs/NODE-PKI-GUARD-OPENSSL-INTEROPERABILITY.md"
+      - "schemas/node-pki-certificate-bundle.schema.json"
+      - "examples/node-pki-guard-bundle/manifest.example.json"
       - ".github/workflows/node-pki-guard.yml"
   push:
     branches: [main]
