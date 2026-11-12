@@ -83,3 +83,22 @@ complete authorization JSON object.
 - Process termination/restart tests against persistent database files.
 - Independent review of authorization signature verification and trust
   distribution before any public production release.
+
+## Additional release hardening
+
+- The lifecycle database schema is version 2 and records the SHA-256 digest of
+  the exact CSR bytes. A retry with the same idempotency key but a different
+  CSR is rejected rather than returning a certificate prepared for another
+  public key.
+- Receipt signing now requires a dedicated private key and key identifier.
+  Initialization rejects a receipt key whose public-key SPKI is identical to
+  the CA signing key. This keeps administrative receipt signing separate from
+  certificate issuance authority.
+- The receipt includes `receipt_key_id`; distributors must publish the
+  corresponding public key and its trust binding in the signed release
+  manifest. The receipt key must be protected and rotated independently.
+- The internal `_issue_prevalidated` method is not an authorization API.
+  The caller boundary remains a release blocker until a single public
+  `issue_authorized` entry point performs all identity, binding, X.509,
+  challenge, authorization-signature and UTXO commitment checks before it
+  invokes the internal issuance path.
