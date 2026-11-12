@@ -22,7 +22,16 @@ on:
     branches: [main]
     paths:
       - "node_core/security/node_pki_guard.py"
+      - "node_core/security/node_pki_guard_x509.py"
+      - "node_core/security/node_pki_guard_issuer.py"
+      - "node_core/security/node_pki_guard_utxo.py"
+      - "node_core/security/node_pki_guard_backend.py"
+      - "node_core/security/backends/**"
       - "tests/test_node_pki_guard.py"
+      - "tests/test_node_pki_guard_x509.py"
+      - "tests/test_node_pki_guard_issuer.py"
+      - "tests/test_node_pki_guard_utxo.py"
+      - "tests/test_node_pki_guard_standalone.py"
       - "schemas/node-pki-binding.schema.json"
       - "schemas/node-pki-auth-utxo.schema.json"
       - ".github/workflows/node-pki-guard.yml"
