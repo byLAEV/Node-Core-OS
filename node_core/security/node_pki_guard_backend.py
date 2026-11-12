@@ -101,6 +101,7 @@ class AuthorizationUTXO:
     operation_hash: str
     policy_id: str
     policy_version: str
+    authorization_payload_hash: str | None = None
 
     def __post_init__(self) -> None:
         match = OUTPOINT_RE.fullmatch(self.outpoint) if isinstance(self.outpoint, str) else None
@@ -115,6 +116,10 @@ class AuthorizationUTXO:
                 raise ValueError(name + " is required")
         if not HEX_32.fullmatch(self.operation_hash):
             raise ValueError("operation_hash must be a lowercase SHA-256 digest")
+        if self.authorization_payload_hash is not None and not HEX_32.fullmatch(
+            self.authorization_payload_hash
+        ):
+            raise ValueError("authorization_payload_hash must be lowercase SHA-256 hex")
 
 
 @dataclass(frozen=True)
