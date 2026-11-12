@@ -78,6 +78,43 @@ node-pki-guard verify \
 
 For automation, add `--json` to produce a JSON result. Exit status is 0 for successful verification and 2 for a rejected input or failed check.
 
+## Verify a detached administrative receipt
+
+The lifecycle receipt is separate from the X.509 certificate. Obtain the
+receipt-signing public key and its key identifier through an independently
+authenticated channel (for example, a signed release manifest or an
+organization-controlled trust directory). Do not trust a public key merely
+because it is included beside the receipt.
+
+The receipt JSON file uses this envelope:
+
+```json
+{
+  "key_id": "receipt-key-2026-01",
+  "receipt": {
+    "schema": "node-core-os/node-pki-guard-issuance-receipt/v1",
+    "operation_id": "operation-001"
+  }
+}
+```
+
+The detached signature is unpadded base64url text. Verify an Ed25519 receipt:
+
+```sh
+node-pki-guard verify-receipt \
+  --receipt ./receipt.json \
+  --signature ./receipt.sig \
+  --public-key ./trusted-receipt-public.pem \
+  --key-id receipt-key-2026-01 \
+  --algorithm ed25519
+```
+
+Supported algorithms are `ed25519`, `rsa-pss-sha256`, and
+`ecdsa-sha256`. The verifier uses OpenSSL for the cryptographic signature
+check and checks the expected key identifier before verification. It does
+not establish the public key's trust: the operator must authenticate the
+key and key identifier independently.
+
 ## What is checked
 
 1. The manifest format and version.
