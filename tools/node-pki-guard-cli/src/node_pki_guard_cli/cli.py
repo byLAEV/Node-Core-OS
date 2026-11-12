@@ -371,6 +371,89 @@ def verify_bundle(
     }
 
 
+
+def verify_receipt(
+    *,
+    receipt_file: Path,
+    signature_file: Path,
+    public_key_file: Path,
+    expected_key_id: str,
+    algorithm: str,
+    openssl_binary: str = "openssl",
+) -> dict[str, Any]:
+    """Verify a detached NODE-PKI-GUARD canonical-JSON receipt signature.
+
+    The receipt JSON is signed exactly as UTF-8 JSON with sorted keys,
+    compact separators, ensure_ascii=True and allow_nan=False. The public key
+    and expected key identifier must be obtained through an independent trust
+    channel; the receipt cannot establish its own signing-key trust.
+    """
+    if not isinstance(expected_key_id, str) or not expected_key_id or len(expected_key_id) > 128:
+        raise VerificationError("expected receipt key identifier is required")
+    if algorithm not in {"ed25519", "rsa-pss-sha256", "ecdsa-sha256"}:
+        raise VerificationError("unsupported receipt signature algorithm")
+    receipt_path = _external_file(receipt_file, field="receipt JSON")
+    signature_path = _external_file(signature_file, field="receipt signature")
+    public_path = _external_file(public_key_file, field="receipt public key")
+    envelope = _load_json(receipt_path)
+    if set(envelope) != {"receipt", "key_id"}:
+        raise VerificationError("receipt envelope must contain receipt and key_id only")
+    if envelope["key_id"] != expected_key_id:
+        raise VerificationError("receipt signing key identifier does not match trusted key identifier")
+    receipt = envelope["receipt"]
+    if not isinstance(receipt, dict) or not receipt:
+        raise VerificationError("receipt must be a non-empty JSON object")
+    try:
+        signature_text = signature_path.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeError) as exc:
+        raise VerificationError("cannot read base64url receipt signature") from exc
+    if not signature_text or len(signature_text) > 16384 or not re.fullmatch(r"[A-Za-z0-9_-]+", signature_text):
+        raise VerificationError("receipt signature must be unpadded base64url")
+    import base64
+    try:
+        signature = base64.urlsafe_b64decode(signature_text + "=" * (-len(signature_text) % 4))
+    except (ValueError, base64.binascii.Error) as exc:
+        raise VerificationError("receipt signature is invalid base64url") from exc
+    if not signature:
+        raise VerificationError("receipt signature is empty")
+    canonical = json.dumps(
+        receipt, sort_keys=True, separators=(",", ":"),
+        ensure_ascii=True, allow_nan=False,
+    ).encode("utf-8")
+    binary = shutil.which(openssl_binary)
+    if binary is None:
+        raise VerificationError(f"OpenSSL executable not found: {openssl_binary}")
+    version, _ = _openssl_details(binary)
+    with tempfile.TemporaryDirectory(prefix="node-pki-guard-receipt-") as temporary:
+        root = Path(temporary)
+        data_path = root / "receipt.json"
+        sig_path = root / "receipt.sig"
+        data_path.write_bytes(canonical)
+        sig_path.write_bytes(signature)
+        command = [
+            "pkeyutl", "-verify", "-pubin", "-inkey", str(public_path),
+            "-sigfile", str(sig_path), "-in", str(data_path), "-rawin",
+        ]
+        if algorithm == "rsa-pss-sha256":
+            command.extend([
+                "-digest", "sha256",
+                "-pkeyopt", "rsa_padding_mode:pss",
+                "-pkeyopt", "rsa_pss_saltlen:digest",
+            ])
+        elif algorithm == "ecdsa-sha256":
+            command.extend(["-digest", "sha256"])
+        _run_openssl(binary, command, timeout=15.0)
+    return {
+        "valid": True,
+        "key_id": expected_key_id,
+        "algorithm": algorithm,
+        "openssl_version": version,
+        "receipt_schema": receipt.get("schema"),
+        "operation_id": receipt.get("operation_id"),
+        "certificate_fingerprint_sha256": receipt.get("certificate_fingerprint_sha256"),
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="node-pki-guard",
@@ -398,6 +481,21 @@ def _build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--verify-depth", type=int, choices=range(0, 33), default=8)
     verify.add_argument("--openssl", default="openssl", help="OpenSSL executable or absolute path")
     verify.add_argument("--json", action="store_true", help="emit machine-readable JSON")
+
+    receipt = subparsers.add_parser(
+        "verify-receipt",
+        help="verify a detached lifecycle receipt signature with a separately trusted public key",
+    )
+    receipt.add_argument("--receipt", type=Path, required=True, help="JSON envelope containing receipt and key_id")
+    receipt.add_argument("--signature", type=Path, required=True, help="detached unpadded base64url signature")
+    receipt.add_argument("--public-key", type=Path, required=True, help="trusted receipt-signing public key PEM")
+    receipt.add_argument("--key-id", required=True, help="expected key identifier obtained independently")
+    receipt.add_argument(
+        "--algorithm", required=True,
+        choices=("ed25519", "rsa-pss-sha256", "ecdsa-sha256"),
+    )
+    receipt.add_argument("--openssl", default="openssl")
+    receipt.add_argument("--json", action="store_true")
     return parser
 
 
@@ -434,6 +532,23 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Revocation checked: {'YES' if result['revocation_checked'] else 'NO'}")
                 if result["node_binding_present"]:
                     print("NODE binding: present (not validated by generic X.509 CLI)")
+        elif args.command == "verify-receipt":
+            result = verify_receipt(
+                receipt_file=args.receipt,
+                signature_file=args.signature,
+                public_key_file=args.public_key,
+                expected_key_id=args.key_id,
+                algorithm=args.algorithm,
+                openssl_binary=args.openssl,
+            )
+            if args.json:
+                print(json.dumps(result, sort_keys=True, indent=2))
+            else:
+                print("NODE-PKI-GUARD receipt signature: PASS")
+                print(f"Key ID: {result['key_id']}")
+                print(f"Algorithm: {result['algorithm']}")
+                print(f"OpenSSL: {result['openssl_version']}")
+                print(f"Operation: {result['operation_id']}")
         return 0
     except (VerificationError, OSError) as exc:
         print(f"node-pki-guard: ERROR: {exc}", file=sys.stderr)
