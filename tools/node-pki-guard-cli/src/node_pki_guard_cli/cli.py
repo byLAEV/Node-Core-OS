@@ -403,6 +403,8 @@ def verify_receipt(
     receipt = envelope["receipt"]
     if not isinstance(receipt, dict) or not receipt:
         raise VerificationError("receipt must be a non-empty JSON object")
+    if receipt.get("receipt_key_id") != expected_key_id:
+        raise VerificationError("receipt payload key identifier does not match trusted key identifier")
     try:
         signature_text = signature_path.read_text(encoding="ascii").strip()
     except (OSError, UnicodeError) as exc:
