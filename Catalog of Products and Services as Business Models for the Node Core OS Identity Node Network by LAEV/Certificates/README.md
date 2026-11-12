@@ -16,6 +16,8 @@ This directory contains eight Node Core OS security-assessment certificate produ
 9. [Bitcoin Conflict Declaration and Resolution Certificate](./09-bitcoin-conflict-declaration-and-resolution/README.md) — `bitcoin-conflict-declaration` (proposed application-level case credential; not a node identity profile)
 10. [NODE-PKI-GUARD — Complementary X.509/PKI Authorization](./10-node-pki-guard/README.md) — `NODE-PKI-GUARD` (proposed UTXO-based authorization layer; does not replace X.509 or existing CAs)
 
+11. [HUC Certificates — HUC Direct SDK](./HUC%20Certificates/README.md) — dedicated workspace for HUC credential lifecycle, SDK integrations, API contracts, tests, and release evidence (SDK 0.8.0 artifacts pending repository import and verification)
+
 ## Evidence and status
 
 - [Certificate test and evidence matrix](../CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md)
