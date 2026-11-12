@@ -1,0 +1,166 @@
+# node-pki-guard-cli
+
+Independent Linux CLI to verify a NODE-PKI-GUARD X.509 bundle without installing NODE Core OS.
+
+## Requirements
+
+- Linux or another POSIX environment.
+- Python 3.10 or newer.
+- OpenSSL 1.1.1 or newer available as `openssl`.
+- A CA trust bundle obtained from a trusted source independently of the certificate bundle.
+
+The verifier uses only Python's standard library at runtime. It does not install the NODE Core OS package, the `cryptography` Python library, or any NODE-specific runtime service.
+
+## Install a signed GitHub Release
+
+Download the Linux archive, wheel, checksum file, and matching Sigstore
+bundle from the NODE-PKI-GUARD GitHub Release page. Verify the archive
+signature before extracting or installing it:
+
+```sh
+cosign verify-blob \
+  --bundle node-pki-guard-cli-linux-x86_64.tar.gz.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/byLAEV/Node-Core-OS/.github/workflows/node-pki-guard-release.yml@refs/tags/node-pki-guard-v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  node-pki-guard-cli-linux-x86_64.tar.gz
+sha256sum -c SHA256SUMS
+tar -xzf node-pki-guard-cli-linux-x86_64.tar.gz
+```
+
+Then install the wheel contained in the extracted directory:
+
+```sh
+python3 -m pip install --user ./node-pki-guard-cli/node_pki_guard_cli-1.0.0-py3-none-any.whl
+node-pki-guard --version
+```
+
+The exact release tag and workflow identity must match the release being
+verified. The checksum file detects accidental corruption; the Sigstore
+signature and its verified GitHub Actions identity authenticate the archive.
+
+## Install from the repository
+
+Install using pipx (recommended for an isolated command-line tool):
+
+```sh
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+pipx install "git+https://github.com/byLAEV/Node-Core-OS.git#subdirectory=tools/node-pki-guard-cli"
+```
+
+Or install into the current user's Python environment:
+
+```sh
+python3 -m pip install --user \
+  "git+https://github.com/byLAEV/Node-Core-OS.git#subdirectory=tools/node-pki-guard-cli"
+```
+
+After installation:
+
+```sh
+node-pki-guard --version
+node-pki-guard verify --help
+```
+
+## Verify a downloaded bundle
+
+Download and extract the public bundle. Obtain the root CA bundle from a trusted channel and compare its fingerprint using an independently authenticated source. Do not trust a root certificate solely because it was included in the same download as the leaf certificate.
+
+```sh
+node-pki-guard verify \
+  --bundle-dir ./node-pki-guard-bundle \
+  --ca-file /etc/node-pki/trusted-roots.pem \
+  --hostname service.example.com
+```
+
+For an IP identity:
+
+```sh
+node-pki-guard verify \
+  --bundle-dir ./node-pki-guard-bundle \
+  --ca-file /etc/node-pki/trusted-roots.pem \
+  --ip 192.0.2.10
+```
+
+For a chain with an intermediate CA:
+
+```sh
+node-pki-guard verify \
+  --bundle-dir ./node-pki-guard-bundle \
+  --ca-file /etc/node-pki/trusted-roots.pem \
+  --intermediates ./intermediates.pem \
+  --hostname service.example.com
+```
+
+Require certificate revocation checking using a current CRL:
+
+```sh
+node-pki-guard verify \
+  --bundle-dir ./node-pki-guard-bundle \
+  --ca-file /etc/node-pki/trusted-roots.pem \
+  --crl-file ./issuer.crl.pem \
+  --require-crl \
+  --hostname service.example.com
+```
+
+For automation, add `--json` to produce a JSON result. Exit status is 0 for successful verification and 2 for a rejected input or failed check.
+
+## Verify a detached administrative receipt
+
+The lifecycle receipt is separate from the X.509 certificate. Obtain the
+receipt-signing public key and its key identifier through an independently
+authenticated channel (for example, a signed release manifest or an
+organization-controlled trust directory). Do not trust a public key merely
+because it is included beside the receipt.
+
+The receipt JSON file uses this envelope:
+
+```json
+{
+  "key_id": "receipt-key-2026-01",
+  "receipt": {
+    "schema": "node-core-os/node-pki-guard-issuance-receipt/v1",
+    "operation_id": "operation-001"
+  }
+}
+```
+
+The detached signature is unpadded base64url text. Verify an Ed25519 receipt:
+
+```sh
+node-pki-guard verify-receipt \
+  --receipt ./receipt.json \
+  --signature ./receipt.sig \
+  --public-key ./trusted-receipt-public.pem \
+  --key-id receipt-key-2026-01 \
+  --algorithm ed25519
+```
+
+Supported algorithms are `ed25519`, `rsa-pss-sha256`, and
+`ecdsa-sha256`. The verifier uses OpenSSL for the cryptographic signature
+check and checks the expected key identifier before verification. It does
+not establish the public key's trust: the operator must authenticate the
+key and key identifier independently.
+
+## What is checked
+
+1. The manifest format and version.
+2. JSON duplicate keys, safe relative paths, and file inventory shape.
+3. SHA-256 of every file declared in the manifest.
+4. Certificate DER SHA-256 fingerprint and SubjectPublicKeyInfo SHA-256 fingerprint, both compared with the manifest.
+5. X.509 path, strict certificate constraints, TLS purpose/EKU, and hostname/IP identity using the installed OpenSSL.
+6. CRL status when a CRL is supplied. Use `--require-crl` to fail closed when no CRL is supplied.
+
+The CA file is always supplied separately with `--ca-file`; the bundle and its manifest never define their own trust. The CLI does not fetch trust anchors, CRLs, or OCSP responses.
+
+## What is deliberately not checked
+
+This generic X.509 CLI does not validate the NODE-PKI-BINDING issuer signature, NODE identity JWS signature, UTXO authorization, ledger finality, administrative receipt, or distributed consensus. A manifest may indicate that a NODE binding is present, but generic OpenSSL deployments do not need that sidecar. NODE Core OS nodes must use their NODE-aware verifier for these additional controls.
+
+The CLI verifies already-issued certificates. It does not issue certificates and never needs a CA private key.
+
+## Run tests from this directory
+
+```sh
+python3 -m unittest discover -s tests -v
+```

@@ -1,0 +1,48 @@
+name: NODE-PKI-GUARD Standalone CLI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tools/node-pki-guard-cli/**"
+      - ".github/workflows/node-pki-guard-cli.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tools/node-pki-guard-cli/**"
+      - ".github/workflows/node-pki-guard-cli.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  standalone-cli:
+    name: Python ${{ matrix.python-version }} / OpenSSL
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    timeout-minutes: 10
+    steps:
+      - name: Enforce non-root execution
+        run: test "$(id -u)" -ne 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Check OpenSSL
+        run: openssl version
+      - name: Install standalone package without dependencies
+        working-directory: tools/node-pki-guard-cli
+        run: python -m pip install --no-deps .
+      - name: Run isolated OpenSSL integration tests
+        working-directory: tools/node-pki-guard-cli
+        run: python -m unittest discover -s tests -v
+      - name: Check installed CLI
+        run: node-pki-guard --version

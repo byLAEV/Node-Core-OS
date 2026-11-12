@@ -1,0 +1,26 @@
+{
+  "product": "NODE-PKI-GUARD CLI",
+  "version": "1.0.0-source",
+  "artifact": "node-pki-guard-cli-1.0.0-source.zip",
+  "artifact_type": "source bundle ZIP",
+  "artifact_sha256": "33ff517e87c188030fb9c93cda6d7c63a8d1ee51f1a2c72ff3412365ede18e93",
+  "archive_bytes": 51258,
+  "signature_status": "UNSIGNED — source snapshot only; use GitHub Release Sigstore bundle for authenticated releases",
+  "runtime": {
+    "python": ">=3.10",
+    "openssl": ">=1.1.1",
+    "python_runtime_dependencies": []
+  },
+  "install_command": "unzip node-pki-guard-cli-1.0.0-source.zip && cd node-pki-guard-cli && sh install.sh",
+  "contents": [
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+    "install.sh",
+    "src/node_pki_guard_cli/__init__.py",
+    "src/node_pki_guard_cli/cli.py",
+    "tests/test_cli.py",
+    "tests/test_receipt_openssl.py",
+    "PACKAGE-MANIFEST.json"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/schemas/node-pki-binding.schema.json",
+  "title": "NODE-PKI-BINDING",
+  "description": "Binding metadata linking an independently validated X.509 certificate to a NODE Core OS identity. This schema does not verify signatures or X.509 trust.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "version", "binding_id", "node_id", "x509_fingerprint_sha256", "spki_sha256", "purpose", "allowed_operations", "denied_operations", "constraints", "issuer_key_id", "issued_at", "expires_at", "binding_status", "proof_of_possession", "issuer_signature"],
+  "properties": {
+    "format": {"const": "NODE-PKI-BINDING"},
+    "version": {"const": "1.0"},
+    "binding_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "node_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "x509_fingerprint_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "spki_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "purpose": {"type": "string", "minLength": 1, "maxLength": 128},
+    "allowed_operations": {"type": "array", "uniqueItems": true, "maxItems": 128, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$"}},
+    "denied_operations": {"type": "array", "uniqueItems": true, "maxItems": 128, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$"}},
+    "constraints": {
+      "type": "object", "maxProperties": 64,
+      "properties": {
+        "max_authorizations_per_period": {"type": "integer", "minimum": 1},
+        "max_concurrent_authorizations": {"type": "integer", "minimum": 1},
+        "allowed_audiences": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 256}},
+        "require_dual_proof": {"type": "boolean"},
+        "require_multisig": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "issuer_key_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "issued_at": {"type": "integer", "minimum": 0},
+    "expires_at": {"type": "integer", "minimum": 1},
+    "binding_status": {"enum": ["ACTIVE", "SUSPENDED", "REVOKED", "EXPIRED"]},
+    "issuer_signature": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "Base64url issuer signature over the canonical binding object excluding this field."},
+    "proof_of_possession": {
+      "type": "object", "additionalProperties": false,
+      "required": ["challenge_id", "challenge_hash", "node_signature", "x509_signature", "verified_at"],
+      "properties": {
+        "challenge_id": {"type": "string", "minLength": 1, "maxLength": 128},
+        "challenge_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "node_signature": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "x509_signature": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "verified_at": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

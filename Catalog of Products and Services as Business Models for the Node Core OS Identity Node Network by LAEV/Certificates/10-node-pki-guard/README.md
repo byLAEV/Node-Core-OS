@@ -546,3 +546,69 @@ El principio de desarrollo será mantener transparencia sobre el estado real de 
 Este documento registra una propuesta de certificado complementario de PKI/X.509. No añade por sí solo un perfil al emisor de credenciales NODE existente, no crea una CA, no emite certificados X.509, no implementa un ledger UTXO y no demuestra consenso distribuido.
 
 La implementación deberá desarrollarse en componentes separados, con contratos explícitos y pruebas reproducibles. La incorporación futura de un identificador al formato de certificados de identidad de NODE requerirá una decisión de compatibilidad y cambios específicos en el código y sus pruebas.
+
+---
+
+## Implementation tracking — English
+
+The first local implementation is under review in [Pull Request #227](https://github.com/byLAEV/Node-Core-OS/pull/227).
+
+- [NODE-PKI-GUARD implementation module](../../../../node_core/security/node_pki_guard.py)
+- [NODE-PKI-BINDING JSON Schema](../../../../schemas/node-pki-binding.schema.json)
+- [NODE-PKI-AUTH-UTXO JSON Schema](../../../../schemas/node-pki-auth-utxo.schema.json)
+- [Local unit tests](../../../../tests/test_node_pki_guard.py)
+- [Implementation boundary and runbook](../../../../docs/NODE-PKI-GUARD-IMPLEMENTATION.md)
+- [GitHub Actions local conformance workflow](../../../../.github/workflows/node-pki-guard.yml)
+
+Current implementation scope: local cryptographic primitives and policy evaluation only. It does not yet provide a production X.509 trust validator, UTXO ledger, distributed consensus, transaction finality, or production executor. The pull request and CI results must be reviewed before this proposal is described as implemented or conformant.
+
+
+---
+
+## NODE-PKI-GUARD v1.1 implementation adapters
+
+The implementation branch now includes the following additional modules:
+
+- \`node_core/security/node_pki_guard_x509.py\` — explicit OpenSSL X.509 chain, TLS purpose, hostname/IP, and optional CRL validation.
+- \`node_core/security/node_pki_guard_utxo.py\` — backend contract for atomic authorization spending, durable idempotency, and finality-proof verification.
+- \`tests/test_node_pki_guard_x509.py\` — OpenSSL-backed certificate validation tests.
+- \`tests/test_node_pki_guard_utxo.py\` — backend contract and finality orchestration tests.
+
+These adapters do not constitute a production ledger or distributed consensus implementation. Review the implementation and CI results in [Pull Request #227](https://github.com/byLAEV/Node-Core-OS/pull/227) before declaring conformance.
+
+
+---
+
+## Dual-Model Architecture — Revision 1.2
+
+The official implementation architecture is maintained in [ARCHITECTURE-DUAL-MODEL.md](./ARCHITECTURE-DUAL-MODEL.md).
+
+NODE-PKI-GUARD uses one shared cryptographic and policy core with two independent persistence adapters:
+
+- **Standalone:** SQLite 3, WAL, ACID transactions, atomic local outpoint consumption, and persistent idempotency.
+- **NODE Core OS Network:** native ledger integration, validator consensus, global UTXO state, independently verifiable finality, and protocol-defined network fees.
+
+Both adapters MUST preserve identical binding, authorization, Dual PoP, operation-hash, policy, and receipt semantics. Local SQLite commit MUST NOT be described as distributed consensus finality.
+
+Implementation status is tracked separately from this architecture specification. The SQLite production adapter and the NODE Core OS network adapter remain pending until their respective code and conformance tests are implemented.
+
+---
+
+## Downloadable independent verifier — NODE-PKI-GUARD CLI
+
+A standalone Linux source bundle is available in the repository release directory.
+This is an **unsigned source snapshot for evaluation**, not a production release.
+
+- [Download node-pki-guard-cli-1.0.0-source.zip](./releases/node-pki-guard-cli-1.0.0-source.zip)
+- [Verify SHA-256](./releases/SHA256SUMS-1.0.0-source.txt)
+- [Release manifest](./releases/release-manifest-1.0.0-source.json)
+- [Installation and security status](./releases/README.md)
+
+Requirements: Linux/POSIX, Python 3.10+, and OpenSSL 1.1.1+.
+It verifies X.509 bundle integrity, certificate chains and peer identities,
+and detached NODE-PKI-GUARD administrative receipt signatures. It does not
+install NODE Core OS.
+
+**Trust notice:** this ZIP is not signed. A SHA-256 checksum detects
+corruption but does not authenticate the publisher. Use a signed GitHub
+Release and verify its Sigstore/Cosign bundle before production adoption.

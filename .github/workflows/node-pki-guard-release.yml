@@ -1,0 +1,112 @@
+name: NODE-PKI-GUARD CLI Release
+
+on:
+  push:
+    tags:
+      - "node-pki-guard-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  test-and-release:
+    name: Test, package and sign standalone CLI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Enforce non-root execution
+        run: test "$(id -u)" -ne 0
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check OpenSSL
+        run: openssl version
+      - name: Install build frontend
+        run: python -m pip install --disable-pip-version-check build
+      - name: Prepare build directory
+        run: mkdir -p dist
+      - name: Build wheel and source distribution
+        working-directory: tools/node-pki-guard-cli
+        run: python -m build --outdir ../../dist
+      - name: Install wheel in isolated environment
+        run: |
+          python -m venv /tmp/node-pki-guard-venv
+          /tmp/node-pki-guard-venv/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/node-pki-guard-venv/bin/node-pki-guard --version
+      - name: Run installed CLI OpenSSL test suite
+        working-directory: tools/node-pki-guard-cli
+        run: |
+          /tmp/node-pki-guard-venv/bin/python -m unittest discover -s tests -v
+      - name: Assemble Linux distribution archive
+        run: |
+          set -eu
+          mkdir -p dist/node-pki-guard-cli
+          cp dist/*.whl dist/node-pki-guard-cli/
+          cp dist/*.tar.gz dist/node-pki-guard-cli/
+          cp tools/node-pki-guard-cli/README.md dist/node-pki-guard-cli/
+          cp tools/node-pki-guard-cli/pyproject.toml dist/node-pki-guard-cli/
+          cp tools/node-pki-guard-cli/install.sh dist/node-pki-guard-cli/
+          cat > dist/node-pki-guard-cli/INSTALL.txt <<'EOF'
+          NODE-PKI-GUARD CLI
+          Requirements: Linux/POSIX, Python >= 3.10, OpenSSL >= 1.1.1.
+          Install the wheel:
+            python3 -m pip install --user ./node_pki_guard_cli-1.0.0-py3-none-any.whl
+          Verify:
+            node-pki-guard --version
+            node-pki-guard verify --help
+          The verifier does not install NODE Core OS and does not require
+          the cryptography Python package. Read README.md for trust setup.
+          EOF
+          tar -czf dist/node-pki-guard-cli-linux-x86_64.tar.gz -C dist node-pki-guard-cli
+          cd dist
+          sha256sum node-pki-guard-cli-linux-x86_64.tar.gz *.whl *.tar.gz > SHA256SUMS
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.2
+      - name: Sign release artifacts with keyless Sigstore
+        run: |
+          set -eu
+          cd dist
+          for artifact in node-pki-guard-cli-linux-x86_64.tar.gz SHA256SUMS *.whl node_pki_guard_cli-*.tar.gz; do
+            cosign sign-blob --yes \
+              --bundle "${artifact}.sigstore.json" \
+              "${artifact}"
+          done
+      - name: Verify every Sigstore signature before publication
+        run: |
+          set -eu
+          cd dist
+          identity='^https://github.com/byLAEV/Node-Core-OS/.github/workflows/node-pki-guard-release.yml@refs/tags/node-pki-guard-v[0-9]+\.[0-9]+\.[0-9]+$'
+          for artifact in node-pki-guard-cli-linux-x86_64.tar.gz SHA256SUMS *.whl node_pki_guard_cli-*.tar.gz; do
+            cosign verify-blob \
+              --bundle "${artifact}.sigstore.json" \
+              --certificate-identity-regexp "${identity}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "${artifact}"
+          done
+      - name: Attest release artifact provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/node-pki-guard-cli-linux-x86_64.tar.gz
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NODE-PKI-GUARD ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/node-pki-guard-cli-linux-x86_64.tar.gz
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/*.sigstore.json
