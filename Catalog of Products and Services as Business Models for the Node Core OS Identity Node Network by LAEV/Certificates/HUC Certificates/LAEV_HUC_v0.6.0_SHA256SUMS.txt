@@ -1,0 +1,2 @@
+4fbbd77032102e54ea7c1815c55359b2aa916fe747fc935b388b277b21cf7405  /mnt/data/LAEV_HUC_v0.6.0_Replicated_State.zip
+be8d7494e0797c04b93f2b8a54c12430f8a4fb758a47554aa9af2236c9b8ef14  /mnt/data/LAEV_HUC_v0.6.0_Public_Demo.zip
