@@ -11,6 +11,33 @@ Independent Linux CLI to verify a NODE-PKI-GUARD X.509 bundle without installing
 
 The verifier uses only Python's standard library at runtime. It does not install the NODE Core OS package, the `cryptography` Python library, or any NODE-specific runtime service.
 
+## Install a signed GitHub Release
+
+Download the Linux archive, wheel, checksum file, and matching Sigstore
+bundle from the NODE-PKI-GUARD GitHub Release page. Verify the archive
+signature before extracting or installing it:
+
+```sh
+cosign verify-blob \
+  --bundle node-pki-guard-cli-linux-x86_64.tar.gz.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/byLAEV/Node-Core-OS/.github/workflows/node-pki-guard-release.yml@refs/tags/node-pki-guard-v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  node-pki-guard-cli-linux-x86_64.tar.gz
+sha256sum -c SHA256SUMS
+tar -xzf node-pki-guard-cli-linux-x86_64.tar.gz
+```
+
+Then install the wheel contained in the extracted directory:
+
+```sh
+python3 -m pip install --user ./node-pki-guard-cli/node_pki_guard_cli-1.0.0-py3-none-any.whl
+node-pki-guard --version
+```
+
+The exact release tag and workflow identity must match the release being
+verified. The checksum file detects accidental corruption; the Sigstore
+signature and its verified GitHub Actions identity authenticate the archive.
+
 ## Install from the repository
 
 Install using pipx (recommended for an isolated command-line tool):
