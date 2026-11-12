@@ -114,3 +114,20 @@ La siguiente prioridad de implementación es el **servicio de ciclo de vida y ej
 
 **Auditoría inicial — NODE-PKI-GUARD v1.0**  
 **NODE Core OS byLAEV**
+
+## 9. Follow-up implementation — constrained X.509 issuance primitive
+
+After the initial audit, the branch received:
+
+- `node_core/security/node_pki_guard_issuer.py`: a constrained PKCS#10 CSR issuance primitive.
+- `tests/test_node_pki_guard_issuer.py`: 14 positive and negative issuer tests.
+- Updated local conformance workflow to execute the issuer tests and compile the new module.
+- Updated implementation contract documenting the issuer's security boundary.
+
+The issuer verifies CSR proof-of-possession, a pinned self-signed CA certificate, CA BasicConstraints and KeyUsage, CA private-key correspondence, SAN allowlists, permitted key algorithms, profile-controlled extensions and certificate validity bounds.
+
+**This does not close B01 as a complete PKI service.** The primitive is not yet connected to binding/authentication validation, required-signature enforcement, UTXO authorization consumption, durable idempotency, certificate persistence, revocation state, operation recovery or signed administrative receipts. It must not be exposed as a production issuance endpoint.
+
+The 14 tests have been added to GitHub Actions, but their execution result must be confirmed from the workflow run for the latest branch commit. Until then, the new issuer is **implemented, awaiting CI verification and integration**.
+
+The next implementation unit is the PKI application service and durable lifecycle repository. It must enforce authorization before issuance, persist the exact result under an idempotency key, and recover safely after a process restart. A consumed UTXO must never be restored automatically when certificate issuance or persistence fails.
