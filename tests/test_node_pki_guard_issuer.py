@@ -1,9 +1,10 @@
+import ipaddress
 import unittest
 from datetime import datetime, timedelta, timezone
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, padding, rsa
 from cryptography.x509.oid import NameOID
 
 from node_core.security.node_pki_guard_issuer import (
@@ -105,7 +106,7 @@ class X509IssuerTests(unittest.TestCase):
         self.ca_key.public_key().verify(
             cert.signature,
             cert.tbs_certificate_bytes,
-            __import__("cryptography").hazmat.primitives.asymmetric.padding.PKCS1v15(),
+            padding.PKCS1v15(),
             cert.signature_hash_algorithm,
         )
 
@@ -186,7 +187,7 @@ class X509IssuerTests(unittest.TestCase):
         csr = (
             x509.CertificateSigningRequestBuilder()
             .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "api.example.test")]))
-            .add_extension(x509.SubjectAlternativeName([x509.IPAddress(__import__("ipaddress").ip_address("192.0.2.10"))]), critical=False)
+            .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address("192.0.2.10"))]), critical=False)
             .sign(key, hashes.SHA256())
             .public_bytes(serialization.Encoding.PEM)
         )
