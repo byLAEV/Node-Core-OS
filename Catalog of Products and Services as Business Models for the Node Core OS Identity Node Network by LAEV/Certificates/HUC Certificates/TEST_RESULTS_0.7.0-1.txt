@@ -1,0 +1,34 @@
+LAEV HUC Standalone 0.7.0 — Automated test results
+
+Command:
+  python -m unittest discover -s tests -v
+
+Result:
+  15 tests passed
+  0 failures
+  0 errors
+
+Coverage:
+  - X.509 + HUC-CC + UTXO state offline validation
+  - External trust-anchor pin enforcement
+  - HUC-CC and state-attestation tampering rejected
+  - Stale state proof returns INDETERMINATE
+  - ISSUE / RENEW / REVOKE lifecycle
+  - Double-consumption prevention under concurrent revocation
+  - Direct challenge-response and holder proof-of-possession
+  - Audience binding and private-key matching
+  - Nonce replay protection
+  - Tampered holder response rejected
+  - Ledger signature tampering detected
+  - Public package contains no private keys
+
+Demo command:
+  python demo/build_demo.py
+  python demo/verify_demo.py
+
+Observed demo outcomes:
+  Active: VALID
+  Renewed active: VALID
+  Superseded: INVALID
+  Revoked: INVALID
+  Direct holder challenge-response: VALID
