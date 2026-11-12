@@ -193,8 +193,9 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
                 conn.execute("""
                     INSERT INTO authorization_utxos (
                         outpoint, authorization_id, binding_id, node_id, owner_key_id,
-                        operation_hash, policy_id, policy_version, status, registered_at_utc
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'UNSPENT', ?)
+                        operation_hash, policy_id, policy_version,
+                        authorization_payload_hash, status, registered_at_utc
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNSPENT', ?)
                 """, (authorization.outpoint, *values, now))
                 conn.commit()
             except Exception:
