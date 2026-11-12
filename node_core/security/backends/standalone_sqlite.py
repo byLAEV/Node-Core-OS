@@ -30,7 +30,7 @@ from node_core.security.node_pki_guard_backend import (
 class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
     """Durable single-host UTXO store using SQLite WAL and immediate writes."""
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
 
     def __init__(self, db_path: str | Path = "node_pki_guard.db", timeout: float = 10.0):
         self.db_path = str(Path(db_path).expanduser())
@@ -76,6 +76,7 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
                     operation_hash TEXT NOT NULL,
                     policy_id TEXT NOT NULL,
                     policy_version TEXT NOT NULL,
+                    authorization_payload_hash TEXT,
                     status TEXT NOT NULL CHECK(status IN ('UNSPENT', 'SPENT')),
                     registered_at_utc TEXT NOT NULL,
                     spent_at_utc TEXT,
@@ -111,11 +112,27 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
                 INSERT OR IGNORE INTO schema_metadata(key, value)
                     VALUES ('schema_version', '1');
             """)
+            columns = {
+                row["name"] for row in conn.execute(
+                    "PRAGMA table_info(authorization_utxos)"
+                ).fetchall()
+            }
+            if "authorization_payload_hash" not in columns:
+                conn.execute(
+                    "ALTER TABLE authorization_utxos ADD COLUMN authorization_payload_hash TEXT"
+                )
             version = conn.execute(
                 "SELECT value FROM schema_metadata WHERE key = 'schema_version'"
             ).fetchone()
-            if version is None or int(version["value"]) != self.SCHEMA_VERSION:
+            if version is None:
+                raise BackendContractError("SQLite backend schema metadata is missing")
+            current_version = int(version["value"])
+            if current_version > self.SCHEMA_VERSION or current_version < 1:
                 raise BackendContractError("Unsupported SQLite backend schema version")
+            conn.execute(
+                "UPDATE schema_metadata SET value = ? WHERE key = 'schema_version'",
+                (str(self.SCHEMA_VERSION),),
+            )
 
     @staticmethod
     def _now() -> str:
@@ -159,11 +176,13 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
                     authorization.node_id, authorization.owner_key_id,
                     authorization.operation_hash, authorization.policy_id,
                     authorization.policy_version,
+                    authorization.authorization_payload_hash,
                 )
                 if existing is not None:
                     stored = tuple(existing[key] for key in (
                         "authorization_id", "binding_id", "node_id", "owner_key_id",
                         "operation_hash", "policy_id", "policy_version",
+                        "authorization_payload_hash",
                     ))
                     if stored != values:
                         raise BackendContractError(
@@ -203,6 +222,7 @@ class StandaloneSQLiteBackend(UTXOAuthorizationBackend):
             binding_id=row["binding_id"], node_id=row["node_id"],
             owner_key_id=row["owner_key_id"], operation_hash=row["operation_hash"],
             policy_id=row["policy_id"], policy_version=row["policy_version"],
+            authorization_payload_hash=row["authorization_payload_hash"],
         )
 
     def get_idempotent_result(self, idempotency_key: str) -> SpendSubmission | None:
