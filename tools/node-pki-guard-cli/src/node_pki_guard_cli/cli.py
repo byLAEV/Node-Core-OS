@@ -133,7 +133,7 @@ def _validate_manifest_structure(manifest: dict[str, Any]) -> tuple[PurePosixPat
         if required not in certificate:
             raise VerificationError(f"certificate.{required} is required")
     cert_path = _safe_relative_path(certificate["path"], field="certificate.path")
-    if certificate["encoding"] not in {"PEM", "DER"}:
+    if not isinstance(certificate["encoding"], str) or certificate["encoding"] not in {"PEM", "DER"}:
         raise VerificationError("certificate.encoding must be PEM or DER")
     for field in ("sha256_fingerprint", "spki_sha256"):
         value = certificate[field]
