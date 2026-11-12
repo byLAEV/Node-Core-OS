@@ -65,7 +65,8 @@ class X509IssuerTests(unittest.TestCase):
         )
         if extra_extension is not None:
             builder = builder.add_extension(extra_extension, critical=False)
-        csr = builder.sign(private_key, hashes.SHA256())
+        signing_hash = None if isinstance(private_key, ed25519.Ed25519PrivateKey) else hashes.SHA256()
+        csr = builder.sign(private_key, signing_hash)
         return csr.public_bytes(serialization.Encoding.PEM)
 
     def issue(self, **overrides):
