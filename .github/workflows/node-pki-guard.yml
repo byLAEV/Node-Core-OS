@@ -7,12 +7,14 @@ on:
       - "node_core/security/node_pki_guard.py"
       - "node_core/security/node_pki_guard_x509.py"
       - "node_core/security/node_pki_guard_issuer.py"
+      - "node_core/security/node_pki_guard_lifecycle.py"
       - "node_core/security/node_pki_guard_utxo.py"
       - "node_core/security/node_pki_guard_backend.py"
       - "node_core/security/backends/**"
       - "tests/test_node_pki_guard.py"
       - "tests/test_node_pki_guard_x509.py"
       - "tests/test_node_pki_guard_issuer.py"
+      - "tests/test_node_pki_guard_lifecycle.py"
       - "tests/test_node_pki_guard_utxo.py"
       - "tests/test_node_pki_guard_standalone.py"
       - "schemas/node-pki-binding.schema.json"
@@ -67,11 +69,11 @@ jobs:
       - name: Install declared cryptographic dependency
         run: python -m pip install --disable-pip-version-check -r requirements.txt
       - name: Run NODE-PKI-GUARD local tests
-        run: python -m unittest tests.test_node_pki_guard tests.test_node_pki_guard_x509 tests.test_node_pki_guard_issuer tests.test_node_pki_guard_utxo tests.test_node_pki_guard_standalone -v
+        run: python -m unittest tests.test_node_pki_guard tests.test_node_pki_guard_x509 tests.test_node_pki_guard_issuer tests.test_node_pki_guard_lifecycle tests.test_node_pki_guard_utxo tests.test_node_pki_guard_standalone -v
       - name: Run existing NODE identity certificate tests
         run: python -m unittest tests.test_node_identity_certificate -v
       - name: Compile security modules and tests
-        run: python -m compileall -q node_core/security/node_pki_guard.py node_core/security/node_pki_guard_x509.py node_core/security/node_pki_guard_issuer.py node_core/security/node_pki_guard_utxo.py node_core/security/node_pki_guard_backend.py node_core/security/backends/standalone_sqlite.py tests/test_node_pki_guard.py tests/test_node_pki_guard_x509.py tests/test_node_pki_guard_issuer.py tests/test_node_pki_guard_utxo.py tests/test_node_pki_guard_standalone.py
+        run: python -m compileall -q node_core/security/node_pki_guard.py node_core/security/node_pki_guard_x509.py node_core/security/node_pki_guard_issuer.py node_core/security/node_pki_guard_lifecycle.py node_core/security/node_pki_guard_utxo.py node_core/security/node_pki_guard_backend.py node_core/security/backends/standalone_sqlite.py tests/test_node_pki_guard.py tests/test_node_pki_guard_x509.py tests/test_node_pki_guard_issuer.py tests/test_node_pki_guard_utxo.py tests/test_node_pki_guard_standalone.py
 
   standalone-cli:
     name: Standalone CLI / Python 3.10-3.12
