@@ -364,7 +364,7 @@ Install and run the standalone OpenSSL verifier without installing NODE Core OS:
 ```sh
 git clone --branch feature/node-pki-guard-implementation-v1 https://github.com/byLAEV/Node-Core-OS.git
 cd Node-Core-OS/tools/node-pki-guard-cli
-./install.sh
+sh install.sh
 node-pki-guard verify --help
 ```
 
