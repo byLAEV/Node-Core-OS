@@ -356,3 +356,16 @@ The proposed Smart TV security architecture is documented in [`docs/smart-tv/REA
 ## Public X.509 / OpenSSL interoperability
 
 NODE-PKI-GUARD issues standard X.509 certificates that can be consumed by OpenSSL and other RFC 5280-compatible tooling. See the [X.509 / OpenSSL Interoperability Profile](docs/NODE-PKI-GUARD-OPENSSL-INTEROPERABILITY.md), the [public bundle manifest schema](schemas/node-pki-certificate-bundle.schema.json), and the [example manifest](examples/node-pki-guard-bundle/manifest.example.json). NODE-specific identity binding and UTXO authorization are optional sidecars for generic X.509 relying parties; they do not replace standard certificate validation.
+
+## Independent Linux verifier: node-pki-guard-cli
+
+Install and run the standalone OpenSSL verifier without installing NODE Core OS:
+
+```sh
+git clone --branch feature/node-pki-guard-implementation-v1 https://github.com/byLAEV/Node-Core-OS.git
+cd Node-Core-OS/tools/node-pki-guard-cli
+./install.sh
+node-pki-guard verify --help
+```
+
+Package documentation: [node-pki-guard-cli README](tools/node-pki-guard-cli/README.md). The CLI uses Python 3.10+ and system OpenSSL 1.1.1+, verifies manifest file hashes and X.509 fingerprints, and requires an independently trusted CA file. It does not verify NODE identity binding signatures or UTXO/ledger authorization.
