@@ -39,6 +39,8 @@ on:
       - "tests/test_node_pki_guard_standalone.py"
       - "schemas/node-pki-binding.schema.json"
       - "schemas/node-pki-auth-utxo.schema.json"
+      - "tools/node-pki-guard-cli/**"
+      - ".github/workflows/node-pki-guard-cli.yml"
       - ".github/workflows/node-pki-guard.yml"
   workflow_dispatch:
 
