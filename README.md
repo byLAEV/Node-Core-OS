@@ -352,3 +352,7 @@ The core should provide shared capabilities so that applications do not each nee
 The proposed Smart TV security architecture is documented in [`docs/smart-tv/README.md`](docs/smart-tv/README.md). It separates manufacturer attestation, device-key identity, owner claims, firmware integrity, authenticated alerts, local peer corroboration, privacy controls, emergency containment, and support-work authorization. Its manifest and example are checked by [Smart TV Specification Integrity](.github/workflows/smart-tv-spec-integrity.yml).
 
 **Status:** proposal documentation and manifest checks only. This does not establish OEM firmware integration, secure boot, physical microphone/camera isolation, a hardware kill-switch, production real-time defense, or enabled payment rails. See [`docs/smart-tv/IMPLEMENTATION-STATUS.md`](docs/smart-tv/IMPLEMENTATION-STATUS.md) for explicit gaps.
+
+## Public X.509 / OpenSSL interoperability
+
+NODE-PKI-GUARD issues standard X.509 certificates that can be consumed by OpenSSL and other RFC 5280-compatible tooling. See the [X.509 / OpenSSL Interoperability Profile](docs/NODE-PKI-GUARD-OPENSSL-INTEROPERABILITY.md), the [public bundle manifest schema](schemas/node-pki-certificate-bundle.schema.json), and the [example manifest](examples/node-pki-guard-bundle/manifest.example.json). NODE-specific identity binding and UTXO authorization are optional sidecars for generic X.509 relying parties; they do not replace standard certificate validation.
