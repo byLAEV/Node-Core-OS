@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/byLAEV/Node-Core-OS/blob/main/schemas/node-pki-certificate-bundle.schema.json",
+  "title": "NODE-PKI-GUARD public X.509 bundle manifest",
+  "description": "Inventory of publicly distributable X.509 certificate artifacts. A manifest is not a trust anchor and does not authenticate itself.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "bundle_id",
+    "created_at",
+    "certificate",
+    "files"
+  ],
+  "properties": {
+    "format": {
+      "const": "NODE-PKI-GUARD-X509-BUNDLE"
+    },
+    "version": {
+      "const": "1.0"
+    },
+    "bundle_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "certificate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "encoding",
+        "sha256_fingerprint",
+        "spki_sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "encoding": {
+          "enum": [
+            "PEM",
+            "DER"
+          ]
+        },
+        "sha256_fingerprint": {
+          "$ref": "#/$defs/sha256"
+        },
+        "spki_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "subject": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "issuer": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "serial_number_hex": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]+$"
+        },
+        "not_before": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "not_after": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "$ref": "#/$defs/path"
+          },
+          "sha256": {
+            "$ref": "#/$defs/sha256"
+          },
+          "media_type": {
+            "type": "string",
+            "maxLength": 128
+          }
+        }
+      }
+    },
+    "node_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "format",
+        "version"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/path"
+        },
+        "format": {
+          "const": "NODE-PKI-BINDING"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        }
+      }
+    },
+    "trust_statement": {
+      "type": "string",
+      "maxLength": 2048
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    }
+  }
+}
