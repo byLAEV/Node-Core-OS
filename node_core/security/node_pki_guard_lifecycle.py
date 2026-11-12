@@ -61,7 +61,7 @@ class PKILifecycleService:
     checks the backend commit evidence before marking an operation COMMITTED.
     """
 
-    SCHEMA_VERSION = 1
+    SCHEMA_VERSION = 2
 
     def __init__(
         self,
@@ -73,6 +73,9 @@ class PKILifecycleService:
         trusted_issuer_fingerprint_sha256: str,
         profile: X509IssuanceProfile,
         issuer_private_key_password: bytes | None = None,
+        receipt_signing_key_pem: bytes,
+        receipt_key_id: str,
+        receipt_signing_key_password: bytes | None = None,
     ) -> None:
         self.db_path = str(Path(db_path).expanduser())
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +85,30 @@ class PKILifecycleService:
         self.trusted_issuer_fingerprint_sha256 = trusted_issuer_fingerprint_sha256
         self.profile = profile
         self.issuer_private_key_password = issuer_private_key_password
+        if not isinstance(receipt_signing_key_pem, bytes) or not receipt_signing_key_pem:
+            raise ValueError("A dedicated receipt signing private key PEM is required")
+        if not isinstance(receipt_key_id, str) or not receipt_key_id.strip():
+            raise ValueError("receipt_key_id is required")
+        self.receipt_signing_key_pem = receipt_signing_key_pem
+        self.receipt_key_id = receipt_key_id
+        self.receipt_signing_key_password = receipt_signing_key_password
+        try:
+            ca_key = serialization.load_pem_private_key(
+                issuer_private_key_pem, password=issuer_private_key_password
+            )
+            receipt_key = serialization.load_pem_private_key(
+                receipt_signing_key_pem, password=receipt_signing_key_password
+            )
+        except (TypeError, ValueError) as exc:
+            raise ValueError("CA or receipt signing key could not be loaded") from exc
+        ca_spki = ca_key.public_key().public_bytes(
+            serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        receipt_spki = receipt_key.public_key().public_bytes(
+            serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        if ca_spki == receipt_spki:
+            raise ValueError("Receipt signing key MUST be distinct from the CA private key")
         self._initialize()
 
     @contextmanager
@@ -110,6 +137,7 @@ class PKILifecycleService:
                     idempotency_key TEXT PRIMARY KEY,
                     operation_id TEXT NOT NULL UNIQUE,
                     request_hash TEXT NOT NULL,
+                    csr_sha256 TEXT,
                     operation_hash TEXT NOT NULL,
                     authorization_id TEXT NOT NULL,
                     outpoint TEXT NOT NULL,
@@ -127,11 +155,22 @@ class PKILifecycleService:
             conn.execute(
                 "INSERT OR IGNORE INTO lifecycle_metadata(key,value) VALUES('schema_version','1')"
             )
+            columns = {
+                row["name"] for row in conn.execute(
+                    "PRAGMA table_info(lifecycle_operations)"
+                ).fetchall()
+            }
+            if "csr_sha256" not in columns:
+                conn.execute("ALTER TABLE lifecycle_operations ADD COLUMN csr_sha256 TEXT")
             version = conn.execute(
                 "SELECT value FROM lifecycle_metadata WHERE key='schema_version'"
             ).fetchone()
-            if version is None or int(version["value"]) != self.SCHEMA_VERSION:
+            if version is None or int(version["value"]) > self.SCHEMA_VERSION:
                 raise LifecycleError("Unsupported lifecycle store schema version")
+            conn.execute(
+                "UPDATE lifecycle_metadata SET value=? WHERE key='schema_version'",
+                (str(self.SCHEMA_VERSION),),
+            )
 
     @staticmethod
     def _now() -> str:
@@ -163,7 +202,7 @@ class PKILifecycleService:
                 (idempotency_key,),
             ).fetchone()
 
-    def issue(
+    def _issue_prevalidated(
         self,
         *,
         decision: AuthorizationDecision,
@@ -196,13 +235,15 @@ class PKILifecycleService:
                 or decision.outpoint != request.outpoint):
             raise LifecycleError("Policy decision does not match the spend request")
 
+        csr_sha256 = hashlib.sha256(csr_pem).hexdigest()
         row = self._load(request.idempotency_key)
         if row is not None:
             if (row["request_hash"] != request.request_hash
                     or row["operation_id"] != request.operation_id
                     or row["authorization_id"] != request.authorization_id
-                    or row["outpoint"] != request.outpoint):
-                raise LifecycleError("Idempotency key was reused with different operation content")
+                    or row["outpoint"] != request.outpoint
+                    or row["csr_sha256"] != csr_sha256):
+                raise LifecycleError("Idempotency key was reused with different CSR or operation content")
             if row["state"] == "COMMITTED":
                 return self._result(row)
             certificate_pem = bytes(row["certificate_pem"])
@@ -229,18 +270,19 @@ class PKILifecycleService:
                     if existing is None:
                         conn.execute("""
                             INSERT INTO lifecycle_operations (
-                                idempotency_key,operation_id,request_hash,operation_hash,
+                                idempotency_key,operation_id,request_hash,csr_sha256,operation_hash,
                                 authorization_id,outpoint,state,certificate_pem,
                                 certificate_fingerprint_sha256,created_at_utc,updated_at_utc
-                            ) VALUES (?,?,?,?,?,?,'PREPARED',?,?,?,?)
+                            ) VALUES (?,?,?,?,?,?,?,'PREPARED',?,?,?,?)
                         """, (
                             request.idempotency_key, request.operation_id, request.request_hash,
-                            request.operation_hash, request.authorization_id, request.outpoint,
+                            csr_sha256, request.operation_hash, request.authorization_id, request.outpoint,
                             certificate_pem, certificate_fp, now, now,
                         ))
                     else:
-                        if existing["request_hash"] != request.request_hash:
-                            raise LifecycleError("Concurrent idempotency conflict")
+                        if (existing["request_hash"] != request.request_hash
+                                or existing["csr_sha256"] != csr_sha256):
+                            raise LifecycleError("Concurrent idempotency or CSR conflict")
                         certificate_pem = bytes(existing["certificate_pem"])
                         certificate_fp = existing["certificate_fingerprint_sha256"]
                     conn.commit()
@@ -276,9 +318,10 @@ class PKILifecycleService:
             "issuer_trust_fingerprint_sha256": self.trusted_issuer_fingerprint_sha256,
             "profile_id": self.profile.profile_id,
             "profile_version": self.profile.profile_version,
+            "receipt_key_id": self.receipt_key_id,
         }
         receipt_signature = self._sign_receipt(
-            receipt, self.issuer_private_key_pem, self.issuer_private_key_password
+            receipt, self.receipt_signing_key_pem, self.receipt_signing_key_password
         )
         receipt_json = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
         now = self._now()
