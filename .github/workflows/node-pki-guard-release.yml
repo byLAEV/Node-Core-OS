@@ -62,7 +62,7 @@ jobs:
           The verifier does not install NODE Core OS and does not require
           the cryptography Python package. Read README.md for trust setup.
           EOF
-          tar -C dist -czf dist/node-pki-guard-cli-linux-x86_64.tar.gz node-pki-guard-cli
+          tar -czf dist/node-pki-guard-cli-linux-x86_64.tar.gz -C dist node-pki-guard-cli
           cd dist
           sha256sum node-pki-guard-cli-linux-x86_64.tar.gz *.whl *.tar.gz > SHA256SUMS
       - name: Install Cosign
@@ -71,7 +71,7 @@ jobs:
         run: |
           set -eu
           cd dist
-          for artifact in node-pki-guard-cli-linux-x86_64.tar.gz *.whl *.tar.gz SHA256SUMS; do
+          for artifact in node-pki-guard-cli-linux-x86_64.tar.gz SHA256SUMS *.whl node_pki_guard_cli-*.tar.gz; do
             cosign sign-blob --yes \
               --bundle "${artifact}.sigstore.json" \
               "${artifact}"
@@ -95,4 +95,3 @@ jobs:
             dist/*.tar.gz
             dist/SHA256SUMS
             dist/*.sigstore.json
-            dist/attestation.json
