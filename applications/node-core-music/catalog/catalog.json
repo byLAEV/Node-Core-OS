@@ -1,7 +1,7 @@
 {
   "schema": "node-core-music-catalog-v1",
   "application": "Node Core Music byLAEV",
-  "catalog_version": "1.1.0",
+  "catalog_version": "1.2.0",
   "tracks": [
     {
       "track_id": "NCM-001",
