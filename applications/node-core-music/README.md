@@ -1,38 +1,46 @@
 # Node Core Music byLAEV
 
-Node Core Music is a modular application inside Node Core OS. Its static web interface is published under the existing GitHub Pages deployment at:
+Node Core Music is a modular music application inside Node Core OS.
 
-- Production route: https://bylaev.github.io/Node-Core-OS/music/
+- GitHub Pages: https://bylaev.github.io/Node-Core-OS/music/
 - Application source: `applications/node-core-music/`
 - Catalog: `catalog/catalog.json`
+- Catalog schema: `node-core-music-catalog-v1`
+- Current catalog version: `1.2.0`
 
 ## Current catalog
 
-| Track ID | Title | Artist | Label |
-|---|---|---|---|
-| NCM-001 | BLOCK BY BLOCK — THE HUMAN LEGACY | The Blockchain OG's | HL Music · Trilema Records byLAEV |
+| Track ID | Title | Version | Artist | Label |
+|---|---|---:|---|---|
+| NCM-001 | BLOCK BY BLOCK — THE HUMAN LEGACY | — | The Blockchain OG's | HL Music · Trilema Records byLAEV |
+| NCM-002 | THE SYSTEM KEEPS THE RECORD | 1.0 | The Blockchain OG's | Trilema Records byLAEV |
+| NCM-003 | THE SYSTEM KEEPS THE RECORD | 2.0 | The Blockchain OG's | Trilema Records byLAEV |
 
-The original MP3 URL supplied for this catalog entry is preserved in `catalog/catalog.json`. The repository stores metadata and the player interface, not a copy of the audio file.
+The two versions of THE SYSTEM KEEPS THE RECORD are separate catalog entries with independent track IDs and source URLs. Both original MP3 links supplied for the submissions are preserved in the catalog.
 
 ## Delivery architecture
 
-The existing `.github/workflows/pages.yml` workflow validates the existing Web Test Bench and the music app, then assembles a single Pages artifact:
+The existing `.github/workflows/pages.yml` workflow publishes a single Pages artifact:
 
 - `web-test-bench/` remains the root site.
-- `applications/node-core-music/` is copied to `/music/`.
+- `applications/node-core-music/` is staged at `/music/`.
 
-There is intentionally one Pages deployment workflow to avoid competing deployments overwriting one another.
+One shared Pages deployment workflow avoids competing deployments overwriting one another.
 
-## Audio and rights boundaries
+## Player and audio delivery
 
-GitHub Pages serves static HTML, CSS, JavaScript, manifest, service worker, and catalog metadata. It is not an audio hosting or streaming backend. Playback depends on the availability, CORS/range behavior, and terms of the external MP3 host. The original source link remains available as a fallback.
+The application reads the catalog JSON and renders an individual player for each track. It provides a direct link to each original MP3 source.
 
-The catalog entry records the credits provided with the submission. It does not assert ownership, licensing, copyright clearance, or a content hash. Those fields remain unspecified until evidence is supplied and verified.
+GitHub Pages hosts the static interface and metadata; it is not an audio streaming backend. Playback depends on the external host remaining available and allowing browser access. Audio files are not copied into the Git repository or cached for offline playback.
+
+## Attribution, provenance, and rights
+
+Credits and artist/label information are recorded as submitted. The catalog does not assert ownership, licensing, copyright clearance, or a verified content hash. Those remain unspecified until supporting evidence is supplied and checked.
 
 ## Current implementation scope
 
-- Responsive browser audio player.
-- Catalog metadata for NCM-001.
-- Installable PWA shell and offline caching of application files.
-- Audio itself is not cached for offline playback.
-- Future Node Core local-storage, Kubo/IPFS, identity, and provenance integration is not yet implemented.
+- Responsive catalog and per-track HTML audio player.
+- Stable catalog IDs and source URL records.
+- Installable PWA shell.
+- Offline caching of application files and catalog metadata; audio itself is not cached.
+- Future Node Core local-storage, Kubo/IPFS, identity, and stronger provenance integration are not yet implemented.
