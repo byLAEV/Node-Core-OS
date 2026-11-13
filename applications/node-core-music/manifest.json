@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Node Core Music byLAEV",
+  "short_name": "Node Core Music",
+  "description": "Independent music catalog and listening interface byLAEV.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090909",
+  "theme_color": "#090909",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
