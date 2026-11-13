@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate eight-certificate catalog completeness, not security effectiveness."""
+"""Validate certificate catalog documentation completeness, not security effectiveness."""
 from __future__ import annotations
 
 import sys
@@ -28,22 +28,21 @@ SHARED = (
     "CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md",
     "AUDIT-AND-CI-INDEX.md",
 )
-BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"
-BICDN_FILES = (
-    "README.md",
-    "SERVICE-SPECIFICATION.md",
-    "EVIDENCE-AND-TESTING.md",
-    "TEST-TRACEABILITY.md",
-    "bicdn-case.schema.json",
-    "bicdn-contribution.schema.json",
-    "examples/anonymous-legal-contact-request.json",
-)
 PRODUCT_FILES = (
     "README.md",
     "SERVICE-SPECIFICATION.md",
     "EVIDENCE-AND-TESTING.md",
     "TEST-TRACEABILITY.md",
 )
+BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"
+BICDN_FILES = (
+    "README.md", "SERVICE-SPECIFICATION.md", "EVIDENCE-AND-TESTING.md",
+    "TEST-TRACEABILITY.md", "bicdn-case.schema.json",
+    "bicdn-contribution.schema.json",
+    "examples/anonymous-legal-contact-request.json",
+)
+TRILEMA_DIR = CERTIFICATES / "certificado-de-streaming-musica-audio-video-trilema-records"
+TRILEMA_FILES = ("README.md", "SERVICE-SPECIFICATION.md", "music-identity-credential.schema.json")
 
 
 def main() -> int:
@@ -59,6 +58,8 @@ def main() -> int:
     implementation = IMPLEMENTATION.read_text(encoding="utf-8")
     index_path = CATALOG / "README.md"
     index = index_path.read_text(encoding="utf-8") if index_path.is_file() else ""
+    certificates_index_path = CERTIFICATES / "README.md"
+    certificates_index = certificates_index_path.read_text(encoding="utf-8") if certificates_index_path.is_file() else ""
 
     for folder, profile in PRODUCTS.items():
         if f'"{profile}"' not in implementation:
@@ -84,7 +85,6 @@ def main() -> int:
                 if linked not in readme:
                     errors.append(f"Certificates/{folder}/README.md missing link to {linked}")
 
-    # BICDN is a separate application-level proposal, not a node-identity profile.
     if not BICDN_DIR.is_dir():
         errors.append("missing BICDN certificate directory")
     else:
@@ -99,6 +99,27 @@ def main() -> int:
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"invalid BICDN JSON document: {exc}")
 
+    if not TRILEMA_DIR.is_dir():
+        errors.append("missing Trilema Records certificate directory")
+    else:
+        for name in TRILEMA_FILES:
+            path = TRILEMA_DIR / name
+            if not path.is_file():
+                errors.append(f"missing Trilema Records file: {name}")
+        schema_path = TRILEMA_DIR / "music-identity-credential.schema.json"
+        if schema_path.is_file():
+            try:
+                import json
+                with schema_path.open(encoding="utf-8") as handle:
+                    json.load(handle)
+            except (OSError, json.JSONDecodeError) as exc:
+                errors.append(f"invalid Trilema Records credential schema: {exc}")
+        trilema_readme = TRILEMA_DIR / "README.md"
+        if trilema_readme.is_file() and "trilema-music-streaming" not in trilema_readme.read_text(encoding="utf-8"):
+            errors.append("Trilema Records README missing profile identifier")
+        if "Trilema Records" not in index or "Trilema Records" not in certificates_index:
+            errors.append("Trilema Records missing from one or more catalog indexes")
+
     if errors:
         print("Certificate catalog integrity: FAIL")
         for error in errors:
@@ -108,6 +129,7 @@ def main() -> int:
     print("Certificate catalog integrity: PASS")
     print(f"- {len(PRODUCTS)} node-identity profiles align with the implementation and catalog index")
     print("- BICDN proposal documents and JSON files are present and parseable")
+    print("- Trilema Records service documents and credential JSON schema are present and parseable")
     print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} security-profile documentation files exist under Certificates/")
     print(f"- {len(SHARED)} shared catalog documents exist")
     print("- This is a documentation consistency check, not a security effectiveness test")
