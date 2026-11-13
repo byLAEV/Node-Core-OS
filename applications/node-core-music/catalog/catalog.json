@@ -1,16 +1,16 @@
 {
   "schema": "node-core-music-catalog-v1",
   "application": "Node Core Music byLAEV",
-  "catalog_version": "1.2.0",
+  "catalog_version": "1.2.1",
   "tracks": [
     {
       "track_id": "NCM-001",
       "sequence": 1,
-      "title": "BLOCK BY BLOCK — THE HUMAN LEGACY",
+      "title": "BLOCK BY BLOCK — THE HUMAN LEGACY · Trilema Records byLAEV",
       "artists": [
         "The Blockchain OG's"
       ],
-      "label": "HL Music · Trilema Records byLAEV",
+      "label": "Trilema Records byLAEV",
       "release_status": "catalogued",
       "media": {
         "type": "audio/mpeg",
@@ -20,7 +20,7 @@
       },
       "credits": {
         "artist_credit": "The Blockchain OG's",
-        "label_credit": "HL Music · Trilema Records byLAEV"
+        "label_credit": "Trilema Records byLAEV"
       },
       "provenance": {
         "source_provided_by": "LAEV",
