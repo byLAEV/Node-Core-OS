@@ -18,6 +18,9 @@ class LifeEntry:
     created_at: str
     cid: str | None = None
     pinned: bool = False
+    content_type: str = "text/markdown"
+    folder: str = "private"
+    authorized_nodes: tuple[str, ...] = ()
 
 
 class MyLifeBlog:
@@ -50,7 +53,12 @@ class MyLifeBlog:
         temporary.replace(self.index_path)
 
     def list_entries(self) -> list[LifeEntry]:
-        return [LifeEntry(**item) for item in self._load()]
+        result = []
+        for item in self._load():
+            normalized = dict(item)
+            normalized["authorized_nodes"] = tuple(normalized.get("authorized_nodes", ()))
+            result.append(LifeEntry(**normalized))
+        return result
 
     def publish_entry(self, entry_id: str, *, pin: bool = True) -> LifeEntry:
         """Add one selected entry to IPFS, optionally pinning it on this node."""
@@ -79,7 +87,9 @@ class MyLifeBlog:
             selected["pinned"] = bool(record.pinned)
 
         self._save(entries)
-        return LifeEntry(**selected)
+        normalized = dict(selected)
+        normalized["authorized_nodes"] = tuple(normalized.get("authorized_nodes", ()))
+        return LifeEntry(**normalized)
 
     def create_entry(
         self, title: str, text: str, *, add_to_ipfs: bool = False

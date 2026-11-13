@@ -90,6 +90,36 @@ class MyLifeBlogTests(unittest.TestCase):
         self.assertEqual(self.blog.list_entries(), [entry])
         self.assertTrue(Path(entry.text_path).is_file())
 
+    def test_html_publication_is_local_and_records_folder_and_node_ids(self):
+        entry = self.blog.create_publication(
+            "My first post",
+            "First paragraph.\\nSecond paragraph.",
+            summary="A short summary",
+            tags=["life", "node"],
+            image_urls=["ipfs://bafyimage"],
+            video_urls=["https://video.example/watch/1"],
+            folder="ipfs",
+            authorized_nodes=["node-a", "node-b", "node-a"],
+        )
+        html = Path(entry.text_path).read_text(encoding="utf-8")
+        self.assertEqual(entry.content_type, "text/html")
+        self.assertEqual(entry.folder, "ipfs")
+        self.assertEqual(entry.authorized_nodes, ("node-a", "node-b"))
+        self.assertIn("<!doctype html>", html)
+        self.assertIn("ipfs://bafyimage", html)
+        self.assertIn("https://video.example/watch/1", html)
+        self.assertIsNone(entry.cid)
+        self.assertEqual(self.blog.list_entries(), [entry])
+        self.assertEqual(self.blog.folders_status()["ipfs"], 1)
+
+    def test_html_publication_escapes_content_and_rejects_unsafe_media_scheme(self):
+        entry = self.blog.create_publication("<script>title</script>", "<img src=x>", folder="private")
+        html = Path(entry.text_path).read_text(encoding="utf-8")
+        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>title", html)
+        with self.assertRaises(ValueError):
+            self.blog.create_publication("Unsafe", "body", image_urls=["javascript:alert(1)"])
+
     def test_empty_title_or_text_is_rejected(self):
         with self.assertRaises(ValueError):
             self.blog.create_entry(" ", "body")

@@ -1082,33 +1082,68 @@ class MainMenu:
         print(f"Notes: {reference.notes or '-'}")
 
     def my_life_blog(self) -> None:
+        """My Life folders, generated HTML blog and publication workflow."""
         while True:
             print("\nMy Life / Node Blog\n")
-            print("Entries are stored locally by default.")
-            print("Publishing an entry adds and pins only that selected entry in IPFS.")
             print("0. Back")
-            print("1. New entry")
-            print("2. Browse entries")
-            print("3. Search entries")
+            print("1. Carpetas")
+            print("2. My Life Blog")
+            print("3. Crear publicación")
             choice = input("\n> ").strip()
             try:
                 if choice == "0":
                     return
                 if choice == "1":
-                    title = input("Title: ").strip()
-                    text = input("Entry: ").strip()
-                    entry = self.runtime.my_life.create_entry(title, text)
-                    print("\nEntry saved locally.")
-                    print("CID: local-only")
-                    print("Use Browse entries to publish this entry later.")
+                    counts = self.runtime.my_life.folders_status()
+                    print("\nMy Life folders")
+                    print("Private: " + str(counts["private"]))
+                    print("Public: " + str(counts["public"]))
+                    print("IPFS CID: " + str(counts["ipfs"]))
+                    print("Olvidar temporal: " + str(counts["temporary"]))
+                    print("Las carpetas se crean al guardar su primera publicación.")
                     input("\n> ")
                 elif choice == "2":
-                    self._browse_my_life_entries(self.runtime.my_life.list_entries())
+                    entries = self.runtime.my_life.list_entries()
+                    self._browse_my_life_entries(entries)
                 elif choice == "3":
-                    self._search_my_life_entries()
+                    self._create_my_life_publication()
             except Exception as exc:
                 print("My Life error: " + str(exc))
                 input("\n> ")
+
+    def _create_my_life_publication(self) -> None:
+        print("\nCrear publicación HTML")
+        title = input("Título: ").strip()
+        summary = input("Descripción breve: ").strip()
+        print("Escribe el contenido. Una línea vacía termina el texto:")
+        lines = []
+        while True:
+            line = input()
+            if not line:
+                break
+            lines.append(line)
+        body = "\n".join(lines)
+        tags = [item.strip() for item in input("Etiquetas separadas por coma: ").split(",") if item.strip()]
+        image_urls = [item.strip() for item in input("URLs de imágenes (http/https/ipfs/ipns), separadas por coma: ").split(",") if item.strip()]
+        video_urls = [item.strip() for item in input("URLs de videos, separadas por coma: ").split(",") if item.strip()]
+        print("Destino: 1 Privada | 2 Pública | 3 IPFS CID | 4 Olvidar temporal")
+        folder_choice = input("Destino [1]: ").strip() or "1"
+        folders = {"1": "private", "2": "public", "3": "ipfs", "4": "temporary"}
+        if folder_choice not in folders:
+            raise ValueError("Destino de carpeta no válido.")
+        nodes = []
+        if folders[folder_choice] in {"public", "ipfs"}:
+            raw_nodes = input("Node IDs autorizados separados por coma (vacío = sin lista): ")
+            nodes = [item.strip() for item in raw_nodes.split(",") if item.strip()]
+        entry = self.runtime.my_life.create_publication(
+            title, body, summary=summary, tags=tags, image_urls=image_urls,
+            video_urls=video_urls, folder=folders[folder_choice], authorized_nodes=nodes,
+        )
+        print("\nPublicación HTML generada y guardada localmente.")
+        print("Archivo: " + entry.text_path)
+        print("Estado IPFS: todavía no publicada.")
+        print("La lista de Node IDs se guarda como metadato; el control de acceso remoto requiere autenticación y autorización en el protocolo de distribución.")
+        input("\n> ")
 
     def _browse_my_life_entries(self, entries: list) -> None:
         page_size = 10

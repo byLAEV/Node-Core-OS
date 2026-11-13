@@ -2,29 +2,40 @@
 
 ## Purpose
 
-My Life / Node Blog is a local-first personal record feature. Creating an entry stores a Markdown file under `storage/my-life/entries/` and adds its metadata to `storage/my-life/index.json`. Creation does not publish content to IPFS.
+My Life is the personal blog and record subsystem in menu **3** of Node Core OS. It remains local-first: generating an entry never uploads it to IPFS. Existing Markdown entries and their index remain readable.
 
-## Browse large collections
+## Menu
 
-- The terminal interface shows 10 entries per page by default.
-- `N` moves to the next page and `P` returns to the previous page.
-- Numbered entries are local to the page currently displayed.
-- Selecting a number opens the detail menu for exactly one entry.
-- Search accepts a title, entry ID, or text found in the local entry file.
-- Search results use the same paginated list and individual-entry menu.
+- `0. Back`
+- `1. Carpetas`: counts entries in Private, Public, IPFS CID and Olvidar temporal.
+- `2. My Life Blog`: browse existing entries.
+- `3. Crear publicación`: collect title, summary, body, tags, image URLs, video URLs and destination, then generate a standalone HTML document.
 
-## Publish one entry
+The terminal editor currently accepts HTTP(S), IPFS and IPNS media references. Local-file upload and a browser-based rich editor are follow-up work; the current terminal flow does not copy local media into the publication.
 
-Publication is a separate action inside the selected entry's detail menu. The interface asks **Pin this entry on this node? [Y/n]** before publishing; pressing Enter selects Yes. The operation receives the entry's stable `entry_id`, checks that its local file exists, adds that file to Kubo/IPFS using the chosen pin setting, and stores the returned CID and pin state on that one index record.
+## Storage layout
 
-If the entry already has a CID and the user chooses pinning, Node Core asks Kubo to pin that CID rather than re-adding the file. If the user chooses not to pin, the content is added without a pin request; the user can later publish/open the same entry and choose pinning. If publication fails, the local Markdown file remains intact and the failure is reported. The interface does not offer a bulk-publish action.
+- `storage/my-life/private/`
+- `storage/my-life/public/`
+- `storage/my-life/ipfs/`
+- `storage/my-life/forget-temporary/`
+- Existing Markdown entries remain under `storage/my-life/entries/`.
+- `storage/my-life/index.json` remains the metadata index.
 
-An IPFS CID identifies content; it does not by itself guarantee that content remains available across the network. Pinning preserves content on the local Kubo node. Users should consider privacy before publishing personal information.
+The four logical folders are created when a publication is saved there. Existing entries without a folder field remain compatible and are interpreted as private for folder counts.
 
-## Updating an existing installation
+## IPFS publication
 
-The Node Core OS updater replaces the application directory from the selected repository commit and preserves the persistent storage directory, Kubo binary, Kubo repository, and existing configuration. The entry schema remains compatible with existing records, so this feature does not require a migration of `storage/my-life/index.json`.
+HTML generation and IPFS publication are separate operations. A generated HTML entry has no CID until the operator explicitly publishes that selected entry. Pinning preserves content on the local Kubo node; a CID alone does not guarantee network availability. Do not publish private material.
+
+## Node access metadata — current limitation
+
+The editor records the Node IDs supplied for a publication as metadata. This is **not yet an access-control boundary**: IPFS content is public to anyone who obtains its CID, and a list of node IDs does not encrypt content or authenticate readers. A future private-sharing implementation must encrypt the content for authorized node public keys, authenticate requests, support revocation/key rotation, and test the complete receive path before describing the blog as restricted.
+
+## Forget temporary — current limitation
+
+This folder is a logical local destination only. It does not yet implement automatic expiration, secure deletion, or removal of copies already distributed to IPFS or other nodes.
 
 ## Verification
 
-Automated tests cover local-only creation, explicit IPFS addition, publishing one selected entry without publishing another, preservation of local files, and rejection of unknown entry IDs. The UI and installer must be exercised in CI before this release is considered verified.
+Unit tests cover local-only HTML generation, metadata persistence, media URL scheme validation, escaping of HTML input and preservation of existing Markdown behavior.
