@@ -1,0 +1,11 @@
+{
+  "name": "UTXO NODE DEFENDER",
+  "short_name": "NODE DEFENDER",
+  "description": "Identidad criptográfica local para Node Core OS",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#101827",
+  "lang": "es"
+}
