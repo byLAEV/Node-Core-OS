@@ -87,7 +87,9 @@ class MyLifeBlog:
             selected["pinned"] = bool(record.pinned)
 
         self._save(entries)
-        return LifeEntry(**selected)
+        normalized = dict(selected)
+        normalized["authorized_nodes"] = tuple(normalized.get("authorized_nodes", ()))
+        return LifeEntry(**normalized)
 
     def create_entry(
         self, title: str, text: str, *, add_to_ipfs: bool = False
