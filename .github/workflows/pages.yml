@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "web-test-bench/**"
+      - "applications/node-core-music/**"
       - "scripts/validate_web_test_bench.py"
       - ".github/workflows/pages.yml"
   pull_request:
@@ -46,7 +47,13 @@ jobs:
         run: python3 scripts/validate_web_test_bench.py
 
       - name: Check JavaScript syntax
-        run: node --check web-test-bench/assets/app.js
+        run: |
+          node --check web-test-bench/assets/app.js
+          node --check applications/node-core-music/assets/app.js
+          node --check applications/node-core-music/service-worker.js
+
+      - name: Validate music catalog JSON
+        run: python3 -m json.tool applications/node-core-music/catalog/catalog.json >/dev/null
 
   deploy:
     name: Publish Web Test Bench
@@ -72,10 +79,18 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Assemble Pages site
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p _site/music
+          cp -a web-test-bench/. _site/
+          cp -a applications/node-core-music/. _site/music/
+
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web-test-bench
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
