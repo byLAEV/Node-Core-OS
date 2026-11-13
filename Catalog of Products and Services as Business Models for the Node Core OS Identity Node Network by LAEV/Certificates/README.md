@@ -1,6 +1,6 @@
 # Certificates
 
-This directory contains Node Core OS security-assessment profiles and additional application/service credential proposals. Each product folder must distinguish documented proposals from implemented and tested functionality.
+This directory contains eight Node Core OS security-assessment certificate products, the separate BICDN conflict-declaration certificate proposal, and the NODE-PKI-GUARD complementary X.509/PKI authorization proposal. The product folders retain their individual specifications, evidence guides, and test traceability documents.
 
 ## Certificate products
 
@@ -12,10 +12,13 @@ This directory contains Node Core OS security-assessment profiles and additional
 6. [Availability and DDoS Resilience](./06-availability-and-ddos-resilience/README.md) — `availability-ddos-resistance`
 7. [IPFS Content Integrity](./07-ipfs-content-integrity/README.md) — `ipfs-content-integrity`
 8. [Privilege Control and Pool Isolation](./08-privilege-control-and-pool-isolation/README.md) — `privilege-and-pool-isolation`
-9. [Bitcoin Conflict Declaration and Resolution](./09-bitcoin-conflict-declaration-and-resolution/README.md) — application-level proposal
-10. [NODE-PKI-GUARD](./10-node-pki-guard/README.md) — complementary X.509/PKI authorization proposal
-11. [HUC Certificates](./HUC%20Certificates/README.md) — HUC Direct SDK workspace
-12. [Trilema Records — Music Identity and Streaming Certificate](./certificado-de-streaming-musica-audio-video-trilema-records/README.md) — `trilema-music-streaming`
+
+9. [Bitcoin Conflict Declaration and Resolution Certificate](./09-bitcoin-conflict-declaration-and-resolution/README.md) — `bitcoin-conflict-declaration` (proposed application-level case credential; not a node identity profile)
+10. [NODE-PKI-GUARD — Complementary X.509/PKI Authorization](./10-node-pki-guard/README.md) — `NODE-PKI-GUARD` (proposed UTXO-based authorization layer; does not replace X.509 or existing CAs)
+
+11. [HUC Certificates — HUC Direct SDK](./HUC%20Certificates/README.md) — dedicated workspace for HUC credential lifecycle, SDK integrations, API contracts, tests, and release evidence (SDK 0.8.0 artifacts pending repository import and verification)
+
+12. [Trilema Records — Music Identity and Streaming Certificate](./certificado-de-streaming-musica-audio-video-trilema-records/README.md) — `trilema-music-streaming` (proposed service and credential schema; not yet operational)
 
 ## Evidence and status
 
@@ -23,4 +26,4 @@ This directory contains Node Core OS security-assessment profiles and additional
 - [Audit and CI index](../AUDIT-AND-CI-INDEX.md)
 - [Business model and consensus](../BUSINESS-MODEL-AND-CONSENSUS.md)
 
-**Important:** A recognized profile or passing envelope test does not prove that an attack class has been defeated. Likewise, the Trilema Records folder is a service specification and proposed credential schema; it does not mean that the local web interface, media streaming, rights verification, credential issuance, or DSP distribution is implemented or operational.
+**Important:** A recognized certificate profile or passing certificate-envelope test does not prove that the corresponding attack class has been defeated. Each product's claims must remain limited to its actual implementation, tests, and documented evidence. Commercial availability and economic policy remain subject to the catalog's stated status.
