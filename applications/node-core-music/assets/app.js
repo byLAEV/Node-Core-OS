@@ -52,6 +52,7 @@
     .then(response => { if (!response.ok) throw new Error("Catalog request failed"); return response.json(); })
     .then(catalog => {
       const tracks = (catalog.tracks || []).slice().sort((a, b) => a.sequence - b.sequence);
+      list.replaceChildren();
       tracks.forEach(track => list.append(renderTrack(track)));
       if (count) count.textContent = String(tracks.length).padStart(2, "0") + (tracks.length === 1 ? " TRACK" : " TRACKS");
     })
