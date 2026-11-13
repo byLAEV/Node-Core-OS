@@ -6,13 +6,13 @@ Node Core Music is a modular music application inside Node Core OS.
 - Application source: `applications/node-core-music/`
 - Catalog: `catalog/catalog.json`
 - Catalog schema: `node-core-music-catalog-v1`
-- Current catalog version: `1.2.1`
+- Current catalog version: `1.2.2`
 
 ## Current catalog
 
 | Track ID | Title | Version | Artist | Label |
 |---|---|---:|---|---|
-| NCM-001 | BLOCK BY BLOCK — THE HUMAN LEGACY · Trilema Records byLAEV | — | The Blockchain OG's | Trilema Records byLAEV |
+| NCM-001 | BLOCK BY BLOCK — THE HUMAN LEGACY | — | The Blockchain OG's | Trilema Records byLAEV |
 | NCM-002 | THE SYSTEM KEEPS THE RECORD | 1.0 | The Blockchain OG's | Trilema Records byLAEV |
 | NCM-003 | THE SYSTEM KEEPS THE RECORD | 2.0 | The Blockchain OG's | Trilema Records byLAEV |
 
