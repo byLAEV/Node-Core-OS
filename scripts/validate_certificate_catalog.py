@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate certificate catalog documentation completeness, not security effectiveness."""
+"""Validate eight-certificate catalog completeness, not security effectiveness."""
 from __future__ import annotations
 
 import sys
@@ -28,21 +28,24 @@ SHARED = (
     "CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md",
     "AUDIT-AND-CI-INDEX.md",
 )
+BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"
+BICDN_FILES = (
+    "README.md",
+    "SERVICE-SPECIFICATION.md",
+    "EVIDENCE-AND-TESTING.md",
+    "TEST-TRACEABILITY.md",
+    "bicdn-case.schema.json",
+    "bicdn-contribution.schema.json",
+    "examples/anonymous-legal-contact-request.json",
+)
+TRILEMA_DIR = CERTIFICATES / "certificado-de-streaming-musica-audio-video-trilema-records"
+TRILEMA_FILES = ("README.md", "SERVICE-SPECIFICATION.md", "music-identity-credential.schema.json")
 PRODUCT_FILES = (
     "README.md",
     "SERVICE-SPECIFICATION.md",
     "EVIDENCE-AND-TESTING.md",
     "TEST-TRACEABILITY.md",
 )
-BICDN_DIR = CERTIFICATES / "09-bitcoin-conflict-declaration-and-resolution"
-BICDN_FILES = (
-    "README.md", "SERVICE-SPECIFICATION.md", "EVIDENCE-AND-TESTING.md",
-    "TEST-TRACEABILITY.md", "bicdn-case.schema.json",
-    "bicdn-contribution.schema.json",
-    "examples/anonymous-legal-contact-request.json",
-)
-TRILEMA_DIR = CERTIFICATES / "certificado-de-streaming-musica-audio-video-trilema-records"
-TRILEMA_FILES = ("README.md", "SERVICE-SPECIFICATION.md", "music-identity-credential.schema.json")
 
 
 def main() -> int:
@@ -58,8 +61,6 @@ def main() -> int:
     implementation = IMPLEMENTATION.read_text(encoding="utf-8")
     index_path = CATALOG / "README.md"
     index = index_path.read_text(encoding="utf-8") if index_path.is_file() else ""
-    certificates_index_path = CERTIFICATES / "README.md"
-    certificates_index = certificates_index_path.read_text(encoding="utf-8") if certificates_index_path.is_file() else ""
 
     for folder, profile in PRODUCTS.items():
         if f'"{profile}"' not in implementation:
@@ -85,6 +86,7 @@ def main() -> int:
                 if linked not in readme:
                     errors.append(f"Certificates/{folder}/README.md missing link to {linked}")
 
+    # BICDN is a separate application-level proposal, not a node-identity profile.
     if not BICDN_DIR.is_dir():
         errors.append("missing BICDN certificate directory")
     else:
@@ -99,26 +101,28 @@ def main() -> int:
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"invalid BICDN JSON document: {exc}")
 
+    # Trilema Records is an application/service credential proposal, not an existing node profile.
     if not TRILEMA_DIR.is_dir():
         errors.append("missing Trilema Records certificate directory")
     else:
         for name in TRILEMA_FILES:
-            path = TRILEMA_DIR / name
-            if not path.is_file():
+            if not (TRILEMA_DIR / name).is_file():
                 errors.append(f"missing Trilema Records file: {name}")
-        schema_path = TRILEMA_DIR / "music-identity-credential.schema.json"
-        if schema_path.is_file():
-            try:
-                import json
-                with schema_path.open(encoding="utf-8") as handle:
-                    json.load(handle)
-            except (OSError, json.JSONDecodeError) as exc:
-                errors.append(f"invalid Trilema Records credential schema: {exc}")
+        try:
+            import json
+            with (TRILEMA_DIR / "music-identity-credential.schema.json").open(encoding="utf-8") as handle:
+                json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"invalid Trilema Records credential schema: {exc}")
         trilema_readme = TRILEMA_DIR / "README.md"
         if trilema_readme.is_file() and "trilema-music-streaming" not in trilema_readme.read_text(encoding="utf-8"):
             errors.append("Trilema Records README missing profile identifier")
-        if "Trilema Records" not in index or "Trilema Records" not in certificates_index:
-            errors.append("Trilema Records missing from one or more catalog indexes")
+    if "Trilema Records" not in index:
+        errors.append("Trilema Records missing from catalog README")
+    certificates_index_path = CERTIFICATES / "README.md"
+    certificates_index = certificates_index_path.read_text(encoding="utf-8") if certificates_index_path.is_file() else ""
+    if "Trilema Records" not in certificates_index:
+        errors.append("Trilema Records missing from Certificates README")
 
     if errors:
         print("Certificate catalog integrity: FAIL")
