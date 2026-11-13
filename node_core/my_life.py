@@ -18,6 +18,9 @@ class LifeEntry:
     created_at: str
     cid: str | None = None
     pinned: bool = False
+    content_type: str = "text/markdown"
+    folder: str = "private"
+    authorized_nodes: tuple[str, ...] = ()
 
 
 class MyLifeBlog:
