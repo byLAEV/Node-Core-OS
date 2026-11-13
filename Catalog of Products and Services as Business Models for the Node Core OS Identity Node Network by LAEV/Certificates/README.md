@@ -18,6 +18,8 @@ This directory contains eight Node Core OS security-assessment certificate produ
 
 11. [HUC Certificates — HUC Direct SDK](./HUC%20Certificates/README.md) — dedicated workspace for HUC credential lifecycle, SDK integrations, API contracts, tests, and release evidence (SDK 0.8.0 artifacts pending repository import and verification)
 
+12. [Trilema Records — Music Identity and Streaming Certificate](./certificado-de-streaming-musica-audio-video-trilema-records/README.md) — `trilema-music-streaming` (proposed service and credential schema; not yet operational)
+
 ## Evidence and status
 
 - [Certificate test and evidence matrix](../CERTIFICATE-TEST-AND-EVIDENCE-MATRIX.md)

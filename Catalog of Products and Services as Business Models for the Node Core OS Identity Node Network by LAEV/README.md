@@ -58,6 +58,10 @@ Each security product has its own folder with a customer-facing overview, a serv
 
 | 9 | Bitcoin Conflict Declaration and Resolution Certificate | `bitcoin-conflict-declaration` | Portable conflict declaration, append-only case history, anonymous contributions, jurisdiction links, institutional integration, and external resolution access. (Proposed; separate from node-identity profiles.) |
 
+## Additional service proposal
+
+- [Trilema Records — music identity and streaming certificate](./Certificates/certificado-de-streaming-musica-audio-video-trilema-records/README.md) — proposed artistic identity, catalog, audio/video streaming, and distribution service with a local interface planned at `http://127.0.0.1:8765`. This is a specification, not a claim that the service is already running.
+
 ## Catalog sections
 
 - [Certificates — eight security-assessment profiles plus BICDN conflict-declaration proposal](./Certificates/README.md)

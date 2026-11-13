@@ -38,6 +38,8 @@ BICDN_FILES = (
     "bicdn-contribution.schema.json",
     "examples/anonymous-legal-contact-request.json",
 )
+TRILEMA_DIR = CERTIFICATES / "certificado-de-streaming-musica-audio-video-trilema-records"
+TRILEMA_FILES = ("README.md", "SERVICE-SPECIFICATION.md", "music-identity-credential.schema.json")
 PRODUCT_FILES = (
     "README.md",
     "SERVICE-SPECIFICATION.md",
@@ -99,6 +101,29 @@ def main() -> int:
         except (OSError, json.JSONDecodeError) as exc:
             errors.append(f"invalid BICDN JSON document: {exc}")
 
+    # Trilema Records is an application/service credential proposal, not an existing node profile.
+    if not TRILEMA_DIR.is_dir():
+        errors.append("missing Trilema Records certificate directory")
+    else:
+        for name in TRILEMA_FILES:
+            if not (TRILEMA_DIR / name).is_file():
+                errors.append(f"missing Trilema Records file: {name}")
+        try:
+            import json
+            with (TRILEMA_DIR / "music-identity-credential.schema.json").open(encoding="utf-8") as handle:
+                json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"invalid Trilema Records credential schema: {exc}")
+        trilema_readme = TRILEMA_DIR / "README.md"
+        if trilema_readme.is_file() and "trilema-music-streaming" not in trilema_readme.read_text(encoding="utf-8"):
+            errors.append("Trilema Records README missing profile identifier")
+    if "Trilema Records" not in index:
+        errors.append("Trilema Records missing from catalog README")
+    certificates_index_path = CERTIFICATES / "README.md"
+    certificates_index = certificates_index_path.read_text(encoding="utf-8") if certificates_index_path.is_file() else ""
+    if "Trilema Records" not in certificates_index:
+        errors.append("Trilema Records missing from Certificates README")
+
     if errors:
         print("Certificate catalog integrity: FAIL")
         for error in errors:
@@ -108,6 +133,7 @@ def main() -> int:
     print("Certificate catalog integrity: PASS")
     print(f"- {len(PRODUCTS)} node-identity profiles align with the implementation and catalog index")
     print("- BICDN proposal documents and JSON files are present and parseable")
+    print("- Trilema Records service documents and credential JSON schema are present and parseable")
     print(f"- {len(PRODUCTS) * len(PRODUCT_FILES)} security-profile documentation files exist under Certificates/")
     print(f"- {len(SHARED)} shared catalog documents exist")
     print("- This is a documentation consistency check, not a security effectiveness test")
