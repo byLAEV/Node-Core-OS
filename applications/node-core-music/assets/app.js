@@ -20,9 +20,9 @@
     );
     const info = make("div", "track-info");
     info.append(
-      make("p", "track-id", track.track_id + " · " + (track.artists || []).join(", ")),
+      make("p", "track-id", track.track_id),
       make("h3", "", track.title + (track.version ? " · " + track.version : "")),
-      make("p", "credits", (track.label || "").replace(/^HL Music\s*·\s*/i, ""))
+      make("p", "credits", [...(track.artists || []), (track.label || "").replace(/^HL Music\s*·\s*/i, "")].filter(Boolean).join(" · "))
     );
     const audio = make("audio");
     audio.controls = true;
