@@ -1,0 +1,95 @@
+name: Node Core OS — Scheduled Health Monitoring
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+    - cron: "0 * * * *"
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node-core-scheduled-health-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  health-check:
+    name: Scheduled health check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Enforce ordinary-user execution
+        run: |
+          set -euo pipefail
+          test "$(id -u)" -ne 0
+          test -n "$HOME"
+          test -w "$HOME"
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install declared dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Run fast health checks (every 15 minutes)
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '7,22,37,52 * * * *'
+        run: |
+          set -euo pipefail
+          python -m node_core.security.crypto_health --json
+          python -m node_core.compatibility --mode diagnose --json
+          python -m unittest tests.test_crypto_health tests.test_node_identity tests.test_compatibility -v
+          python -m compileall -q main.py node_core
+
+      - name: Run complete test suite (hourly and daily)
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 * * * *' || github.event.schedule == '17 3 * * *'
+        run: |
+          set -euo pipefail
+          python -m node_core.security.crypto_health --json
+          python -m node_core.compatibility --mode diagnose --json
+          python -m compileall -q main.py node_core tests ci/linux/real_multi_node_mesh.py
+          bash installer/tests/syntax.sh
+          bash installer/tests/user-context.sh
+          bash installer/tests/compatibility.sh
+          bash installer/tests/detect-installation.sh
+          bash installer/tests/manifest.sh
+          bash installer/tests/plan.sh
+          bash installer/tests/apply.sh
+          bash installer/tests/update-preservation.sh
+          bash installer/tests/kubo-download-sources.sh
+          bash installer/tests/termux-update-preservation.sh
+          bash installer/tests/termux-installer.sh
+          python -m unittest discover -s tests -v
+
+      - name: Audit Python dependencies (daily only)
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 3 * * *'
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pip-audit
+          python -m pip_audit --requirement requirements.txt
+
+      - name: Publish run summary
+        if: always()
+        run: |
+          {
+            echo "## Node Core OS scheduled health monitoring"
+            echo
+            echo "- Trigger: $GITHUB_EVENT_NAME"
+            echo "- Schedule: ${{ github.event.schedule || 'manual' }}"
+            echo "- Commit: `$GITHUB_SHA`"
+            echo "- Result: ${{ job.status }}"
+            echo
+            echo "This workflow detects and reports failures. It does not modify source files, push commits, open repair PRs, or merge changes."
+          } >> "$GITHUB_STEP_SUMMARY"
