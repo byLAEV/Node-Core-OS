@@ -4,7 +4,7 @@
 **Machine-readable contract:** [REPOSITORY-CONTRACT.json](REPOSITORY-CONTRACT.json)  
 **Canonical installer:** `bash installer/install.sh`
 
-This document describes dependencies required by executable code and installer behavior in this repository revision.
+This document describes dependencies required by executable code and installer behavior in this repository revision. **Node Core OS runtime and host installer are GNU/Linux only.** Android is a client platform for Lindesk; Termux is not a runtime or installation target.
 
 ## Supported environments
 
