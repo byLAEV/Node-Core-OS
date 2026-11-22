@@ -6,7 +6,7 @@ from pathlib import Path
 from node_core.compatibility.detection import detect_environment, normalize_architecture, parse_os_release
 from node_core.compatibility.policy import CompatibilityManifestError, evaluate_environment, load_manifest
 
-BASE_COMMANDS={"bash","python3","tar","sha512sum","mkdir","cp","rm","mktemp","uname","awk","realpath","stat","id","find","grep","sed","nohup","curl","wget","pkg","ipfs","systemctl"}
+BASE_COMMANDS={"bash","python3","tar","sha512sum","mkdir","cp","rm","mktemp","uname","awk","realpath","stat","id","find","grep","sed","nohup","curl","wget","ipfs","systemctl"}
 def lookup_from(names):
     return lambda name: f"/mock/bin/{name}" if name in names else None
 def linux_environment(**kwargs):
@@ -54,49 +54,23 @@ class TerminalCompatibilityTests(unittest.TestCase):
         self.assertEqual(result["exit_code"],3)
     def test_non_linux_fails_closed(self):
         self.assertEqual(evaluate_environment(linux_environment(system="Darwin"),self.manifest)["status"],"unsupported")
-    def test_native_termux_arm64_profile(self):
-        names=BASE_COMMANDS|{"pkg","ipfs"}
-        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux","TERM":"screen-256color"},
-            system="Linux",machine="aarch64",python_version=(3,12,4),terminal_isatty=True,os_release_text="",
-            command_lookup=lookup_from(names),current_uid=10000,libc_info=("bionic","unknown"))
-        self.assertEqual(env["target"]["family"],"termux")
-        self.assertEqual(evaluate_environment(env,self.manifest)["status"],"ready")
-    def test_termux_markers_without_pkg_are_not_misclassified_as_gnu_linux(self):
-        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
-            system="Linux",machine="aarch64",python_version=(3,12,4),terminal_isatty=True,os_release_text="",
-            command_lookup=lookup_from(BASE_COMMANDS-{"pkg"}),current_uid=10000)
-        self.assertEqual(env["target"]["family"],"termux")
-        result=evaluate_environment(env,self.manifest,mode="prepare")
-        self.assertEqual(result["status"],"requires_preparation")
-        self.assertIn("pkg",result["missing_requirements"])
-    def test_android_termux_arm64_profile(self):
-        names=BASE_COMMANDS|{"pkg","ipfs"}
-        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"googleplay.2026.10.09","PREFIX":"/mock/termux","TERM":"xterm-256color"},
-            system="Android",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,os_release_text="",
-            command_lookup=lookup_from(names),current_uid=10292,libc_info=("", ""))
-        self.assertEqual(env["os"]["system"],"Android")
-        self.assertEqual(env["target"]["family"],"termux")
-        self.assertEqual(env["target"]["libc"]["name"],"bionic")
-        self.assertEqual(evaluate_environment(env,self.manifest,mode="install")["status"],"ready")
-    def test_android_without_termux_markers_remains_unsupported(self):
-        env=detect_environment(env={"PATH":"/mock/bin","TERM":"xterm-256color"},
-            system="Android",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,
-            command_lookup=lookup_from(BASE_COMMANDS|{"ipfs"}),current_uid=10292)
+    def test_manifest_declares_linux_only_runtime(self):
+        self.assertEqual(set(self.manifest["supported_environments"]), {"gnu_linux"})
+
+    def test_android_is_rejected_even_with_termux_markers(self):
+        env=detect_environment(env={"PATH":"/mock/bin","TERMUX_VERSION":"0.1","PREFIX":"/mock/termux"},
+            system="Android",machine="aarch64",python_version=(3,13,0),terminal_isatty=True,
+            command_lookup=lookup_from(BASE_COMMANDS),current_uid=10000)
         self.assertEqual(env["target"]["family"],"unsupported")
-        result=evaluate_environment(env,self.manifest,mode="install")
-        self.assertEqual(result["status"],"unsupported")
-        self.assertEqual(result["exit_code"],3)
-    def test_android_termux_markers_without_pkg_remain_unsupported(self):
-        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
-            system="Android",machine="aarch64",python_version=(3,13,13),terminal_isatty=True,
-            command_lookup=lookup_from(BASE_COMMANDS-{"pkg"}),current_uid=10292)
+        self.assertEqual(evaluate_environment(env,self.manifest,mode="install")["status"],"unsupported")
+
+    def test_termux_markers_on_linux_are_not_a_runtime_profile(self):
+        env=detect_environment(env={"PATH":"/mock/bin","TERMUX_VERSION":"0.1","PREFIX":"/mock/termux"},
+            system="Linux",machine="aarch64",python_version=(3,12,0),terminal_isatty=True,
+            os_release_text="",command_lookup=lookup_from(BASE_COMMANDS),current_uid=10000)
         self.assertEqual(env["target"]["family"],"unsupported")
-    def test_termux_x86_64_is_unsupported(self):
-        names=BASE_COMMANDS|{"pkg","ipfs"}
-        env=detect_environment(env={"PATH":"/mock/termux/bin","TERMUX_VERSION":"0.118","PREFIX":"/mock/termux"},
-            system="Linux",machine="x86_64",python_version=(3,12,4),terminal_isatty=True,os_release_text="",
-            command_lookup=lookup_from(names),current_uid=10000)
-        self.assertEqual(evaluate_environment(env,self.manifest)["status"],"unsupported")
+        self.assertEqual(evaluate_environment(env,self.manifest,mode="install")["status"],"unsupported")
+
     def test_term_dumb_disables_ansi_without_blocking(self):
         env=linux_environment(env={"PATH":"/mock/bin","TERM":"dumb"},terminal_isatty=True)
         result=evaluate_environment(env,self.manifest)
