@@ -62,7 +62,7 @@ See [Implementation Architecture](docs/ARCHITECTURE.md).
 
 ### GNU/Linux runtime and Lindesk Android client
 
-Node Core OS runtime, services, local storage, identity and Kubo/IPFS integration are supported on GNU/Linux only, for distributions and architectures with declared test evidence. Android and Termux are not runtime or installation targets for Node Core OS. Lindesk is a separate Android client for authorized access to a Linux node and for guiding or initiating a user-approved Linux installation through documented interfaces. Lindesk does not run the Node Core OS runtime locally. See [Target Repository Structure](docs/platform/TARGET-REPOSITORY-STRUCTURE.md), [Linux-only restructuring plan](docs/platform/LINUX-ONLY-RESTRUCTURING-PLAN.md), and [Terminal Compatibility Contract](docs/TERMINAL-COMPATIBILITY.md).
+Node Core OS runtime, services, local storage, identity and Kubo/IPFS integration are supported on GNU/Linux only, for distributions and architectures with declared test evidence. Android and Termux are not runtime or installation targets for Node Core OS. Lindesk is a separate Android client for authorized access to a Linux node and for guiding or initiating a user-approved Linux installation through documented interfaces. Lindesk does not run the Node Core OS runtime locally. See [Target Repository Structure](docs/platform/TARGET-REPOSITORY-STRUCTURE.md), [Repository Migration Map](docs/platform/REPOSITORY-MIGRATION-MAP.md), [Linux-only restructuring plan](docs/platform/LINUX-ONLY-RESTRUCTURING-PLAN.md), and [Terminal Compatibility Contract](docs/TERMINAL-COMPATIBILITY.md).
 
 ### Local storage
 
