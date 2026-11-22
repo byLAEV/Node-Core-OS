@@ -18,15 +18,15 @@ terminals and terminal multiplexers are not an allowlist. Node Core checks POSIX
 terminal capabilities such as TTY availability, TERM and ANSI support, then uses a
 generic text fallback when required.
 
-## Supported profiles in this contract
+## Supported runtime profile in this contract
 
 | Profile | Architectures | Distribution/environment policy |
 |---|---|---|
 | GNU/Linux | x86_64, aarch64 | Capability-based; an unknown distribution is not rejected solely because its ID is not listed |
-| Native Termux | aarch64 | Requires native Termux markers, pkg and Android-native packages |
 
-Other operating systems and architectures fail closed until a new profile is declared
-and tested. Matching a profile is a compatibility decision, not proof of a successful
+Android and Termux are not runtime or installation profiles. They fail closed before
+installation or update mutation. Lindesk is a separate Android client that accesses a
+Linux node through the documented, authenticated Node Core API. Matching a profile is a compatibility decision, not proof of a successful
 installation on every distro, terminal emulator or kernel.
 
 The detector records distribution ID/version, architecture, libc family, Python
@@ -64,7 +64,7 @@ actions.
 - \`systemd --user\` is optional; use the manual Node Core service lifecycle when the
   user manager is unavailable.
 - GNU/Linux uses the declared Linux Kubo binary path selected by the installer.
-- Termux uses Android-native Python cryptography and Kubo packages.
+- Android access and installation workflows belong to Lindesk and a documented Linux-node API.
 - Terminal presentation is capability-driven; color and cursor controls are optional.
 
 ## Diagnostics
