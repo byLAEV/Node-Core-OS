@@ -81,13 +81,10 @@ def detect_environment(
     prefix = env_values.get("PREFIX", "")
     termux_marker = bool(env_values.get("TERMUX_VERSION") and prefix)
     termux_pkg = bool(lookup("pkg") or (prefix and (Path(prefix) / "bin" / "pkg").is_file()))
-    # Termux reports either Linux or Android depending on the Python build.
-    # Require both Termux markers and its native package manager; plain Android
-    # must remain unsupported.
-    is_termux = termux_marker and (
-        active_system == "Linux" or (active_system == "Android" and termux_pkg)
-    )
-    family = "termux" if is_termux else ("gnu_linux" if active_system == "Linux" else "unsupported")
+    # Android/Termux is deliberately not a Node Core OS runtime target.
+    # Markers are retained for diagnostics and fail closed in compatibility policy.
+    is_termux = termux_marker
+    family = "unsupported" if active_system == "Android" or is_termux else ("gnu_linux" if active_system == "Linux" else "unsupported")
     architecture = normalize_architecture(active_machine)
 
     term = env_values.get("TERM", "")
@@ -144,7 +141,7 @@ def detect_environment(
     return {
         "os": {
             "system": active_system, "name": os_release.get("NAME", "unknown"),
-            "id": distro_id or ("termux" if is_termux else "unknown"),
+            "id": distro_id or ("android-termux" if is_termux and active_system == "Android" else ("termux" if is_termux else "unknown")),
             "id_like": os_release.get("ID_LIKE", "").lower().split(),
             "version_id": os_release.get("VERSION_ID", "unknown"),
             "pretty_name": os_release.get("PRETTY_NAME", os_release.get("NAME", "unknown")),
@@ -152,7 +149,7 @@ def detect_environment(
         "target": {
             "family": family, "architecture": architecture,
             "libc": {"name": libc_name, "version": libc_version or "unknown"},
-            "termux_prefix": prefix if is_termux else "",
+            "termux_prefix": "",
         },
         "python": {
             "version": list(active_python),
