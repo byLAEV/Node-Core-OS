@@ -2,7 +2,7 @@
 
 ## Objective
 
-The installer converts a supported Linux terminal environment into a usable Node Core OS installation. GNU/Linux distributions and Termux are supported environments for the same terminal-first installer.
+The installer converts a supported GNU/Linux environment into a usable Node Core OS installation. GNU/Linux is the only supported runtime and host-installation platform. Android and Termux are unsupported.
 
 The installation boundary is:
 
@@ -26,24 +26,24 @@ verification
 
 ## Single installer entry point
 
-Run the same command from any supported Linux terminal, including native Termux on Android:
+Run the canonical installer from a supported GNU/Linux terminal:
 
 ```bash
 bash installer/install.sh
 ```
 
-The installer runs the manifest-driven Node Core Terminal Compatibility Layer (NCTCL) after dependency preparation and before application filesystem changes. It detects the Linux environment and evaluates capabilities rather than relying on terminal-emulator or distribution-name allowlists. On GNU/Linux distributions it checks host tools and uses the pinned Linux Kubo binary. In native Termux it uses `pkg` to install only missing user-space dependencies, uses Termux-native Python cryptography and Kubo packages, and avoids GNU/Linux manylinux binaries. Both paths use the same Node Core installation layout, identity initialization, verification and updater.
+The installer runs the manifest-driven Node Core Terminal Compatibility Layer (NCTCL) before application filesystem changes and evaluates GNU/Linux capabilities rather than relying on terminal-emulator or distribution-name allowlists. It checks required host tools without invoking a system package manager, uses the pinned Linux Kubo binary and maintains a user-owned installation. Android and Termux are rejected before dependency installation or filesystem mutation.
 
-The legacy `installer/termux-install.sh` command remains as a backward-compatible alias to `installer/install.sh`; it contains no separate installation implementation. Debian/PRoot are not required for native Termux. Windows and macOS are not supported.
+The legacy `installer/termux-install.sh` file is retained temporarily only to fail safely and direct Android users to Lindesk. It must not invoke the Linux installer, `pkg`, or modify the host. Windows and macOS are not supported.
 
 ## Terminal compatibility preflight
 
-NCTCL reads `compatibility/manifest.json`, validates the GNU/Linux or native Termux profile, checks architecture, Python, required commands, terminal TTY/ANSI capabilities and optional `systemd --user`. It returns `ready`, `requires_preparation` or `unsupported`. Unknown GNU/Linux distribution IDs and terminal emulator names are evaluated by capabilities; unsupported architectures fail closed. The preflight is read-only and never installs packages or modifies user data. See [Terminal Compatibility Contract](TERMINAL-COMPATIBILITY.md).
+NCTCL reads `compatibility/manifest.json`, validates the GNU/Linux profile, checks architecture, Python, required commands, terminal TTY/ANSI capabilities and optional `systemd --user`. Android/Termux is classified as unsupported and rejected before mutation. It returns `ready`, `requires_preparation` or `unsupported`. Unknown GNU/Linux distribution IDs and terminal emulator names are evaluated by capabilities; unsupported architectures fail closed. The preflight is read-only and never installs packages or modifies user data. See [Terminal Compatibility Contract](TERMINAL-COMPATIBILITY.md).
 
 ## Installation phases
 
 1. Platform check
-2. Dependency check (GNU/Linux package-manager agnostic; native Termux may use `pkg` for missing user-space packages)
+2. Dependency check (GNU/Linux package-manager agnostic; unsupported platforms fail before mutation)
 3. Prepare user-owned filesystem
 4. Install/copy Node Core application
 5. Install Kubo and verify checksum
@@ -103,7 +103,7 @@ The installer does not modify the user's shell startup files automatically. This
 The installer requires Python 3.10 or newer and `cryptography>=42.0.0` for persistent Ed25519 node identity and other cryptographic runtime modules.
 
 - GNU/Linux installs Python dependencies into the private virtual environment, using bundled wheels when they match the host architecture and the configured Python package index when they do not.
-- Termux installs the Android-native `python-cryptography` package through `pkg`. Its virtual environment uses `--system-site-packages` so the Android-native extension remains available. GNU/Linux manylinux wheels are never installed into Termux.
+- Android does not install the Node Core Python runtime. Lindesk is a separate Android client; its dependencies and build lifecycle are independent from the Linux host runtime.
 - The installer verifies the cryptography import and generates an Ed25519 key in the target runtime before it initializes persistent node identity.
 
 The installer verifies using the private runtime interpreter at `~/.node-core/runtime/node-core-venv/bin/python`:
@@ -132,7 +132,7 @@ The updater installs this behavior by replacing the application code from the se
 
 ## Kubo
 
-On GNU/Linux, the installer downloads the pinned Kubo release and verifies its SHA-512 checksum. On Termux, the unified installer uses Termux's Android-native `kubo` package and never attempts to run the GNU/Linux Kubo binary. The executable is expected at `$PREFIX/bin/ipfs`.
+On GNU/Linux, the installer downloads the pinned Kubo release and verifies its SHA-512 checksum. Kubo is installed and executed on the GNU/Linux host. Lindesk never installs or executes Kubo on Android. The executable is expected at `$PREFIX/bin/ipfs`.
 
 The GNU/Linux Kubo installer performs:
 
@@ -164,7 +164,7 @@ Supported Kubo installation paths:
 
 - GNU/Linux AMD64
 - GNU/Linux ARM64
-- Termux Android ARM64 using the Termux `kubo` package
+- Android/Termux: unsupported as runtime or installation targets
 
 Other architectures fail explicitly until their installation path is implemented and tested.
 
@@ -247,11 +247,11 @@ The installer intentionally avoids:
 
 The generic GNU/Linux installer never installs host packages. It checks for the terminal utilities it actually uses and stops with a clear dependency message when one is missing. This avoids root, sudo, system package managers, and fixed system paths.
 
-The unified installer detects native Termux and installs only missing user-space packages with `pkg install -y`. On other Linux terminals it never invokes a package manager. Neither path uses root or sudo. CI tests exercise environment detection and dependency selection as well as the root-rejection and HOME-boundary guards.
+The installer supports GNU/Linux only and never invokes a system package manager. It does not use root or sudo. CI tests exercise Linux environment detection, unsupported Android/Termux rejection before mutation, root-rejection and HOME-boundary guards.
 
 ## Third-party installation boundary
 
-The installer installs Kubo as external infrastructure and the cryptography Python package required for Ed25519 node identity. GNU/Linux uses a private virtual environment; Termux uses the Android-native package provided by its package manager.
+The installer installs Kubo as external infrastructure and the cryptography Python package required for Ed25519 node identity on GNU/Linux. The Linux runtime uses a private virtual environment. Android client dependencies are managed separately by Lindesk.
 
 The resulting dependency model is:
 
