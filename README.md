@@ -6,9 +6,9 @@ Node Core OS is an infrastructure project designed to give people and entities a
 
 - **Repository:** https://github.com/byLAEV/Node-Core-OS/
 - **Repository version (`VERSION`):** 1.5.6
-- **Canonical installer:** `bash installer/install.sh` (GNU/Linux and native Termux ARM64)
+- **Canonical installer:** `bash installer/install.sh` (supported GNU/Linux only; Android is not a runtime target)
 - **Release/tag note:** the previously published 1.5.6 Release was removed for correction. The Git tag `1.5.6` still points to an older source snapshot and does not contain the current `main` code. Do not use that historical tag as the final 1.5.6 package source; the release candidate must be revalidated and the tag reconciled to the approved final commit before publication.
-- **Primary environment:** GNU/Linux terminal
+- **Runtime platform:** GNU/Linux only. **Android client:** Lindesk (access and Linux installation interface)
 - **Project status:** Active development; individual capabilities have different implementation and verification states.
 
 > **Implementation status matters:** architectural goals and proposals in this README are not claims that every described protocol, public API, or distributed feature is already implemented or production-ready.
@@ -60,9 +60,9 @@ Kubo is an external infrastructure dependency; Node Core OS does not reimplement
 
 See [Implementation Architecture](docs/ARCHITECTURE.md).
 
-### Linux terminal compatibility
+### GNU/Linux runtime and Lindesk Android client
 
-Node Core OS is designed for Linux consoles and terminal environments first. Its Terminal Compatibility Layer (NCTCL) uses versioned manifests and executable capability checks to detect the distribution, architecture, shell, terminal behavior, Python runtime, dependencies and optional service managers. It supports one core and one installer with platform adapters, rather than separate products for each terminal. Terminal emulator names are not an allowlist: the system uses generic TTY/ANSI detection and text fallback. See [Terminal Compatibility Contract](docs/TERMINAL-COMPATIBILITY.md). A detected profile is not claimed as tested until the matching installation tests pass.
+Node Core OS runtime, services, local storage, identity and Kubo/IPFS integration are supported on GNU/Linux only, for distributions and architectures with declared test evidence. Android and Termux are not runtime or installation targets for Node Core OS. Lindesk is a separate Android client for authorized access to a Linux node and for guiding or initiating a user-approved Linux installation through documented interfaces. Lindesk does not run the Node Core OS runtime locally. See [Target Repository Structure](docs/platform/TARGET-REPOSITORY-STRUCTURE.md), [Repository Migration Map](docs/platform/REPOSITORY-MIGRATION-MAP.md), [Linux-only restructuring plan](docs/platform/LINUX-ONLY-RESTRUCTURING-PLAN.md), and [Terminal Compatibility Contract](docs/TERMINAL-COMPATIBILITY.md).
 
 ### Local storage
 
@@ -240,9 +240,9 @@ Do not treat proposed endpoints or SDKs as available until they are implemented,
 
 ## 10. Installation
 
-### Supported Linux terminal environments
+### Supported GNU/Linux environments
 
-Node Core OS has one product and one canonical installer: `bash installer/install.sh`. GNU/Linux is the primary target; native Termux on Android ARM64 is supported by the same installer with Android-native dependency selection. Installation and update run as the normal user and reject UID 0.
+Node Core OS has one runtime product and one canonical installer: `bash installer/install.sh`. GNU/Linux is the only supported runtime platform, limited to distributions and architectures with test evidence. Android and Termux are not installation or runtime targets. Lindesk is the separate Android access and installation client. Installation and update run as the normal user and reject UID 0.
 
 Requirements include GNU/Linux, Bash, Python 3.10 or later, standard terminal utilities, and the required download and verification tools. Kubo is required for IPFS-dependent features. See [Dependencies](docs/DEPENDENCIES.md) for the full contract.
 
@@ -260,15 +260,9 @@ If an installation already exists, use its documented updater rather than runnin
 
 See [Installer Specification](docs/INSTALLER.md).
 
-### Termux on Android
+### Android access through Lindesk
 
-Native Termux on Android ARM64 uses the same canonical command:
-
-```bash
-bash installer/install.sh
-```
-
-The installer detects Termux and selects Android-native packages through `pkg`, including `python-cryptography` and Kubo. The historical `bash installer/termux-install.sh` remains only as a compatibility alias; it is not a second implementation. Linux CI fixtures do not replace physical Android-device validation. Windows and macOS are not supported.
+Android is supported only as the client platform for Lindesk, not as a Node Core OS runtime. Lindesk connects to an authorized GNU/Linux node through a documented, versioned API and can provide installation guidance or user-approved deployment flows. It must not expose Kubo's administrative RPC or silently transfer node private keys. The former native Termux installation profile is deprecated by this platform decision and will be removed from active compatibility and installer paths only through tested migration commits.
 
 ## 11. Implementation status and roadmap
 
@@ -320,7 +314,7 @@ Before proposing a new protocol, define its purpose, participants, inputs, outpu
 | [Implementation Architecture](docs/ARCHITECTURE.md) | Core components and implementation boundaries. |
 | [Dependencies](docs/DEPENDENCIES.md) | Platform and runtime requirements. |
 | [Installer Specification](docs/INSTALLER.md) | Installation and update behavior. |
-| [Termux Guide](docs/TERMUX.md) | Android Termux installation path. |
+| [Linux-only restructuring plan](docs/platform/LINUX-ONLY-RESTRUCTURING-PLAN.md) | Platform boundary, target layout, migration stages and acceptance criteria. |
 | [API Contract](docs/API-CONTRACT.md) | Proposed public API contract. |
 | [SDK Integration](docs/SDK-INTEGRATION.md) | Integration requirements and roadmap. |
 | [Identity Design Principles](docs/IDENTITY-DESIGN-PRINCIPLES.md) | Identity, declarations, and verification boundaries. |

@@ -16,20 +16,14 @@
       "id": "gnu-linux-aarch64",
       "status": "supported-installer-target",
       "kubo": "v0.43.1"
-    },
-    {
-      "id": "termux-android-aarch64",
-      "status": "compatible-terminal-target",
-      "package_manager": "pkg",
-      "native_python_crypto": "python-cryptography",
-      "native_kubo": "kubo",
-      "physical_device_validation": "must_be_reported_separately"
     }
   ],
   "unsupported_platforms": [
     "windows",
     "macos",
-    "other_untested_architectures"
+    "other_untested_architectures",
+    "android",
+    "termux"
   ],
   "python": {
     "minimum": "3.10",
@@ -40,8 +34,7 @@
     "http_client": "urllib (standard library)"
   },
   "kubo": {
-    "gnu_linux_pinned": "v0.43.1",
-    "termux": "native Termux kubo package"
+    "gnu_linux_pinned": "v0.43.1"
   },
   "privilege": {
     "root": false,
@@ -96,7 +89,6 @@
     "distribution": "cryptography",
     "minimum_version": "42.0.0",
     "gnu_linux_install": "private-venv-binary-wheels-only",
-    "termux_install": "native-python-cryptography",
     "self_test": "node_core.security.crypto_health",
     "algorithms": [
       "Ed25519",
@@ -122,13 +114,17 @@
       "x86_64",
       "aarch64"
     ],
-    "termux_architectures": [
-      "aarch64"
-    ],
     "distribution_policy": "capability_based_not_hardcoded_allowlist",
     "terminal_emulator_policy": "informational_only_generic_posix_tty_detection",
     "systemd_user": "optional_manual_service_fallback",
     "preflight_mutates_host": false,
     "compatibility_match_is_installation_evidence": false
+  },
+  "android_client": {
+    "id": "Lindesk",
+    "platform": "Android",
+    "role": "authenticated client for GNU/Linux Node Core OS nodes and user-approved Linux installation flows",
+    "runs_node_core_runtime": false,
+    "installation_target": "GNU/Linux host only"
   }
 }

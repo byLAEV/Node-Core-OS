@@ -28,11 +28,18 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertEqual(version, self.contract["version"])
         self.assertIn(f"Repository version (`VERSION`):** {version}", self.readme)
 
-    def test_one_canonical_installer_and_legacy_alias(self):
+    def test_linux_installer_and_legacy_termux_entry_fail_closed(self):
         self.assertEqual(self.contract["canonical_installer"], "installer/install.sh")
         self.assertIn("bash installer/install.sh", self.readme)
         alias = (ROOT / self.contract["legacy_installer_alias"]).read_text()
-        self.assertIn('exec bash "$INSTALLER_DIR/install.sh" "$@"', alias)
+        self.assertIn("GNU/Linux only.", alias)
+        self.assertIn(
+            "This legacy Termux installer does not install, update, or modify Node Core OS.",
+            alias,
+        )
+        self.assertIn("exit 1", alias)
+        self.assertNotIn('exec bash "$INSTALLER_DIR/install.sh" "$@"', alias)
+        self.assertNotIn("pkg install", alias)
 
     def test_python_runtime_dependencies_match_requirements(self):
         declared = [line.strip() for line in self.requirements.splitlines()
@@ -67,9 +74,16 @@ class RepositoryCoherenceTests(unittest.TestCase):
         self.assertNotIn("actions/checkout@v4", self.ci_workflow)
         self.assertNotIn("actions/setup-python@v5", self.ci_workflow)
 
-    def test_platform_and_crypto_contract_are_documented(self):
-        self.assertIn("Termux", self.dependencies)
-        self.assertIn("same installer", self.dependencies.lower())
+    def test_linux_only_platform_and_lindesk_contract_are_documented(self):
+        platform_ids = {platform["id"] for platform in self.contract["platforms"]}
+        self.assertTrue(platform_ids)
+        self.assertTrue(all(platform_id.startswith("gnu-linux-") for platform_id in platform_ids))
+        self.assertIn("android", self.contract["unsupported_platforms"])
+        self.assertIn("termux", self.contract["unsupported_platforms"])
+        self.assertFalse(self.contract["android_client"]["runs_node_core_runtime"])
+        self.assertIn("Lindesk", self.dependencies)
+        self.assertIn("GNU/Linux only", self.dependencies)
+        self.assertNotIn("same installer", self.dependencies.lower())
         self.assertIn("cryptography>=42.0.0", self.installer_docs)
         self.assertIn("Python 3.10", self.dependencies)
 

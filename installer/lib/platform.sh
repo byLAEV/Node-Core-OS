@@ -6,19 +6,13 @@ if [[ "$(id -u)" == "0" ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
-# Node Core OS targets Linux terminal environments. Termux is one compatible
-# Linux terminal environment, not a separate Node Core OS product or installer.
+# Node Core OS supports GNU/Linux only. Android/Termux is a Lindesk client target.
 node_core_is_termux() {
-  [[ -n "${TERMUX_VERSION:-}" && -n "${PREFIX:-}" && -d "$PREFIX" ]] &&
-    command -v pkg >/dev/null 2>&1
+  [[ -n "${TERMUX_VERSION:-}" || "${PREFIX:-}" == *com.termux* ]]
 }
 
 node_core_platform_name() {
-  if node_core_is_termux; then
-    printf 'Linux terminal (Termux-compatible Android environment)\n'
-  else
-    printf 'GNU/Linux terminal\n'
-  fi
+  printf 'GNU/Linux (Node Core OS runtime)\n'
 }
 
 require_user_installation() {
@@ -55,9 +49,10 @@ require_user_installation() {
 }
 
 require_linux() {
-  if [[ "$(uname -s)" != "Linux" ]]; then
-    printf 'Node Core OS requires a Linux terminal environment.\n' >&2
-    printf 'Installation aborted.\n' >&2
+  if [[ "$(uname -s)" != "Linux" || -n "${TERMUX_VERSION:-}" || "${PREFIX:-}" == *com.termux* ]]; then
+    printf 'Node Core OS runtime and installer support GNU/Linux only.\n' >&2
+    printf 'Android/Termux is not a runtime target; use Lindesk to access or install a Linux node.\n' >&2
+    printf 'Installation aborted before filesystem mutation.\n' >&2
     return 1
   fi
 }

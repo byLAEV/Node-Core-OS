@@ -4,7 +4,7 @@
 **Machine-readable contract:** [REPOSITORY-CONTRACT.json](REPOSITORY-CONTRACT.json)  
 **Canonical installer:** `bash installer/install.sh`
 
-This document describes dependencies required by executable code and installer behavior in this repository revision.
+This document describes dependencies required by executable code and installer behavior in this repository revision. **Node Core OS runtime and host installer are GNU/Linux only.** Android is a client platform for Lindesk; Termux is not a runtime or installation target.
 
 ## Supported environments
 
@@ -12,11 +12,11 @@ This document describes dependencies required by executable code and installer b
 |---|---|---|
 | GNU/Linux x86_64 | Primary target | User-owned Python virtual environment; pinned Linux Kubo binary |
 | GNU/Linux aarch64 | Supported installer target | User-owned Python virtual environment; matching pinned Linux Kubo binary |
-| Termux Android aarch64 | Compatible terminal target | Same installer; Termux-native packages through `pkg`; native Python site-packages |
+| Android (Lindesk client) | Client platform only | Connects to GNU/Linux nodes through the versioned API; no local runtime or host installer |
 | Other Linux architectures | Not supported by current installer | Fail closed; never substitute another architecture's binary |
 | Windows / macOS | Not supported | No compatibility claim |
 
-Termux compatibility is implemented inside the shared Linux-terminal installer. `installer/termux-install.sh` is a compatibility alias, not a second installer. The Node Core Terminal Compatibility Layer (NCTCL) evaluates declared capabilities rather than requiring a fixed terminal-emulator or distribution-name allowlist. See [TERMINAL-COMPATIBILITY.md](TERMINAL-COMPATIBILITY.md).
+Android and Termux are not Node Core OS runtime or installation targets. The legacy `installer/termux-install.sh` entry point fails closed without installing packages or modifying the host. Lindesk is a separate Android client for authorized access to supported GNU/Linux nodes. NCTCL evaluates GNU/Linux capabilities rather than requiring a fixed terminal-emulator or distribution-name allowlist. See [TERMINAL-COMPATIBILITY.md](TERMINAL-COMPATIBILITY.md).
 
 ## Required runtime dependencies
 
@@ -25,7 +25,7 @@ Termux compatibility is implemented inside the shared Linux-terminal installer. 
 | Python | Core runtime | 3.10 or newer | Installer version check; CI currently tests Python 3.12 |
 | `cryptography` | Core runtime | `>=42.0.0` | `requirements.txt`; used by node identity, certificates, TLS, signed policy and secure messaging |
 | Python standard library | Core runtime | Included with Python | HTTP uses `urllib`; JSON, hashing, filesystem, sockets and process handling use standard modules |
-| Kubo / IPFS | Infrastructure | Required for IPFS/Kubo features | GNU/Linux pinned v0.43.1; Termux native `kubo` package |
+| Kubo / IPFS | Infrastructure | Required for IPFS/Kubo features | GNU/Linux pinned v0.43.1; runs on the Linux node |
 | Bash | Installer | Required | Installer scripts and shell tests |
 | curl or wget | Installer/updater | At least one | Downloads and API operations |
 | tar | Installer | Required | Archive extraction |
@@ -40,7 +40,7 @@ The installed application runs with `~/.node-core/runtime/node-core-venv/bin/pyt
 
 GNU/Linux installs requirements into this private virtual environment, using compatible binary wheels only, preferring bundled wheels and then the configured Python package index. Source compilation is not an automatic fallback. Install, verification, update candidate validation and CI use the shared `node_core.security.crypto_health` self-test for version, Ed25519 sign/verify/tamper rejection, PKCS8 PEM round-trip and SHA-256.
 
-Native Termux uses its Android-native `python-cryptography` package. Its virtual environment exposes Termux site-packages; GNU/Linux manylinux wheels must not be installed into Android Python.
+Android does not host the Node Core OS Python runtime. Lindesk is a separate client; the Python runtime and cryptographic dependencies are installed on the GNU/Linux node.
 
 Application compilation, tests and updater recovery validation must use the same private interpreter as the installed application. A system `python3` test is not evidence that the installed runtime environment is healthy.
 
@@ -62,12 +62,12 @@ See [Cryptographic Runtime Contract and Recovery](CRYPTOGRAPHY-OPERATIONS.md) fo
 
 - Git is used for development and repository operations, not by the installed runtime.
 - `systemd --user` is optional service integration. Kubo can use the Node Core-managed manual lifecycle when unavailable.
-- Termux `pkg` is used only after native Termux detection to install missing user-space packages. GNU/Linux package managers are not invoked.
+- The Node Core OS installer never invokes Android/Termux package managers. Lindesk client dependencies are managed separately from the Linux runtime.
 - OpenTimestamps tooling and HashPaper source are separate/optional paths, not Node Core core-runtime Python requirements in the 1.5.6 installed application. The installer removes the suspended HashPaper application source from the installed application tree.
 
 ## Kubo version and integrity
 
-GNU/Linux installation pins Kubo v0.43.1 and verifies the archive against its published SHA-512 checksum before installation. Native Termux uses the Android-native `kubo` package from the configured Termux repository.
+GNU/Linux installation pins Kubo v0.43.1 and verifies the archive against its published SHA-512 checksum. Kubo runs on the Linux node; Lindesk does not install or execute Kubo on Android.
 
 Kubo remains an external service and owns its repository, daemon, API, gateway, peer identity, content addressing and pinning. Node Core OS manages it through its adapter and user-level lifecycle.
 
@@ -75,7 +75,7 @@ Kubo remains an external service and owns its repository, daemon, API, gateway, 
 
 Installer, updater and uninstaller reject UID 0. Do not use `root`, `sudo` or `su` for Node Core OS installation, update, tests or runtime operation.
 
-On GNU/Linux, missing host utilities are reported; the installer does not invoke apt, dnf, yum, pacman, zypper or another system package manager. Native Termux is the explicit exception and may use `pkg install -y` for missing user-space packages.
+On GNU/Linux, missing host utilities are reported; the installer does not invoke apt, dnf, yum, pacman, zypper or another system package manager. Android and Termux are rejected before dependency installation or host mutation.
 
 ## Change policy
 

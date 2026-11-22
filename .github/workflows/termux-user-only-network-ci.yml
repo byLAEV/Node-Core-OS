@@ -1,4 +1,4 @@
-name: Node Core OS — User-only Kubo network integration
+name: Node Core OS — Linux user-only Kubo network integration
 
 on:
   push:
