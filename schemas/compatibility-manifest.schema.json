@@ -35,17 +35,13 @@
     "supported_environments": {
       "type": "object",
       "required": [
-        "gnu_linux",
-        "termux"
+        "gnu_linux"
       ],
       "properties": {
         "gnu_linux": {
           "$ref": "#/$defs/profile"
         },
-        "termux": {
-          "$ref": "#/$defs/profile"
-        }
-      },
+              },
       "additionalProperties": false
     },
     "terminal_policy": {
