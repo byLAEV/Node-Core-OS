@@ -1,4 +1,3 @@
-import json
 import os
 import subprocess
 import sys
@@ -29,8 +28,9 @@ class CliTests(unittest.TestCase):
                 capture_output=True, text=True, env=env,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue(result.stdout.strip(), "status command returned empty output")\n            payload = json.loads(result.stdout)
-            self.assertFalse(payload["initialized"])
+            self.assertTrue(result.stdout.strip(), "status command returned empty output")
+            self.assertIn("Node Core OS", result.stdout)
+            self.assertIn("Initialized: no", result.stdout)
             self.assertFalse((Path(home) / ".local/share/node-core-os").exists())
 
 
