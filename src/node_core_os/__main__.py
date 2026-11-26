@@ -43,7 +43,7 @@ def menu():
             print("Invalid option; enter one of the listed numbers.")
 
 def main():
-    parser = argparse.ArgumentParser(prog="node-core-os")
+    parser = argparse.ArgumentParser(prog="node-core-os", description="Node Core OS: low-memory, user-only text interface")
     parser.add_argument("--version", action="version", version=VERSION)
     parser.add_argument("command", nargs="?", choices=("menu", "status", "init", "paths"), default="menu")
     args = parser.parse_args()
