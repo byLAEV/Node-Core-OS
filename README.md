@@ -4,7 +4,7 @@ Node Core OS is a modular, local-first runtime for managing local data and decen
 
 ## Release line
 
-The restructuring branch starts the **1.6.0** line. The previous repository tree is preserved without rewriting its contents under [historial/](historial/). Historical code is reference material and is not automatically installed or executed.
+The restructuring starts at 1.6.0; the user-only, low-memory interface is **1.6.1**. The previous repository tree is preserved without rewriting its contents under [historial/](historial/). Historical code is reference material and is not automatically installed or executed.
 
 ## Supported targets
 
@@ -20,7 +20,7 @@ python3 -m node_core_os status
 python3 -m node_core_os init
 ```
 
-## Build Debian package
+## Install without root (recommended)\n\nBuild or obtain the `node-core-os_1.6.1_all.deb` archive, then run as your normal account:\n\n```sh\nsh packaging/debian/install-user.sh ./dist/node-core-os_1.6.1_all.deb\n$HOME/.local/bin/node-core-os\n```\n\nThe user installer extracts the archive under `~/.local`, does not call sudo, and does not modify system paths. The interface is plain text, uses numeric terminal input, and loads on demand. See [docs/USER-MODE.md](docs/USER-MODE.md).\n\n## Build Debian package
 
 On Debian/Ubuntu ARM64 with Python 3 available:
 
