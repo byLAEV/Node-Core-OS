@@ -35,5 +35,5 @@ sed -i "s/^Version:.*/Version: $VERSION/" "$WORK/DEBIAN/control"
 
 dpkg-deb --root-owner-group --build "$WORK" "$OUT/node-core-os_${VERSION}_arm64.deb"
 dpkg-deb --info "$OUT/node-core-os_${VERSION}_arm64.deb"
-sha256sum "$OUT/node-core-os_${VERSION}_arm64.deb" > "$OUT/node-core-os_${VERSION}_arm64.deb.sha256"
+(cd "$OUT" && sha256sum "node-core-os_${VERSION}_arm64.deb" > "node-core-os_${VERSION}_arm64.deb.sha256")
 echo "Package created: $OUT/node-core-os_${VERSION}_arm64.deb"
