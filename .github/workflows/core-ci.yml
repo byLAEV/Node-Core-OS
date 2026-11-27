@@ -2,7 +2,7 @@ name: Core CI
 
 on:
   push:
-    branches: [main, "strategy/**"]
+    branches: [main, "strategy/**", "feature/**"]
   pull_request:
   workflow_dispatch:
 

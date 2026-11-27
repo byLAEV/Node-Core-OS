@@ -1,36 +1,57 @@
-"""Command-line entry point for Node Core OS."""
+"""Low-memory, keyboard-only user-mode interface."""
 import argparse
-import json
 from pathlib import Path
 
-APP_DIR = Path.home() / ".local" / "share" / "node-core-os"
+VERSION = "1.6.1"
+DATA_DIR = Path.home() / ".local" / "share" / "node-core-os"
 
+def status():
+    print("Node Core OS", VERSION)
+    print("Mode: user (no root)")
+    print("Data:", DATA_DIR)
+    print("Initialized:", "yes" if DATA_DIR.is_dir() else "no")
+    print("IPFS/Kubo: optional, not connected")
 
-def main() -> int:
-    parser = argparse.ArgumentParser(prog="node-core-os", description="Node Core OS local-first runtime")
-    sub = parser.add_subparsers(dest="command")
-    sub.add_parser("status", help="Show runtime and storage locations")
-    sub.add_parser("init", help="Create the local data directory")
+def initialize():
+    for name in ("storage/local", "storage/ipfs", "config", "apps"):
+        (DATA_DIR / name).mkdir(parents=True, exist_ok=True)
+    print("User storage initialized:", DATA_DIR)
+
+def menu():
+    while True:
+        print("\nNODE CORE OS")
+        print("1. Status")
+        print("2. Initialize user storage")
+        print("3. Show paths")
+        print("0. Exit")
+        try:
+            choice = input("Option [0-3]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExit.")
+            return 0
+        if choice == "0":
+            return 0
+        if choice == "1":
+            status()
+        elif choice == "2":
+            initialize()
+        elif choice == "3":
+            print("Data:", DATA_DIR)
+            print("Local:", DATA_DIR / "storage/local")
+            print("IPFS:", DATA_DIR / "storage/ipfs")
+        else:
+            print("Invalid option; enter one of the listed numbers.")
+
+def main():
+    parser = argparse.ArgumentParser(prog="node-core-os", description="Node Core OS: low-memory, user-only text interface")
+    parser.add_argument("--version", action="version", version=VERSION)
+    parser.add_argument("command", nargs="?", choices=("menu", "status", "init", "paths"), default="menu")
     args = parser.parse_args()
-
-    if args.command == "status":
-        print(json.dumps({
-            "name": "Node Core OS",
-            "version": "1.6.0",
-            "data_dir": str(APP_DIR),
-            "initialized": APP_DIR.is_dir(),
-            "ipfs": "optional external Kubo service; not configured",
-        }, indent=2))
-        return 0
-    if args.command == "init":
-        APP_DIR.mkdir(parents=True, exist_ok=True)
-        (APP_DIR / "storage").mkdir(exist_ok=True)
-        (APP_DIR / "config").mkdir(exist_ok=True)
-        print(f"Initialized local data directory: {APP_DIR}")
-        return 0
-    parser.print_help()
+    if args.command == "status": status()
+    elif args.command == "init": initialize()
+    elif args.command == "paths": print(DATA_DIR)
+    else: return menu()
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

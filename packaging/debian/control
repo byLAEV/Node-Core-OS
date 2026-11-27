@@ -1,9 +1,10 @@
 Package: node-core-os
-Version: 1.6.0
+Version: 1.6.1
 Section: utils
 Priority: optional
-Architecture: arm64
+Architecture: all
 Maintainer: Node Core OS byLAEV
-Description: Modular local-first Node Core OS runtime
- A minimal Python-based runtime for local storage administration and
- future optional decentralized storage adapters.
+Depends: python3 (>= 3.8), dpkg
+Description: Low-memory user-mode Node Core OS
+ Plain-text keyboard-only runtime for regular user accounts.
+ Install locally without root using the included user installer.
