@@ -53,7 +53,7 @@ jobs:
       - name: Run original unit tests
         run: |
           cd build/extracted/usr/lib/node-core-os/1.5.6
-          ../../../../test-venv/bin/python -m unittest discover -s tests -v
+          $GITHUB_WORKSPACE/build/test-venv/bin/python -m unittest discover -s tests -v
 
       - name: Verify launcher rejects root
         run: |
