@@ -1,0 +1,69 @@
+name: Node Core OS 1.5.6 Debian ARM64 terminal package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [terminal-deb-1.5.6]
+    paths:
+      - "packaging/debian-terminal/**"
+      - ".github/workflows/debian-terminal-arm64.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Check out packaging branch and historical source
+        uses: actions/checkout@v4
+        with:
+          ref: terminal-deb-1.5.6
+          fetch-depth: 0
+
+      - name: Install build and test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev python3
+
+      - name: Verify pinned source snapshot
+        run: |
+          git cat-file -e 08d994574775a0ec3d9dcc4b2e88862152d1ea3b^{commit}
+          test "$(git show 08d994574775a0ec3d9dcc4b2e88862152d1ea3b:VERSION)" = "1.5.6"
+
+      - name: Build Debian package
+        run: bash packaging/debian-terminal/build-deb.sh
+
+      - name: Validate package payload and launcher
+        run: |
+          PACKAGE=build/node-core-os_1.5.6-1_arm64.deb
+          dpkg-deb --info "$PACKAGE"
+          test "$(dpkg-deb -f "$PACKAGE" Architecture)" = arm64
+          mkdir -p build/extracted
+          dpkg-deb -x "$PACKAGE" build/extracted
+          bash -n build/extracted/usr/lib/node-core-os/1.5.6/installer/install.sh
+          sh -n build/extracted/usr/bin/node-core-os
+          test "$(cat build/extracted/usr/lib/node-core-os/1.5.6/VERSION)" = "1.5.6"
+          cmp build/extracted/usr/lib/node-core-os/1.5.6/main.py <(git show 08d994574775a0ec3d9dcc4b2e88862152d1ea3b:main.py)
+          python3 -m compileall -q build/extracted/usr/lib/node-core-os/1.5.6
+
+      - name: Run original unit tests
+        run: |
+          cd build/extracted/usr/lib/node-core-os/1.5.6
+          python3 -m unittest discover -s tests -v
+
+      - name: Verify launcher rejects root
+        run: |
+          set +e
+          build/extracted/usr/bin/node-core-os >build/root-launch.out 2>&1
+          status=$?
+          set -e
+          test "$status" -ne 0
+          grep -q "Run it as your normal user" build/root-launch.out
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-core-os-1.5.6-debian-arm64
+          path: build/node-core-os_1.5.6-1_arm64.deb
+          if-no-files-found: error
