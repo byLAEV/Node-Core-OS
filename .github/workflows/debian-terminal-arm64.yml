@@ -24,7 +24,10 @@ jobs:
       - name: Install build and test tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y dpkg-dev python3
+          sudo apt-get install -y dpkg-dev python3 python3-venv
+          python3 -m venv build/test-venv
+          build/test-venv/bin/python -m pip install --upgrade pip
+          build/test-venv/bin/python -m pip install -r requirements.txt
 
       - name: Verify pinned source snapshot
         run: |
@@ -45,17 +48,17 @@ jobs:
           sh -n build/extracted/usr/bin/node-core-os
           test "$(cat build/extracted/usr/lib/node-core-os/1.5.6/VERSION)" = "1.5.6"
           cmp build/extracted/usr/lib/node-core-os/1.5.6/main.py <(git show 08d994574775a0ec3d9dcc4b2e88862152d1ea3b:main.py)
-          python3 -m compileall -q build/extracted/usr/lib/node-core-os/1.5.6
+          build/test-venv/bin/python -m compileall -q build/extracted/usr/lib/node-core-os/1.5.6
 
       - name: Run original unit tests
         run: |
           cd build/extracted/usr/lib/node-core-os/1.5.6
-          python3 -m unittest discover -s tests -v
+          ../../../../test-venv/bin/python -m unittest discover -s tests -v
 
       - name: Verify launcher rejects root
         run: |
           set +e
-          build/extracted/usr/bin/node-core-os >build/root-launch.out 2>&1
+          sudo build/extracted/usr/bin/node-core-os >build/root-launch.out 2>&1
           status=$?
           set -e
           test "$status" -ne 0
