@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+APP_DIR="/usr/lib/node-core-os/1.5.6"
+
+if [ "$(id -u)" -eq 0 ]; then
+    printf '%s\n' "Node Core OS is user-level software. Run it as your normal user, without sudo." >&2
+    exit 1
+fi
+
+if [ ! -f "$APP_DIR/main.py" ] || [ ! -f "$APP_DIR/VERSION" ]; then
+    printf '%s\n' "Node Core OS package files are incomplete: $APP_DIR" >&2
+    exit 1
+fi
+
+if [ "$(cat "$APP_DIR/VERSION")" != "1.5.6" ]; then
+    printf '%s\n' "Node Core OS version mismatch. Refusing to launch." >&2
+    exit 1
+fi
+
+PYTHON="${PYTHON:-python3}"
+if ! command -v "$PYTHON" >/dev/null 2>&1; then
+    printf '%s\n' "Python 3 is required. Install python3 and retry." >&2
+    exit 1
+fi
+
+"$PYTHON" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' || {
+    printf '%s\n' "Python 3.10 or newer is required." >&2
+    exit 1
+}
+
+if [ -n "${PYTHONPATH:-}" ]; then
+    export PYTHONPATH="$APP_DIR:$PYTHONPATH"
+else
+    export PYTHONPATH="$APP_DIR"
+fi
+
+exec "$PYTHON" "$APP_DIR/main.py" "$@"
