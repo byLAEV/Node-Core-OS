@@ -1,10 +1,10 @@
 Package: node-core-os-gui
-Version: 1.5.6-1
+Version: 1.5.6-2
 Section: utils
 Priority: optional
-Architecture: arm64
+Architecture: all
 Maintainer: byLAEV
-Depends: python3 (>= 3.10), python3-tk, xdg-utils
-Description: Graphical dashboard and launcher for Node Core OS
- A lightweight graphical dashboard for the Node Core OS 1.5.6
- user-level installation. The core engine is installed separately.
+Depends: python3 (>= 3.10), xdg-utils
+Description: Browser-based local dashboard for Node Core OS
+ Responsive localhost dashboard for GNU/Linux and compatible Linux userlands.
+ Uses Python standard library only. Core engine is installed separately.
