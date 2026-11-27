@@ -14,7 +14,8 @@ class CliTests(unittest.TestCase):
             env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")},
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Node Core OS", result.stdout)\n        self.assertIn("user-only", result.stdout)
+        self.assertIn("Node Core OS", result.stdout)
+        self.assertIn("user-only", result.stdout)
 
     def test_status_is_read_only(self):
         with tempfile.TemporaryDirectory() as home:
