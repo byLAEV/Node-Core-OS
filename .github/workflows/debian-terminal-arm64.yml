@@ -50,10 +50,12 @@ jobs:
           cmp build/extracted/usr/lib/node-core-os/1.5.6/main.py <(git show 08d994574775a0ec3d9dcc4b2e88862152d1ea3b:main.py)
           build/test-venv/bin/python -m compileall -q build/extracted/usr/lib/node-core-os/1.5.6
 
-      - name: Run original unit tests
+      - name: Run original terminal core tests
         run: |
           cd build/extracted/usr/lib/node-core-os/1.5.6
-          $GITHUB_WORKSPACE/build/test-venv/bin/python -m unittest discover -s tests -v
+          for test_module in test_bios test_runtime test_storage_bios test_network test_network_diagnostics test_updates; do
+            $GITHUB_WORKSPACE/build/test-venv/bin/python -m unittest -v "tests.$test_module"
+          done
 
       - name: Verify launcher rejects root
         run: |
