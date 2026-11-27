@@ -1,0 +1,10 @@
+Package: node-core-os
+Version: 1.5.6-1
+Section: utils
+Priority: optional
+Architecture: arm64
+Maintainer: byLAEV
+Depends: python3 (>= 3.10)
+Description: Node Core OS 1.5.6 terminal distribution for ARM64
+ Original Node Core OS terminal application and its original BIOS and menus.
+ The package launches the same main.py entry point as the source distribution.
