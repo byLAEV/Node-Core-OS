@@ -19,8 +19,8 @@ jobs:
           chmod +x packaging/gui-arm64/build-deb.sh
           packaging/gui-arm64/build-deb.sh
           mkdir -p build/universal
-          cp packaging/gui-arm64/app.py build/universal/node-core-os-gui
-          chmod 0755 build/universal/node-core-os-gui
+          cp packaging/gui-arm64/app.py build/universal/app.py
+          chmod 0755 build/universal/app.py
           cp packaging/gui-arm64/README.md build/universal/README.md
           tar -C build -czf build/node-core-os-gui-1.5.6-linux-universal.tar.gz universal
           test "$(dpkg-deb -f build/node-core-os-gui_1.5.6-2_all.deb Architecture)" = all
