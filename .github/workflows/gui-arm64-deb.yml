@@ -1,35 +1,35 @@
-name: Node Core OS GUI ARM64 DEB
+name: Node Core OS GUI universal packages
 on:
   workflow_dispatch:
   push:
     branches: [gui-arm64-v1.5.6]
-    paths:
-      - "packaging/gui-arm64/**"
-      - ".github/workflows/gui-arm64-deb.yml"
+    paths: ["packaging/gui-arm64/**", ".github/workflows/gui-arm64-deb.yml"]
 permissions:
   contents: read
 jobs:
-  build-arm64-deb:
-    runs-on: ubuntu-24.04-arm
+  build:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout authorized historical source
-        uses: actions/checkout@v4
-        with:
-          ref: gui-arm64-v1.5.6
-      - name: Build Debian package
+      - uses: actions/checkout@v4
+        with: {ref: gui-arm64-v1.5.6}
+      - name: Build universal DEB and portable archive
         run: |
           sudo apt-get update
           sudo apt-get install -y dpkg-dev
           chmod +x packaging/gui-arm64/build-deb.sh
           packaging/gui-arm64/build-deb.sh
-      - name: Validate package architecture and metadata
-        run: |
-          dpkg-deb -f build/node-core-os-gui_1.5.6-1_arm64.deb Architecture
-          test "$(dpkg-deb -f build/node-core-os-gui_1.5.6-1_arm64.deb Architecture)" = arm64
-          dpkg-deb --contents build/node-core-os-gui_1.5.6-1_arm64.deb
-      - name: Upload DEB artifact
-        uses: actions/upload-artifact@v4
+          mkdir -p build/universal
+          cp packaging/gui-arm64/app.py build/universal/node-core-os-gui
+          chmod 0755 build/universal/node-core-os-gui
+          cp packaging/gui-arm64/README.md build/universal/README.md
+          tar -C build -czf build/node-core-os-gui-1.5.6-linux-universal.tar.gz universal
+          test "$(dpkg-deb -f build/node-core-os-gui_1.5.6-2_all.deb Architecture)" = all
+          dpkg-deb --info build/node-core-os-gui_1.5.6-2_all.deb
+          tar -tzf build/node-core-os-gui-1.5.6-linux-universal.tar.gz
+      - uses: actions/upload-artifact@v4
         with:
-          name: node-core-os-gui-1.5.6-arm64
-          path: build/node-core-os-gui_1.5.6-1_arm64.deb
+          name: node-core-os-gui-1.5.6-linux-universal
+          path: |
+            build/node-core-os-gui_1.5.6-2_all.deb
+            build/node-core-os-gui-1.5.6-linux-universal.tar.gz
           if-no-files-found: error
