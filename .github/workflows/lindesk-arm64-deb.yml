@@ -1,0 +1,40 @@
+name: Node Core OS 1.5.6 LinDesk ARM64 DEB
+on:
+  workflow_dispatch:
+  push:
+    branches: [gui-arm64-v1.5.6]
+    paths: ["packaging/lindesk/**", ".github/workflows/lindesk-arm64-deb.yml"]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gui-arm64-v1.5.6
+          fetch-depth: 0
+      - name: Verify approved historical source commit
+        run: |
+          git cat-file -e 08d994574775a0ec3d9dcc4b2e88862152d1ea3b^{commit}
+          test "$(git show 08d994574775a0ec3d9dcc4b2e88862152d1ea3b:VERSION)" = "1.5.6"
+      - name: Build ARM64 Debian package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev
+          chmod +x packaging/lindesk/build-deb.sh
+          packaging/lindesk/build-deb.sh
+      - name: Validate package metadata and payload
+        run: |
+          dpkg-deb --info build/node-core-os_1.5.6-1_arm64.deb
+          dpkg-deb --contents build/node-core-os_1.5.6-1_arm64.deb
+          test "$(dpkg-deb -f build/node-core-os_1.5.6-1_arm64.deb Architecture)" = arm64
+          mkdir -p build/extracted
+          dpkg-deb -x build/node-core-os_1.5.6-1_arm64.deb build/extracted
+          bash -n build/extracted/opt/node-core-os-1.5.6/install-user.sh
+          test "$(cat build/extracted/opt/node-core-os-1.5.6/source/VERSION)" = "1.5.6"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: node-core-os-1.5.6-lindesk-arm64-deb
+          path: build/node-core-os_1.5.6-1_arm64.deb
+          if-no-files-found: error
