@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Node Core OS
+Comment=Graphical dashboard and launcher for Node Core OS
+Exec=node-core-os-gui
+Icon=applications-system
+Terminal=false
+Categories=System;Utility;
+StartupNotify=true
